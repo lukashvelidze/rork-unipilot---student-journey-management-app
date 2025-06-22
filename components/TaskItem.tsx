@@ -98,7 +98,7 @@ const TaskItem: React.FC<TaskItemProps> = ({
                 fill={completed ? Colors.white : "transparent"}
               />
             </Animated.View>
-          </View>
+          </Animated.View>
           
           <View style={styles.textContainer}>
             <Text
