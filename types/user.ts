@@ -33,11 +33,9 @@ export interface University {
 export interface Document {
   id: string;
   title: string;
-  name?: string; // Added name property
   type: 'passport' | 'transcript' | 'recommendation' | 'statement' | 'cv' | 'financial' | 'other';
-  status: 'needed' | 'in_progress' | 'completed' | 'submitted' | 'expiring_soon'; // Added expiring_soon status
+  status: 'needed' | 'in_progress' | 'completed' | 'submitted';
   deadline?: string;
-  expiryDate?: string; // Added for document expiration
   notes?: string;
   fileUrl?: string;
 }

@@ -8,14 +8,11 @@ interface UserState {
   isLoading: boolean;
   error: string | null;
   isPremium: boolean;
-  premiumResources: string[];
   setUser: (user: UserProfile) => void;
   updateUser: (userData: Partial<UserProfile>) => void;
   updateOnboardingStep: (step: number) => void;
   completeOnboarding: () => void;
   setPremium: (status: boolean) => void;
-  addPremiumResource: (resourceId: string) => void;
-  removePremiumResource: (resourceId: string) => void;
   logout: () => void;
 }
 
@@ -26,7 +23,6 @@ export const useUserStore = create<UserState>()(
       isLoading: false,
       error: null,
       isPremium: false,
-      premiumResources: [],
       setUser: (user) => set({ user }),
       updateUser: (userData) => 
         set((state) => ({
@@ -41,15 +37,7 @@ export const useUserStore = create<UserState>()(
           user: state.user ? { ...state.user, onboardingCompleted: true } : null,
         })),
       setPremium: (status) => set({ isPremium: status }),
-      addPremiumResource: (resourceId) =>
-        set((state) => ({
-          premiumResources: [...state.premiumResources, resourceId]
-        })),
-      removePremiumResource: (resourceId) =>
-        set((state) => ({
-          premiumResources: state.premiumResources.filter(id => id !== resourceId)
-        })),
-      logout: () => set({ user: null, isPremium: false, premiumResources: [] }),
+      logout: () => set({ user: null, isPremium: false }),
     }),
     {
       name: "user-storage",

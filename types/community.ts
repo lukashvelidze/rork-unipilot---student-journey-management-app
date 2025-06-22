@@ -1,6 +1,23 @@
-export type Topic = 'visa' | 'university' | 'accommodation' | 'finances' | 'culture' | 'academics' | 'career' | 'general';
+export type Topic = 
+  | "visa" 
+  | "university" 
+  | "accommodation" 
+  | "finances" 
+  | "culture" 
+  | "academics" 
+  | "career" 
+  | "general";
 
-export interface Comment {
+export type User = {
+  id: string;
+  name: string;
+  avatar?: string;
+  homeCountry: string;
+  destinationCountry: string;
+  isPremium: boolean;
+};
+
+export type Comment = {
   id: string;
   userId: string;
   userName: string;
@@ -8,10 +25,11 @@ export interface Comment {
   content: string;
   createdAt: string;
   likes: number;
-  isLiked?: boolean;
-}
+  isLiked: boolean;
+  isPremium: boolean;
+};
 
-export interface Post {
+export type Post = {
   id: string;
   userId: string;
   userName: string;
@@ -22,13 +40,6 @@ export interface Post {
   createdAt: string;
   likes: number;
   comments: Comment[];
-  isLiked?: boolean;
-  isSaved?: boolean;
-  imageUrl?: string;
-}
-
-export interface CommunityState {
-  posts: Post[];
-  isLoading: boolean;
-  error: string | null;
-}
+  isLiked: boolean;
+  isPremium: boolean;
+};

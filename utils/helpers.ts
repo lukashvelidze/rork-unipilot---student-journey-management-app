@@ -110,36 +110,3 @@ export const getInitials = (name: string): string => {
     .toUpperCase()
     .substring(0, 2); // Limit to 2 characters
 };
-
-// Check if a user has access to a premium resource
-export const hasPremiumAccess = (isPremium: boolean, resourceId?: string): boolean => {
-  if (!isPremium) return false;
-  if (!resourceId) return true; // General premium access check
-  
-  // Could check specific resource access here if needed
-  return true;
-};
-
-// Get premium resource categories
-export const getPremiumResourceCategories = (): string[] => {
-  return [
-    "Visa Application",
-    "University Applications",
-    "Accommodation",
-    "Financial Planning",
-    "Cultural Adaptation",
-    "Academic Success",
-    "Career Development"
-  ];
-};
-
-// Format currency with appropriate symbol
-export const formatCurrency = (amount: number, currencyCode: string = "USD"): string => {
-  const formatter = new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: currencyCode,
-    minimumFractionDigits: 2
-  });
-  
-  return formatter.format(amount);
-};
