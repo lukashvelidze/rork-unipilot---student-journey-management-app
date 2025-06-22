@@ -1,12 +1,13 @@
 import React from "react";
-import { StyleSheet, View, ViewStyle } from "react-native";
+import { StyleSheet, View, ViewStyle, Platform } from "react-native";
 import Colors from "@/constants/colors";
 
 interface CardProps {
   children: React.ReactNode;
   style?: ViewStyle;
-  variant?: "default" | "elevated" | "outlined" | "flat";
+  variant?: "default" | "elevated" | "outlined" | "flat" | "glass";
   padding?: "none" | "small" | "medium" | "large";
+  borderRadius?: "small" | "medium" | "large" | "extraLarge";
 }
 
 const Card: React.FC<CardProps> = ({
@@ -14,6 +15,7 @@ const Card: React.FC<CardProps> = ({
   style,
   variant = "default",
   padding = "medium",
+  borderRadius = "medium",
 }) => {
   const getVariantStyle = () => {
     switch (variant) {
@@ -23,6 +25,8 @@ const Card: React.FC<CardProps> = ({
         return styles.outlined;
       case "flat":
         return styles.flat;
+      case "glass":
+        return styles.glass;
       default:
         return styles.default;
     }
@@ -40,9 +44,28 @@ const Card: React.FC<CardProps> = ({
         return styles.paddingMedium;
     }
   };
+  
+  const getBorderRadiusStyle = () => {
+    switch (borderRadius) {
+      case "small":
+        return styles.borderRadiusSmall;
+      case "large":
+        return styles.borderRadiusLarge;
+      case "extraLarge":
+        return styles.borderRadiusExtraLarge;
+      default:
+        return styles.borderRadiusMedium;
+    }
+  };
 
   return (
-    <View style={[styles.card, getVariantStyle(), getPaddingStyle(), style]}>
+    <View style={[
+      styles.card, 
+      getVariantStyle(), 
+      getPaddingStyle(), 
+      getBorderRadiusStyle(),
+      style
+    ]}>
       {children}
     </View>
   );
@@ -50,23 +73,34 @@ const Card: React.FC<CardProps> = ({
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 12,
     backgroundColor: Colors.card,
     overflow: "hidden",
   },
   default: {
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
   },
   elevated: {
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 5,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.15,
+        shadowRadius: 10,
+      },
+      android: {
+        elevation: 5,
+      },
+    }),
   },
   outlined: {
     borderWidth: 1,
@@ -78,17 +112,44 @@ const styles = StyleSheet.create({
     shadowColor: "transparent",
     elevation: 0,
   },
+  glass: {
+    backgroundColor: "rgba(255, 255, 255, 0.8)",
+    backdropFilter: "blur(10px)",
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 3,
+      },
+    }),
+  },
   paddingNone: {
     padding: 0,
   },
   paddingSmall: {
-    padding: 8,
+    padding: 12,
   },
   paddingMedium: {
     padding: 16,
   },
   paddingLarge: {
     padding: 24,
+  },
+  borderRadiusSmall: {
+    borderRadius: 8,
+  },
+  borderRadiusMedium: {
+    borderRadius: 12,
+  },
+  borderRadiusLarge: {
+    borderRadius: 16,
+  },
+  borderRadiusExtraLarge: {
+    borderRadius: 24,
   },
 });
 

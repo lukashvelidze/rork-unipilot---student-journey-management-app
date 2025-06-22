@@ -14,8 +14,8 @@ export default {
     xxl: 48,
   },
   borderRadius: {
-    s: 4,
-    m: 8,
+    s: 8,
+    m: 12,
     l: 16,
     xl: 24,
     xxl: 32,
@@ -37,29 +37,83 @@ export default {
   },
   shadow: {
     small: {
-      shadowColor: "#000",
+      shadowColor: Colors.shadowLight,
       shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 3,
+      shadowOpacity: 1,
+      shadowRadius: 4,
       elevation: 2,
     },
     medium: {
-      shadowColor: "#000",
+      shadowColor: Colors.shadowMedium,
       shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.15,
-      shadowRadius: 6,
+      shadowOpacity: 1,
+      shadowRadius: 8,
       elevation: 4,
     },
     large: {
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 6 },
-      shadowOpacity: 0.2,
-      shadowRadius: 8,
+      shadowColor: Colors.shadowDark,
+      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: 1,
+      shadowRadius: 16,
       elevation: 8,
     },
   },
   dimensions: {
     width,
     height,
+  },
+  // Modern design elements
+  card: {
+    borderRadius: 16,
+    padding: 16,
+    backgroundColor: Colors.card,
+    shadowColor: Colors.shadowMedium,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  section: {
+    marginBottom: 24,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: Colors.border,
+    marginVertical: 16,
+  },
+  // Typography
+  typography: {
+    h1: {
+      fontSize: 32,
+      fontWeight: "700",
+      color: Colors.text,
+      marginBottom: 16,
+    },
+    h2: {
+      fontSize: 24,
+      fontWeight: "700",
+      color: Colors.text,
+      marginBottom: 12,
+    },
+    h3: {
+      fontSize: 20,
+      fontWeight: "600",
+      color: Colors.text,
+      marginBottom: 8,
+    },
+    body: {
+      fontSize: 16,
+      color: Colors.text,
+      lineHeight: 24,
+    },
+    caption: {
+      fontSize: 14,
+      color: Colors.lightText,
+    },
+    button: {
+      fontSize: 16,
+      fontWeight: "600",
+      color: Colors.white,
+    },
   },
 };

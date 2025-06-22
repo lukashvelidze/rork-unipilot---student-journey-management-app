@@ -1,47 +1,3 @@
-export type Country = {
-  code: string;
-  name: string;
-  flag: string;
-};
-
-export type EducationLevel = "high_school" | "bachelors" | "masters" | "phd" | "other";
-
-export type TestScore = {
-  type: "GRE" | "TOEFL" | "IELTS" | "GMAT" | "SAT" | "ACT" | "Other";
-  score: string;
-  date: string;
-};
-
-export type University = {
-  id: string;
-  name: string;
-  country: Country;
-  status: "researching" | "applied" | "accepted" | "rejected" | "waitlisted" | "enrolled";
-  program?: string;
-  applicationDeadline?: string;
-};
-
-export type DocumentType = 
-  | "passport" 
-  | "visa" 
-  | "i20" 
-  | "admission_letter" 
-  | "financial_documents" 
-  | "transcripts" 
-  | "test_scores" 
-  | "health_insurance" 
-  | "other";
-
-export type Document = {
-  id: string;
-  type: DocumentType;
-  name: string;
-  expiryDate?: string;
-  reminderDate?: string;
-  status: "valid" | "expiring_soon" | "expired" | "pending";
-  fileUri?: string;
-};
-
 export type JourneyStage = 
   | "research" 
   | "application" 
@@ -51,56 +7,59 @@ export type JourneyStage =
   | "academic" 
   | "career";
 
-export type JourneyProgress = {
-  stage: JourneyStage;
-  progress: number; // 0-100
+export interface Task {
+  id: string;
+  title: string;
+  description?: string;
   completed: boolean;
-  tasks: {
-    id: string;
-    title: string;
-    completed: boolean;
-    dueDate?: string;
-  }[];
-};
+  dueDate?: string;
+}
 
-export type Memory = {
+export interface JourneyProgress {
+  stage: JourneyStage;
+  progress: number;
+  completed: boolean;
+  tasks: Task[];
+}
+
+export interface Country {
+  code: string;
+  name: string;
+  flag: string;
+}
+
+export interface University {
+  id: string;
+  name: string;
+  country: Country;
+  logo?: string;
+}
+
+export interface Memory {
   id: string;
   title: string;
   description: string;
   date: string;
-  imageUri?: string;
-  feeling: "excited" | "happy" | "nervous" | "proud" | "sad" | "other";
-  stage: JourneyStage;
-};
+  images?: string[];
+  location?: string;
+  tags?: string[];
+  mood?: "happy" | "excited" | "neutral" | "anxious" | "sad";
+}
 
-export type UserProfile = {
+export interface User {
   id: string;
-  email: string;
   name: string;
-  phone?: string;
+  email: string;
+  avatar?: string;
   homeCountry: Country;
   destinationCountry: Country;
-  educationBackground: {
-    level: EducationLevel;
-    institution?: string;
-    gpa?: string;
-    major?: string;
-    graduationDate?: string;
+  university?: University;
+  program?: string;
+  startDate?: string;
+  endDate?: string;
+  preferences: {
+    notifications: boolean;
+    darkMode: boolean;
+    language: string;
   };
-  testScores: TestScore[];
-  universities: University[];
-  documents: Document[];
-  journeyProgress: JourneyProgress[];
-  memories: Memory[];
-  budget?: {
-    currency: string;
-    amount: number;
-  };
-  timeline?: {
-    targetDepartureDate?: string;
-    targetGraduationDate?: string;
-  };
-  careerGoals?: string;
-  onboardingCompleted: boolean;
-  onboardingStep: number;
-};
+}

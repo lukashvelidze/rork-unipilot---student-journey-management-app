@@ -1,8 +1,7 @@
-import React from "react";
-import { StyleSheet, View, Text, TouchableOpacity } from "react-native";
-import { CheckCircle, Circle, Calendar } from "lucide-react-native";
+import React, { useState, useRef } from "react";
+import { StyleSheet, View, Text, TouchableOpacity, Animated } from "react-native";
+import { CheckCircle, Calendar } from "lucide-react-native";
 import Colors from "@/constants/colors";
-import { formatDate, getDaysRemaining } from "@/utils/dateUtils";
 
 interface TaskItemProps {
   id: string;
@@ -10,6 +9,7 @@ interface TaskItemProps {
   completed: boolean;
   dueDate?: string;
   onToggle: (id: string, completed: boolean) => void;
+  accentColor?: string;
 }
 
 const TaskItem: React.FC<TaskItemProps> = ({
@@ -18,70 +18,138 @@ const TaskItem: React.FC<TaskItemProps> = ({
   completed,
   dueDate,
   onToggle,
+  accentColor = Colors.primary,
 }) => {
-  const isOverdue = dueDate ? getDaysRemaining(dueDate) < 0 : false;
-  const isDueSoon = dueDate ? getDaysRemaining(dueDate) <= 7 && getDaysRemaining(dueDate) >= 0 : false;
-
+  const [isPressed, setIsPressed] = useState(false);
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+  const checkAnim = useRef(new Animated.Value(completed ? 1 : 0)).current;
+  
+  const handlePressIn = () => {
+    setIsPressed(true);
+    Animated.spring(scaleAnim, {
+      toValue: 0.97,
+      friction: 5,
+      useNativeDriver: true,
+    }).start();
+  };
+  
+  const handlePressOut = () => {
+    setIsPressed(false);
+    Animated.spring(scaleAnim, {
+      toValue: 1,
+      friction: 5,
+      useNativeDriver: true,
+    }).start();
+  };
+  
+  const handleToggle = () => {
+    // Animate the check
+    Animated.timing(checkAnim, {
+      toValue: completed ? 0 : 1,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+    
+    onToggle(id, !completed);
+  };
+  
+  const checkScale = checkAnim.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: [0.8, 1.2, 1],
+  });
+  
+  const checkOpacity = checkAnim.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: [0, 0.5, 1],
+  });
+  
   return (
-    <View style={styles.container}>
+    <Animated.View
+      style={[
+        styles.container,
+        {
+          transform: [{ scale: scaleAnim }],
+          backgroundColor: completed ? `${accentColor}10` : Colors.white,
+        },
+      ]}
+    >
       <TouchableOpacity
-        style={styles.checkbox}
-        onPress={() => onToggle(id, !completed)}
-        activeOpacity={0.7}
+        style={styles.touchable}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        onPress={handleToggle}
+        activeOpacity={0.8}
       >
-        {completed ? (
-          <CheckCircle size={24} color={Colors.primary} />
-        ) : (
-          <Circle size={24} color={Colors.primary} />
-        )}
-      </TouchableOpacity>
-      
-      <View style={styles.contentContainer}>
-        <Text
-          style={[
-            styles.title,
-            completed && styles.completedTitle,
-          ]}
-        >
-          {title}
-        </Text>
-        
-        {dueDate && (
-          <View style={styles.dueDateContainer}>
-            <Calendar size={14} color={Colors.lightText} style={styles.calendarIcon} />
+        <View style={styles.content}>
+          <Animated.View
+            style={[
+              styles.checkContainer,
+              {
+                transform: [{ scale: checkScale }],
+                backgroundColor: completed ? accentColor : "transparent",
+                borderColor: completed ? accentColor : Colors.border,
+              },
+            ]}
+          >
+            <Animated.View style={{ opacity: checkOpacity }}>
+              <CheckCircle
+                size={20}
+                color={completed ? Colors.white : "transparent"}
+                fill={completed ? Colors.white : "transparent"}
+              />
+            </Animated.View>
+          </View>
+          
+          <View style={styles.textContainer}>
             <Text
               style={[
-                styles.dueDate,
-                isOverdue && !completed && styles.overdue,
-                isDueSoon && !completed && styles.dueSoon,
+                styles.title,
+                completed && styles.completedTitle,
               ]}
             >
-              {isOverdue && !completed
-                ? "Overdue: "
-                : isDueSoon && !completed
-                ? "Due soon: "
-                : "Due: "}
-              {formatDate(dueDate)}
+              {title}
             </Text>
+            
+            {dueDate && (
+              <View style={styles.dueDateContainer}>
+                <Calendar size={12} color={Colors.lightText} />
+                <Text style={styles.dueDate}>{dueDate}</Text>
+              </View>
+            )}
           </View>
-        )}
-      </View>
-    </View>
+        </View>
+      </TouchableOpacity>
+    </Animated.View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
+    borderRadius: 12,
+    marginBottom: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  touchable: {
+    padding: 16,
+  },
+  content: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
   },
-  checkbox: {
-    marginRight: 12,
+  checkContainer: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 16,
   },
-  contentContainer: {
+  textContainer: {
     flex: 1,
   },
   title: {
@@ -97,18 +165,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
   },
-  calendarIcon: {
-    marginRight: 4,
-  },
   dueDate: {
-    fontSize: 14,
+    fontSize: 12,
     color: Colors.lightText,
-  },
-  overdue: {
-    color: Colors.error,
-  },
-  dueSoon: {
-    color: Colors.warning,
+    marginLeft: 4,
   },
 });
 

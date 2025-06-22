@@ -1,6 +1,6 @@
-import React from "react";
-import { StyleSheet, View, Text, TouchableOpacity, Platform } from "react-native";
-import { ChevronRight } from "lucide-react-native";
+import React, { useRef, useEffect } from "react";
+import { StyleSheet, View, Text, TouchableOpacity, Platform, Animated } from "react-native";
+import { ChevronRight, CheckCircle } from "lucide-react-native";
 import Colors from "@/constants/colors";
 import ProgressBar from "./ProgressBar";
 import { JourneyProgress } from "@/types/user";
@@ -11,6 +11,53 @@ interface StageProgressProps {
 }
 
 const StageProgress: React.FC<StageProgressProps> = ({ stage, onPress }) => {
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+  const opacityAnim = useRef(new Animated.Value(0.9)).current;
+  
+  useEffect(() => {
+    // Subtle breathing animation for the card
+    const breathingAnimation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(opacityAnim, {
+          toValue: 1,
+          duration: 1500,
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacityAnim, {
+          toValue: 0.9,
+          duration: 1500,
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    
+    if (stage.progress > 0 && stage.progress < 100) {
+      breathingAnimation.start();
+    }
+    
+    return () => {
+      breathingAnimation.stop();
+    };
+  }, [stage.progress, opacityAnim]);
+  
+  const handlePressIn = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 0.97,
+      friction: 5,
+      tension: 100,
+      useNativeDriver: true,
+    }).start();
+  };
+  
+  const handlePressOut = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 1,
+      friction: 5,
+      tension: 100,
+      useNativeDriver: true,
+    }).start();
+  };
+  
   const getStageTitle = (stageId: string): string => {
     const titles: Record<string, string> = {
       research: "University Research",
@@ -42,57 +89,112 @@ const StageProgress: React.FC<StageProgressProps> = ({ stage, onPress }) => {
   const completedTasks = stage.tasks.filter((task) => task.completed).length;
   const totalTasks = stage.tasks.length;
   const stageColor = getStageColor(stage.stage);
+  
+  // Determine card style based on completion status
+  const getCardStyle = () => {
+    if (stage.completed) {
+      return [
+        styles.container, 
+        styles.completedContainer,
+        { borderColor: stageColor }
+      ];
+    }
+    
+    if (stage.progress > 0) {
+      return [
+        styles.container, 
+        styles.activeContainer,
+        { borderLeftColor: stageColor }
+      ];
+    }
+    
+    return styles.container;
+  };
 
   return (
-    <TouchableOpacity
-      style={styles.container}
-      onPress={onPress}
-      activeOpacity={0.7}
+    <Animated.View
+      style={[
+        getCardStyle(),
+        {
+          transform: [{ scale: scaleAnim }],
+          opacity: stage.completed ? 1 : opacityAnim,
+        },
+      ]}
     >
-      <View style={styles.header}>
-        <View style={styles.titleContainer}>
-          <View
-            style={[
-              styles.indicator,
-              { backgroundColor: stageColor },
-            ]}
-          />
-          <Text style={styles.title}>{getStageTitle(stage.stage)}</Text>
+      <TouchableOpacity
+        style={styles.touchable}
+        onPress={onPress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        activeOpacity={0.9}
+      >
+        <View style={styles.header}>
+          <View style={styles.titleContainer}>
+            <View
+              style={[
+                styles.indicator,
+                { backgroundColor: stageColor },
+              ]}
+            />
+            <Text style={styles.title}>{getStageTitle(stage.stage)}</Text>
+            
+            {stage.completed && (
+              <View style={styles.completedBadge}>
+                <CheckCircle size={14} color={Colors.success} fill={Colors.success} />
+                <Text style={styles.completedText}>Completed</Text>
+              </View>
+            )}
+          </View>
+          <ChevronRight size={20} color={Colors.lightText} />
         </View>
-        <ChevronRight size={20} color={Colors.lightText} />
-      </View>
-      
-      <View style={styles.progressContainer}>
-        <ProgressBar
-          progress={stage.progress}
-          progressColor={stageColor}
-          height={6}
-        />
-        <Text style={styles.progressText}>
-          {completedTasks}/{totalTasks} tasks completed
-        </Text>
-      </View>
-    </TouchableOpacity>
+        
+        <View style={styles.progressContainer}>
+          <ProgressBar
+            progress={stage.progress}
+            progressColor={stageColor}
+            height={6}
+            backgroundColor={`${stageColor}20`}
+          />
+          <View style={styles.progressTextRow}>
+            <Text style={styles.progressText}>
+              {completedTasks}/{totalTasks} tasks
+            </Text>
+            <Text style={[styles.progressPercent, { color: stageColor }]}>
+              {stage.progress}%
+            </Text>
+          </View>
+        </View>
+      </TouchableOpacity>
+    </Animated.View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: Colors.card,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
+    backgroundColor: Colors.white,
+    borderRadius: 16,
+    marginBottom: 16,
     ...Platform.select({
       ios: {
         shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
+        shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.1,
-        shadowRadius: 4,
+        shadowRadius: 8,
       },
       android: {
-        elevation: 2,
+        elevation: 3,
       },
     }),
+  },
+  activeContainer: {
+    borderLeftWidth: 4,
+  },
+  completedContainer: {
+    borderWidth: 1,
+    borderStyle: "dashed",
+  },
+  touchable: {
+    padding: 16,
   },
   header: {
     flexDirection: "row",
@@ -103,25 +205,51 @@ const styles = StyleSheet.create({
   titleContainer: {
     flexDirection: "row",
     alignItems: "center",
+    flex: 1,
   },
   indicator: {
     width: 12,
     height: 12,
     borderRadius: 6,
-    marginRight: 8,
+    marginRight: 12,
   },
   title: {
     fontSize: 16,
     fontWeight: "600",
     color: Colors.text,
+    flex: 1,
+  },
+  completedBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#E8F5E9",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginLeft: 8,
+  },
+  completedText: {
+    fontSize: 10,
+    color: Colors.success,
+    fontWeight: "600",
+    marginLeft: 4,
   },
   progressContainer: {
-    marginTop: 4,
+    marginTop: 8,
+  },
+  progressTextRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 8,
   },
   progressText: {
     fontSize: 14,
     color: Colors.lightText,
-    marginTop: 6,
+  },
+  progressPercent: {
+    fontSize: 14,
+    fontWeight: "700",
   },
 });
 
