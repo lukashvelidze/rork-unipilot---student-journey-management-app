@@ -132,15 +132,21 @@ const Button: React.FC<ButtonProps> = ({
     }
   };
 
-  // Handle button press with platform-specific considerations
+  // Handle button press with improved platform-specific handling
   const handlePress = () => {
-    // Add a small delay on iOS to prevent potential race conditions
-    if (Platform.OS === 'ios') {
-      setTimeout(() => {
+    if (disabled || loading) return;
+    
+    try {
+      // Add a longer delay on iOS to prevent potential race conditions
+      if (Platform.OS === 'ios') {
+        setTimeout(() => {
+          onPress();
+        }, 50);
+      } else {
         onPress();
-      }, 10);
-    } else {
-      onPress();
+      }
+    } catch (error) {
+      console.error("Button press error:", error);
     }
   };
 

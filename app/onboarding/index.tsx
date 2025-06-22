@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { StyleSheet, View, Text, Image, TouchableOpacity, ScrollView, Platform } from "react-native";
+import { StyleSheet, View, Text, Image, TouchableOpacity, ScrollView, Platform, Alert } from "react-native";
 import { useRouter } from "expo-router";
 import { ChevronRight } from "lucide-react-native";
 import Colors from "@/constants/colors";
@@ -20,6 +20,7 @@ export default function OnboardingScreen() {
   const [email, setEmail] = useState("");
   const [homeCountry, setHomeCountry] = useState<Country | null>(null);
   const [destinationCountry, setDestinationCountry] = useState<Country | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [errors, setErrors] = useState({
     name: "",
     email: "",
@@ -99,83 +100,102 @@ export default function OnboardingScreen() {
   
   // Save user data based on current step
   const saveUserData = useCallback((nextStep: number) => {
-    if (step === 1) {
-      // Save name and email
-      if (!user) {
-        // Create new user
-        const newUser: UserProfile = {
-          id: generateId(),
-          name,
-          email,
-          homeCountry: { code: "", name: "", flag: "" },
-          destinationCountry: { code: "", name: "", flag: "" },
-          educationBackground: { level: "bachelors" },
-          testScores: [],
-          universities: [],
-          documents: [],
-          journeyProgress: [],
-          memories: [],
-          onboardingCompleted: false,
-          onboardingStep: nextStep,
-        };
-        setUser(newUser);
-      } else {
-        // Update existing user
-        updateOnboardingStep(nextStep);
-        setUser({
-          ...user,
-          name,
-          email,
-          onboardingStep: nextStep,
-        });
-      }
-    } else if (step === 2 && homeCountry) {
-      // Save home country
-      if (user) {
-        updateOnboardingStep(nextStep);
-        setUser({
-          ...user,
-          homeCountry,
-          onboardingStep: nextStep,
-        });
-      }
-    } else if (step === 3 && destinationCountry) {
-      // Save destination country
-      if (user) {
-        updateOnboardingStep(nextStep);
-        setUser({
-          ...user,
-          destinationCountry,
-          onboardingStep: nextStep,
-        });
-      }
-    } else if (step === 4) {
-      // Complete onboarding
-      if (user) {
-        setUser({
-          ...user,
-          onboardingCompleted: true,
-        });
-      }
-      
-      // Use setTimeout to ensure state updates complete before navigation
-      setTimeout(() => {
+    try {
+      if (step === 1) {
+        // Save name and email
+        if (!user) {
+          // Create new user
+          const newUser: UserProfile = {
+            id: generateId(),
+            name,
+            email,
+            homeCountry: { code: "", name: "", flag: "" },
+            destinationCountry: { code: "", name: "", flag: "" },
+            educationBackground: { level: "bachelors" },
+            testScores: [],
+            universities: [],
+            documents: [],
+            journeyProgress: [],
+            memories: [],
+            onboardingCompleted: false,
+            onboardingStep: nextStep,
+          };
+          setUser(newUser);
+        } else {
+          // Update existing user
+          updateOnboardingStep(nextStep);
+          setUser({
+            ...user,
+            name,
+            email,
+            onboardingStep: nextStep,
+          });
+        }
+      } else if (step === 2 && homeCountry) {
+        // Save home country
+        if (user) {
+          updateOnboardingStep(nextStep);
+          setUser({
+            ...user,
+            homeCountry,
+            onboardingStep: nextStep,
+          });
+        }
+      } else if (step === 3 && destinationCountry) {
+        // Save destination country
+        if (user) {
+          updateOnboardingStep(nextStep);
+          setUser({
+            ...user,
+            destinationCountry,
+            onboardingStep: nextStep,
+          });
+        }
+      } else if (step === 4) {
+        // Complete onboarding
+        if (user) {
+          setUser({
+            ...user,
+            onboardingCompleted: true,
+          });
+        }
+        
+        // Navigate to home screen
         router.replace("/");
-      }, 100);
+      }
+    } catch (error) {
+      console.error("Error saving user data:", error);
+      Alert.alert("Error", "There was a problem saving your information. Please try again.");
+    } finally {
+      setIsProcessing(false);
     }
   }, [step, user, name, email, homeCountry, destinationCountry, setUser, updateOnboardingStep, router]);
   
   const handleNext = () => {
-    console.log("Button pressed, current step:", step);
+    // Prevent multiple clicks
+    if (isProcessing) return;
     
-    if (step === 0 || validateStep()) {
-      const nextStep = step + 1;
-      
-      // First update the step state
-      setStep(nextStep);
-      
-      // Then save user data (separated to avoid state updates during render)
-      saveUserData(nextStep);
+    console.log("Button pressed, current step:", step);
+    setIsProcessing(true);
+    
+    try {
+      if (step === 0 || validateStep()) {
+        const nextStep = step + 1;
+        
+        // First update the step state
+        setStep(nextStep);
+        
+        // Then save user data
+        setTimeout(() => {
+          saveUserData(nextStep);
+        }, 100);
+      } else {
+        setIsProcessing(false);
+      }
+    } catch (error) {
+      console.error("Error in handleNext:", error);
+      setIsProcessing(false);
+      Alert.alert("Error", "Something went wrong. Please try again.");
     }
   };
   
@@ -308,6 +328,7 @@ export default function OnboardingScreen() {
         <Button
           title={step === 4 ? "Get Started" : "Continue"}
           onPress={handleNext}
+          loading={isProcessing}
           fullWidth
           icon={<ChevronRight size={20} color={Colors.white} />}
           iconPosition="right"
@@ -317,12 +338,20 @@ export default function OnboardingScreen() {
           <TouchableOpacity
             style={styles.skipButton}
             onPress={() => {
+              if (isProcessing) return;
+              setIsProcessing(true);
               setStep(4);
               // Update the onboarding step in the store
               if (user) {
                 updateOnboardingStep(4);
+                setTimeout(() => {
+                  saveUserData(4);
+                }, 100);
+              } else {
+                setIsProcessing(false);
               }
             }}
+            disabled={isProcessing}
           >
             <Text style={styles.skipText}>Skip for now</Text>
           </TouchableOpacity>
