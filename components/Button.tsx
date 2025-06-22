@@ -7,6 +7,7 @@ import {
   ViewStyle,
   TextStyle,
   View,
+  Platform,
 } from "react-native";
 import Colors from "@/constants/colors";
 
@@ -131,9 +132,21 @@ const Button: React.FC<ButtonProps> = ({
     }
   };
 
+  // Handle button press with platform-specific considerations
+  const handlePress = () => {
+    // Add a small delay on iOS to prevent potential race conditions
+    if (Platform.OS === 'ios') {
+      setTimeout(() => {
+        onPress();
+      }, 10);
+    } else {
+      onPress();
+    }
+  };
+
   return (
     <TouchableOpacity
-      onPress={onPress}
+      onPress={handlePress}
       disabled={disabled || loading}
       style={[
         styles.button,

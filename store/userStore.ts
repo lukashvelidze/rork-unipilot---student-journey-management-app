@@ -16,22 +16,6 @@ interface UserState {
   logout: () => void;
 }
 
-const initialUser: UserProfile = {
-  id: "",
-  email: "",
-  name: "",
-  homeCountry: { code: "", name: "", flag: "" },
-  destinationCountry: { code: "", name: "", flag: "" },
-  educationBackground: { level: "bachelors" },
-  testScores: [],
-  universities: [],
-  documents: [],
-  journeyProgress: [],
-  memories: [],
-  onboardingCompleted: false,
-  onboardingStep: 0,
-};
-
 export const useUserStore = create<UserState>()(
   persist(
     (set) => ({
@@ -58,6 +42,8 @@ export const useUserStore = create<UserState>()(
     {
       name: "user-storage",
       storage: createJSONStorage(() => AsyncStorage),
+      // Add a small delay to ensure storage operations complete
+      throttle: 1000,
     }
   )
 );

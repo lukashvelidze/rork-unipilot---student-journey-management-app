@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { StyleSheet, View, Text, Image, TouchableOpacity, ScrollView } from "react-native";
+import React, { useState, useEffect, useCallback } from "react";
+import { StyleSheet, View, Text, Image, TouchableOpacity, ScrollView, Platform } from "react-native";
 import { useRouter } from "expo-router";
 import { ChevronRight } from "lucide-react-native";
 import Colors from "@/constants/colors";
@@ -36,8 +36,12 @@ export default function OnboardingScreen() {
       setStep(user.onboardingStep);
       setName(user.name || "");
       setEmail(user.email || "");
-      setHomeCountry(user.homeCountry.code ? user.homeCountry : null);
-      setDestinationCountry(user.destinationCountry.code ? user.destinationCountry : null);
+      if (user.homeCountry && user.homeCountry.code) {
+        setHomeCountry(user.homeCountry);
+      }
+      if (user.destinationCountry && user.destinationCountry.code) {
+        setDestinationCountry(user.destinationCountry);
+      }
     }
   }, [user, router]);
   
@@ -93,68 +97,85 @@ export default function OnboardingScreen() {
     return isValid;
   };
   
-  const handleNext = () => {
-    if (step === 0 || validateStep()) {
-      const nextStep = step + 1;
-      setStep(nextStep);
-      
-      // Save progress
-      if (step === 1) {
-        // Save name and email
-        if (!user) {
-          // Create new user
-          const newUser: UserProfile = {
-            id: generateId(),
-            name,
-            email,
-            homeCountry: { code: "", name: "", flag: "" },
-            destinationCountry: { code: "", name: "", flag: "" },
-            educationBackground: { level: "bachelors" },
-            testScores: [],
-            universities: [],
-            documents: [],
-            journeyProgress: [],
-            memories: [],
-            onboardingCompleted: false,
-            onboardingStep: nextStep,
-          };
-          setUser(newUser);
-        } else {
-          // Update existing user
-          updateOnboardingStep(nextStep);
-          setUser({
-            ...user,
-            name,
-            email,
-            onboardingStep: nextStep,
-          });
-        }
-      } else if (step === 2 && homeCountry) {
-        // Save home country
+  // Save user data based on current step
+  const saveUserData = useCallback((nextStep: number) => {
+    if (step === 1) {
+      // Save name and email
+      if (!user) {
+        // Create new user
+        const newUser: UserProfile = {
+          id: generateId(),
+          name,
+          email,
+          homeCountry: { code: "", name: "", flag: "" },
+          destinationCountry: { code: "", name: "", flag: "" },
+          educationBackground: { level: "bachelors" },
+          testScores: [],
+          universities: [],
+          documents: [],
+          journeyProgress: [],
+          memories: [],
+          onboardingCompleted: false,
+          onboardingStep: nextStep,
+        };
+        setUser(newUser);
+      } else {
+        // Update existing user
         updateOnboardingStep(nextStep);
         setUser({
-          ...user!,
+          ...user,
+          name,
+          email,
+          onboardingStep: nextStep,
+        });
+      }
+    } else if (step === 2 && homeCountry) {
+      // Save home country
+      if (user) {
+        updateOnboardingStep(nextStep);
+        setUser({
+          ...user,
           homeCountry,
           onboardingStep: nextStep,
         });
-      } else if (step === 3 && destinationCountry) {
-        // Save destination country
+      }
+    } else if (step === 3 && destinationCountry) {
+      // Save destination country
+      if (user) {
         updateOnboardingStep(nextStep);
         setUser({
-          ...user!,
+          ...user,
           destinationCountry,
           onboardingStep: nextStep,
         });
-      } else if (step === 4) {
-        // Complete onboarding
-        if (user) {
-          setUser({
-            ...user,
-            onboardingCompleted: true,
-          });
-        }
-        router.replace("/");
       }
+    } else if (step === 4) {
+      // Complete onboarding
+      if (user) {
+        setUser({
+          ...user,
+          onboardingCompleted: true,
+        });
+      }
+      
+      // Use setTimeout to ensure state updates complete before navigation
+      setTimeout(() => {
+        router.replace("/");
+      }, 100);
+    }
+  }, [step, user, name, email, homeCountry, destinationCountry, setUser, updateOnboardingStep, router]);
+  
+  const handleNext = () => {
+    console.log("Button pressed, current step:", step);
+    
+    if (step === 0 || validateStep()) {
+      const nextStep = step + 1;
+      
+      // First update the step state
+      setStep(nextStep);
+      
+      // Then save user data (separated to avoid state updates during render)
+      saveUserData(nextStep);
     }
   };
   
@@ -250,7 +271,7 @@ export default function OnboardingScreen() {
             />
             <Text style={styles.stepTitle}>You're all set!</Text>
             <Text style={styles.stepDescription}>
-              We've created your personalized journey from {homeCountry?.name} to {destinationCountry?.name}. Let's get started!
+              We've created your personalized journey from {homeCountry?.name || "your country"} to {destinationCountry?.name || "your destination"}. Let's get started!
             </Text>
           </View>
         );
@@ -295,7 +316,13 @@ export default function OnboardingScreen() {
         {step > 0 && step < 4 && (
           <TouchableOpacity
             style={styles.skipButton}
-            onPress={() => setStep(4)}
+            onPress={() => {
+              setStep(4);
+              // Update the onboarding step in the store
+              if (user) {
+                updateOnboardingStep(4);
+              }
+            }}
           >
             <Text style={styles.skipText}>Skip for now</Text>
           </TouchableOpacity>
