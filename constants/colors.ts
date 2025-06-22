@@ -3,13 +3,17 @@ const secondaryGreen = "#50C878";
 const lightBlue = "#E1F5FE";
 const lightGreen = "#E8F5E9";
 const darkText = "#333333";
-const lightText = "#FFFFFF";
+const lightText = "#757575";
+const white = "#FFFFFF";
 const grayText = "#757575";
 const lightGray = "#F5F5F5";
 const mediumGray = "#E0E0E0";
 const errorRed = "#FF5252";
 const successGreen = "#4CAF50";
 const warningYellow = "#FFC107";
+const goldYellow = "#FFD700";
+const purpleColor = "#9C27B0";
+const orangeColor = "#FF9800";
 
 // Modern color palette with subtle pastels
 export default {
@@ -18,9 +22,9 @@ export default {
   secondary: secondaryGreen,
   
   // Background colors
-  background: "#FFFFFF",
+  background: white,
   lightBackground: "#F8F9FA",
-  card: "#FFFFFF",
+  card: white,
   
   // Text colors
   text: darkText,
@@ -40,7 +44,7 @@ export default {
   secondaryLight: "#E8F5E9",
   
   // Neutral colors
-  white: lightText,
+  white: white,
   gray: grayText,
   
   // Semantic stage colors
@@ -63,7 +67,7 @@ export default {
   
   // New modern UI colors
   progressBackground: "#F0F4F8",
-  cardBackground: "#FFFFFF",
+  cardBackground: white,
   cardBorder: "#F0F4F8",
   divider: "#F0F4F8",
   inputBackground: "#F8FAFC",
@@ -75,4 +79,15 @@ export default {
   successLight: "#E8F5E9",
   warningLight: "#FFF8E1",
   errorLight: "#FFEBEE",
+  
+  // Premium colors
+  premium: goldYellow,
+  premiumLight: "#FFF8E1",
+  premiumDark: "#FFA000",
+  
+  // Additional colors for premium content
+  purple: purpleColor,
+  purpleLight: "#F3E5F5",
+  orange: orangeColor,
+  orangeLight: "#FFF3E0",
 };

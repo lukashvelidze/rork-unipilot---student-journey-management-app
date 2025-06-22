@@ -1,20 +1,30 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { StyleSheet, View, Text, ScrollView, TextInput, TouchableOpacity, Image, Alert } from "react-native";
 import { useRouter } from "expo-router";
-import { Crown, Check, MessageCircle, Send, Lock } from "lucide-react-native";
+import { Crown, Check, MessageCircle, Send, Lock, BookOpen, Award, FileCheck, GraduationCap, Briefcase } from "lucide-react-native";
 import Colors from "@/constants/colors";
+import Theme from "@/constants/theme";
 import Card from "@/components/Card";
 import Button from "@/components/Button";
+import { useUserStore } from "@/store/userStore";
 
 export default function PremiumScreen() {
   const router = useRouter();
+  const { isPremium, setPremium } = useUserStore();
   const [promoCode, setPromoCode] = useState("");
-  const [isPremium, setIsPremium] = useState(false);
   const [message, setMessage] = useState("");
+  const [activeTab, setActiveTab] = useState("overview");
+  
+  // Scroll to expert section if coming from home screen with #expert hash
+  useEffect(() => {
+    if (router.pathname.includes("#expert")) {
+      setActiveTab("expert");
+    }
+  }, [router.pathname]);
   
   const handlePromoCodeSubmit = () => {
     if (promoCode.toLowerCase() === "admin") {
-      setIsPremium(true);
+      setPremium(true);
       Alert.alert(
         "Success",
         "Promo code applied! You now have access to UniPilot Premium features.",
@@ -41,7 +51,7 @@ export default function PremiumScreen() {
         {
           text: "Subscribe",
           onPress: () => {
-            setIsPremium(true);
+            setPremium(true);
             Alert.alert(
               "Subscription Successful",
               "Welcome to UniPilot Premium! You now have access to all premium features.",
@@ -67,16 +77,23 @@ export default function PremiumScreen() {
       );
     }
   };
-  
-  return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <View style={styles.header}>
-        <Crown size={32} color="#FFD700" style={styles.crownIcon} />
-        <Text style={styles.title}>UniPilot Premium</Text>
-        <Text style={styles.subtitle}>Expert guidance for your international education journey</Text>
-      </View>
-      
-      {!isPremium ? (
+
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case "resources":
+        return renderResourcesTab();
+      case "expert":
+        return renderExpertTab();
+      case "guides":
+        return renderGuidesTab();
+      default:
+        return renderOverviewTab();
+    }
+  };
+
+  const renderOverviewTab = () => {
+    if (!isPremium) {
+      return (
         <View style={styles.subscriptionSection}>
           <Card style={styles.pricingCard}>
             <Text style={styles.pricingTitle}>Unlock Premium Features</Text>
@@ -179,7 +196,9 @@ export default function PremiumScreen() {
             </Card>
           </View>
         </View>
-      ) : (
+      );
+    } else {
+      return (
         <View style={styles.premiumContent}>
           <Card style={styles.welcomeCard}>
             <Text style={styles.welcomeTitle}>Welcome to Premium!</Text>
@@ -188,96 +207,457 @@ export default function PremiumScreen() {
             </Text>
           </Card>
           
-          <View style={styles.expertSection}>
-            <Text style={styles.sectionTitle}>Talk to an Expert</Text>
-            <Card style={styles.chatCard}>
-              <View style={styles.chatHeader}>
-                <View style={styles.expertInfo}>
-                  <Image
-                    source={{ uri: "https://images.unsplash.com/photo-1580489944761-15a19d654956?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80" }}
-                    style={styles.expertAvatar}
-                  />
-                  <View>
-                    <Text style={styles.expertName}>Dr. Emma Wilson</Text>
-                    <Text style={styles.expertTitle}>International Education Advisor</Text>
-                  </View>
+          <View style={styles.premiumOverviewSection}>
+            <Text style={styles.sectionTitle}>Your Premium Benefits</Text>
+            
+            <View style={styles.benefitsGrid}>
+              <TouchableOpacity 
+                style={styles.benefitCard}
+                onPress={() => setActiveTab("expert")}
+              >
+                <View style={[styles.benefitIcon, { backgroundColor: Colors.primaryLight }]}>
+                  <MessageCircle size={24} color={Colors.primary} />
                 </View>
-                <View style={styles.onlineIndicator} />
-              </View>
+                <Text style={styles.benefitTitle}>Expert Consultations</Text>
+                <Text style={styles.benefitDescription}>
+                  Chat with education advisors
+                </Text>
+              </TouchableOpacity>
               
-              <View style={styles.chatMessages}>
-                <View style={styles.expertMessage}>
-                  <Text style={styles.messageText}>
-                    Hello! I'm Dr. Wilson, your personal education advisor. How can I help with your international study plans today?
-                  </Text>
-                  <Text style={styles.messageTime}>Just now</Text>
+              <TouchableOpacity 
+                style={styles.benefitCard}
+                onPress={() => setActiveTab("resources")}
+              >
+                <View style={[styles.benefitIcon, { backgroundColor: "#FFF8E1" }]}>
+                  <FileCheck size={24} color="#FFA000" />
                 </View>
-              </View>
+                <Text style={styles.benefitTitle}>Premium Resources</Text>
+                <Text style={styles.benefitDescription}>
+                  Templates and guides
+                </Text>
+              </TouchableOpacity>
               
-              <View style={styles.chatInputContainer}>
-                <TextInput
-                  style={styles.chatInput}
-                  placeholder="Type your message..."
-                  value={message}
-                  onChangeText={setMessage}
-                  multiline
-                />
-                <TouchableOpacity
-                  style={[
-                    styles.sendButton,
-                    !message.trim() && styles.sendButtonDisabled,
-                  ]}
-                  onPress={handleSendMessage}
-                  disabled={!message.trim()}
-                >
-                  <Send size={20} color={message.trim() ? Colors.white : Colors.lightText} />
-                </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.benefitCard}
+                onPress={() => setActiveTab("guides")}
+              >
+                <View style={[styles.benefitIcon, { backgroundColor: "#E8F5E9" }]}>
+                  <BookOpen size={24} color={Colors.secondary} />
+                </View>
+                <Text style={styles.benefitTitle}>Study Guides</Text>
+                <Text style={styles.benefitDescription}>
+                  Academic success strategies
+                </Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.benefitCard}
+                onPress={() => router.push("/premium/roadmap")}
+              >
+                <View style={[styles.benefitIcon, { backgroundColor: "#F3E5F5" }]}>
+                  <Award size={24} color="#9C27B0" />
+                </View>
+                <Text style={styles.benefitTitle}>Personalized Roadmap</Text>
+                <Text style={styles.benefitDescription}>
+                  Custom journey planning
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+          
+          <View style={styles.upcomingSection}>
+            <Text style={styles.sectionTitle}>Coming Soon</Text>
+            <Card style={styles.upcomingCard}>
+              <View style={styles.upcomingHeader}>
+                <GraduationCap size={24} color={Colors.primary} />
+                <Text style={styles.upcomingTitle}>University Matching Service</Text>
+              </View>
+              <Text style={styles.upcomingDescription}>
+                We're developing an AI-powered university matching service to help you find the perfect schools based on your profile, preferences, and goals.
+              </Text>
+              <View style={styles.upcomingBadge}>
+                <Text style={styles.upcomingBadgeText}>Coming in July</Text>
               </View>
             </Card>
           </View>
+        </View>
+      );
+    }
+  };
+
+  const renderResourcesTab = () => {
+    if (!isPremium) {
+      return (
+        <View style={styles.lockedContent}>
+          <Lock size={48} color={Colors.lightText} />
+          <Text style={styles.lockedTitle}>Premium Content Locked</Text>
+          <Text style={styles.lockedDescription}>
+            Subscribe to UniPilot Premium to access exclusive resources and templates
+          </Text>
+          <Button
+            title="Subscribe Now"
+            onPress={handleSubscribe}
+            style={styles.lockedButton}
+          />
+        </View>
+      );
+    }
+    
+    return (
+      <View style={styles.resourcesContent}>
+        <Text style={styles.resourcesTitle}>Premium Resources</Text>
+        <Text style={styles.resourcesSubtitle}>
+          Access exclusive guides, templates and tools to help with your international education journey
+        </Text>
+        
+        <View style={styles.resourceCategorySection}>
+          <Text style={styles.resourceCategoryTitle}>Visa Application</Text>
           
-          <View style={styles.resourcesSection}>
-            <Text style={styles.sectionTitle}>Premium Resources</Text>
-            
-            <TouchableOpacity style={styles.resourceCard}>
-              <View style={styles.resourceIcon}>
-                <Lock size={24} color={Colors.primary} />
+          <TouchableOpacity style={styles.resourceCard}>
+            <View style={styles.resourceIcon}>
+              <FileCheck size={24} color={Colors.primary} />
+            </View>
+            <View style={styles.resourceContent}>
+              <Text style={styles.resourceTitle}>Student Visa Guide</Text>
+              <Text style={styles.resourceDescription}>
+                Comprehensive guide to student visa applications with country-specific tips
+              </Text>
+            </View>
+          </TouchableOpacity>
+          
+          <TouchableOpacity style={styles.resourceCard}>
+            <View style={styles.resourceIcon}>
+              <FileCheck size={24} color={Colors.primary} />
+            </View>
+            <View style={styles.resourceContent}>
+              <Text style={styles.resourceTitle}>Visa Interview Preparation</Text>
+              <Text style={styles.resourceDescription}>
+                Common questions and best practices for visa interviews
+              </Text>
+            </View>
+          </TouchableOpacity>
+        </View>
+        
+        <View style={styles.resourceCategorySection}>
+          <Text style={styles.resourceCategoryTitle}>University Applications</Text>
+          
+          <TouchableOpacity style={styles.resourceCard}>
+            <View style={styles.resourceIcon}>
+              <Award size={24} color="#FFA000" />
+            </View>
+            <View style={styles.resourceContent}>
+              <Text style={styles.resourceTitle}>Personal Statement Templates</Text>
+              <Text style={styles.resourceDescription}>
+                Winning personal statement examples with annotations and tips
+              </Text>
+            </View>
+          </TouchableOpacity>
+          
+          <TouchableOpacity style={styles.resourceCard}>
+            <View style={styles.resourceIcon}>
+              <Award size={24} color="#FFA000" />
+            </View>
+            <View style={styles.resourceContent}>
+              <Text style={styles.resourceTitle}>Scholarship Application Guide</Text>
+              <Text style={styles.resourceDescription}>
+                How to find and apply for international scholarships
+              </Text>
+            </View>
+          </TouchableOpacity>
+        </View>
+        
+        <View style={styles.resourceCategorySection}>
+          <Text style={styles.resourceCategoryTitle}>Accommodation</Text>
+          
+          <TouchableOpacity style={styles.resourceCard}>
+            <View style={styles.resourceIcon}>
+              <BookOpen size={24} color={Colors.secondary} />
+            </View>
+            <View style={styles.resourceContent}>
+              <Text style={styles.resourceTitle}>Housing Guide</Text>
+              <Text style={styles.resourceDescription}>
+                Finding student accommodation with country-specific advice
+              </Text>
+            </View>
+          </TouchableOpacity>
+          
+          <TouchableOpacity style={styles.resourceCard}>
+            <View style={styles.resourceIcon}>
+              <BookOpen size={24} color={Colors.secondary} />
+            </View>
+            <View style={styles.resourceContent}>
+              <Text style={styles.resourceTitle}>Rental Agreement Checklist</Text>
+              <Text style={styles.resourceDescription}>
+                What to look for in rental agreements and leases
+              </Text>
+            </View>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  };
+
+  const renderExpertTab = () => {
+    if (!isPremium) {
+      return (
+        <View style={styles.lockedContent}>
+          <Lock size={48} color={Colors.lightText} />
+          <Text style={styles.lockedTitle}>Expert Consultations Locked</Text>
+          <Text style={styles.lockedDescription}>
+            Subscribe to UniPilot Premium to chat with education experts
+          </Text>
+          <Button
+            title="Subscribe Now"
+            onPress={handleSubscribe}
+            style={styles.lockedButton}
+          />
+        </View>
+      );
+    }
+    
+    return (
+      <View style={styles.expertContent}>
+        <Text style={styles.expertTitle}>Talk to an Expert</Text>
+        <Text style={styles.expertSubtitle}>
+          Get personalized advice from our education consultants
+        </Text>
+        
+        <Card style={styles.expertProfileCard}>
+          <View style={styles.expertProfileHeader}>
+            <Image
+              source={{ uri: "https://images.unsplash.com/photo-1580489944761-15a19d654956?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80" }}
+              style={styles.expertProfileAvatar}
+            />
+            <View style={styles.expertProfileInfo}>
+              <Text style={styles.expertProfileName}>Dr. Emma Wilson</Text>
+              <Text style={styles.expertProfileTitle}>International Education Advisor</Text>
+              <View style={styles.expertProfileBadge}>
+                <Text style={styles.expertProfileBadgeText}>Available Now</Text>
               </View>
-              <View style={styles.resourceContent}>
-                <Text style={styles.resourceTitle}>Visa Application Guide</Text>
-                <Text style={styles.resourceDescription}>
-                  Step-by-step guide to preparing a successful student visa application
-                </Text>
+            </View>
+          </View>
+          <Text style={styles.expertProfileBio}>
+            Dr. Wilson has 15+ years of experience helping international students navigate admissions to top universities in the US, UK, and Canada. She specializes in scholarship applications and visa processes.
+          </Text>
+        </Card>
+        
+        <Card style={styles.chatCard}>
+          <View style={styles.chatHeader}>
+            <View style={styles.expertInfo}>
+              <Image
+                source={{ uri: "https://images.unsplash.com/photo-1580489944761-15a19d654956?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80" }}
+                style={styles.expertAvatar}
+              />
+              <View>
+                <Text style={styles.expertName}>Dr. Emma Wilson</Text>
+                <Text style={styles.expertTitle}>International Education Advisor</Text>
               </View>
-            </TouchableOpacity>
-            
-            <TouchableOpacity style={styles.resourceCard}>
-              <View style={styles.resourceIcon}>
-                <Lock size={24} color={Colors.primary} />
-              </View>
-              <View style={styles.resourceContent}>
-                <Text style={styles.resourceTitle}>Scholarship Application Templates</Text>
-                <Text style={styles.resourceDescription}>
-                  Winning templates and examples for international scholarship applications
-                </Text>
-              </View>
-            </TouchableOpacity>
-            
-            <TouchableOpacity style={styles.resourceCard}>
-              <View style={styles.resourceIcon}>
-                <Lock size={24} color={Colors.primary} />
-              </View>
-              <View style={styles.resourceContent}>
-                <Text style={styles.resourceTitle}>University Interview Preparation</Text>
-                <Text style={styles.resourceDescription}>
-                  Practice questions and expert tips for university admission interviews
-                </Text>
-              </View>
+            </View>
+            <View style={styles.onlineIndicator} />
+          </View>
+          
+          <View style={styles.chatMessages}>
+            <View style={styles.expertMessage}>
+              <Text style={styles.messageText}>
+                Hello! I'm Dr. Wilson, your personal education advisor. How can I help with your international study plans today?
+              </Text>
+              <Text style={styles.messageTime}>Just now</Text>
+            </View>
+          </View>
+          
+          <View style={styles.chatInputContainer}>
+            <TextInput
+              style={styles.chatInput}
+              placeholder="Type your message..."
+              value={message}
+              onChangeText={setMessage}
+              multiline
+            />
+            <TouchableOpacity
+              style={[
+                styles.sendButton,
+                !message.trim() && styles.sendButtonDisabled,
+              ]}
+              onPress={handleSendMessage}
+              disabled={!message.trim()}
+            >
+              <Send size={20} color={message.trim() ? Colors.white : Colors.lightText} />
             </TouchableOpacity>
           </View>
+        </Card>
+        
+        <View style={styles.otherExpertsSection}>
+          <Text style={styles.otherExpertsTitle}>Other Available Experts</Text>
+          
+          <TouchableOpacity style={styles.otherExpertCard}>
+            <Image
+              source={{ uri: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80" }}
+              style={styles.otherExpertAvatar}
+            />
+            <View style={styles.otherExpertInfo}>
+              <Text style={styles.otherExpertName}>Prof. James Chen</Text>
+              <Text style={styles.otherExpertTitle}>Academic Advisor</Text>
+            </View>
+            <View style={styles.otherExpertBadge}>
+              <Text style={styles.otherExpertBadgeText}>Available</Text>
+            </View>
+          </TouchableOpacity>
+          
+          <TouchableOpacity style={styles.otherExpertCard}>
+            <Image
+              source={{ uri: "https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80" }}
+              style={styles.otherExpertAvatar}
+            />
+            <View style={styles.otherExpertInfo}>
+              <Text style={styles.otherExpertName}>Maria Rodriguez</Text>
+              <Text style={styles.otherExpertTitle}>Visa Specialist</Text>
+            </View>
+            <View style={styles.otherExpertBadge}>
+              <Text style={styles.otherExpertBadgeText}>Available</Text>
+            </View>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  };
+
+  const renderGuidesTab = () => {
+    if (!isPremium) {
+      return (
+        <View style={styles.lockedContent}>
+          <Lock size={48} color={Colors.lightText} />
+          <Text style={styles.lockedTitle}>Study Guides Locked</Text>
+          <Text style={styles.lockedDescription}>
+            Subscribe to UniPilot Premium to access academic success guides
+          </Text>
+          <Button
+            title="Subscribe Now"
+            onPress={handleSubscribe}
+            style={styles.lockedButton}
+          />
+        </View>
+      );
+    }
+    
+    return (
+      <View style={styles.guidesContent}>
+        <Text style={styles.guidesTitle}>Premium Study Guides</Text>
+        <Text style={styles.guidesSubtitle}>
+          Expert strategies to excel in your academic journey
+        </Text>
+        
+        <TouchableOpacity style={styles.guideCard}>
+          <View style={styles.guideIconContainer}>
+            <Calendar size={24} color={Colors.primary} />
+          </View>
+          <View style={styles.guideContent}>
+            <Text style={styles.guideTitle}>Time Management for Students</Text>
+            <Text style={styles.guideDescription}>
+              Master your schedule and boost productivity with proven techniques
+            </Text>
+            <View style={styles.guideStats}>
+              <Text style={styles.guideLength}>15 min read</Text>
+              <Text style={styles.guideDifficulty}>Beginner</Text>
+            </View>
+          </View>
+        </TouchableOpacity>
+        
+        <TouchableOpacity style={styles.guideCard}>
+          <View style={styles.guideIconContainer}>
+            <BookOpen size={24} color={Colors.secondary} />
+          </View>
+          <View style={styles.guideContent}>
+            <Text style={styles.guideTitle}>Exam Preparation Strategies</Text>
+            <Text style={styles.guideDescription}>
+              Effective techniques for academic success in international universities
+            </Text>
+            <View style={styles.guideStats}>
+              <Text style={styles.guideLength}>20 min read</Text>
+              <Text style={styles.guideDifficulty}>Intermediate</Text>
+            </View>
+          </View>
+        </TouchableOpacity>
+        
+        <TouchableOpacity style={styles.guideCard}>
+          <View style={styles.guideIconContainer}>
+            <Briefcase size={24} color="#FF9800" />
+          </View>
+          <View style={styles.guideContent}>
+            <Text style={styles.guideTitle}>Research Paper Writing</Text>
+            <Text style={styles.guideDescription}>
+              From outline to final submission - a comprehensive guide
+            </Text>
+            <View style={styles.guideStats}>
+              <Text style={styles.guideLength}>25 min read</Text>
+              <Text style={styles.guideDifficulty}>Advanced</Text>
+            </View>
+          </View>
+        </TouchableOpacity>
+        
+        <TouchableOpacity style={styles.guideCard}>
+          <View style={styles.guideIconContainer}>
+            <GraduationCap size={24} color="#9C27B0" />
+          </View>
+          <View style={styles.guideContent}>
+            <Text style={styles.guideTitle}>Adapting to a New Academic System</Text>
+            <Text style={styles.guideDescription}>
+              How to thrive in different educational environments around the world
+            </Text>
+            <View style={styles.guideStats}>
+              <Text style={styles.guideLength}>18 min read</Text>
+              <Text style={styles.guideDifficulty}>Intermediate</Text>
+            </View>
+          </View>
+        </TouchableOpacity>
+      </View>
+    );
+  };
+  
+  return (
+    <View style={styles.container}>
+      <View style={styles.header}>
+        <Crown size={32} color="#FFD700" style={styles.crownIcon} />
+        <Text style={styles.title}>UniPilot Premium</Text>
+        <Text style={styles.subtitle}>Expert guidance for your international education journey</Text>
+      </View>
+      
+      {isPremium && (
+        <View style={styles.tabsContainer}>
+          <TouchableOpacity 
+            style={[styles.tab, activeTab === "overview" && styles.activeTab]}
+            onPress={() => setActiveTab("overview")}
+          >
+            <Text style={[styles.tabText, activeTab === "overview" && styles.activeTabText]}>Overview</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.tab, activeTab === "resources" && styles.activeTab]}
+            onPress={() => setActiveTab("resources")}
+          >
+            <Text style={[styles.tabText, activeTab === "resources" && styles.activeTabText]}>Resources</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.tab, activeTab === "expert" && styles.activeTab]}
+            onPress={() => setActiveTab("expert")}
+          >
+            <Text style={[styles.tabText, activeTab === "expert" && styles.activeTabText]}>Expert</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.tab, activeTab === "guides" && styles.activeTab]}
+            onPress={() => setActiveTab("guides")}
+          >
+            <Text style={[styles.tabText, activeTab === "guides" && styles.activeTabText]}>Guides</Text>
+          </TouchableOpacity>
         </View>
       )}
-    </ScrollView>
+      
+      <ScrollView 
+        style={styles.scrollContainer} 
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
+        {renderTabContent()}
+      </ScrollView>
+    </View>
   );
 }
 
@@ -286,78 +666,110 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.background,
   },
-  content: {
-    padding: 16,
-  },
   header: {
     alignItems: "center",
-    marginBottom: 24,
+    paddingTop: Theme.spacing.l,
+    paddingBottom: Theme.spacing.m,
+    backgroundColor: Colors.background,
   },
   crownIcon: {
-    marginBottom: 12,
+    marginBottom: Theme.spacing.s,
   },
   title: {
-    fontSize: 24,
-    fontWeight: "700",
+    fontSize: Theme.fontSize.xl,
+    fontWeight: Theme.fontWeight.bold,
     color: Colors.text,
-    marginBottom: 8,
+    marginBottom: Theme.spacing.xs,
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: Theme.fontSize.s,
     color: Colors.lightText,
     textAlign: "center",
     maxWidth: "80%",
   },
+  tabsContainer: {
+    flexDirection: "row",
+    backgroundColor: Colors.background,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: Theme.spacing.m,
+    alignItems: "center",
+  },
+  activeTab: {
+    borderBottomWidth: 2,
+    borderBottomColor: Colors.primary,
+  },
+  tabText: {
+    fontSize: Theme.fontSize.s,
+    color: Colors.lightText,
+    fontWeight: Theme.fontWeight.medium,
+  },
+  activeTabText: {
+    color: Colors.primary,
+    fontWeight: Theme.fontWeight.semibold,
+  },
+  scrollContainer: {
+    flex: 1,
+  },
+  content: {
+    padding: Theme.spacing.l,
+    paddingBottom: Theme.spacing.xxl,
+  },
+  
+  // Subscription Section
   subscriptionSection: {
-    marginBottom: 24,
+    marginBottom: Theme.spacing.l,
   },
   pricingCard: {
     alignItems: "center",
-    marginBottom: 24,
+    marginBottom: Theme.spacing.l,
   },
   pricingTitle: {
-    fontSize: 18,
-    fontWeight: "600",
+    fontSize: Theme.fontSize.l,
+    fontWeight: Theme.fontWeight.semibold,
     color: Colors.text,
-    marginBottom: 12,
+    marginBottom: Theme.spacing.m,
   },
   price: {
-    fontSize: 32,
-    fontWeight: "700",
+    fontSize: Theme.fontSize.xxxl,
+    fontWeight: Theme.fontWeight.bold,
     color: Colors.primary,
   },
   perMonth: {
-    fontSize: 16,
-    fontWeight: "400",
+    fontSize: Theme.fontSize.m,
+    fontWeight: Theme.fontWeight.regular,
     color: Colors.lightText,
   },
   trialText: {
-    fontSize: 14,
+    fontSize: Theme.fontSize.s,
     color: Colors.lightText,
-    marginBottom: 16,
+    marginBottom: Theme.spacing.l,
   },
   featuresContainer: {
     alignSelf: "stretch",
-    marginBottom: 24,
+    marginBottom: Theme.spacing.l,
   },
   featureItem: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 12,
+    marginBottom: Theme.spacing.m,
   },
   featureText: {
-    fontSize: 14,
+    fontSize: Theme.fontSize.m,
     color: Colors.text,
-    marginLeft: 12,
+    marginLeft: Theme.spacing.m,
   },
   subscribeButton: {
-    marginBottom: 16,
+    marginBottom: Theme.spacing.m,
   },
   divider: {
     flexDirection: "row",
     alignItems: "center",
     width: "100%",
-    marginBottom: 16,
+    marginBottom: Theme.spacing.m,
   },
   dividerLine: {
     flex: 1,
@@ -365,17 +777,17 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.border,
   },
   dividerText: {
-    paddingHorizontal: 16,
+    paddingHorizontal: Theme.spacing.m,
     color: Colors.lightText,
-    fontSize: 14,
+    fontSize: Theme.fontSize.s,
   },
   promoContainer: {
     width: "100%",
   },
   promoLabel: {
-    fontSize: 14,
+    fontSize: Theme.fontSize.s,
     color: Colors.text,
-    marginBottom: 8,
+    marginBottom: Theme.spacing.s,
   },
   promoInputContainer: {
     flexDirection: "row",
@@ -385,98 +797,315 @@ const styles = StyleSheet.create({
     flex: 1,
     borderWidth: 1,
     borderColor: Colors.border,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    fontSize: 14,
-    marginRight: 8,
+    borderRadius: Theme.borderRadius.m,
+    paddingHorizontal: Theme.spacing.m,
+    paddingVertical: Theme.spacing.s,
+    fontSize: Theme.fontSize.m,
+    marginRight: Theme.spacing.s,
   },
   promoButton: {
     backgroundColor: Colors.primary,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
+    paddingHorizontal: Theme.spacing.m,
+    paddingVertical: Theme.spacing.s,
+    borderRadius: Theme.borderRadius.m,
   },
   promoButtonDisabled: {
     backgroundColor: Colors.lightBackground,
   },
   promoButtonText: {
     color: Colors.white,
-    fontWeight: "600",
+    fontWeight: Theme.fontWeight.semibold,
   },
+  
+  // Testimonial Section
   testimonialSection: {
-    marginBottom: 24,
+    marginBottom: Theme.spacing.l,
   },
   testimonialTitle: {
-    fontSize: 18,
-    fontWeight: "600",
+    fontSize: Theme.fontSize.l,
+    fontWeight: Theme.fontWeight.semibold,
     color: Colors.text,
-    marginBottom: 16,
+    marginBottom: Theme.spacing.m,
   },
   testimonialCard: {
-    marginBottom: 16,
+    marginBottom: Theme.spacing.m,
   },
   testimonialHeader: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 12,
+    marginBottom: Theme.spacing.m,
   },
   testimonialAvatar: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    marginRight: 12,
+    marginRight: Theme.spacing.m,
   },
   testimonialName: {
-    fontSize: 16,
-    fontWeight: "600",
+    fontSize: Theme.fontSize.m,
+    fontWeight: Theme.fontWeight.semibold,
     color: Colors.text,
   },
   testimonialInfo: {
-    fontSize: 12,
+    fontSize: Theme.fontSize.xs,
     color: Colors.lightText,
   },
   testimonialContent: {
-    fontSize: 14,
+    fontSize: Theme.fontSize.s,
     color: Colors.text,
     lineHeight: 20,
     fontStyle: "italic",
   },
+  
+  // Premium Content
   premiumContent: {
-    marginBottom: 24,
+    marginBottom: Theme.spacing.l,
   },
   welcomeCard: {
-    marginBottom: 24,
+    marginBottom: Theme.spacing.l,
     backgroundColor: Colors.primaryLight,
   },
   welcomeTitle: {
-    fontSize: 18,
-    fontWeight: "700",
+    fontSize: Theme.fontSize.l,
+    fontWeight: Theme.fontWeight.bold,
     color: Colors.primary,
-    marginBottom: 8,
+    marginBottom: Theme.spacing.s,
   },
   welcomeText: {
-    fontSize: 14,
+    fontSize: Theme.fontSize.m,
+    color: Colors.text,
+    lineHeight: 22,
+  },
+  
+  // Premium Overview Section
+  premiumOverviewSection: {
+    marginBottom: Theme.spacing.l,
+  },
+  sectionTitle: {
+    fontSize: Theme.fontSize.l,
+    fontWeight: Theme.fontWeight.semibold,
+    color: Colors.text,
+    marginBottom: Theme.spacing.m,
+  },
+  benefitsGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+  },
+  benefitCard: {
+    width: "48%",
+    backgroundColor: Colors.card,
+    borderRadius: Theme.borderRadius.m,
+    padding: Theme.spacing.m,
+    marginBottom: Theme.spacing.m,
+    ...Theme.shadow.small,
+  },
+  benefitIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: Theme.spacing.s,
+  },
+  benefitTitle: {
+    fontSize: Theme.fontSize.m,
+    fontWeight: Theme.fontWeight.semibold,
+    color: Colors.text,
+    marginBottom: 4,
+  },
+  benefitDescription: {
+    fontSize: Theme.fontSize.xs,
+    color: Colors.lightText,
+  },
+  
+  // Upcoming Section
+  upcomingSection: {
+    marginBottom: Theme.spacing.l,
+  },
+  upcomingCard: {
+    backgroundColor: "#F5F5F5",
+  },
+  upcomingHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: Theme.spacing.s,
+  },
+  upcomingTitle: {
+    fontSize: Theme.fontSize.m,
+    fontWeight: Theme.fontWeight.semibold,
+    color: Colors.text,
+    marginLeft: Theme.spacing.s,
+  },
+  upcomingDescription: {
+    fontSize: Theme.fontSize.s,
+    color: Colors.text,
+    lineHeight: 20,
+    marginBottom: Theme.spacing.s,
+  },
+  upcomingBadge: {
+    alignSelf: "flex-start",
+    backgroundColor: Colors.primary,
+    paddingHorizontal: Theme.spacing.m,
+    paddingVertical: Theme.spacing.xs,
+    borderRadius: 16,
+  },
+  upcomingBadgeText: {
+    fontSize: Theme.fontSize.xs,
+    color: Colors.white,
+    fontWeight: Theme.fontWeight.medium,
+  },
+  
+  // Locked Content
+  lockedContent: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: Theme.spacing.xl,
+  },
+  lockedTitle: {
+    fontSize: Theme.fontSize.l,
+    fontWeight: Theme.fontWeight.semibold,
+    color: Colors.text,
+    marginTop: Theme.spacing.m,
+    marginBottom: Theme.spacing.s,
+  },
+  lockedDescription: {
+    fontSize: Theme.fontSize.m,
+    color: Colors.lightText,
+    textAlign: "center",
+    marginBottom: Theme.spacing.l,
+    paddingHorizontal: Theme.spacing.l,
+  },
+  lockedButton: {
+    width: "80%",
+  },
+  
+  // Resources Tab
+  resourcesContent: {
+    marginBottom: Theme.spacing.l,
+  },
+  resourcesTitle: {
+    fontSize: Theme.fontSize.l,
+    fontWeight: Theme.fontWeight.semibold,
+    color: Colors.text,
+    marginBottom: Theme.spacing.s,
+  },
+  resourcesSubtitle: {
+    fontSize: Theme.fontSize.s,
+    color: Colors.lightText,
+    marginBottom: Theme.spacing.l,
+  },
+  resourceCategorySection: {
+    marginBottom: Theme.spacing.l,
+  },
+  resourceCategoryTitle: {
+    fontSize: Theme.fontSize.m,
+    fontWeight: Theme.fontWeight.semibold,
+    color: Colors.text,
+    marginBottom: Theme.spacing.m,
+  },
+  resourceCard: {
+    flexDirection: "row",
+    backgroundColor: Colors.card,
+    borderRadius: Theme.borderRadius.m,
+    padding: Theme.spacing.m,
+    marginBottom: Theme.spacing.m,
+    ...Theme.shadow.small,
+  },
+  resourceIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: Colors.primaryLight,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: Theme.spacing.m,
+  },
+  resourceContent: {
+    flex: 1,
+  },
+  resourceTitle: {
+    fontSize: Theme.fontSize.m,
+    fontWeight: Theme.fontWeight.semibold,
+    color: Colors.text,
+    marginBottom: 4,
+  },
+  resourceDescription: {
+    fontSize: Theme.fontSize.xs,
+    color: Colors.lightText,
+    lineHeight: 18,
+  },
+  
+  // Expert Tab
+  expertContent: {
+    marginBottom: Theme.spacing.l,
+  },
+  expertTitle: {
+    fontSize: Theme.fontSize.l,
+    fontWeight: Theme.fontWeight.semibold,
+    color: Colors.text,
+    marginBottom: Theme.spacing.s,
+  },
+  expertSubtitle: {
+    fontSize: Theme.fontSize.s,
+    color: Colors.lightText,
+    marginBottom: Theme.spacing.l,
+  },
+  expertProfileCard: {
+    marginBottom: Theme.spacing.l,
+  },
+  expertProfileHeader: {
+    flexDirection: "row",
+    marginBottom: Theme.spacing.m,
+  },
+  expertProfileAvatar: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    marginRight: Theme.spacing.m,
+  },
+  expertProfileInfo: {
+    flex: 1,
+    justifyContent: "center",
+  },
+  expertProfileName: {
+    fontSize: Theme.fontSize.l,
+    fontWeight: Theme.fontWeight.bold,
+    color: Colors.text,
+    marginBottom: 2,
+  },
+  expertProfileTitle: {
+    fontSize: Theme.fontSize.s,
+    color: Colors.lightText,
+    marginBottom: Theme.spacing.s,
+  },
+  expertProfileBadge: {
+    alignSelf: "flex-start",
+    backgroundColor: Colors.secondary,
+    paddingHorizontal: Theme.spacing.m,
+    paddingVertical: Theme.spacing.xs,
+    borderRadius: 16,
+  },
+  expertProfileBadgeText: {
+    fontSize: Theme.fontSize.xs,
+    color: Colors.white,
+    fontWeight: Theme.fontWeight.medium,
+  },
+  expertProfileBio: {
+    fontSize: Theme.fontSize.s,
     color: Colors.text,
     lineHeight: 20,
   },
-  expertSection: {
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: Colors.text,
-    marginBottom: 16,
-  },
   chatCard: {
     padding: 0,
+    marginBottom: Theme.spacing.l,
   },
   chatHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    padding: 16,
+    padding: Theme.spacing.m,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
   },
@@ -488,42 +1117,42 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    marginRight: 12,
+    marginRight: Theme.spacing.m,
   },
   expertName: {
-    fontSize: 16,
-    fontWeight: "600",
+    fontSize: Theme.fontSize.m,
+    fontWeight: Theme.fontWeight.semibold,
     color: Colors.text,
   },
   expertTitle: {
-    fontSize: 12,
+    fontSize: Theme.fontSize.xs,
     color: Colors.lightText,
   },
   onlineIndicator: {
     width: 12,
     height: 12,
     borderRadius: 6,
-    backgroundColor: "#4CAF50",
+    backgroundColor: Colors.secondary,
   },
   chatMessages: {
-    padding: 16,
+    padding: Theme.spacing.m,
     minHeight: 120,
   },
   expertMessage: {
     backgroundColor: Colors.lightBackground,
-    padding: 12,
-    borderRadius: 12,
+    padding: Theme.spacing.m,
+    borderRadius: Theme.borderRadius.m,
     borderTopLeftRadius: 4,
     maxWidth: "80%",
-    marginBottom: 8,
+    marginBottom: Theme.spacing.s,
   },
   messageText: {
-    fontSize: 14,
+    fontSize: Theme.fontSize.s,
     color: Colors.text,
     lineHeight: 20,
   },
   messageTime: {
-    fontSize: 10,
+    fontSize: Theme.fontSize.xs,
     color: Colors.lightText,
     marginTop: 4,
     alignSelf: "flex-end",
@@ -531,7 +1160,7 @@ const styles = StyleSheet.create({
   chatInputContainer: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 16,
+    padding: Theme.spacing.m,
     borderTopWidth: 1,
     borderTopColor: Colors.border,
   },
@@ -539,10 +1168,10 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.lightBackground,
     borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingHorizontal: Theme.spacing.m,
+    paddingVertical: Theme.spacing.s,
     maxHeight: 100,
-    fontSize: 14,
+    fontSize: Theme.fontSize.s,
   },
   sendButton: {
     width: 40,
@@ -551,47 +1180,120 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primary,
     justifyContent: "center",
     alignItems: "center",
-    marginLeft: 8,
+    marginLeft: Theme.spacing.s,
   },
   sendButtonDisabled: {
     backgroundColor: Colors.lightBackground,
   },
-  resourcesSection: {
-    marginBottom: 24,
+  otherExpertsSection: {
+    marginBottom: Theme.spacing.l,
   },
-  resourceCard: {
+  otherExpertsTitle: {
+    fontSize: Theme.fontSize.m,
+    fontWeight: Theme.fontWeight.semibold,
+    color: Colors.text,
+    marginBottom: Theme.spacing.m,
+  },
+  otherExpertCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: Colors.card,
+    borderRadius: Theme.borderRadius.m,
+    padding: Theme.spacing.m,
+    marginBottom: Theme.spacing.m,
+    ...Theme.shadow.small,
+  },
+  otherExpertAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    marginRight: Theme.spacing.m,
+  },
+  otherExpertInfo: {
+    flex: 1,
+  },
+  otherExpertName: {
+    fontSize: Theme.fontSize.m,
+    fontWeight: Theme.fontWeight.semibold,
+    color: Colors.text,
+    marginBottom: 2,
+  },
+  otherExpertTitle: {
+    fontSize: Theme.fontSize.xs,
+    color: Colors.lightText,
+  },
+  otherExpertBadge: {
+    backgroundColor: Colors.secondaryLight,
+    paddingHorizontal: Theme.spacing.s,
+    paddingVertical: 2,
+    borderRadius: 12,
+  },
+  otherExpertBadgeText: {
+    fontSize: Theme.fontSize.xs,
+    color: Colors.secondary,
+    fontWeight: Theme.fontWeight.medium,
+  },
+  
+  // Guides Tab
+  guidesContent: {
+    marginBottom: Theme.spacing.l,
+  },
+  guidesTitle: {
+    fontSize: Theme.fontSize.l,
+    fontWeight: Theme.fontWeight.semibold,
+    color: Colors.text,
+    marginBottom: Theme.spacing.s,
+  },
+  guidesSubtitle: {
+    fontSize: Theme.fontSize.s,
+    color: Colors.lightText,
+    marginBottom: Theme.spacing.l,
+  },
+  guideCard: {
     flexDirection: "row",
     backgroundColor: Colors.card,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    borderRadius: Theme.borderRadius.m,
+    padding: Theme.spacing.m,
+    marginBottom: Theme.spacing.m,
+    ...Theme.shadow.small,
   },
-  resourceIcon: {
+  guideIconContainer: {
     width: 48,
     height: 48,
     borderRadius: 24,
     backgroundColor: Colors.primaryLight,
     justifyContent: "center",
     alignItems: "center",
-    marginRight: 16,
+    marginRight: Theme.spacing.m,
   },
-  resourceContent: {
+  guideContent: {
     flex: 1,
   },
-  resourceTitle: {
-    fontSize: 16,
-    fontWeight: "600",
+  guideTitle: {
+    fontSize: Theme.fontSize.m,
+    fontWeight: Theme.fontWeight.semibold,
     color: Colors.text,
     marginBottom: 4,
   },
-  resourceDescription: {
-    fontSize: 14,
+  guideDescription: {
+    fontSize: Theme.fontSize.xs,
     color: Colors.lightText,
-    lineHeight: 20,
+    lineHeight: 18,
+    marginBottom: Theme.spacing.s,
+  },
+  guideStats: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  guideLength: {
+    fontSize: Theme.fontSize.xs,
+    color: Colors.primary,
+    fontWeight: Theme.fontWeight.medium,
+    marginRight: Theme.spacing.m,
+  },
+  guideDifficulty: {
+    fontSize: Theme.fontSize.xs,
+    color: Colors.secondary,
+    fontWeight: Theme.fontWeight.medium,
   },
 });
