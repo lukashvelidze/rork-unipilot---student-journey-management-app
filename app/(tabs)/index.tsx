@@ -267,7 +267,7 @@ export default function HomeScreen() {
                     <Bell size={18} color={Colors.warning} />
                   </View>
                   <View style={styles.alertContent}>
-                    <Text style={styles.alertTitle}>{doc.name} is expiring soon</Text>
+                    <Text style={styles.alertTitle}>{doc.title} is expiring soon</Text>
                     <Text style={styles.alertText}>
                       Take action before it expires
                     </Text>
@@ -690,7 +690,7 @@ const styles = StyleSheet.create({
   },
   name: {
     fontSize: Theme.fontSize.xxl,
-    fontWeight: Theme.fontWeight.bold,
+    fontWeight: "bold",
     color: Colors.text,
   },
   notificationButton: {
@@ -726,7 +726,7 @@ const styles = StyleSheet.create({
   },
   premiumWelcomeTitle: {
     fontSize: Theme.fontSize.l,
-    fontWeight: Theme.fontWeight.bold,
+    fontWeight: "bold",
     color: Colors.white,
     marginBottom: 4,
   },
@@ -748,7 +748,7 @@ const styles = StyleSheet.create({
   },
   journeyTitle: {
     fontSize: Theme.fontSize.l,
-    fontWeight: Theme.fontWeight.bold,
+    fontWeight: "bold",
     color: Colors.text,
     marginBottom: 2,
   },
@@ -764,7 +764,7 @@ const styles = StyleSheet.create({
   },
   progressBadgeText: {
     fontSize: Theme.fontSize.m,
-    fontWeight: Theme.fontWeight.bold,
+    fontWeight: "bold",
     color: Colors.primary,
   },
   progressBarContainer: {
@@ -779,7 +779,7 @@ const styles = StyleSheet.create({
   viewRoadmapText: {
     fontSize: Theme.fontSize.s,
     color: Colors.primary,
-    fontWeight: Theme.fontWeight.medium,
+    fontWeight: "500",
     marginRight: Theme.spacing.xs,
   },
   
@@ -802,7 +802,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: Theme.fontSize.l,
-    fontWeight: Theme.fontWeight.semibold,
+    fontWeight: "600",
     color: Colors.text,
   },
   seeAllButton: {
@@ -890,7 +890,7 @@ const styles = StyleSheet.create({
   },
   alertTitle: {
     fontSize: Theme.fontSize.m,
-    fontWeight: Theme.fontWeight.semibold,
+    fontWeight: "600",
     color: Colors.text,
     marginBottom: 2,
   },
@@ -921,7 +921,7 @@ const styles = StyleSheet.create({
   },
   resourceTitle: {
     fontSize: Theme.fontSize.s,
-    fontWeight: Theme.fontWeight.semibold,
+    fontWeight: "600",
     color: Colors.text,
     marginBottom: 4,
   },
@@ -959,7 +959,7 @@ const styles = StyleSheet.create({
   },
   expertTitle: {
     fontSize: Theme.fontSize.m,
-    fontWeight: Theme.fontWeight.bold,
+    fontWeight: "bold",
     color: Colors.white,
     marginBottom: 2,
   },
@@ -1001,7 +1001,7 @@ const styles = StyleSheet.create({
   },
   actionText: {
     fontSize: Theme.fontSize.s,
-    fontWeight: Theme.fontWeight.medium,
+    fontWeight: "500",
     color: Colors.text,
   },
   
@@ -1035,7 +1035,7 @@ const styles = StyleSheet.create({
   },
   aiAssistantTitle: {
     fontSize: Theme.fontSize.m,
-    fontWeight: Theme.fontWeight.bold,
+    fontWeight: "bold",
     color: Colors.white,
     marginBottom: 2,
   },
@@ -1075,7 +1075,7 @@ const styles = StyleSheet.create({
   },
   premiumTitle: {
     fontSize: Theme.fontSize.l,
-    fontWeight: Theme.fontWeight.bold,
+    fontWeight: "bold",
     color: Colors.text,
   },
   priceBadge: {
@@ -1086,7 +1086,7 @@ const styles = StyleSheet.create({
   },
   priceText: {
     color: Colors.white,
-    fontWeight: Theme.fontWeight.semibold,
+    fontWeight: "600",
     fontSize: Theme.fontSize.xs,
   },
   premiumDescription: {
@@ -1138,7 +1138,7 @@ const styles = StyleSheet.create({
   },
   successName: {
     fontSize: Theme.fontSize.m,
-    fontWeight: Theme.fontWeight.semibold,
+    fontWeight: "600",
     color: Colors.text,
   },
   ratingContainer: {
@@ -1148,7 +1148,7 @@ const styles = StyleSheet.create({
     fontSize: Theme.fontSize.xs,
     color: Colors.primary,
     marginBottom: Theme.spacing.s,
-    fontWeight: Theme.fontWeight.medium,
+    fontWeight: "500",
   },
   successText: {
     fontSize: Theme.fontSize.xs,
@@ -1180,7 +1180,7 @@ const styles = StyleSheet.create({
   },
   studyGuideTitle: {
     fontSize: Theme.fontSize.m,
-    fontWeight: Theme.fontWeight.semibold,
+    fontWeight: "600",
     color: Colors.text,
     marginBottom: 2,
   },

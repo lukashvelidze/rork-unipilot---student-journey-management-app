@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { StyleSheet, View, Text, ScrollView, TextInput, TouchableOpacity, Image, Alert } from "react-native";
 import { useRouter } from "expo-router";
-import { Crown, Check, MessageCircle, Send, Lock, BookOpen, Award, FileCheck, GraduationCap, Briefcase } from "lucide-react-native";
+import { Crown, Check, MessageCircle, Send, Lock, BookOpen, Award, FileCheck, GraduationCap, Briefcase, Calendar } from "lucide-react-native";
 import Colors from "@/constants/colors";
 import Theme from "@/constants/theme";
 import Card from "@/components/Card";
@@ -17,10 +17,14 @@ export default function PremiumScreen() {
   
   // Scroll to expert section if coming from home screen with #expert hash
   useEffect(() => {
-    if (router.pathname.includes("#expert")) {
-      setActiveTab("expert");
+    if (router.push && typeof router.push === 'function') {
+      // Check if the current route includes #expert
+      const currentRoute = router.pathname || '';
+      if (currentRoute.includes("#expert")) {
+        setActiveTab("expert");
+      }
     }
-  }, [router.pathname]);
+  }, [router]);
   
   const handlePromoCodeSubmit = () => {
     if (promoCode.toLowerCase() === "admin") {
@@ -677,7 +681,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: Theme.fontSize.xl,
-    fontWeight: Theme.fontWeight.bold,
+    fontWeight: "bold",
     color: Colors.text,
     marginBottom: Theme.spacing.xs,
   },
@@ -705,11 +709,11 @@ const styles = StyleSheet.create({
   tabText: {
     fontSize: Theme.fontSize.s,
     color: Colors.lightText,
-    fontWeight: Theme.fontWeight.medium,
+    fontWeight: "500",
   },
   activeTabText: {
     color: Colors.primary,
-    fontWeight: Theme.fontWeight.semibold,
+    fontWeight: "600",
   },
   scrollContainer: {
     flex: 1,
@@ -729,18 +733,18 @@ const styles = StyleSheet.create({
   },
   pricingTitle: {
     fontSize: Theme.fontSize.l,
-    fontWeight: Theme.fontWeight.semibold,
+    fontWeight: "600",
     color: Colors.text,
     marginBottom: Theme.spacing.m,
   },
   price: {
     fontSize: Theme.fontSize.xxxl,
-    fontWeight: Theme.fontWeight.bold,
+    fontWeight: "bold",
     color: Colors.primary,
   },
   perMonth: {
     fontSize: Theme.fontSize.m,
-    fontWeight: Theme.fontWeight.regular,
+    fontWeight: "400",
     color: Colors.lightText,
   },
   trialText: {
@@ -814,7 +818,7 @@ const styles = StyleSheet.create({
   },
   promoButtonText: {
     color: Colors.white,
-    fontWeight: Theme.fontWeight.semibold,
+    fontWeight: "600",
   },
   
   // Testimonial Section
@@ -823,7 +827,7 @@ const styles = StyleSheet.create({
   },
   testimonialTitle: {
     fontSize: Theme.fontSize.l,
-    fontWeight: Theme.fontWeight.semibold,
+    fontWeight: "600",
     color: Colors.text,
     marginBottom: Theme.spacing.m,
   },
@@ -843,7 +847,7 @@ const styles = StyleSheet.create({
   },
   testimonialName: {
     fontSize: Theme.fontSize.m,
-    fontWeight: Theme.fontWeight.semibold,
+    fontWeight: "600",
     color: Colors.text,
   },
   testimonialInfo: {
@@ -867,7 +871,7 @@ const styles = StyleSheet.create({
   },
   welcomeTitle: {
     fontSize: Theme.fontSize.l,
-    fontWeight: Theme.fontWeight.bold,
+    fontWeight: "bold",
     color: Colors.primary,
     marginBottom: Theme.spacing.s,
   },
@@ -883,7 +887,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: Theme.fontSize.l,
-    fontWeight: Theme.fontWeight.semibold,
+    fontWeight: "600",
     color: Colors.text,
     marginBottom: Theme.spacing.m,
   },
@@ -910,7 +914,7 @@ const styles = StyleSheet.create({
   },
   benefitTitle: {
     fontSize: Theme.fontSize.m,
-    fontWeight: Theme.fontWeight.semibold,
+    fontWeight: "600",
     color: Colors.text,
     marginBottom: 4,
   },
@@ -933,7 +937,7 @@ const styles = StyleSheet.create({
   },
   upcomingTitle: {
     fontSize: Theme.fontSize.m,
-    fontWeight: Theme.fontWeight.semibold,
+    fontWeight: "600",
     color: Colors.text,
     marginLeft: Theme.spacing.s,
   },
@@ -953,7 +957,7 @@ const styles = StyleSheet.create({
   upcomingBadgeText: {
     fontSize: Theme.fontSize.xs,
     color: Colors.white,
-    fontWeight: Theme.fontWeight.medium,
+    fontWeight: "500",
   },
   
   // Locked Content
@@ -965,7 +969,7 @@ const styles = StyleSheet.create({
   },
   lockedTitle: {
     fontSize: Theme.fontSize.l,
-    fontWeight: Theme.fontWeight.semibold,
+    fontWeight: "600",
     color: Colors.text,
     marginTop: Theme.spacing.m,
     marginBottom: Theme.spacing.s,
@@ -987,7 +991,7 @@ const styles = StyleSheet.create({
   },
   resourcesTitle: {
     fontSize: Theme.fontSize.l,
-    fontWeight: Theme.fontWeight.semibold,
+    fontWeight: "600",
     color: Colors.text,
     marginBottom: Theme.spacing.s,
   },
@@ -1001,7 +1005,7 @@ const styles = StyleSheet.create({
   },
   resourceCategoryTitle: {
     fontSize: Theme.fontSize.m,
-    fontWeight: Theme.fontWeight.semibold,
+    fontWeight: "600",
     color: Colors.text,
     marginBottom: Theme.spacing.m,
   },
@@ -1027,7 +1031,7 @@ const styles = StyleSheet.create({
   },
   resourceTitle: {
     fontSize: Theme.fontSize.m,
-    fontWeight: Theme.fontWeight.semibold,
+    fontWeight: "600",
     color: Colors.text,
     marginBottom: 4,
   },
@@ -1043,7 +1047,7 @@ const styles = StyleSheet.create({
   },
   expertTitle: {
     fontSize: Theme.fontSize.l,
-    fontWeight: Theme.fontWeight.semibold,
+    fontWeight: "600",
     color: Colors.text,
     marginBottom: Theme.spacing.s,
   },
@@ -1071,7 +1075,7 @@ const styles = StyleSheet.create({
   },
   expertProfileName: {
     fontSize: Theme.fontSize.l,
-    fontWeight: Theme.fontWeight.bold,
+    fontWeight: "bold",
     color: Colors.text,
     marginBottom: 2,
   },
@@ -1090,7 +1094,7 @@ const styles = StyleSheet.create({
   expertProfileBadgeText: {
     fontSize: Theme.fontSize.xs,
     color: Colors.white,
-    fontWeight: Theme.fontWeight.medium,
+    fontWeight: "500",
   },
   expertProfileBio: {
     fontSize: Theme.fontSize.s,
@@ -1121,7 +1125,7 @@ const styles = StyleSheet.create({
   },
   expertName: {
     fontSize: Theme.fontSize.m,
-    fontWeight: Theme.fontWeight.semibold,
+    fontWeight: "600",
     color: Colors.text,
   },
   expertTitle: {
@@ -1190,7 +1194,7 @@ const styles = StyleSheet.create({
   },
   otherExpertsTitle: {
     fontSize: Theme.fontSize.m,
-    fontWeight: Theme.fontWeight.semibold,
+    fontWeight: "600",
     color: Colors.text,
     marginBottom: Theme.spacing.m,
   },
@@ -1214,7 +1218,7 @@ const styles = StyleSheet.create({
   },
   otherExpertName: {
     fontSize: Theme.fontSize.m,
-    fontWeight: Theme.fontWeight.semibold,
+    fontWeight: "600",
     color: Colors.text,
     marginBottom: 2,
   },
@@ -1231,7 +1235,7 @@ const styles = StyleSheet.create({
   otherExpertBadgeText: {
     fontSize: Theme.fontSize.xs,
     color: Colors.secondary,
-    fontWeight: Theme.fontWeight.medium,
+    fontWeight: "500",
   },
   
   // Guides Tab
@@ -1240,7 +1244,7 @@ const styles = StyleSheet.create({
   },
   guidesTitle: {
     fontSize: Theme.fontSize.l,
-    fontWeight: Theme.fontWeight.semibold,
+    fontWeight: "600",
     color: Colors.text,
     marginBottom: Theme.spacing.s,
   },
@@ -1271,7 +1275,7 @@ const styles = StyleSheet.create({
   },
   guideTitle: {
     fontSize: Theme.fontSize.m,
-    fontWeight: Theme.fontWeight.semibold,
+    fontWeight: "600",
     color: Colors.text,
     marginBottom: 4,
   },
@@ -1288,12 +1292,12 @@ const styles = StyleSheet.create({
   guideLength: {
     fontSize: Theme.fontSize.xs,
     color: Colors.primary,
-    fontWeight: Theme.fontWeight.medium,
+    fontWeight: "500",
     marginRight: Theme.spacing.m,
   },
   guideDifficulty: {
     fontSize: Theme.fontSize.xs,
     color: Colors.secondary,
-    fontWeight: Theme.fontWeight.medium,
+    fontWeight: "500",
   },
 });
