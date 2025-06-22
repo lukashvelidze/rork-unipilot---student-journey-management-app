@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from "react";
 import { StyleSheet, View, Animated, Easing, Dimensions } from "react-native";
-import { LottieView } from "lottie-react-native";
+import { Platform } from "react-native";
 import Colors from "@/constants/colors";
 
 interface CelebrationAnimationProps {
@@ -68,20 +68,7 @@ const CelebrationAnimation: React.FC<CelebrationAnimationProps> = ({
 
   if (!visible) return null;
 
-  const getAnimationSource = () => {
-    // These are placeholder URLs - in a real app, you would use local assets
-    // For this example, we're using Lottie animation URLs
-    switch (type) {
-      case "achievement":
-        return "https://assets5.lottiefiles.com/packages/lf20_touohxv0.json";
-      case "milestone":
-        return "https://assets6.lottiefiles.com/private_files/lf30_yJWQKB.json";
-      case "confetti":
-      default:
-        return "https://assets2.lottiefiles.com/packages/lf20_u4yrau.json";
-    }
-  };
-
+  // Simple celebration animation without Lottie
   return (
     <View style={styles.container}>
       <Animated.View
@@ -93,13 +80,41 @@ const CelebrationAnimation: React.FC<CelebrationAnimationProps> = ({
           },
         ]}
       >
-        <LottieView
-          source={{ uri: getAnimationSource() }}
-          autoPlay
-          loop={false}
-          style={styles.animation}
-          onAnimationFinish={onAnimationFinish}
-        />
+        <View style={styles.celebration}>
+          {type === "achievement" && (
+            <View style={styles.achievementCircle}>
+              <View style={styles.star} />
+            </View>
+          )}
+          {type === "milestone" && (
+            <View style={styles.milestoneContainer}>
+              <View style={styles.milestone} />
+              <View style={[styles.milestone, styles.milestone2]} />
+              <View style={[styles.milestone, styles.milestone3]} />
+            </View>
+          )}
+          {type === "confetti" && (
+            <View style={styles.confettiContainer}>
+              {Array.from({ length: 20 }).map((_, i) => (
+                <View 
+                  key={i} 
+                  style={[
+                    styles.confetti, 
+                    { 
+                      backgroundColor: [Colors.primary, Colors.success, "#FFD700", "#FF6B6B"][i % 4],
+                      top: Math.random() * height * 0.7,
+                      left: Math.random() * width * 0.9,
+                      transform: [
+                        { rotate: `${Math.random() * 360}deg` },
+                        { scale: 0.5 + Math.random() * 1.5 }
+                      ]
+                    }
+                  ]} 
+                />
+              ))}
+            </View>
+          )}
+        </View>
       </Animated.View>
     </View>
   );
@@ -119,9 +134,58 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  animation: {
+  celebration: {
     width: "100%",
     height: "100%",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  achievementCircle: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: Colors.primary,
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 8,
+  },
+  star: {
+    width: 60,
+    height: 60,
+    backgroundColor: Colors.white,
+    borderRadius: 30,
+  },
+  milestoneContainer: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  milestone: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: Colors.primary,
+    margin: 8,
+  },
+  milestone2: {
+    backgroundColor: Colors.success,
+    transform: [{ scale: 1.2 }],
+  },
+  milestone3: {
+    backgroundColor: "#FFD700",
+  },
+  confettiContainer: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  confetti: {
+    position: "absolute",
+    width: 10,
+    height: 10,
+    borderRadius: 2,
   },
 });
 

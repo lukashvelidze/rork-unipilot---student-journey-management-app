@@ -48,7 +48,12 @@ export const generalQuotes: Quote[] = [
   }
 ];
 
-export const stageSpecificQuotes: Record<JourneyStage, Quote[]> = {
+// Define a type-safe record for stage-specific quotes
+type StageQuotes = {
+  [key in JourneyStage]: Quote[];
+};
+
+export const stageSpecificQuotes: StageQuotes = {
   research: [
     {
       text: "Research is creating new knowledge.",
@@ -178,6 +183,6 @@ export const getRandomQuote = (quotes: Quote[]): Quote => {
 };
 
 export const getStageQuote = (stage: JourneyStage): Quote => {
-  const stageQuotes = stageSpecificQuotes[stage];
+  const stageQuotes = stageSpecificQuotes[stage] || generalQuotes;
   return getRandomQuote(stageQuotes);
 };

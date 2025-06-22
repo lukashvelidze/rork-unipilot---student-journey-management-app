@@ -1,16 +1,48 @@
-export type JourneyStage = 
-  | "research" 
-  | "application" 
-  | "visa" 
-  | "pre_departure" 
-  | "arrival" 
-  | "academic" 
-  | "career";
+export type JourneyStage = 'research' | 'application' | 'visa' | 'pre_departure' | 'arrival' | 'academic' | 'career';
+
+export interface Country {
+  code: string;
+  name: string;
+  flag: string;
+}
+
+export interface EducationBackground {
+  level: 'high_school' | 'bachelors' | 'masters' | 'phd' | 'other';
+  field?: string;
+  institution?: string;
+  graduationYear?: number;
+}
+
+export interface TestScore {
+  id: string;
+  type: 'ielts' | 'toefl' | 'gre' | 'gmat' | 'sat' | 'other';
+  score: string;
+  date: string;
+}
+
+export interface University {
+  id: string;
+  name: string;
+  country: string;
+  program: string;
+  status: 'researching' | 'applying' | 'applied' | 'accepted' | 'rejected' | 'waitlisted' | 'enrolled';
+  deadline?: string;
+  notes?: string;
+}
+
+export interface Document {
+  id: string;
+  title: string;
+  type: 'passport' | 'transcript' | 'recommendation' | 'statement' | 'cv' | 'financial' | 'other';
+  status: 'needed' | 'in_progress' | 'completed' | 'submitted';
+  deadline?: string;
+  notes?: string;
+  fileUrl?: string;
+}
 
 export interface Task {
   id: string;
   title: string;
-  description?: string;
   completed: boolean;
   dueDate?: string;
 }
@@ -22,44 +54,29 @@ export interface JourneyProgress {
   tasks: Task[];
 }
 
-export interface Country {
-  code: string;
-  name: string;
-  flag: string;
-}
-
-export interface University {
-  id: string;
-  name: string;
-  country: Country;
-  logo?: string;
-}
-
 export interface Memory {
   id: string;
   title: string;
   description: string;
   date: string;
-  images?: string[];
   location?: string;
+  imageUrl?: string;
   tags?: string[];
-  mood?: "happy" | "excited" | "neutral" | "anxious" | "sad";
+  stageId?: JourneyStage;
 }
 
-export interface User {
+export interface UserProfile {
   id: string;
   name: string;
   email: string;
-  avatar?: string;
   homeCountry: Country;
   destinationCountry: Country;
-  university?: University;
-  program?: string;
-  startDate?: string;
-  endDate?: string;
-  preferences: {
-    notifications: boolean;
-    darkMode: boolean;
-    language: string;
-  };
+  educationBackground: EducationBackground;
+  testScores: TestScore[];
+  universities: University[];
+  documents: Document[];
+  journeyProgress: JourneyProgress[];
+  memories: Memory[];
+  onboardingCompleted: boolean;
+  onboardingStep: number;
 }
