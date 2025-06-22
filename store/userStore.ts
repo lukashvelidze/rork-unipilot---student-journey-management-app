@@ -42,8 +42,7 @@ export const useUserStore = create<UserState>()(
     {
       name: "user-storage",
       storage: createJSONStorage(() => AsyncStorage),
-      // Add a small delay to ensure storage operations complete
-      throttle: 1000,
+      // Remove the throttle property as it's not a valid option in PersistOptions
     }
   )
 );
