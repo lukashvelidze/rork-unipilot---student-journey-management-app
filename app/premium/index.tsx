@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { StyleSheet, View, Text, ScrollView, TextInput, TouchableOpacity, Image, Alert } from "react-native";
-import { useRouter } from "expo-router";
-import { Crown, Check, MessageCircle, Send, Lock, BookOpen, Award, FileCheck, GraduationCap, Briefcase, Calendar } from "lucide-react-native";
+import { useRouter, usePathname } from "expo-router";
+import { Crown, Check, MessageCircle, Send, Lock, BookOpen, Award, FileCheck, GraduationCap, Briefcase, CalendarDays } from "lucide-react-native";
 import Colors from "@/constants/colors";
 import Theme from "@/constants/theme";
 import Card from "@/components/Card";
@@ -10,6 +10,7 @@ import { useUserStore } from "@/store/userStore";
 
 export default function PremiumScreen() {
   const router = useRouter();
+  const pathname = usePathname();
   const { isPremium, setPremium } = useUserStore();
   const [promoCode, setPromoCode] = useState("");
   const [message, setMessage] = useState("");
@@ -17,14 +18,11 @@ export default function PremiumScreen() {
   
   // Scroll to expert section if coming from home screen with #expert hash
   useEffect(() => {
-    if (router.push && typeof router.push === 'function') {
-      // Check if the current route includes #expert
-      const currentRoute = router.pathname || '';
-      if (currentRoute.includes("#expert")) {
-        setActiveTab("expert");
-      }
+    // Check if the current route includes #expert
+    if (pathname && pathname.includes("#expert")) {
+      setActiveTab("expert");
     }
-  }, [router]);
+  }, [pathname]);
   
   const handlePromoCodeSubmit = () => {
     if (promoCode.toLowerCase() === "admin") {
@@ -552,7 +550,7 @@ export default function PremiumScreen() {
         
         <TouchableOpacity style={styles.guideCard}>
           <View style={styles.guideIconContainer}>
-            <Calendar size={24} color={Colors.primary} />
+            <CalendarDays size={24} color={Colors.primary} />
           </View>
           <View style={styles.guideContent}>
             <Text style={styles.guideTitle}>Time Management for Students</Text>
