@@ -60,4 +60,19 @@ export default {
   shadowLight: "rgba(0, 0, 0, 0.05)",
   shadowMedium: "rgba(0, 0, 0, 0.1)",
   shadowDark: "rgba(0, 0, 0, 0.2)",
+  
+  // New modern UI colors
+  progressBackground: "#F0F4F8",
+  cardBackground: "#FFFFFF",
+  cardBorder: "#F0F4F8",
+  divider: "#F0F4F8",
+  inputBackground: "#F8FAFC",
+  badgeBackground: "#F0F4F8",
+  
+  // New semantic colors
+  info: "#3498DB",
+  infoLight: "#EBF5FF",
+  successLight: "#E8F5E9",
+  warningLight: "#FFF8E1",
+  errorLight: "#FFEBEE",
 };

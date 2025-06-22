@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from "react";
-import { StyleSheet, View, ViewStyle, Animated, Easing } from "react-native";
+import { StyleSheet, View, ViewStyle, Animated, Easing, Platform } from "react-native";
 import Colors from "@/constants/colors";
 
 interface ProgressBarProps {
@@ -10,6 +10,7 @@ interface ProgressBarProps {
   style?: ViewStyle;
   animated?: boolean;
   showPulse?: boolean;
+  borderRadius?: number;
 }
 
 const ProgressBar: React.FC<ProgressBarProps> = ({
@@ -20,6 +21,7 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
   style,
   animated = true,
   showPulse = false,
+  borderRadius,
 }) => {
   // Ensure progress is between 0-100
   const clampedProgress = Math.min(Math.max(progress, 0), 100);
@@ -53,12 +55,12 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
           Animated.timing(pulseAnim, {
             toValue: 1.1,
             duration: 600,
-            useNativeDriver: true,
+            useNativeDriver: Platform.OS !== 'web',
           }),
           Animated.timing(pulseAnim, {
             toValue: 1,
             duration: 600,
-            useNativeDriver: true,
+            useNativeDriver: Platform.OS !== 'web',
           }),
         ])
       ).start();
@@ -73,11 +75,18 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
     outputRange: ["0%", "100%"],
   });
   
+  // Calculate border radius (default to half the height for pill shape)
+  const calculatedBorderRadius = borderRadius !== undefined ? borderRadius : height / 2;
+  
   return (
     <View
       style={[
         styles.container,
-        { height, backgroundColor },
+        { 
+          height, 
+          backgroundColor,
+          borderRadius: calculatedBorderRadius
+        },
         style,
       ]}
     >
@@ -87,7 +96,8 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
           {
             width: progressWidth,
             backgroundColor: progressColor,
-            transform: [{ scale: pulseAnim }],
+            borderRadius: calculatedBorderRadius,
+            transform: Platform.OS !== 'web' ? [{ scale: pulseAnim }] : undefined,
           },
         ]}
       />
@@ -98,12 +108,10 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
 const styles = StyleSheet.create({
   container: {
     width: "100%",
-    borderRadius: 8,
     overflow: "hidden",
   },
   progress: {
     height: "100%",
-    borderRadius: 8,
   },
 });
 

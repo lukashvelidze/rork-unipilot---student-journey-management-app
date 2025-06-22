@@ -1,6 +1,7 @@
 import React from "react";
 import { StyleSheet, View, Text } from "react-native";
 import Colors from "@/constants/colors";
+import Theme from "@/constants/theme";
 import Card from "./Card";
 
 interface QuoteCardProps {
@@ -48,21 +49,30 @@ const QuoteCard: React.FC<QuoteCardProps> = ({
   };
 
   return (
-    <Card style={[styles.card, getVariantStyle()]}>
+    <Card 
+      style={[styles.card, getVariantStyle()]}
+      variant={variant === "minimal" ? "flat" : "default"}
+      borderRadius="large"
+    >
       <View style={styles.quoteContainer}>
-        <Text style={styles.quoteMarks}>"</Text>
-        <Text style={[styles.quoteText, getQuoteStyle()]}>{quote}</Text>
-        <Text style={styles.quoteMarks}>"</Text>
+        <Text style={[styles.quoteMarks, variant === "highlight" ? styles.highlightQuoteMarks : null]}>
+          "
+        </Text>
+        <Text style={[styles.quoteText, getQuoteStyle()]}>
+          {quote}
+        </Text>
       </View>
-      <Text style={[styles.authorText, getAuthorStyle()]}>— {author}</Text>
+      <Text style={[styles.authorText, getAuthorStyle()]}>
+        — {author}
+      </Text>
     </Card>
   );
 };
 
 const styles = StyleSheet.create({
   card: {
-    marginVertical: 12,
-    padding: 16,
+    marginVertical: Theme.spacing.m,
+    padding: Theme.spacing.m,
   },
   defaultCard: {
     backgroundColor: Colors.card,
@@ -75,8 +85,6 @@ const styles = StyleSheet.create({
   minimalCard: {
     backgroundColor: "transparent",
     borderWidth: 0,
-    shadowColor: "transparent",
-    elevation: 0,
     paddingHorizontal: 0,
   },
   quoteContainer: {
@@ -90,12 +98,16 @@ const styles = StyleSheet.create({
     lineHeight: 36,
     marginRight: 4,
   },
+  highlightQuoteMarks: {
+    color: Colors.primary,
+    opacity: 0.7,
+  },
   quoteText: {
     flex: 1,
-    fontSize: 16,
+    fontSize: Theme.fontSize.m,
     lineHeight: 24,
     fontStyle: "italic",
-    marginBottom: 8,
+    marginBottom: Theme.spacing.s,
   },
   defaultQuote: {
     color: Colors.text,
@@ -107,16 +119,16 @@ const styles = StyleSheet.create({
     color: Colors.text,
   },
   authorText: {
-    fontSize: 14,
+    fontSize: Theme.fontSize.s,
     textAlign: "right",
-    marginTop: 8,
+    marginTop: Theme.spacing.s,
   },
   defaultAuthor: {
     color: Colors.lightText,
   },
   highlightAuthor: {
     color: Colors.primary,
-    fontWeight: "600",
+    fontWeight: Theme.fontWeight.semibold,
   },
   minimalAuthor: {
     color: Colors.lightText,

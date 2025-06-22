@@ -39,21 +39,21 @@ export default {
     small: {
       shadowColor: Colors.shadowLight,
       shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 1,
+      shadowOpacity: 0.1,
       shadowRadius: 4,
       elevation: 2,
     },
     medium: {
       shadowColor: Colors.shadowMedium,
       shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 1,
+      shadowOpacity: 0.15,
       shadowRadius: 8,
       elevation: 4,
     },
     large: {
       shadowColor: Colors.shadowDark,
       shadowOffset: { width: 0, height: 8 },
-      shadowOpacity: 1,
+      shadowOpacity: 0.2,
       shadowRadius: 16,
       elevation: 8,
     },
@@ -69,7 +69,7 @@ export default {
     backgroundColor: Colors.card,
     shadowColor: Colors.shadowMedium,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 1,
+    shadowOpacity: 0.15,
     shadowRadius: 8,
     elevation: 4,
   },
@@ -78,7 +78,7 @@ export default {
   },
   divider: {
     height: 1,
-    backgroundColor: Colors.border,
+    backgroundColor: Colors.divider,
     marginVertical: 16,
   },
   // Typography
@@ -115,5 +115,34 @@ export default {
       fontWeight: "600",
       color: Colors.white,
     },
+  },
+  // Modern UI elements
+  badge: {
+    small: {
+      paddingHorizontal: 8,
+      paddingVertical: 2,
+      borderRadius: 12,
+      fontSize: 10,
+    },
+    medium: {
+      paddingHorizontal: 12,
+      paddingVertical: 4,
+      borderRadius: 16,
+      fontSize: 12,
+    },
+    large: {
+      paddingHorizontal: 16,
+      paddingVertical: 6,
+      borderRadius: 20,
+      fontSize: 14,
+    },
+  },
+  input: {
+    height: 48,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    backgroundColor: Colors.inputBackground,
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
 };

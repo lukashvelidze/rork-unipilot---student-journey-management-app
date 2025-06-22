@@ -1,6 +1,7 @@
 import React from "react";
 import { StyleSheet, View, ViewStyle, Platform } from "react-native";
 import Colors from "@/constants/colors";
+import Theme from "@/constants/theme";
 
 interface CardProps {
   children: React.ReactNode;
@@ -26,7 +27,9 @@ const Card: React.FC<CardProps> = ({
       case "flat":
         return styles.flat;
       case "glass":
-        return styles.glass;
+        return Platform.OS === 'web' 
+          ? { ...styles.flat, backgroundColor: 'rgba(255, 255, 255, 0.9)' }
+          : styles.glass;
       default:
         return styles.default;
     }
@@ -79,47 +82,76 @@ const styles = StyleSheet.create({
   default: {
     ...Platform.select({
       ios: {
-        shadowColor: "#000",
+        shadowColor: Colors.shadowMedium,
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
+        shadowOpacity: 1,
         shadowRadius: 4,
       },
       android: {
         elevation: 2,
       },
+      web: {
+        boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+      }
     }),
   },
   elevated: {
     ...Platform.select({
       ios: {
-        shadowColor: "#000",
+        shadowColor: Colors.shadowDark,
         shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.15,
+        shadowOpacity: 1,
         shadowRadius: 10,
       },
       android: {
         elevation: 5,
       },
+      web: {
+        boxShadow: '0 6px 12px rgba(0, 0, 0, 0.15)',
+      }
     }),
   },
   outlined: {
     borderWidth: 1,
     borderColor: Colors.border,
-    shadowColor: "transparent",
-    elevation: 0,
+    ...Platform.select({
+      ios: {
+        shadowColor: "transparent",
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0,
+        shadowRadius: 0,
+      },
+      android: {
+        elevation: 0,
+      },
+      web: {
+        boxShadow: 'none',
+      }
+    }),
   },
   flat: {
-    shadowColor: "transparent",
-    elevation: 0,
+    ...Platform.select({
+      ios: {
+        shadowColor: "transparent",
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0,
+        shadowRadius: 0,
+      },
+      android: {
+        elevation: 0,
+      },
+      web: {
+        boxShadow: 'none',
+      }
+    }),
   },
   glass: {
     backgroundColor: "rgba(255, 255, 255, 0.8)",
-    backdropFilter: "blur(10px)",
     ...Platform.select({
       ios: {
-        shadowColor: "#000",
+        shadowColor: Colors.shadowMedium,
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.1,
+        shadowOpacity: 1,
         shadowRadius: 8,
       },
       android: {
@@ -131,25 +163,25 @@ const styles = StyleSheet.create({
     padding: 0,
   },
   paddingSmall: {
-    padding: 12,
+    padding: Theme.spacing.s,
   },
   paddingMedium: {
-    padding: 16,
+    padding: Theme.spacing.m,
   },
   paddingLarge: {
-    padding: 24,
+    padding: Theme.spacing.l,
   },
   borderRadiusSmall: {
-    borderRadius: 8,
+    borderRadius: Theme.borderRadius.s,
   },
   borderRadiusMedium: {
-    borderRadius: 12,
+    borderRadius: Theme.borderRadius.m,
   },
   borderRadiusLarge: {
-    borderRadius: 16,
+    borderRadius: Theme.borderRadius.l,
   },
   borderRadiusExtraLarge: {
-    borderRadius: 24,
+    borderRadius: Theme.borderRadius.xl,
   },
 });
 

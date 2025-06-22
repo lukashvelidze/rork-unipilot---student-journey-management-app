@@ -1,7 +1,8 @@
 import React, { useState, useRef } from "react";
-import { StyleSheet, View, Text, TouchableOpacity, Animated } from "react-native";
+import { StyleSheet, View, Text, TouchableOpacity, Animated, Platform } from "react-native";
 import { CheckCircle, Calendar } from "lucide-react-native";
 import Colors from "@/constants/colors";
+import Theme from "@/constants/theme";
 
 interface TaskItemProps {
   id: string;
@@ -29,7 +30,7 @@ const TaskItem: React.FC<TaskItemProps> = ({
     Animated.spring(scaleAnim, {
       toValue: 0.97,
       friction: 5,
-      useNativeDriver: true,
+      useNativeDriver: Platform.OS !== 'web',
     }).start();
   };
   
@@ -38,7 +39,7 @@ const TaskItem: React.FC<TaskItemProps> = ({
     Animated.spring(scaleAnim, {
       toValue: 1,
       friction: 5,
-      useNativeDriver: true,
+      useNativeDriver: Platform.OS !== 'web',
     }).start();
   };
   
@@ -47,7 +48,7 @@ const TaskItem: React.FC<TaskItemProps> = ({
     Animated.timing(checkAnim, {
       toValue: completed ? 0 : 1,
       duration: 300,
-      useNativeDriver: true,
+      useNativeDriver: Platform.OS !== 'web',
     }).start();
     
     onToggle(id, !completed);
@@ -63,6 +64,63 @@ const TaskItem: React.FC<TaskItemProps> = ({
     outputRange: [0, 0.5, 1],
   });
   
+  // Use conditional rendering for web platform
+  if (Platform.OS === 'web') {
+    return (
+      <View
+        style={[
+          styles.container,
+          {
+            backgroundColor: completed ? `${accentColor}10` : Colors.white,
+          },
+        ]}
+      >
+        <TouchableOpacity
+          style={styles.touchable}
+          onPress={handleToggle}
+          activeOpacity={0.8}
+        >
+          <View style={styles.content}>
+            <View
+              style={[
+                styles.checkContainer,
+                {
+                  backgroundColor: completed ? accentColor : "transparent",
+                  borderColor: completed ? accentColor : Colors.border,
+                },
+              ]}
+            >
+              <CheckCircle
+                size={20}
+                color={completed ? Colors.white : "transparent"}
+                fill={completed ? Colors.white : "transparent"}
+              />
+            </View>
+            
+            <View style={styles.textContainer}>
+              <Text
+                style={[
+                  styles.title,
+                  completed && styles.completedTitle,
+                ]}
+              >
+                {title}
+              </Text>
+              
+              {dueDate && (
+                <View style={styles.dueDateContainer}>
+                  <Calendar size={12} color={Colors.lightText} />
+                  <Text style={styles.dueDate}>{dueDate}</Text>
+                </View>
+              )}
+            </View>
+          </View>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+  
+  // Native platforms with animations
   return (
     <Animated.View
       style={[
@@ -125,16 +183,12 @@ const TaskItem: React.FC<TaskItemProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    borderRadius: 12,
-    marginBottom: 12,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 2,
+    borderRadius: Theme.borderRadius.m,
+    marginBottom: Theme.spacing.m,
+    ...Theme.shadow.small,
   },
   touchable: {
-    padding: 16,
+    padding: Theme.spacing.m,
   },
   content: {
     flexDirection: "row",
@@ -147,13 +201,13 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     justifyContent: "center",
     alignItems: "center",
-    marginRight: 16,
+    marginRight: Theme.spacing.m,
   },
   textContainer: {
     flex: 1,
   },
   title: {
-    fontSize: 16,
+    fontSize: Theme.fontSize.m,
     color: Colors.text,
     marginBottom: 4,
   },
@@ -166,7 +220,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   dueDate: {
-    fontSize: 12,
+    fontSize: Theme.fontSize.xs,
     color: Colors.lightText,
     marginLeft: 4,
   },

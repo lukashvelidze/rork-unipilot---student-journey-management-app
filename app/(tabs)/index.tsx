@@ -1,11 +1,13 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Platform, Image } from "react-native";
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Platform, Image, StatusBar } from "react-native";
 import { useRouter } from "expo-router";
-import { CheckCircle, ChevronRight, Calendar, Bell, FileText, Users, Map, MessageCircle, Crown, Star } from "lucide-react-native";
+import { CheckCircle, ChevronRight, Calendar, Bell, FileText, Users, Map, MessageCircle, Crown, Star, ArrowRight } from "lucide-react-native";
 import Colors from "@/constants/colors";
+import Theme from "@/constants/theme";
 import Card from "@/components/Card";
 import Button from "@/components/Button";
 import ProgressBar from "@/components/ProgressBar";
+import QuoteCard from "@/components/QuoteCard";
 import { useUserStore } from "@/store/userStore";
 import { useJourneyStore } from "@/store/journeyStore";
 import { useDocumentStore } from "@/store/documentStore";
@@ -89,266 +91,365 @@ export default function HomeScreen() {
   }
   
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.greeting}>{greeting},</Text>
-          <Text style={styles.name}>{user.name}</Text>
-        </View>
-        <TouchableOpacity style={styles.notificationButton}>
-          <Bell size={24} color={Colors.text} />
-        </TouchableOpacity>
-      </View>
-      
-      <Card style={styles.progressCard}>
-        <View style={styles.progressHeader}>
-          <Text style={styles.progressTitle}>{journeyName}</Text>
-          <Text style={styles.progressPercent}>{overallProgress}%</Text>
-        </View>
-        <ProgressBar progress={overallProgress} height={8} />
-        <TouchableOpacity 
-          style={styles.viewAllButton}
-          onPress={() => router.push("/journey")}
-        >
-          <Text style={styles.viewAllText}>View Roadmap</Text>
-          <ChevronRight size={16} color={Colors.primary} />
-        </TouchableOpacity>
-      </Card>
-      
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>To-Do List</Text>
-          <TouchableOpacity onPress={() => router.push("/tasks")}>
-            <Text style={styles.seeAllText}>See All</Text>
+    <>
+      <StatusBar barStyle="dark-content" backgroundColor={Colors.background} />
+      <ScrollView 
+        style={styles.container} 
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Header Section */}
+        <View style={styles.header}>
+          <View>
+            <Text style={styles.greeting}>{greeting}</Text>
+            <Text style={styles.name}>{user.name}</Text>
+          </View>
+          <TouchableOpacity style={styles.notificationButton}>
+            <Bell size={22} color={Colors.text} />
           </TouchableOpacity>
         </View>
         
-        {upcomingTasks.length > 0 ? (
-          upcomingTasks.map((task) => (
-            <TouchableOpacity
-              key={task.id}
-              style={styles.taskItem}
-              onPress={() => handleTaskToggle(task.id, !task.completed, task.stage)}
-            >
-              <CheckCircle
-                size={20}
-                color={task.completed ? Colors.primary : Colors.border}
-                fill={task.completed ? Colors.primary : "transparent"}
-              />
-              <Text
-                style={[
-                  styles.taskText,
-                  task.completed && styles.completedTask,
-                ]}
-              >
-                {task.title}
-              </Text>
-            </TouchableOpacity>
-          ))
-        ) : (
-          <Text style={styles.emptyText}>No pending tasks</Text>
-        )}
-      </View>
-      
-      <Card style={styles.tipCard}>
-        <Text style={styles.tipTitle}>Tip of the Day</Text>
-        <Text style={styles.tipText}>{tip}</Text>
-      </Card>
-      
-      {expiringDocuments.length > 0 && (
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Document Alerts</Text>
-            <TouchableOpacity onPress={() => router.push("/documents")}>
-              <Text style={styles.seeAllText}>See All</Text>
-            </TouchableOpacity>
+        {/* Journey Progress Section */}
+        <Card style={styles.journeyCard} variant="elevated" borderRadius="large">
+          <View style={styles.journeyHeader}>
+            <View>
+              <Text style={styles.journeyTitle}>Your Progress</Text>
+              <Text style={styles.journeySubtitle}>{journeyName}</Text>
+            </View>
+            <View style={styles.progressBadge}>
+              <Text style={styles.progressBadgeText}>{overallProgress}%</Text>
+            </View>
           </View>
           
-          {expiringDocuments.map((doc) => (
-            <TouchableOpacity
-              key={doc.id}
-              style={styles.alertItem}
-              onPress={() => router.push(`/documents/${doc.id}`)}
-            >
-              <View style={styles.alertIconContainer}>
-                <Bell size={20} color={Colors.warning} />
-              </View>
-              <View style={styles.alertContent}>
-                <Text style={styles.alertTitle}>{doc.name} is expiring soon</Text>
-                <Text style={styles.alertText}>
-                  Take action before it expires
-                </Text>
-              </View>
-              <ChevronRight size={16} color={Colors.lightText} />
-            </TouchableOpacity>
-          ))}
-        </View>
-      )}
-      
-      <View style={styles.quickActions}>
-        <Text style={styles.quickActionsTitle}>Quick Actions</Text>
-        <View style={styles.actionButtons}>
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => router.push("/documents")}
-          >
-            <View style={[styles.actionIcon, { backgroundColor: Colors.primaryLight }]}>
-              <FileText size={24} color={Colors.primary} />
-            </View>
-            <Text style={styles.actionText}>Documents</Text>
-          </TouchableOpacity>
+          <View style={styles.progressBarContainer}>
+            <ProgressBar 
+              progress={overallProgress} 
+              height={10} 
+              backgroundColor={Colors.progressBackground}
+              progressColor={Colors.primary}
+              showPulse={true}
+            />
+          </View>
           
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => router.push("/community")}
-          >
-            <View style={[styles.actionIcon, { backgroundColor: Colors.secondaryLight }]}>
-              <Users size={24} color={Colors.secondary} />
-            </View>
-            <Text style={styles.actionText}>Community</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity
-            style={styles.actionButton}
+          <TouchableOpacity 
+            style={styles.viewRoadmapButton}
             onPress={() => router.push("/journey")}
           >
-            <View style={[styles.actionIcon, { backgroundColor: "#E8F5E9" }]}>
-              <Map size={24} color="#4CAF50" />
-            </View>
-            <Text style={styles.actionText}>Journey</Text>
+            <Text style={styles.viewRoadmapText}>View Roadmap</Text>
+            <ArrowRight size={16} color={Colors.primary} />
           </TouchableOpacity>
+        </Card>
+        
+        {/* Daily Tip Section */}
+        <QuoteCard 
+          quote={tip}
+          author="UniPilot Tip"
+          variant="highlight"
+        />
+        
+        {/* To-Do Section */}
+        <View style={styles.sectionContainer}>
+          <View style={styles.sectionHeader}>
+            <View style={styles.sectionTitleContainer}>
+              <CheckCircle size={18} color={Colors.primary} style={styles.sectionIcon} />
+              <Text style={styles.sectionTitle}>To-Do List</Text>
+            </View>
+            <TouchableOpacity 
+              style={styles.seeAllButton}
+              onPress={() => router.push("/tasks")}
+            >
+              <Text style={styles.seeAllText}>See All</Text>
+              <ChevronRight size={16} color={Colors.primary} />
+            </TouchableOpacity>
+          </View>
           
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => router.push("/calendar")}
-          >
-            <View style={[styles.actionIcon, { backgroundColor: "#FFF3E0" }]}>
-              <Calendar size={24} color="#FF9800" />
-            </View>
-            <Text style={styles.actionText}>Calendar</Text>
-          </TouchableOpacity>
+          <Card variant="flat" style={styles.tasksCard} borderRadius="large">
+            {upcomingTasks.length > 0 ? (
+              upcomingTasks.map((task, index) => (
+                <TouchableOpacity
+                  key={task.id}
+                  style={[
+                    styles.taskItem,
+                    index < upcomingTasks.length - 1 && styles.taskItemBorder
+                  ]}
+                  onPress={() => handleTaskToggle(task.id, !task.completed, task.stage)}
+                >
+                  <View style={[
+                    styles.checkCircle,
+                    task.completed && styles.checkCircleCompleted
+                  ]}>
+                    <CheckCircle
+                      size={18}
+                      color={task.completed ? Colors.white : Colors.border}
+                      fill={task.completed ? Colors.white : "transparent"}
+                    />
+                  </View>
+                  <View style={styles.taskContent}>
+                    <Text
+                      style={[
+                        styles.taskText,
+                        task.completed && styles.completedTask,
+                      ]}
+                    >
+                      {task.title}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              ))
+            ) : (
+              <View style={styles.emptyTasksContainer}>
+                <Text style={styles.emptyText}>All caught up! No pending tasks.</Text>
+              </View>
+            )}
+          </Card>
         </View>
         
-        {/* UniPilot AI Assistant Button - Prominent */}
+        {/* Document Alerts Section */}
+        {expiringDocuments.length > 0 && (
+          <View style={styles.sectionContainer}>
+            <View style={styles.sectionHeader}>
+              <View style={styles.sectionTitleContainer}>
+                <Bell size={18} color={Colors.warning} style={styles.sectionIcon} />
+                <Text style={styles.sectionTitle}>Document Alerts</Text>
+              </View>
+              <TouchableOpacity 
+                style={styles.seeAllButton}
+                onPress={() => router.push("/documents")}
+              >
+                <Text style={styles.seeAllText}>See All</Text>
+                <ChevronRight size={16} color={Colors.primary} />
+              </TouchableOpacity>
+            </View>
+            
+            <Card variant="flat" style={styles.alertsCard} borderRadius="large">
+              {expiringDocuments.map((doc, index) => (
+                <TouchableOpacity
+                  key={doc.id}
+                  style={[
+                    styles.alertItem,
+                    index < expiringDocuments.length - 1 && styles.alertItemBorder
+                  ]}
+                  onPress={() => router.push(`/documents/${doc.id}`)}
+                >
+                  <View style={styles.alertIconContainer}>
+                    <Bell size={18} color={Colors.warning} />
+                  </View>
+                  <View style={styles.alertContent}>
+                    <Text style={styles.alertTitle}>{doc.name} is expiring soon</Text>
+                    <Text style={styles.alertText}>
+                      Take action before it expires
+                    </Text>
+                  </View>
+                  <ChevronRight size={16} color={Colors.lightText} />
+                </TouchableOpacity>
+              ))}
+            </Card>
+          </View>
+        )}
+        
+        {/* Quick Actions Section */}
+        <View style={styles.sectionContainer}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Quick Actions</Text>
+          </View>
+          
+          <View style={styles.actionGrid}>
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={() => router.push("/documents")}
+            >
+              <View style={[styles.actionIcon, { backgroundColor: Colors.primaryLight }]}>
+                <FileText size={22} color={Colors.primary} />
+              </View>
+              <Text style={styles.actionText}>Documents</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={() => router.push("/community")}
+            >
+              <View style={[styles.actionIcon, { backgroundColor: Colors.secondaryLight }]}>
+                <Users size={22} color={Colors.secondary} />
+              </View>
+              <Text style={styles.actionText}>Community</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={() => router.push("/journey")}
+            >
+              <View style={[styles.actionIcon, { backgroundColor: "#E8F5E9" }]}>
+                <Map size={22} color="#4CAF50" />
+              </View>
+              <Text style={styles.actionText}>Journey</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={() => router.push("/calendar")}
+            >
+              <View style={[styles.actionIcon, { backgroundColor: "#FFF3E0" }]}>
+                <Calendar size={22} color="#FF9800" />
+              </View>
+              <Text style={styles.actionText}>Calendar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+        
+        {/* UniPilot AI Assistant Button */}
         <TouchableOpacity
-          style={styles.uniPilotButton}
+          style={styles.aiAssistantButton}
           onPress={() => router.push("/unipilot-ai")}
         >
-          <View style={styles.uniPilotContent}>
-            <View style={styles.uniPilotIconContainer}>
-              <Crown size={24} color="#FFD700" />
+          <View style={styles.aiAssistantContent}>
+            <View style={styles.aiAssistantIconContainer}>
+              <Crown size={22} color="#FFD700" />
             </View>
-            <View style={styles.uniPilotTextContainer}>
-              <Text style={styles.uniPilotTitle}>UniPilot AI Assistant</Text>
-              <Text style={styles.uniPilotDescription}>
-                Get personalized help from our AI education expert
+            <View style={styles.aiAssistantTextContainer}>
+              <Text style={styles.aiAssistantTitle}>UniPilot AI Assistant</Text>
+              <Text style={styles.aiAssistantDescription}>
+                Get personalized help with your journey
               </Text>
             </View>
           </View>
-          <ChevronRight size={20} color={Colors.white} />
+          <View style={styles.aiAssistantArrow}>
+            <ArrowRight size={20} color={Colors.white} />
+          </View>
         </TouchableOpacity>
-      </View>
-      
-      {/* UniPilot Premium Section */}
-      <Card style={styles.premiumCard}>
-        <View style={styles.premiumHeader}>
-          <View style={styles.premiumTitleContainer}>
-            <Crown size={24} color="#FFD700" style={styles.crownIcon} />
-            <Text style={styles.premiumTitle}>UniPilot Premium</Text>
-          </View>
-          <View style={styles.priceBadge}>
-            <Text style={styles.priceText}>$4.99/mo</Text>
-          </View>
-        </View>
         
-        <Text style={styles.premiumDescription}>
-          Get personalized guidance from education experts and unlock premium resources for your international student journey.
-        </Text>
-        
-        <View style={styles.premiumFeatures}>
-          <View style={styles.featureItem}>
-            <CheckCircle size={16} color={Colors.primary} />
-            <Text style={styles.featureText}>1-on-1 expert consultations</Text>
-          </View>
-          <View style={styles.featureItem}>
-            <CheckCircle size={16} color={Colors.primary} />
-            <Text style={styles.featureText}>Visa application guides</Text>
-          </View>
-          <View style={styles.featureItem}>
-            <CheckCircle size={16} color={Colors.primary} />
-            <Text style={styles.featureText}>University application templates</Text>
-          </View>
-          <View style={styles.featureItem}>
-            <CheckCircle size={16} color={Colors.primary} />
-            <Text style={styles.featureText}>AI-powered application assistant</Text>
-          </View>
-        </View>
-        
-        <TouchableOpacity
-          style={styles.premiumButton}
-          onPress={() => router.push("/premium")}
-        >
-          <MessageCircle size={20} color={Colors.white} style={styles.buttonIcon} />
-          <Text style={styles.premiumButtonText}>Talk to an Expert</Text>
-        </TouchableOpacity>
-      </Card>
-      
-      {/* Success Stories Section */}
-      <View style={styles.successSection}>
-        <Text style={styles.successTitle}>Success Stories</Text>
-        <ScrollView 
-          horizontal 
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.successStoriesContainer}
-        >
-          <Card style={styles.successCard}>
-            <Image 
-              source={{ uri: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80" }}
-              style={styles.successImage}
-            />
-            <View style={styles.successContent}>
-              <View style={styles.successHeader}>
-                <Text style={styles.successName}>David Kim</Text>
-                <View style={styles.ratingContainer}>
-                  <Star size={14} color="#FFD700" fill="#FFD700" />
-                  <Star size={14} color="#FFD700" fill="#FFD700" />
-                  <Star size={14} color="#FFD700" fill="#FFD700" />
-                  <Star size={14} color="#FFD700" fill="#FFD700" />
-                  <Star size={14} color="#FFD700" fill="#FFD700" />
-                </View>
-              </View>
-              <Text style={styles.successSchool}>Harvard University, USA</Text>
-              <Text style={styles.successText}>
-                "UniPilot Premium helped me navigate the complex application process and secure a full scholarship!"
-              </Text>
+        {/* Premium Section */}
+        <Card style={styles.premiumCard} variant="elevated" borderRadius="large">
+          <View style={styles.premiumHeader}>
+            <View style={styles.premiumTitleContainer}>
+              <Crown size={22} color="#FFD700" style={styles.crownIcon} />
+              <Text style={styles.premiumTitle}>UniPilot Premium</Text>
             </View>
-          </Card>
+            <View style={styles.priceBadge}>
+              <Text style={styles.priceText}>$4.99/mo</Text>
+            </View>
+          </View>
           
-          <Card style={styles.successCard}>
-            <Image 
-              source={{ uri: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80" }}
-              style={styles.successImage}
-            />
-            <View style={styles.successContent}>
-              <View style={styles.successHeader}>
-                <Text style={styles.successName}>Sarah Chen</Text>
-                <View style={styles.ratingContainer}>
-                  <Star size={14} color="#FFD700" fill="#FFD700" />
-                  <Star size={14} color="#FFD700" fill="#FFD700" />
-                  <Star size={14} color="#FFD700" fill="#FFD700" />
-                  <Star size={14} color="#FFD700" fill="#FFD700" />
-                  <Star size={14} color="#FFD700" fill="#FFD700" />
-                </View>
-              </View>
-              <Text style={styles.successSchool}>Oxford University, UK</Text>
-              <Text style={styles.successText}>
-                "The AI assistant helped me perfect my personal statement and ace my interview!"
-              </Text>
+          <Text style={styles.premiumDescription}>
+            Get personalized guidance from education experts and unlock premium resources for your international student journey.
+          </Text>
+          
+          <View style={styles.premiumFeatures}>
+            <View style={styles.featureItem}>
+              <CheckCircle size={16} color={Colors.primary} />
+              <Text style={styles.featureText}>1-on-1 expert consultations</Text>
             </View>
-          </Card>
-        </ScrollView>
-      </View>
-    </ScrollView>
+            <View style={styles.featureItem}>
+              <CheckCircle size={16} color={Colors.primary} />
+              <Text style={styles.featureText}>Visa application guides</Text>
+            </View>
+            <View style={styles.featureItem}>
+              <CheckCircle size={16} color={Colors.primary} />
+              <Text style={styles.featureText}>University application templates</Text>
+            </View>
+          </View>
+          
+          <Button
+            title="Upgrade to Premium"
+            onPress={() => router.push("/premium")}
+            variant="primary"
+            size="medium"
+            fullWidth
+            icon={<Crown size={18} color={Colors.white} />}
+            iconPosition="left"
+            style={styles.premiumButton}
+          />
+        </Card>
+        
+        {/* Success Stories Section */}
+        <View style={styles.sectionContainer}>
+          <View style={styles.sectionHeader}>
+            <View style={styles.sectionTitleContainer}>
+              <Star size={18} color={Colors.primary} style={styles.sectionIcon} />
+              <Text style={styles.sectionTitle}>Success Stories</Text>
+            </View>
+            <TouchableOpacity style={styles.seeAllButton}>
+              <Text style={styles.seeAllText}>See All</Text>
+              <ChevronRight size={16} color={Colors.primary} />
+            </TouchableOpacity>
+          </View>
+          
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.successStoriesContainer}
+          >
+            <Card style={styles.successCard} variant="elevated" borderRadius="large">
+              <Image 
+                source={{ uri: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80" }}
+                style={styles.successImage}
+              />
+              <View style={styles.successContent}>
+                <View style={styles.successHeader}>
+                  <Text style={styles.successName}>David Kim</Text>
+                  <View style={styles.ratingContainer}>
+                    <Star size={14} color="#FFD700" fill="#FFD700" />
+                    <Star size={14} color="#FFD700" fill="#FFD700" />
+                    <Star size={14} color="#FFD700" fill="#FFD700" />
+                    <Star size={14} color="#FFD700" fill="#FFD700" />
+                    <Star size={14} color="#FFD700" fill="#FFD700" />
+                  </View>
+                </View>
+                <Text style={styles.successSchool}>Harvard University, USA</Text>
+                <Text style={styles.successText}>
+                  "UniPilot helped me navigate the complex application process and secure a full scholarship!"
+                </Text>
+              </View>
+            </Card>
+            
+            <Card style={styles.successCard} variant="elevated" borderRadius="large">
+              <Image 
+                source={{ uri: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80" }}
+                style={styles.successImage}
+              />
+              <View style={styles.successContent}>
+                <View style={styles.successHeader}>
+                  <Text style={styles.successName}>Sarah Chen</Text>
+                  <View style={styles.ratingContainer}>
+                    <Star size={14} color="#FFD700" fill="#FFD700" />
+                    <Star size={14} color="#FFD700" fill="#FFD700" />
+                    <Star size={14} color="#FFD700" fill="#FFD700" />
+                    <Star size={14} color="#FFD700" fill="#FFD700" />
+                    <Star size={14} color="#FFD700" fill="#FFD700" />
+                  </View>
+                </View>
+                <Text style={styles.successSchool}>Oxford University, UK</Text>
+                <Text style={styles.successText}>
+                  "The AI assistant helped me perfect my personal statement and ace my interview!"
+                </Text>
+              </View>
+            </Card>
+            
+            <Card style={styles.successCard} variant="elevated" borderRadius="large">
+              <Image 
+                source={{ uri: "https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80" }}
+                style={styles.successImage}
+              />
+              <View style={styles.successContent}>
+                <View style={styles.successHeader}>
+                  <Text style={styles.successName}>Michael Torres</Text>
+                  <View style={styles.ratingContainer}>
+                    <Star size={14} color="#FFD700" fill="#FFD700" />
+                    <Star size={14} color="#FFD700" fill="#FFD700" />
+                    <Star size={14} color="#FFD700" fill="#FFD700" />
+                    <Star size={14} color="#FFD700" fill="#FFD700" />
+                    <Star size={14} color="#FFD700" fill="#FFD700" />
+                  </View>
+                </View>
+                <Text style={styles.successSchool}>ETH Zurich, Switzerland</Text>
+                <Text style={styles.successText}>
+                  "UniPilot's document management system saved me countless hours during my visa application!"
+                </Text>
+              </View>
+            </Card>
+          </ScrollView>
+        </View>
+      </ScrollView>
+    </>
   );
 }
 
@@ -358,137 +459,177 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
   },
   content: {
-    padding: 16,
-    paddingBottom: 32,
+    padding: Theme.spacing.l,
+    paddingBottom: Theme.spacing.xxl,
   },
+  
+  // Header Section
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 24,
+    marginBottom: Theme.spacing.l,
   },
   greeting: {
-    fontSize: 16,
+    fontSize: Theme.fontSize.m,
     color: Colors.lightText,
+    marginBottom: 4,
   },
   name: {
-    fontSize: 24,
-    fontWeight: "700",
+    fontSize: Theme.fontSize.xxl,
+    fontWeight: Theme.fontWeight.bold,
     color: Colors.text,
   },
   notificationButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: Colors.lightBackground,
     justifyContent: "center",
     alignItems: "center",
+    ...Theme.shadow.small,
   },
-  progressCard: {
-    marginBottom: 24,
+  
+  // Journey Progress Section
+  journeyCard: {
+    marginBottom: Theme.spacing.l,
+    padding: Theme.spacing.l,
   },
-  progressHeader: {
+  journeyHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 8,
+    marginBottom: Theme.spacing.m,
   },
-  progressTitle: {
-    fontSize: 16,
-    fontWeight: "600",
+  journeyTitle: {
+    fontSize: Theme.fontSize.l,
+    fontWeight: Theme.fontWeight.bold,
     color: Colors.text,
+    marginBottom: 2,
   },
-  progressPercent: {
-    fontSize: 16,
-    fontWeight: "700",
+  journeySubtitle: {
+    fontSize: Theme.fontSize.s,
+    color: Colors.lightText,
+  },
+  progressBadge: {
+    backgroundColor: Colors.primaryLight,
+    paddingHorizontal: Theme.spacing.m,
+    paddingVertical: Theme.spacing.xs,
+    borderRadius: 16,
+  },
+  progressBadgeText: {
+    fontSize: Theme.fontSize.m,
+    fontWeight: Theme.fontWeight.bold,
     color: Colors.primary,
   },
-  viewAllButton: {
+  progressBarContainer: {
+    marginBottom: Theme.spacing.m,
+  },
+  viewRoadmapButton: {
     flexDirection: "row",
     alignItems: "center",
     alignSelf: "flex-end",
-    marginTop: 12,
+    paddingVertical: Theme.spacing.xs,
   },
-  viewAllText: {
-    fontSize: 14,
+  viewRoadmapText: {
+    fontSize: Theme.fontSize.s,
     color: Colors.primary,
-    fontWeight: "500",
-    marginRight: 4,
+    fontWeight: Theme.fontWeight.medium,
+    marginRight: Theme.spacing.xs,
   },
-  section: {
-    marginBottom: 24,
+  
+  // Section Containers
+  sectionContainer: {
+    marginBottom: Theme.spacing.l,
   },
   sectionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 12,
+    marginBottom: Theme.spacing.m,
+  },
+  sectionTitleContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  sectionIcon: {
+    marginRight: Theme.spacing.xs,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: "600",
+    fontSize: Theme.fontSize.l,
+    fontWeight: Theme.fontWeight.semibold,
     color: Colors.text,
   },
+  seeAllButton: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
   seeAllText: {
-    fontSize: 14,
+    fontSize: Theme.fontSize.s,
     color: Colors.primary,
+    marginRight: 2,
+  },
+  
+  // Tasks Section
+  tasksCard: {
+    overflow: "hidden",
+    padding: 0,
   },
   taskItem: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 12,
+    padding: Theme.spacing.m,
+  },
+  taskItemBorder: {
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
   },
-  taskText: {
-    fontSize: 16,
-    color: Colors.text,
-    marginLeft: 12,
+  checkCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: Colors.lightBackground,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: Theme.spacing.m,
+  },
+  checkCircleCompleted: {
+    backgroundColor: Colors.primary,
+  },
+  taskContent: {
     flex: 1,
+  },
+  taskText: {
+    fontSize: Theme.fontSize.m,
+    color: Colors.text,
   },
   completedTask: {
     textDecorationLine: "line-through",
     color: Colors.lightText,
   },
+  emptyTasksContainer: {
+    padding: Theme.spacing.l,
+    alignItems: "center",
+  },
   emptyText: {
-    fontSize: 16,
+    fontSize: Theme.fontSize.m,
     color: Colors.lightText,
     textAlign: "center",
-    paddingVertical: 16,
   },
-  tipCard: {
-    marginBottom: 24,
-    backgroundColor: Colors.primaryLight,
-  },
-  tipTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: Colors.primary,
-    marginBottom: 8,
-  },
-  tipText: {
-    fontSize: 14,
-    color: Colors.text,
-    lineHeight: 20,
+  
+  // Alerts Section
+  alertsCard: {
+    overflow: "hidden",
+    padding: 0,
   },
   alertItem: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 12,
-    backgroundColor: Colors.card,
-    borderRadius: 8,
-    marginBottom: 8,
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.1,
-        shadowRadius: 2,
-      },
-      android: {
-        elevation: 1,
-      },
-    }),
+    padding: Theme.spacing.m,
+  },
+  alertItemBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
   },
   alertIconContainer: {
     width: 36,
@@ -497,54 +638,36 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFF3E0",
     justifyContent: "center",
     alignItems: "center",
-    marginRight: 12,
+    marginRight: Theme.spacing.m,
   },
   alertContent: {
     flex: 1,
   },
   alertTitle: {
-    fontSize: 14,
-    fontWeight: "600",
+    fontSize: Theme.fontSize.m,
+    fontWeight: Theme.fontWeight.semibold,
     color: Colors.text,
     marginBottom: 2,
   },
   alertText: {
-    fontSize: 12,
+    fontSize: Theme.fontSize.xs,
     color: Colors.lightText,
   },
-  quickActions: {
-    marginBottom: 24,
-  },
-  quickActionsTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: Colors.text,
-    marginBottom: 16,
-  },
-  actionButtons: {
+  
+  // Quick Actions Section
+  actionGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "space-between",
-    marginBottom: 16,
   },
   actionButton: {
     width: "48%",
     backgroundColor: Colors.card,
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: Theme.borderRadius.l,
+    padding: Theme.spacing.m,
     alignItems: "center",
-    marginBottom: 12,
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 2,
-      },
-    }),
+    marginBottom: Theme.spacing.m,
+    ...Theme.shadow.small,
   },
   actionIcon: {
     width: 48,
@@ -552,61 +675,64 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 8,
+    marginBottom: Theme.spacing.s,
   },
   actionText: {
-    fontSize: 14,
-    fontWeight: "500",
+    fontSize: Theme.fontSize.s,
+    fontWeight: Theme.fontWeight.medium,
     color: Colors.text,
   },
-  uniPilotButton: {
+  
+  // AI Assistant Button
+  aiAssistantButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     backgroundColor: Colors.primary,
-    borderRadius: 12,
-    padding: 16,
-    marginTop: 8,
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.2,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 3,
-      },
-    }),
+    borderRadius: Theme.borderRadius.l,
+    padding: Theme.spacing.m,
+    marginBottom: Theme.spacing.l,
+    ...Theme.shadow.medium,
   },
-  uniPilotContent: {
+  aiAssistantContent: {
     flexDirection: "row",
     alignItems: "center",
+    flex: 1,
   },
-  uniPilotIconContainer: {
+  aiAssistantIconContainer: {
     width: 48,
     height: 48,
     borderRadius: 24,
     backgroundColor: "rgba(255, 255, 255, 0.2)",
     justifyContent: "center",
     alignItems: "center",
-    marginRight: 12,
+    marginRight: Theme.spacing.m,
   },
-  uniPilotTextContainer: {
+  aiAssistantTextContainer: {
     flex: 1,
   },
-  uniPilotTitle: {
-    fontSize: 16,
-    fontWeight: "700",
+  aiAssistantTitle: {
+    fontSize: Theme.fontSize.m,
+    fontWeight: Theme.fontWeight.bold,
     color: Colors.white,
-    marginBottom: 4,
+    marginBottom: 2,
   },
-  uniPilotDescription: {
-    fontSize: 12,
+  aiAssistantDescription: {
+    fontSize: Theme.fontSize.xs,
     color: "rgba(255, 255, 255, 0.8)",
   },
+  aiAssistantArrow: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  
+  // Premium Section
   premiumCard: {
-    marginBottom: 24,
+    marginBottom: Theme.spacing.l,
     backgroundColor: "#FAFAFA",
     borderWidth: 1,
     borderColor: "#EAEAEA",
@@ -615,90 +741,71 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 12,
+    marginBottom: Theme.spacing.m,
   },
   premiumTitleContainer: {
     flexDirection: "row",
     alignItems: "center",
   },
   crownIcon: {
-    marginRight: 8,
+    marginRight: Theme.spacing.s,
   },
   premiumTitle: {
-    fontSize: 18,
-    fontWeight: "700",
+    fontSize: Theme.fontSize.l,
+    fontWeight: Theme.fontWeight.bold,
     color: Colors.text,
   },
   priceBadge: {
     backgroundColor: Colors.primary,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
+    paddingHorizontal: Theme.spacing.m,
+    paddingVertical: Theme.spacing.xs,
+    borderRadius: 16,
   },
   priceText: {
     color: Colors.white,
-    fontWeight: "600",
-    fontSize: 12,
+    fontWeight: Theme.fontWeight.semibold,
+    fontSize: Theme.fontSize.xs,
   },
   premiumDescription: {
-    fontSize: 14,
+    fontSize: Theme.fontSize.s,
     color: Colors.text,
     lineHeight: 20,
-    marginBottom: 16,
+    marginBottom: Theme.spacing.m,
   },
   premiumFeatures: {
-    marginBottom: 16,
+    marginBottom: Theme.spacing.m,
   },
   featureItem: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 8,
+    marginBottom: Theme.spacing.s,
   },
   featureText: {
-    fontSize: 14,
+    fontSize: Theme.fontSize.s,
     color: Colors.text,
-    marginLeft: 8,
+    marginLeft: Theme.spacing.s,
   },
   premiumButton: {
-    backgroundColor: Colors.primary,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 12,
-    borderRadius: 8,
+    marginTop: Theme.spacing.s,
   },
-  buttonIcon: {
-    marginRight: 8,
-  },
-  premiumButtonText: {
-    color: Colors.white,
-    fontWeight: "600",
-    fontSize: 16,
-  },
-  successSection: {
-    marginBottom: 24,
-  },
-  successTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: Colors.text,
-    marginBottom: 16,
-  },
+  
+  // Success Stories Section
   successStoriesContainer: {
-    paddingRight: 16,
+    paddingRight: Theme.spacing.m,
+    paddingBottom: Theme.spacing.s,
   },
   successCard: {
     width: 280,
-    marginRight: 16,
+    marginRight: Theme.spacing.m,
     padding: 0,
     overflow: "hidden",
   },
   successImage: {
     width: "100%",
-    height: 120,
+    height: 140,
   },
   successContent: {
-    padding: 12,
+    padding: Theme.spacing.m,
   },
   successHeader: {
     flexDirection: "row",
@@ -707,21 +814,21 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   successName: {
-    fontSize: 16,
-    fontWeight: "600",
+    fontSize: Theme.fontSize.m,
+    fontWeight: Theme.fontWeight.semibold,
     color: Colors.text,
   },
   ratingContainer: {
     flexDirection: "row",
   },
   successSchool: {
-    fontSize: 12,
+    fontSize: Theme.fontSize.xs,
     color: Colors.primary,
-    marginBottom: 8,
-    fontWeight: "500",
+    marginBottom: Theme.spacing.s,
+    fontWeight: Theme.fontWeight.medium,
   },
   successText: {
-    fontSize: 12,
+    fontSize: Theme.fontSize.xs,
     color: Colors.text,
     lineHeight: 18,
     fontStyle: "italic",
