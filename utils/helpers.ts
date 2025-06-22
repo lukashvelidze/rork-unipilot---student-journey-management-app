@@ -98,3 +98,15 @@ export const getTopicColor = (topic: Topic): string => {
       return Colors.info; // Info blue
   }
 };
+
+// Get initials from a name
+export const getInitials = (name: string): string => {
+  if (!name) return "?";
+  
+  return name
+    .split(" ")
+    .map(part => part.charAt(0))
+    .join("")
+    .toUpperCase()
+    .substring(0, 2); // Limit to 2 characters
+};
