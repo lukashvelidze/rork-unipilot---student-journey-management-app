@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { StyleSheet, View, Text, ScrollView, TextInput, TouchableOpacity, Image, Alert } from "react-native";
-import { useRouter, usePathname } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { Crown, Check, MessageCircle, Send, Lock, BookOpen, Award, FileCheck, GraduationCap, Briefcase, CalendarDays } from "lucide-react-native";
 import Colors from "@/constants/colors";
 import Theme from "@/constants/theme";
@@ -10,7 +10,7 @@ import { useUserStore } from "@/store/userStore";
 
 export default function PremiumScreen() {
   const router = useRouter();
-  const pathname = usePathname();
+  const { hash } = useLocalSearchParams();
   const { isPremium, setPremium } = useUserStore();
   const [promoCode, setPromoCode] = useState("");
   const [message, setMessage] = useState("");
@@ -19,10 +19,10 @@ export default function PremiumScreen() {
   // Scroll to expert section if coming from home screen with #expert hash
   useEffect(() => {
     // Check if the current route includes #expert
-    if (pathname && pathname.includes("#expert")) {
+    if (hash === "expert") {
       setActiveTab("expert");
     }
-  }, [pathname]);
+  }, [hash]);
   
   const handlePromoCodeSubmit = () => {
     if (promoCode.toLowerCase() === "admin") {
