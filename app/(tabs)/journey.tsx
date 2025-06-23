@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Platform, Animated } from "react-native";
 import { useRouter } from "expo-router";
-import { Map as MapIcon, ChevronRight, Quote } from "lucide-react-native";
+import { Map as MapIcon, ChevronRight, Quote, CheckSquare } from "lucide-react-native";
 import Colors from "@/constants/colors";
 import Card from "@/components/Card";
 import ProgressBar from "@/components/ProgressBar";
@@ -12,15 +12,23 @@ import { useJourneyStore } from "@/store/journeyStore";
 import { useUserStore } from "@/store/userStore";
 import { calculateOverallProgress } from "@/utils/helpers";
 import { getRandomQuote, generalQuotes } from "@/mocks/quotes";
+import { initialJourneyProgress } from "@/mocks/journeyTasks";
 
 export default function JourneyScreen() {
   const router = useRouter();
   const { user } = useUserStore();
-  const { journeyProgress, recentMilestone, clearRecentMilestone } = useJourneyStore();
+  const { journeyProgress, recentMilestone, clearRecentMilestone, setJourneyProgress } = useJourneyStore();
   const [activeTab, setActiveTab] = useState<"roadmap" | "map" | "timeline" | "memories">("roadmap");
   const [showCelebration, setShowCelebration] = useState(false);
   const [dailyQuote, setDailyQuote] = useState(() => getRandomQuote(generalQuotes));
   const [fadeAnim] = useState(new Animated.Value(0));
+  
+  // Initialize journey progress if not already set
+  useEffect(() => {
+    if (user && journeyProgress.length === 0) {
+      setJourneyProgress(initialJourneyProgress);
+    }
+  }, [user, journeyProgress.length, setJourneyProgress]);
   
   const overallProgress = calculateOverallProgress(journeyProgress);
   
@@ -59,6 +67,18 @@ export default function JourneyScreen() {
                 variant="highlight"
               />
             </Animated.View>
+            
+            <Card style={styles.instructionCard}>
+              <View style={styles.instructionContent}>
+                <CheckSquare size={24} color={Colors.primary} />
+                <View style={styles.instructionText}>
+                  <Text style={styles.instructionTitle}>How to Use Your Roadmap</Text>
+                  <Text style={styles.instructionDescription}>
+                    Tap on any stage below to view and complete tasks. Each completed task contributes to your overall progress!
+                  </Text>
+                </View>
+              </View>
+            </Card>
             
             <View style={styles.stagesContainer}>
               {journeyProgress.map((stage) => (
@@ -306,6 +326,32 @@ const styles = StyleSheet.create({
   },
   roadmapContainer: {
     marginBottom: 16,
+  },
+  instructionCard: {
+    marginTop: 16,
+    marginBottom: 16,
+    backgroundColor: Colors.lightBackground,
+    borderLeftWidth: 4,
+    borderLeftColor: Colors.primary,
+  },
+  instructionContent: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  instructionText: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  instructionTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: Colors.text,
+    marginBottom: 4,
+  },
+  instructionDescription: {
+    fontSize: 14,
+    color: Colors.lightText,
+    lineHeight: 20,
   },
   stagesContainer: {
     marginTop: 16,

@@ -34,23 +34,21 @@ export interface Document {
 export interface Task {
   id: string;
   title: string;
-  description: string;
+  description?: string;
   completed: boolean;
   dueDate?: string;
-  priority: "low" | "medium" | "high";
-  category: string;
+  priority?: "low" | "medium" | "high";
+  category?: string;
 }
 
 export type JourneyStage = 
   | "research"
-  | "preparation" 
   | "application"
   | "visa"
   | "pre_departure"
   | "arrival"
-  | "settlement"
-  | "academic_success"
-  | "career_preparation";
+  | "academic"
+  | "career";
 
 export interface JourneyProgress {
   stage: JourneyStage;
