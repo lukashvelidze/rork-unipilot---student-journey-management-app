@@ -8,6 +8,7 @@ import { Platform } from "react-native";
 import Colors from "@/constants/colors";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { trpc, trpcClient } from "@/lib/trpc";
+import { useUserStore } from "@/store/userStore";
 
 // Create a client
 const queryClient = new QueryClient();
@@ -41,6 +42,13 @@ export default function RootLayout() {
 }
 
 function RootLayoutNav() {
+  const { initializeUser } = useUserStore();
+  
+  useEffect(() => {
+    // Initialize user when app starts
+    initializeUser();
+  }, [initializeUser]);
+
   return (
     <>
       <StatusBar style="auto" />

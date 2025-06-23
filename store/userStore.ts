@@ -20,6 +20,7 @@ interface UserState {
     homeCountry: Country;
     destinationCountry: Country;
   }) => void;
+  setPremium: (isPremium: boolean) => void;
 }
 
 export const useUserStore = create<UserState>()(
@@ -82,6 +83,16 @@ export const useUserStore = create<UserState>()(
         };
         set({ user: newUser });
       },
+      setPremium: (isPremium) =>
+        set((state) => ({
+          user: state.user
+            ? {
+                ...state.user,
+                isPremium,
+                premiumSince: isPremium ? new Date().toISOString() : null,
+              }
+            : null,
+        })),
     }),
     {
       name: "user-storage",

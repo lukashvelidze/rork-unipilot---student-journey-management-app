@@ -9,9 +9,11 @@ import { useUserStore } from "@/store/userStore";
 
 export default function PremiumScreen() {
   const router = useRouter();
-  const { isPremium, setPremium } = useUserStore();
+  const { user, setPremium } = useUserStore();
   const [promoCode, setPromoCode] = useState("");
   const [message, setMessage] = useState("");
+  
+  const isPremium = user?.isPremium || false;
   
   const handlePromoCodeSubmit = () => {
     if (promoCode.toLowerCase() === "admin") {
