@@ -186,35 +186,35 @@ export default function OnboardingScreen() {
   };
   
   const handleNext = async () => {
-  console.log("Continue button pressed, current step:", step);
+    console.log("Continue button pressed, current step:", step);
 
-  if (isProcessing) {
-    console.log("Already processing, ignoring click");
-    return;
-  }
-
-  setIsProcessing(true);
-
-  try {
-    // If it's the welcome step or validation passes
-    if (step === 0 || validateStep()) {
-      const nextStep = step + 1;
-      console.log("Moving to next step:", nextStep);
-
-      setStep(nextStep);
-
-      // If saveUserData is async, we should await it
-      await saveUserData(nextStep);
-    } else {
-      console.log("Validation failed for step:", step);
+    if (isProcessing) {
+      console.log("Already processing, ignoring click");
+      return;
     }
-  } catch (error) {
-    console.error("Error in handleNext:", error);
-    Alert.alert("Error", "Something went wrong. Please try again.");
-  } finally {
-    setIsProcessing(false);
-  }
-};
+
+    setIsProcessing(true);
+
+    try {
+      // If it's the welcome step or validation passes
+      if (step === 0 || validateStep()) {
+        const nextStep = step + 1;
+        console.log("Moving to next step:", nextStep);
+
+        setStep(nextStep);
+
+        // If saveUserData is async, we should await it
+        await saveUserData(nextStep);
+      } else {
+        console.log("Validation failed for step:", step);
+      }
+    } catch (error) {
+      console.error("Error in handleNext:", error);
+      Alert.alert("Error", "Something went wrong. Please try again.");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
   
   const renderStep = () => {
     switch (step) {

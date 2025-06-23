@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { UserProfile } from "@/types/user";
+import { generateId } from "@/utils/helpers";
 
 interface UserState {
   user: UserProfile | null;
@@ -14,6 +15,7 @@ interface UserState {
   completeOnboarding: () => void;
   setPremium: (status: boolean) => void;
   logout: () => void;
+  initializeUser: () => void;
 }
 
 export const useUserStore = create<UserState>()(
@@ -65,6 +67,28 @@ export const useUserStore = create<UserState>()(
       logout: () => {
         console.log("Logging out user");
         set({ user: null, isPremium: false });
+      },
+      initializeUser: () => {
+        console.log("Initializing user if none exists");
+        const currentUser = get().user;
+        if (!currentUser) {
+          const defaultUser: UserProfile = {
+            id: generateId(),
+            name: "",
+            email: "",
+            homeCountry: { code: "", name: "", flag: "" },
+            destinationCountry: { code: "", name: "", flag: "" },
+            educationBackground: { level: "bachelors" },
+            testScores: [],
+            universities: [],
+            documents: [],
+            journeyProgress: [],
+            memories: [],
+            onboardingCompleted: false,
+            onboardingStep: 0,
+          };
+          set({ user: defaultUser });
+        }
       },
     }),
     {
