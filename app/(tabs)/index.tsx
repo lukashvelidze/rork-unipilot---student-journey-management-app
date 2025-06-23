@@ -1,4 +1,13 @@
-// Previous imports remain the same...
+import React, { useEffect, useState } from "react";
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity, StatusBar } from "react-native";
+import { useRouter } from "expo-router";
+import { Crown, CheckCircle, FileText, School, MessageCircle } from "lucide-react-native";
+import Colors from "@/constants/colors";
+import Card from "@/components/Card";
+import Button from "@/components/Button";
+import { useUserStore } from "@/store/userStore";
+import { useJourneyStore } from "@/store/journeyStore";
+import { useDocumentStore } from "@/store/documentStore";
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -6,7 +15,34 @@ export default function HomeScreen() {
   const { journeyProgress, setJourneyProgress, updateTask } = useJourneyStore();
   const { documents } = useDocumentStore();
   
-  // Previous state and effects remain the same...
+  // State for progress animation
+  const [displayedProgress, setDisplayedProgress] = useState(0);
+  
+  // Animate progress on load
+  useEffect(() => {
+    if (journeyProgress) {
+      let start = 0;
+      const increment = journeyProgress / 20;
+      const timer = setInterval(() => {
+        start += increment;
+        setDisplayedProgress(Math.min(start, journeyProgress));
+        if (start >= journeyProgress) {
+          clearInterval(timer);
+        }
+      }, 50);
+      return () => clearInterval(timer);
+    }
+  }, [journeyProgress]);
+  
+  // If user data is not loaded, show loading state
+  if (!user) {
+    return (
+      <View style={styles.loadingContainer}>
+        <StatusBar barStyle="dark-content" backgroundColor={Colors.background} />
+        <Text style={styles.loadingText}>Loading your journey...</Text>
+      </View>
+    );
+  }
   
   return (
     <>
@@ -16,7 +52,71 @@ export default function HomeScreen() {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        {/* Previous sections remain the same until Premium Section */}
+        {/* Header Section */}
+        <View style={styles.header}>
+          <Text style={styles.welcomeText}>Welcome, {user.name.split(" ")[0]}!</Text>
+          <Text style={styles.subtitle}>Your international student journey awaits</Text>
+        </View>
+        
+        {/* Progress Section */}
+        <Card style={styles.progressCard} variant="elevated" borderRadius="large">
+          <Text style={styles.progressTitle}>Journey Progress</Text>
+          <Text style={styles.progressSubtitle}>
+            {journeyProgress ? `${Math.round(displayedProgress)}% complete` : "Not started"}
+          </Text>
+          <View style={styles.progressBarContainer}>
+            <View 
+              style={[
+                styles.progressBarFill, 
+                { width: `${displayedProgress}%`, backgroundColor: Colors.primary }
+              ]} 
+            />
+          </View>
+          <Button
+            title="View Journey"
+            onPress={() => router.push("/journey")}
+            variant="secondary"
+            size="medium"
+            fullWidth
+            style={styles.journeyButton}
+          />
+        </Card>
+        
+        {/* Quick Actions Section */}
+        <View style={styles.sectionContainer}>
+          <Text style={styles.sectionTitle}>Quick Actions</Text>
+          <View style={styles.actionGrid}>
+            <TouchableOpacity 
+              style={[styles.actionButton, { backgroundColor: Colors.primaryLight }]}
+              onPress={() => router.push("/journey")}
+            >
+              <View style={styles.actionIconContainer}>
+                <School size={24} color={Colors.primary} />
+              </View>
+              <Text style={styles.actionText}>Journey Tracker</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={[styles.actionButton, { backgroundColor: Colors.secondaryLight }]}
+              onPress={() => router.push("/documents")}
+            >
+              <View style={styles.actionIconContainer}>
+                <FileText size={24} color={Colors.secondary} />
+              </View>
+              <Text style={styles.actionText}>Documents</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={[styles.actionButton, { backgroundColor: Colors.infoLight }]}
+              onPress={() => router.push("/unipilot-ai")}
+            >
+              <View style={styles.actionIconContainer}>
+                <MessageCircle size={24} color={Colors.info} />
+              </View>
+              <Text style={styles.actionText}>UniPilot AI</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
         
         {/* Only show Premium Section if not premium */}
         {!isPremium && (
@@ -140,8 +240,175 @@ export default function HomeScreen() {
 
 // Add new styles for premium resources
 const styles = StyleSheet.create({
-  // Previous styles remain the same...
-  
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: Colors.background,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: Colors.lightText,
+  },
+  container: {
+    flex: 1,
+    backgroundColor: Colors.background,
+  },
+  content: {
+    padding: 16,
+    paddingBottom: 100, // Extra padding for bottom tab bar
+  },
+  header: {
+    marginBottom: 24,
+    paddingTop: 16,
+  },
+  welcomeText: {
+    fontSize: 24,
+    fontWeight: "700",
+    color: Colors.text,
+    marginBottom: 4,
+  },
+  subtitle: {
+    fontSize: 16,
+    color: Colors.lightText,
+  },
+  progressCard: {
+    marginBottom: 24,
+    padding: 20,
+  },
+  progressTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: Colors.text,
+    marginBottom: 4,
+  },
+  progressSubtitle: {
+    fontSize: 14,
+    color: Colors.lightText,
+    marginBottom: 16,
+  },
+  progressBarContainer: {
+    height: 8,
+    backgroundColor: Colors.progressBackground,
+    borderRadius: 4,
+    overflow: "hidden",
+    marginBottom: 20,
+  },
+  progressBarFill: {
+    height: "100%",
+    borderRadius: 4,
+  },
+  journeyButton: {
+    marginTop: 8,
+  },
+  sectionContainer: {
+    marginBottom: 24,
+  },
+  sectionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  sectionTitleContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  sectionIcon: {
+    marginRight: 8,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: Colors.text,
+  },
+  actionGrid: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    flexWrap: "wrap",
+    gap: 16,
+  },
+  actionButton: {
+    width: "30%",
+    aspectRatio: 0.8,
+    borderRadius: 12,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 16,
+  },
+  actionIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "rgba(255, 255, 255, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  actionText: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: Colors.text,
+    textAlign: "center",
+  },
+  premiumCard: {
+    marginBottom: 24,
+    padding: 20,
+    backgroundColor: Colors.card,
+    borderColor: "#FFD700",
+    borderWidth: 1,
+  },
+  premiumHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  premiumTitleContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  crownIcon: {
+    marginRight: 8,
+  },
+  premiumTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: Colors.text,
+  },
+  priceBadge: {
+    backgroundColor: "rgba(255, 215, 0, 0.2)",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 16,
+  },
+  priceText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#DAA520",
+  },
+  premiumDescription: {
+    fontSize: 14,
+    color: Colors.lightText,
+    marginBottom: 16,
+    lineHeight: 20,
+  },
+  premiumFeatures: {
+    marginBottom: 20,
+  },
+  featureItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  featureText: {
+    fontSize: 14,
+    color: Colors.text,
+    marginLeft: 8,
+  },
+  premiumButton: {
+    marginTop: 8,
+  },
   resourcesContainer: {
     paddingRight: 16,
     paddingBottom: 8,
