@@ -128,7 +128,7 @@ const TaskItem: React.FC<TaskItemProps> = ({
         {
           transform: [{ scale: scaleAnim }],
           backgroundColor: completed ? `${accentColor}10` : Colors.white,
-        },
+       },
       ]}
     >
       <TouchableOpacity
