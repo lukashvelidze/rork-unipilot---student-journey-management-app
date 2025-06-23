@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Style colouringSheet, View, Text, ScrollView, TouchableOpacity, StatusBar } from "react-native";
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity, StatusBar } from "react-native";
 import { useRouter } from "expo-router";
 import { Crown, CheckCircle, FileText, School, MessageCircle } from "lucide-react-native";
 import Colors from "@/constants/colors";
