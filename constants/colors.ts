@@ -4,6 +4,7 @@ const Colors = {
   primaryLight: "rgba(0, 122, 255, 0.1)",
   secondary: "#5856D6",
   secondaryLight: "rgba(88, 86, 214, 0.1)",
+  accent: "#FF6B35",
   
   // Background colors
   background: "#F8F9FA",
