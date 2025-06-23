@@ -1,78 +1,37 @@
-const primaryBlue = "#4A90E2";
-const secondaryGreen = "#50C878";
-const lightBlue = "#E1F5FE";
-const lightGreen = "#E8F5E9";
-const darkText = "#333333";
-const lightText = "#FFFFFF";
-const grayText = "#757575";
-const lightGray = "#F5F5F5";
-const mediumGray = "#E0E0E0";
-const errorRed = "#FF5252";
-const successGreen = "#4CAF50";
-const warningYellow = "#FFC107";
-
-// Modern color palette with subtle pastels
-export default {
+const Colors = {
   // Primary colors
-  primary: primaryBlue,
-  secondary: secondaryGreen,
+  primary: "#007AFF",
+  primaryLight: "rgba(0, 122, 255, 0.1)",
+  secondary: "#5856D6",
+  secondaryLight: "rgba(88, 86, 214, 0.1)",
   
   // Background colors
-  background: "#FFFFFF",
-  lightBackground: "#F8F9FA",
+  background: "#F8F9FA",
+  lightBackground: "#F1F3F4",
+  white: "#FFFFFF",
   card: "#FFFFFF",
   
   // Text colors
-  text: darkText,
-  lightText: grayText,
+  text: "#1D1D1F",
+  lightText: "#8E8E93",
   
   // Border colors
-  border: "#EAEAEA",
+  border: "#E5E5EA",
   
   // Status colors
-  notification: errorRed,
-  error: errorRed,
-  success: successGreen,
-  warning: warningYellow,
+  success: "#34C759",
+  warning: "#FF9500",
+  error: "#FF3B30",
+  info: "#007AFF",
+  infoLight: "rgba(0, 122, 255, 0.1)",
   
-  // Accent colors
-  primaryLight: "#EBF5FF",
-  secondaryLight: "#E8F5E9",
+  // Progress colors
+  progressBackground: "#E5E5EA",
   
-  // Neutral colors
-  white: lightText,
-  gray: grayText,
-  
-  // Semantic stage colors
-  research: "#4A90E2", // Blue
-  application: "#9C27B0", // Purple
-  visa: "#4CAF50", // Green
-  pre_departure: "#FF9800", // Orange
-  arrival: "#E91E63", // Pink
-  academic: "#3F51B5", // Indigo
-  career: "#009688", // Teal
-  
-  // Gradient colors
-  gradientStart: "#4A90E2",
-  gradientEnd: "#6AB7FF",
-  
-  // Shadows
-  shadowLight: "rgba(0, 0, 0, 0.05)",
-  shadowMedium: "rgba(0, 0, 0, 0.1)",
-  shadowDark: "rgba(0, 0, 0, 0.2)",
-  
-  // New modern UI colors
-  progressBackground: "#F0F4F8",
-  cardBackground: "#FFFFFF",
-  cardBorder: "#F0F4F8",
-  divider: "#F0F4F8",
-  inputBackground: "#F8FAFC",
-  badgeBackground: "#F0F4F8",
-  
-  // New semantic colors
-  info: "#3498DB",
-  infoLight: "#EBF5FF",
-  successLight: "#E8F5E9",
-  warningLight: "#FFF8E1",
-  errorLight: "#FFEBEE",
+  // Additional colors for better design
+  gray: "#8E8E93",
+  lightGray: "#F2F2F7",
+  darkGray: "#48484A",
 };
+
+export default Colors;

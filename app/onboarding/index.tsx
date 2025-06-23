@@ -13,7 +13,7 @@ import { Country, UserProfile } from "@/types/user";
 
 export default function OnboardingScreen() {
   const router = useRouter();
-  const { user, setUser, updateOnboardingStep } = useUserStore();
+  const { user, setUser, updateOnboardingStep, completeOnboarding } = useUserStore();
   
   const [step, setStep] = useState(0);
   const [name, setName] = useState("");
@@ -130,6 +130,7 @@ export default function OnboardingScreen() {
             memories: [],
             onboardingCompleted: false,
             onboardingStep: nextStep,
+            isPremium: false,
           };
           setUser(newUser);
         } else {
@@ -202,9 +203,7 @@ export default function OnboardingScreen() {
         console.log("Moving to next step:", nextStep);
 
         setStep(nextStep);
-
-        // If saveUserData is async, we should await it
-        await saveUserData(nextStep);
+        saveUserData(nextStep);
       } else {
         console.log("Validation failed for step:", step);
       }

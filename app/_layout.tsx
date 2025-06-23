@@ -13,11 +13,6 @@ import { useUserStore } from "@/store/userStore";
 // Create a client
 const queryClient = new QueryClient();
 
-export const unstable_settings = {
-  // This ensures the app starts with the onboarding screen
-  initialRouteName: "onboarding/index",
-};
-
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
 

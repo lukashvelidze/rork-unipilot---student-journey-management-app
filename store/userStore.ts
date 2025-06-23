@@ -27,27 +27,30 @@ export const useUserStore = create<UserState>()(
       isPremium: false,
       setUser: (user) => {
         console.log("Setting user in store:", user);
-        set({ user });
+        set({ user, isPremium: user.isPremium || false });
       },
       updateUser: (userData) => {
         console.log("Updating user with data:", userData);
         const currentUser = get().user;
         if (currentUser) {
-          set({ user: { ...currentUser, ...userData } });
+          const updatedUser = { ...currentUser, ...userData };
+          set({ user: updatedUser, isPremium: updatedUser.isPremium || false });
         }
       },
       updateOnboardingStep: (step) => {
         console.log("Updating onboarding step to:", step);
         const currentUser = get().user;
         if (currentUser) {
-          set({ user: { ...currentUser, onboardingStep: step } });
+          const updatedUser = { ...currentUser, onboardingStep: step };
+          set({ user: updatedUser });
         }
       },
       completeOnboarding: () => {
         console.log("Completing onboarding");
         const currentUser = get().user;
         if (currentUser) {
-          set({ user: { ...currentUser, onboardingCompleted: true } });
+          const updatedUser = { ...currentUser, onboardingCompleted: true };
+          set({ user: updatedUser });
         }
       },
       setPremium: (status) => {
@@ -55,13 +58,12 @@ export const useUserStore = create<UserState>()(
         set({ isPremium: status });
         const currentUser = get().user;
         if (currentUser) {
-          set({ 
-            user: { 
-              ...currentUser, 
-              isPremium: status,
-              premiumSince: status ? new Date().toISOString() : null 
-            } 
-          });
+          const updatedUser = { 
+            ...currentUser, 
+            isPremium: status,
+            premiumSince: status ? new Date().toISOString() : null 
+          };
+          set({ user: updatedUser });
         }
       },
       logout: () => {
@@ -86,8 +88,12 @@ export const useUserStore = create<UserState>()(
             memories: [],
             onboardingCompleted: false,
             onboardingStep: 0,
+            isPremium: false,
           };
-          set({ user: defaultUser });
+          set({ user: defaultUser, isPremium: false });
+        } else {
+          // Sync isPremium state with user data
+          set({ isPremium: currentUser.isPremium || false });
         }
       },
     }),
@@ -98,6 +104,10 @@ export const useUserStore = create<UserState>()(
         console.log("Rehydrating user store");
         return (state) => {
           console.log("Rehydrated state:", state);
+          if (state?.user) {
+            // Ensure isPremium is synced after rehydration
+            state.isPremium = state.user.isPremium || false;
+          }
         };
       },
     }
