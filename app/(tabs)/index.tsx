@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, StatusBar } from "react-native";
+import { Style colouringSheet, View, Text, ScrollView, TouchableOpacity, StatusBar } from "react-native";
 import { useRouter } from "expo-router";
 import { Crown, CheckCircle, FileText, School, MessageCircle } from "lucide-react-native";
 import Colors from "@/constants/colors";
@@ -8,6 +8,7 @@ import Button from "@/components/Button";
 import { useUserStore } from "@/store/userStore";
 import { useJourneyStore } from "@/store/journeyStore";
 import { useDocumentStore } from "@/store/documentStore";
+import { calculateOverallProgress } from "@/utils/helpers";
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -18,21 +19,24 @@ export default function HomeScreen() {
   // State for progress animation
   const [displayedProgress, setDisplayedProgress] = useState(0);
   
+  // Calculate overall progress from journey stages
+  const overallProgress = calculateOverallProgress(journeyProgress);
+  
   // Animate progress on load
   useEffect(() => {
-    if (journeyProgress) {
+    if (overallProgress) {
       let start = 0;
-      const increment = journeyProgress / 20;
+      const increment = overallProgress / 20;
       const timer = setInterval(() => {
         start += increment;
-        setDisplayedProgress(Math.min(start, journeyProgress));
-        if (start >= journeyProgress) {
+        setDisplayedProgress(Math.min(start, overallProgress));
+        if (start >= overallProgress) {
           clearInterval(timer);
         }
       }, 50);
       return () => clearInterval(timer);
     }
-  }, [journeyProgress]);
+  }, [overallProgress]);
   
   // If user data is not loaded, show loading state
   if (!user) {
@@ -62,7 +66,7 @@ export default function HomeScreen() {
         <Card style={styles.progressCard} variant="elevated" borderRadius="large">
           <Text style={styles.progressTitle}>Journey Progress</Text>
           <Text style={styles.progressSubtitle}>
-            {journeyProgress ? `${Math.round(displayedProgress)}% complete` : "Not started"}
+            {overallProgress ? `${Math.round(displayedProgress)}% complete` : "Not started"}
           </Text>
           <View style={styles.progressBarContainer}>
             <View 
