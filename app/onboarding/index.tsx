@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { StyleSheet, View, Text, Image, TouchableOpacity, ScrollView, Platform, Alert } from "react-native";
+import React, { useState, useEffect } from "react";
+import { StyleSheet, View, Text, Image, TouchableOpacity, ScrollView, Alert } from "react-native";
 import { useRouter } from "expo-router";
 import { ChevronRight } from "lucide-react-native";
 import Colors from "@/constants/colors";
@@ -30,10 +30,13 @@ export default function OnboardingScreen() {
   
   // Check if user exists and has completed onboarding
   useEffect(() => {
+    console.log("Onboarding screen mounted, user:", user);
     if (user && user.onboardingCompleted) {
-      router.replace("/");
+      console.log("User has completed onboarding, redirecting to home");
+      router.replace("/(tabs)");
     } else if (user && !user.onboardingCompleted) {
       // Resume onboarding from last step
+      console.log("Resuming onboarding from step:", user.onboardingStep);
       setStep(user.onboardingStep);
       setName(user.name || "");
       setEmail(user.email || "");
@@ -99,12 +102,20 @@ export default function OnboardingScreen() {
   };
   
   // Save user data based on current step
-  const saveUserData = useCallback((nextStep: number) => {
+  const saveUserData = (nextStep: number) => {
     try {
-      if (step === 1) {
+      console.log("Saving user data for step:", step, "next step:", nextStep);
+      
+      if (step === 0) {
+        // Just update the step
+        if (user) {
+          updateOnboardingStep(nextStep);
+        }
+      } else if (step === 1) {
         // Save name and email
         if (!user) {
           // Create new user
+          console.log("Creating new user with name:", name, "email:", email);
           const newUser: UserProfile = {
             id: generateId(),
             name,
@@ -123,6 +134,7 @@ export default function OnboardingScreen() {
           setUser(newUser);
         } else {
           // Update existing user
+          console.log("Updating existing user with name:", name, "email:", email);
           updateOnboardingStep(nextStep);
           setUser({
             ...user,
@@ -133,6 +145,7 @@ export default function OnboardingScreen() {
         }
       } else if (step === 2 && homeCountry) {
         // Save home country
+        console.log("Saving home country:", homeCountry);
         if (user) {
           updateOnboardingStep(nextStep);
           setUser({
@@ -143,6 +156,7 @@ export default function OnboardingScreen() {
         }
       } else if (step === 3 && destinationCountry) {
         // Save destination country
+        console.log("Saving destination country:", destinationCountry);
         if (user) {
           updateOnboardingStep(nextStep);
           setUser({
@@ -153,6 +167,7 @@ export default function OnboardingScreen() {
         }
       } else if (step === 4) {
         // Complete onboarding
+        console.log("Completing onboarding");
         if (user) {
           setUser({
             ...user,
@@ -161,41 +176,45 @@ export default function OnboardingScreen() {
         }
         
         // Navigate to home screen
-        router.replace("/");
+        console.log("Navigating to home screen");
+        router.replace("/(tabs)");
       }
     } catch (error) {
       console.error("Error saving user data:", error);
       Alert.alert("Error", "There was a problem saving your information. Please try again.");
-    } finally {
-      setIsProcessing(false);
     }
-  }, [step, user, name, email, homeCountry, destinationCountry, setUser, updateOnboardingStep, router]);
+  };
   
   const handleNext = () => {
-    // Prevent multiple clicks
-    if (isProcessing) return;
+    console.log("Continue button pressed, current step:", step);
     
-    console.log("Button pressed, current step:", step);
+    // Prevent multiple clicks
+    if (isProcessing) {
+      console.log("Already processing, ignoring click");
+      return;
+    }
+    
     setIsProcessing(true);
     
     try {
+      // For step 0 (welcome) or if validation passes
       if (step === 0 || validateStep()) {
         const nextStep = step + 1;
+        console.log("Moving to next step:", nextStep);
         
         // First update the step state
         setStep(nextStep);
         
         // Then save user data
-        setTimeout(() => {
-          saveUserData(nextStep);
-        }, 100);
+        saveUserData(nextStep);
       } else {
-        setIsProcessing(false);
+        console.log("Validation failed for step:", step);
       }
     } catch (error) {
       console.error("Error in handleNext:", error);
-      setIsProcessing(false);
       Alert.alert("Error", "Something went wrong. Please try again.");
+    } finally {
+      setIsProcessing(false);
     }
   };
   
@@ -340,16 +359,14 @@ export default function OnboardingScreen() {
             onPress={() => {
               if (isProcessing) return;
               setIsProcessing(true);
+              console.log("Skip button pressed, moving to final step");
               setStep(4);
               // Update the onboarding step in the store
               if (user) {
                 updateOnboardingStep(4);
-                setTimeout(() => {
-                  saveUserData(4);
-                }, 100);
-              } else {
-                setIsProcessing(false);
+                saveUserData(4);
               }
+              setIsProcessing(false);
             }}
             disabled={isProcessing}
           >

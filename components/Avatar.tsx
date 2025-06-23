@@ -1,66 +1,57 @@
 import React from "react";
-import { StyleSheet, View, Text, Image, ViewStyle } from "react-native";
+import { View, Text, StyleSheet, Image } from "react-native";
 import Colors from "@/constants/colors";
 import { getInitials } from "@/utils/helpers";
 
 interface AvatarProps {
-  source?: string;
   name?: string;
-  size?: "small" | "medium" | "large" | number;
-  style?: ViewStyle;
-  showBorder?: boolean;
-  borderColor?: string;
+  imageUrl?: string;
+  size?: "small" | "medium" | "large";
+  color?: string;
+  style?: any;
 }
 
 const Avatar: React.FC<AvatarProps> = ({
-  source,
-  name,
+  name = "",
+  imageUrl,
   size = "medium",
+  color = Colors.primary,
   style,
-  showBorder = false,
-  borderColor = Colors.primary,
 }) => {
-  const getSize = () => {
-    if (typeof size === "number") return size;
-    
+  // Get dimensions based on size
+  const getDimensions = () => {
     switch (size) {
       case "small":
-        return 32;
+        return { width: 32, height: 32, fontSize: 12 };
       case "large":
-        return 64;
+        return { width: 56, height: 56, fontSize: 20 };
       case "medium":
       default:
-        return 48;
+        return { width: 40, height: 40, fontSize: 16 };
     }
   };
 
-  const avatarSize = getSize();
-  const fontSize = avatarSize * 0.4;
+  const { width, height, fontSize } = getDimensions();
+
+  // Get initials from name
+  const initials = getInitials(name);
 
   return (
     <View
       style={[
         styles.container,
         {
-          width: avatarSize,
-          height: avatarSize,
-          borderRadius: avatarSize / 2,
-          borderWidth: showBorder ? 2 : 0,
-          borderColor,
+          width,
+          height,
+          backgroundColor: imageUrl ? "transparent" : color,
         },
         style,
       ]}
     >
-      {source ? (
-        <Image
-          source={{ uri: source }}
-          style={styles.image}
-          resizeMode="cover"
-        />
+      {imageUrl ? (
+        <Image source={{ uri: imageUrl }} style={styles.image} />
       ) : (
-        <Text style={[styles.initials, { fontSize }]}>
-          {name ? getInitials(name) : "?"}
-        </Text>
+        <Text style={[styles.initials, { fontSize }]}>{initials}</Text>
       )}
     </View>
   );
@@ -68,9 +59,9 @@ const Avatar: React.FC<AvatarProps> = ({
 
 const styles = StyleSheet.create({
   container: {
+    borderRadius: 100,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: Colors.lightBackground,
     overflow: "hidden",
   },
   image: {
@@ -78,7 +69,7 @@ const styles = StyleSheet.create({
     height: "100%",
   },
   initials: {
-    color: Colors.primary,
+    color: Colors.white,
     fontWeight: "600",
   },
 });

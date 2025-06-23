@@ -18,30 +18,51 @@ interface UserState {
 
 export const useUserStore = create<UserState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       user: null,
       isLoading: false,
       error: null,
       isPremium: false,
-      setUser: (user) => set({ user }),
-      updateUser: (userData) => 
-        set((state) => ({
-          user: state.user ? { ...state.user, ...userData } : null,
-        })),
-      updateOnboardingStep: (step) => 
-        set((state) => ({
-          user: state.user ? { ...state.user, onboardingStep: step } : null,
-        })),
-      completeOnboarding: () => 
-        set((state) => ({
-          user: state.user ? { ...state.user, onboardingCompleted: true } : null,
-        })),
+      setUser: (user) => {
+        console.log("Setting user in store:", user);
+        set({ user });
+      },
+      updateUser: (userData) => {
+        console.log("Updating user with data:", userData);
+        const currentUser = get().user;
+        if (currentUser) {
+          set({ user: { ...currentUser, ...userData } });
+        }
+      },
+      updateOnboardingStep: (step) => {
+        console.log("Updating onboarding step to:", step);
+        const currentUser = get().user;
+        if (currentUser) {
+          set({ user: { ...currentUser, onboardingStep: step } });
+        }
+      },
+      completeOnboarding: () => {
+        console.log("Completing onboarding");
+        const currentUser = get().user;
+        if (currentUser) {
+          set({ user: { ...currentUser, onboardingCompleted: true } });
+        }
+      },
       setPremium: (status) => set({ isPremium: status }),
-      logout: () => set({ user: null, isPremium: false }),
+      logout: () => {
+        console.log("Logging out user");
+        set({ user: null, isPremium: false });
+      },
     }),
     {
       name: "user-storage",
       storage: createJSONStorage(() => AsyncStorage),
+      onRehydrateStorage: () => {
+        console.log("Rehydrating user store");
+        return (state) => {
+          console.log("Rehydrated state:", state);
+        };
+      },
     }
   )
 );
