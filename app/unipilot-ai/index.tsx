@@ -24,12 +24,14 @@ interface Message {
 
 export default function UniPilotAIScreen() {
   const router = useRouter();
-  const { user, isPremium } = useUserStore();
+  const { user } = useUserStore();
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [messageCount, setMessageCount] = useState(0);
   const flatListRef = useRef<FlatList>(null);
+
+  const isPremium = user?.isPremium || false;
 
   const showPremiumAlert = () => {
     Alert.alert(

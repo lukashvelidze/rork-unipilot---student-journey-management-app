@@ -13,6 +13,7 @@ interface UserState {
   clearUser: () => void;
   completeOnboarding: () => void;
   setOnboardingStep: (step: number) => void;
+  initializeUser: () => void;
   createUser: (userData: {
     name: string;
     email: string;
@@ -49,6 +50,16 @@ export const useUserStore = create<UserState>()(
             ? { ...state.user, onboardingStep: step }
             : null,
         })),
+      initializeUser: () => {
+        // This function is called to initialize the user state
+        // The actual user data is loaded from AsyncStorage via the persist middleware
+        const state = get();
+        if (state.user) {
+          console.log("User initialized:", state.user.name);
+        } else {
+          console.log("No user found in storage");
+        }
+      },
       createUser: (userData) => {
         const newUser: UserProfile = {
           id: Math.random().toString(36).substring(2, 15),

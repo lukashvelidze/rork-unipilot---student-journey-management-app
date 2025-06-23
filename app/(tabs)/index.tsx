@@ -20,13 +20,32 @@ export default function HomeScreen() {
   // Initialize journey progress if not already set
   useEffect(() => {
     if (user && journeyProgress.length === 0) {
+      console.log("Initializing journey progress for user:", user.name);
       setJourneyProgress(initialJourneyProgress);
     }
   }, [user, journeyProgress.length, setJourneyProgress]);
   
+  // Redirect to onboarding if user is not set up
+  useEffect(() => {
+    if (!user) {
+      console.log("No user found, redirecting to onboarding");
+      router.replace("/onboarding");
+      return;
+    }
+    
+    if (!user.onboardingCompleted) {
+      console.log("Onboarding not completed, redirecting");
+      router.replace("/onboarding");
+      return;
+    }
+  }, [user, router]);
+  
   if (!user) {
-    router.replace("/onboarding");
-    return null;
+    return (
+      <View style={styles.loadingContainer}>
+        <Text style={styles.loadingText}>Setting up your journey...</Text>
+      </View>
+    );
   }
   
   const overallProgress = calculateOverallProgress(journeyProgress);
@@ -45,21 +64,21 @@ export default function HomeScreen() {
       description: `${currentStage?.stage.replace('_', ' ').toUpperCase()} stage`,
       icon: TrendingUp,
       color: Colors.primary,
-      onPress: () => router.push("/journey"),
+      onPress: () => router.push("/(tabs)/journey"),
     },
     {
       title: "View Documents",
       description: "Manage your documents",
       icon: BookOpen,
       color: Colors.secondary,
-      onPress: () => router.push("/documents"),
+      onPress: () => router.push("/(tabs)/documents"),
     },
     {
       title: "Join Community",
       description: "Connect with others",
       icon: Users,
       color: Colors.accent,
-      onPress: () => router.push("/community"),
+      onPress: () => router.push("/(tabs)/community"),
     },
   ];
   
@@ -98,7 +117,7 @@ export default function HomeScreen() {
         
         <TouchableOpacity 
           style={styles.viewJourneyButton}
-          onPress={() => router.push("/journey")}
+          onPress={() => router.push("/(tabs)/journey")}
         >
           <Text style={styles.viewJourneyText}>View Full Journey</Text>
         </TouchableOpacity>
@@ -146,6 +165,16 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.background,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: Colors.background,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: Colors.lightText,
   },
   scrollContent: {
     padding: 20,

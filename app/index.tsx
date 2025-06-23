@@ -10,19 +10,19 @@ export default function IndexScreen() {
 
   useEffect(() => {
     const checkUserAndRedirect = async () => {
-      // Initialize user if needed
+      // Initialize user store
       initializeUser();
       
       // Small delay to ensure store is properly initialized
       setTimeout(() => {
         if (!user || !user.onboardingCompleted) {
-          console.log("Redirecting to onboarding");
+          console.log("Redirecting to onboarding - user:", user);
           router.replace("/onboarding");
         } else {
-          console.log("Redirecting to tabs");
+          console.log("Redirecting to tabs - user:", user.name);
           router.replace("/(tabs)");
         }
-      }, 100);
+      }, 500);
     };
 
     checkUserAndRedirect();

@@ -1,8 +1,7 @@
-import React, { useState, useRef } from "react";
-import { StyleSheet, View, Text, TouchableOpacity, Animated, Platform } from "react-native";
-import { CheckCircle, Calendar } from "lucide-react-native";
+import React, { useState } from "react";
+import { StyleSheet, View, Text, TouchableOpacity, Platform } from "react-native";
+import { CheckCircle2, Circle, Calendar } from "lucide-react-native";
 import Colors from "@/constants/colors";
-import Theme from "@/constants/theme";
 
 interface TaskItemProps {
   id: string;
@@ -22,194 +21,140 @@ const TaskItem: React.FC<TaskItemProps> = ({
   accentColor = Colors.primary,
 }) => {
   const [isPressed, setIsPressed] = useState(false);
-  const scaleAnim = useRef(new Animated.Value(1)).current;
-  const checkAnim = useRef(new Animated.Value(completed ? 1 : 0)).current;
-  
-  const handlePressIn = () => {
-    setIsPressed(true);
-    Animated.spring(scaleAnim, {
-      toValue: 0.97,
-      friction: 5,
-      useNativeDriver: Platform.OS !== 'web',
-    }).start();
-  };
-  
-  const handlePressOut = () => {
-    setIsPressed(false);
-    Animated.spring(scaleAnim, {
-      toValue: 1,
-      friction: 5,
-      useNativeDriver: Platform.OS !== 'web',
-    }).start();
-  };
-  
+
   const handleToggle = () => {
-    // Animate the check
-    Animated.timing(checkAnim, {
-      toValue: completed ? 0 : 1,
-      duration: 300,
-      useNativeDriver: Platform.OS !== 'web',
-    }).start();
-    
     onToggle(id, !completed);
   };
-  
-  const checkScale = checkAnim.interpolate({
-    inputRange: [0, 0.5, 1],
-    outputRange: [0.8, 1.2, 1],
-  });
-  
-  const checkOpacity = checkAnim.interpolate({
-    inputRange: [0, 0.5, 1],
-    outputRange: [0, 0.5, 1],
-  });
-  
-  // Use conditional rendering for web platform
-  if (Platform.OS === 'web') {
-    return (
-      <View
-        style={[
-          styles.container,
-          {
-            backgroundColor: completed ? `${accentColor}10` : Colors.white,
-          },
-        ]}
-      >
-        <TouchableOpacity
-          style={styles.touchable}
-          onPress={handleToggle}
-          activeOpacity={0.8}
-        >
-          <View style={styles.content}>
-            <View
-              style={[
-                styles.checkContainer,
-                {
-                  backgroundColor: completed ? accentColor : "transparent",
-                  borderColor: completed ? accentColor : Colors.border,
-                },
-              ]}
-            >
-              <CheckCircle
-                size={20}
-                color={completed ? Colors.white : "transparent"}
-                fill={completed ? Colors.white : "transparent"}
-              />
-            </View>
-            
-            <View style={styles.textContainer}>
-              <Text
-                style={[
-                  styles.title,
-                  completed && styles.completedTitle,
-                ]}
-              >
-                {title}
-              </Text>
-              
-              {dueDate && (
-                <View style={styles.dueDateContainer}>
-                  <Calendar size={12} color={Colors.lightText} />
-                  <Text style={styles.dueDate}>{dueDate}</Text>
-                </View>
-              )}
-            </View>
-          </View>
-        </TouchableOpacity>
-      </View>
-    );
-  }
-  
-  // Native platforms with animations
+
+  const formatDueDate = (dateString?: string) => {
+    if (!dateString) return null;
+    
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffTime = date.getTime() - now.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0) return "Due today";
+    if (diffDays === 1) return "Due tomorrow";
+    if (diffDays > 0) return `Due in ${diffDays} days`;
+    if (diffDays === -1) return "Due yesterday";
+    return `Overdue by ${Math.abs(diffDays)} days`;
+  };
+
+  const getDueDateColor = (dateString?: string) => {
+    if (!dateString) return Colors.lightText;
+    
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffTime = date.getTime() - now.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays < 0) return Colors.error; // Overdue
+    if (diffDays <= 1) return Colors.warning; // Due today or tomorrow
+    return Colors.lightText; // Future dates
+  };
+
   return (
-    <Animated.View
+    <TouchableOpacity
       style={[
         styles.container,
-        {
-          transform: [{ scale: scaleAnim }],
-          backgroundColor: completed ? `${accentColor}10` : Colors.white,
-       },
+        completed && styles.completedContainer,
+        isPressed && styles.pressedContainer,
       ]}
+      onPress={handleToggle}
+      onPressIn={() => setIsPressed(true)}
+      onPressOut={() => setIsPressed(false)}
+      activeOpacity={0.7}
     >
-      <TouchableOpacity
-        style={styles.touchable}
-        onPressIn={handlePressIn}
-        onPressOut={handlePressOut}
-        onPress={handleToggle}
-        activeOpacity={0.8}
-      >
-        <View style={styles.content}>
-          <Animated.View
+      <View style={styles.content}>
+        <View style={styles.checkboxContainer}>
+          {completed ? (
+            <CheckCircle2 
+              size={24} 
+              color={accentColor} 
+              fill={accentColor}
+            />
+          ) : (
+            <Circle 
+              size={24} 
+              color={Colors.lightText}
+            />
+          )}
+        </View>
+        
+        <View style={styles.textContainer}>
+          <Text 
             style={[
-              styles.checkContainer,
-              {
-                transform: [{ scale: checkScale }],
-                backgroundColor: completed ? accentColor : "transparent",
-                borderColor: completed ? accentColor : Colors.border,
-              },
+              styles.title,
+              completed && styles.completedTitle,
             ]}
           >
-            <Animated.View style={{ opacity: checkOpacity }}>
-              <CheckCircle
-                size={20}
-                color={completed ? Colors.white : "transparent"}
-                fill={completed ? Colors.white : "transparent"}
-              />
-            </Animated.View>
-          </Animated.View>
+            {title}
+          </Text>
           
-          <View style={styles.textContainer}>
-            <Text
-              style={[
-                styles.title,
-                completed && styles.completedTitle,
-              ]}
-            >
-              {title}
-            </Text>
-            
-            {dueDate && (
-              <View style={styles.dueDateContainer}>
-                <Calendar size={12} color={Colors.lightText} />
-                <Text style={styles.dueDate}>{dueDate}</Text>
-              </View>
-            )}
-          </View>
+          {dueDate && (
+            <View style={styles.dueDateContainer}>
+              <Calendar size={12} color={getDueDateColor(dueDate)} />
+              <Text 
+                style={[
+                  styles.dueDate,
+                  { color: getDueDateColor(dueDate) }
+                ]}
+              >
+                {formatDueDate(dueDate)}
+              </Text>
+            </View>
+          )}
         </View>
-      </TouchableOpacity>
-    </Animated.View>
+      </View>
+      
+      {completed && (
+        <View style={[styles.completedIndicator, { backgroundColor: accentColor }]} />
+      )}
+    </TouchableOpacity>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    borderRadius: Theme.borderRadius.m,
-    marginBottom: Theme.spacing.m,
-    ...Theme.shadow.small,
+    backgroundColor: Colors.white,
+    borderRadius: 12,
+    marginBottom: 8,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 1,
+      },
+    }),
   },
-  touchable: {
-    padding: Theme.spacing.m,
+  completedContainer: {
+    backgroundColor: Colors.lightBackground,
+    opacity: 0.8,
+  },
+  pressedContainer: {
+    transform: [{ scale: 0.98 }],
   },
   content: {
     flexDirection: "row",
     alignItems: "center",
+    padding: 16,
   },
-  checkContainer: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    borderWidth: 2,
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: Theme.spacing.m,
+  checkboxContainer: {
+    marginRight: 12,
   },
   textContainer: {
     flex: 1,
   },
   title: {
-    fontSize: Theme.fontSize.m,
+    fontSize: 16,
+    fontWeight: "500",
     color: Colors.text,
-    marginBottom: 4,
+    lineHeight: 22,
   },
   completedTitle: {
     textDecorationLine: "line-through",
@@ -218,11 +163,21 @@ const styles = StyleSheet.create({
   dueDateContainer: {
     flexDirection: "row",
     alignItems: "center",
+    marginTop: 4,
   },
   dueDate: {
-    fontSize: Theme.fontSize.xs,
-    color: Colors.lightText,
+    fontSize: 12,
     marginLeft: 4,
+    fontWeight: "500",
+  },
+  completedIndicator: {
+    position: "absolute",
+    right: 0,
+    top: 0,
+    bottom: 0,
+    width: 4,
+    borderTopRightRadius: 12,
+    borderBottomRightRadius: 12,
   },
 });
 

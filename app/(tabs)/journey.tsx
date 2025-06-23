@@ -26,6 +26,7 @@ export default function JourneyScreen() {
   // Initialize journey progress if not already set
   useEffect(() => {
     if (user && journeyProgress.length === 0) {
+      console.log("Setting initial journey progress");
       setJourneyProgress(initialJourneyProgress);
     }
   }, [user, journeyProgress.length, setJourneyProgress]);
@@ -153,6 +154,14 @@ export default function JourneyScreen() {
     }
   };
   
+  if (!user) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text style={styles.loadingText}>Loading your journey...</Text>
+      </View>
+    );
+  }
+  
   return (
     <View style={styles.container}>
       {showCelebration && (
@@ -250,6 +259,16 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.background,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: Colors.background,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: Colors.lightText,
   },
   header: {
     padding: 20,

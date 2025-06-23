@@ -8,7 +8,6 @@ import { Platform } from "react-native";
 import Colors from "@/constants/colors";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { trpc, trpcClient } from "@/lib/trpc";
-import { useUserStore } from "@/store/userStore";
 
 // Create a client
 const queryClient = new QueryClient();
@@ -21,8 +20,6 @@ export default function RootLayout() {
     ...FontAwesome.font,
   });
 
-  const { initializeUser } = useUserStore();
-
   useEffect(() => {
     if (error) {
       console.error(error);
@@ -32,10 +29,9 @@ export default function RootLayout() {
 
   useEffect(() => {
     if (loaded) {
-      initializeUser();
       SplashScreen.hideAsync();
     }
-  }, [loaded, initializeUser]);
+  }, [loaded]);
 
   if (!loaded) {
     return null;
@@ -64,6 +60,7 @@ function RootLayoutNav() {
               },
             }}
           >
+            <Stack.Screen name="index" options={{ headerShown: false }} />
             <Stack.Screen name="onboarding/index" options={{ headerShown: false }} />
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen name="journey/[id]" options={{ title: "Stage Details" }} />
