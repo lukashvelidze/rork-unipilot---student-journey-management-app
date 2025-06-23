@@ -7,7 +7,6 @@ import {
   ViewStyle,
   TextStyle,
   View,
-  Platform,
 } from "react-native";
 import Colors from "@/constants/colors";
 
@@ -132,22 +131,10 @@ const Button: React.FC<ButtonProps> = ({
     }
   };
 
-  // Handle button press with improved platform-specific handling
+  // Simplified button press handler without platform-specific delays
   const handlePress = () => {
     if (disabled || loading) return;
-    
-    try {
-      // Add a longer delay on iOS to prevent potential race conditions
-      if (Platform && Platform.OS === 'ios') {
-        setTimeout(() => {
-          onPress();
-        }, 50);
-      } else {
-        onPress();
-      }
-    } catch (error) {
-      console.error("Button press error:", error);
-    }
+    onPress();
   };
 
   return (

@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Platform, Image, StatusBar } from "react-native";
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Image, StatusBar } from "react-native";
 import { useRouter } from "expo-router";
-import { CheckCircle, ChevronRight, Calendar, Bell, FileText, Users, Map, MessageCircle, Crown, Star, ArrowRight } from "lucide-react-native";
+import { CheckCircle, ChevronRight, Calendar, Bell, FileText, Users, Map, Crown, Star, ArrowRight } from "lucide-react-native";
 import Colors from "@/constants/colors";
 import Theme from "@/constants/theme";
 import Card from "@/components/Card";
@@ -487,20 +487,11 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.lightBackground,
     justifyContent: "center",
     alignItems: "center",
-    ...Platform.select({
-      ios: {
-        shadowColor: Colors.shadowMedium,
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 2,
-      },
-      web: {
-        boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
-      }
-    }),
+    shadowColor: Colors.shadowMedium,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   
   // Journey Progress Section
@@ -516,7 +507,7 @@ const styles = StyleSheet.create({
   },
   journeyTitle: {
     fontSize: Theme.fontSize.l,
-    fontWeight: 700,
+    fontWeight: "700",
     color: Colors.text,
     marginBottom: 2,
   },
@@ -532,7 +523,7 @@ const styles = StyleSheet.create({
   },
   progressBadgeText: {
     fontSize: Theme.fontSize.m,
-    fontWeight: 700,
+    fontWeight: "700",
     color: Colors.primary,
   },
   progressBarContainer: {
@@ -547,7 +538,7 @@ const styles = StyleSheet.create({
   viewRoadmapText: {
     fontSize: Theme.fontSize.s,
     color: Colors.primary,
-    fontWeight: 500,
+    fontWeight: "500",
     marginRight: Theme.spacing.xs,
   },
   
@@ -570,7 +561,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: Theme.fontSize.l,
-    fontWeight: 600,
+    fontWeight: "600",
     color: Colors.text,
   },
   seeAllButton: {
@@ -658,7 +649,7 @@ const styles = StyleSheet.create({
   },
   alertTitle: {
     fontSize: Theme.fontSize.m,
-    fontWeight: 600,
+    fontWeight: "600",
     color: Colors.text,
     marginBottom: 2,
   },
@@ -680,20 +671,11 @@ const styles = StyleSheet.create({
     padding: Theme.spacing.m,
     alignItems: "center",
     marginBottom: Theme.spacing.m,
-    ...Platform.select({
-      ios: {
-        shadowColor: Colors.shadowMedium,
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 2,
-      },
-      web: {
-        boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
-      }
-    }),
+    shadowColor: Colors.shadowMedium,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   actionIcon: {
     width: 48,
@@ -705,7 +687,7 @@ const styles = StyleSheet.create({
   },
   actionText: {
     fontSize: Theme.fontSize.s,
-    fontWeight: 500,
+    fontWeight: "500",
     color: Colors.text,
   },
   
@@ -718,20 +700,11 @@ const styles = StyleSheet.create({
     borderRadius: Theme.borderRadius.l,
     padding: Theme.spacing.m,
     marginBottom: Theme.spacing.l,
-    ...Platform.select({
-      ios: {
-        shadowColor: Colors.shadowDark,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.2,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 4,
-      },
-      web: {
-        boxShadow: '0 4px 8px rgba(0, 0, 0, 0.2)',
-      }
-    }),
+    shadowColor: Colors.shadowDark,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
   },
   aiAssistantContent: {
     flexDirection: "row",
@@ -752,7 +725,7 @@ const styles = StyleSheet.create({
   },
   aiAssistantTitle: {
     fontSize: Theme.fontSize.m,
-    fontWeight: 700,
+    fontWeight: "700",
     color: Colors.white,
     marginBottom: 2,
   },
@@ -791,7 +764,7 @@ const styles = StyleSheet.create({
   },
   premiumTitle: {
     fontSize: Theme.fontSize.l,
-    fontWeight: 700,
+    fontWeight: "700",
     color: Colors.text,
   },
   priceBadge: {
@@ -802,7 +775,7 @@ const styles = StyleSheet.create({
   },
   priceText: {
     color: Colors.white,
-    fontWeight: 600,
+    fontWeight: "600",
     fontSize: Theme.fontSize.xs,
   },
   premiumDescription: {
@@ -854,7 +827,7 @@ const styles = StyleSheet.create({
   },
   successName: {
     fontSize: Theme.fontSize.m,
-    fontWeight: 600,
+    fontWeight: "600",
     color: Colors.text,
   },
   ratingContainer: {
@@ -864,7 +837,7 @@ const styles = StyleSheet.create({
     fontSize: Theme.fontSize.xs,
     color: Colors.primary,
     marginBottom: Theme.spacing.s,
-    fontWeight: 500,
+    fontWeight: "500",
   },
   successText: {
     fontSize: Theme.fontSize.xs,
