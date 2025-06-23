@@ -138,7 +138,7 @@ const Button: React.FC<ButtonProps> = ({
     
     try {
       // Add a longer delay on iOS to prevent potential race conditions
-      if (Platform.OS === 'ios') {
+      if (Platform && Platform.OS === 'ios') {
         setTimeout(() => {
           onPress();
         }, 50);

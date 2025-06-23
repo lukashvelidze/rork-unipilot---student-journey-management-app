@@ -4,8 +4,8 @@ import { FileText, Calendar, AlertCircle, CheckCircle, Clock } from "lucide-reac
 import Colors from "@/constants/colors";
 import Card from "./Card";
 import { Document } from "@/types/user";
-import { formatDate, isDateExpired, isDateExpiringSoon } from "@/utils/dateUtils";
-import { getDocumentStatusColor } from "@/utils/helpers";
+import { formatDate } from "@/utils/dateUtils";
+import { getDocumentStatusColor, isDateExpired, isDateExpiringSoon } from "@/utils/helpers";
 
 interface DocumentCardProps {
   document: Document;
@@ -38,7 +38,7 @@ const DocumentCard: React.FC<DocumentCardProps> = ({ document, onPress }) => {
         <View style={styles.header}>
           <View style={styles.iconContainer}>{getDocumentTypeIcon()}</View>
           <View style={styles.titleContainer}>
-            <Text style={styles.title}>{document.name}</Text>
+            <Text style={styles.title}>{document.title}</Text>
             <View style={styles.statusContainer}>
               {getStatusIcon()}
               <Text
@@ -60,17 +60,17 @@ const DocumentCard: React.FC<DocumentCardProps> = ({ document, onPress }) => {
             <Text
               style={[
                 styles.expiryText,
-                isDateExpired(document.expiryDate)
+                document.expiryDate && isDateExpired(document.expiryDate)
                   ? styles.expiredText
-                  : isDateExpiringSoon(document.expiryDate)
+                  : document.expiryDate && isDateExpiringSoon(document.expiryDate)
                   ? styles.expiringSoonText
                   : null,
               ]}
             >
-              {isDateExpired(document.expiryDate)
+              {document.expiryDate && isDateExpired(document.expiryDate)
                 ? "Expired on "
                 : "Expires on "}
-              {formatDate(document.expiryDate)}
+              {document.expiryDate && formatDate(document.expiryDate)}
             </Text>
           </View>
         )}

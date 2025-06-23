@@ -18,13 +18,14 @@ export const getRandomTip = (tips: string[]): string => {
   return tips[randomIndex];
 };
 
-export const formatDate = (date: Date): string => {
+export const formatDate = (date: Date | string): string => {
+  const dateObj = typeof date === 'string' ? new Date(date) : date;
   const options: Intl.DateTimeFormatOptions = { 
     year: 'numeric', 
     month: 'short', 
     day: 'numeric' 
   };
-  return date.toLocaleDateString('en-US', options);
+  return dateObj.toLocaleDateString('en-US', options);
 };
 
 export const formatDateRelative = (dateString: string): string => {
@@ -125,4 +126,21 @@ export const getInitials = (name: string): string => {
     .join("")
     .toUpperCase()
     .substring(0, 2); // Limit to 2 characters
+};
+
+// Check if a date is expired
+export const isDateExpired = (dateString: string): boolean => {
+  const date = new Date(dateString);
+  const now = new Date();
+  return date < now;
+};
+
+// Check if a date is expiring soon (within 30 days)
+export const isDateExpiringSoon = (dateString: string): boolean => {
+  const date = new Date(dateString);
+  const now = new Date();
+  const thirtyDaysFromNow = new Date();
+  thirtyDaysFromNow.setDate(now.getDate() + 30);
+  
+  return date > now && date <= thirtyDaysFromNow;
 };
