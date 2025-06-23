@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { StyleSheet, View, Text, TouchableOpacity, ScrollView } from "react-native";
+import { StyleSheet, View, Text, TouchableOpacity, ScrollView, Platform } from "react-native";
 import Colors from "@/constants/colors";
 import { Topic } from "@/types/community";
 import { getTopicColor } from "@/utils/helpers";

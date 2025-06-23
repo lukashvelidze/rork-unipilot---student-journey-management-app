@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { StyleSheet, View, Text, Image, TouchableOpacity, ScrollView, Alert } from "react-native";
+import { StyleSheet, View, Text, Image, TouchableOpacity, ScrollView, Alert, Platform } from "react-native";
 import { useRouter } from "expo-router";
 import { ChevronRight } from "lucide-react-native";
 import Colors from "@/constants/colors";

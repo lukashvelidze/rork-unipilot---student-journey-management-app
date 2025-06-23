@@ -487,7 +487,20 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.lightBackground,
     justifyContent: "center",
     alignItems: "center",
-    ...Theme.shadow.small,
+    ...Platform.select({
+      ios: {
+        shadowColor: Colors.shadowMedium,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 2,
+      },
+      web: {
+        boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+      }
+    }),
   },
   
   // Journey Progress Section
@@ -667,7 +680,20 @@ const styles = StyleSheet.create({
     padding: Theme.spacing.m,
     alignItems: "center",
     marginBottom: Theme.spacing.m,
-    ...Theme.shadow.small,
+    ...Platform.select({
+      ios: {
+        shadowColor: Colors.shadowMedium,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 2,
+      },
+      web: {
+        boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+      }
+    }),
   },
   actionIcon: {
     width: 48,
@@ -692,7 +718,20 @@ const styles = StyleSheet.create({
     borderRadius: Theme.borderRadius.l,
     padding: Theme.spacing.m,
     marginBottom: Theme.spacing.l,
-    ...Theme.shadow.medium,
+    ...Platform.select({
+      ios: {
+        shadowColor: Colors.shadowDark,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 4,
+      },
+      web: {
+        boxShadow: '0 4px 8px rgba(0, 0, 0, 0.2)',
+      }
+    }),
   },
   aiAssistantContent: {
     flexDirection: "row",
