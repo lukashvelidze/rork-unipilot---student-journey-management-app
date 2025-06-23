@@ -82,4 +82,6 @@ export interface UserProfile {
   memories: Memory[];
   onboardingCompleted: boolean;
   onboardingStep: number;
+  isPremium?: boolean;
+  premiumSince?: string | null;
 }
