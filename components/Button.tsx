@@ -13,7 +13,7 @@ import Colors from "@/constants/colors";
 interface ButtonProps {
   title: string;
   onPress: () => void;
-  variant?: "primary" | "secondary" | "outline" | "text";
+  variant?: "primary" | "secondary" | "outline" | "text" | "destructive";
   size?: "small" | "medium" | "large";
   disabled?: boolean;
   loading?: boolean;
@@ -66,6 +66,12 @@ const Button: React.FC<ButtonProps> = ({
           borderColor: "transparent",
         };
         break;
+      case "destructive":
+        buttonStyle = {
+          backgroundColor: Colors.error || "#FF3B30",
+          borderColor: Colors.error || "#FF3B30",
+        };
+        break;
     }
 
     if (disabled) {
@@ -81,6 +87,7 @@ const Button: React.FC<ButtonProps> = ({
     switch (variant) {
       case "primary":
       case "secondary":
+      case "destructive":
         style = {
           color: Colors.white,
         };

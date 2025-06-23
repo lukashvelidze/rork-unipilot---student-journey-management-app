@@ -12,6 +12,22 @@ export default function ProfileScreen() {
   const router = useRouter();
   const { user, isPremium, logout } = useUserStore();
   
+  if (!user) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.errorText}>User data not available. Please log in.</Text>
+        <Button
+          title="Logout"
+          onPress={logout}
+          variant="destructive"
+          size="medium"
+          fullWidth
+          style={styles.actionButton}
+        />
+      </View>
+    );
+  }
+
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.header}>
@@ -19,7 +35,6 @@ export default function ProfileScreen() {
           <Avatar
             size="large"
             name={user.name}
-            showBorder
           />
           <View style={styles.nameContainer}>
             <Text style={styles.name}>{user.name}</Text>
@@ -63,15 +78,15 @@ export default function ProfileScreen() {
         <Text style={styles.sectionTitle}>Personal Information</Text>
         <View style={styles.infoItem}>
           <Text style={styles.infoLabel}>Nationality</Text>
-          <Text style={styles.infoValue}>{user.nationality}</Text>
+          <Text style={styles.infoValue}>{user.homeCountry.name}</Text>
         </View>
         <View style={styles.infoItem}>
           <Text style={styles.infoLabel}>Target Country</Text>
-          <Text style={styles.infoValue}>{user.targetCountry}</Text>
+          <Text style={styles.infoValue}>{user.destinationCountry.name}</Text>
         </View>
         <View style={styles.infoItem}>
           <Text style={styles.infoLabel}>Education Level</Text>
-          <Text style={styles.infoValue}>{user.educationLevel}</Text>
+          <Text style={styles.infoValue}>{user.educationBackground.level}</Text>
         </View>
         <Button
           title="Edit Profile"
@@ -210,5 +225,12 @@ const styles = StyleSheet.create({
   },
   actionButton: {
     marginBottom: 8,
+  },
+  errorText: {
+    fontSize: 16,
+    color: Colors.text,
+    textAlign: "center",
+    marginTop: 20,
+    marginBottom: 20,
   },
 });

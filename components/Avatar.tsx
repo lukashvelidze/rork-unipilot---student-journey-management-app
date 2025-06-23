@@ -9,6 +9,7 @@ interface AvatarProps {
   size?: "small" | "medium" | "large";
   color?: string;
   style?: any;
+  showBorder?: boolean;
 }
 
 const Avatar: React.FC<AvatarProps> = ({
@@ -17,6 +18,7 @@ const Avatar: React.FC<AvatarProps> = ({
   size = "medium",
   color = Colors.primary,
   style,
+  showBorder = false,
 }) => {
   // Get dimensions based on size
   const getDimensions = () => {
@@ -44,6 +46,8 @@ const Avatar: React.FC<AvatarProps> = ({
           width,
           height,
           backgroundColor: imageUrl ? "transparent" : color,
+          borderWidth: showBorder ? 2 : 0,
+          borderColor: Colors.primary,
         },
         style,
       ]}
