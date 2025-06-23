@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { StyleSheet, View, Text, ScrollView, TextInput, TouchableOpacity, Image, Alert } from "react-native";
 import { useRouter } from "expo-router";
-import { Crown, Check, MessageCircle, Send, Lock } from "lucide-react-native";
+import { Crown, Check } from "lucide-react-native";
 import Colors from "@/constants/colors";
 import Card from "@/components/Card";
 import Button from "@/components/Button";
