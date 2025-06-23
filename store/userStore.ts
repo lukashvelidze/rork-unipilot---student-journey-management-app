@@ -48,7 +48,20 @@ export const useUserStore = create<UserState>()(
           set({ user: { ...currentUser, onboardingCompleted: true } });
         }
       },
-      setPremium: (status) => set({ isPremium: status }),
+      setPremium: (status) => {
+        console.log("Setting premium status:", status);
+        set({ isPremium: status });
+        const currentUser = get().user;
+        if (currentUser) {
+          set({ 
+            user: { 
+              ...currentUser, 
+              isPremium: status,
+              premiumSince: status ? new Date().toISOString() : null 
+            } 
+          });
+        }
+      },
       logout: () => {
         console.log("Logging out user");
         set({ user: null, isPremium: false });
