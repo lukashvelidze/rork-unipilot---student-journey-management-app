@@ -99,6 +99,22 @@ export const getTopicColor = (topic: Topic): string => {
   }
 };
 
+// Get document status color
+export const getDocumentStatusColor = (status: string): string => {
+  switch (status) {
+    case "valid":
+      return Colors.success;
+    case "expiring_soon":
+      return Colors.warning;
+    case "expired":
+      return Colors.error;
+    case "pending":
+      return Colors.lightText;
+    default:
+      return Colors.text;
+  }
+};
+
 // Get initials from a name
 export const getInitials = (name: string): string => {
   if (!name) return "?";

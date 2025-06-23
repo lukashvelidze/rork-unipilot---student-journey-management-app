@@ -32,12 +32,15 @@ export interface University {
 
 export interface Document {
   id: string;
+  name: string; // Added name property
   title: string;
   type: 'passport' | 'transcript' | 'recommendation' | 'statement' | 'cv' | 'financial' | 'other';
-  status: 'needed' | 'in_progress' | 'completed' | 'submitted';
+  status: 'needed' | 'in_progress' | 'completed' | 'submitted' | 'valid' | 'expiring_soon' | 'expired' | 'pending'; // Added additional status values
   deadline?: string;
   notes?: string;
   fileUrl?: string;
+  expiryDate?: string; // Added expiryDate property
+  reminderDate?: string; // Added reminderDate property
 }
 
 export interface Task {

@@ -8,16 +8,7 @@ export type Topic =
   | "career" 
   | "general";
 
-export type User = {
-  id: string;
-  name: string;
-  avatar?: string;
-  homeCountry: string;
-  destinationCountry: string;
-  isPremium: boolean;
-};
-
-export type Comment = {
+export interface Comment {
   id: string;
   userId: string;
   userName: string;
@@ -25,11 +16,10 @@ export type Comment = {
   content: string;
   createdAt: string;
   likes: number;
-  isLiked: boolean;
-  isPremium: boolean;
-};
+  isLiked?: boolean;
+}
 
-export type Post = {
+export interface Post {
   id: string;
   userId: string;
   userName: string;
@@ -40,6 +30,19 @@ export type Post = {
   createdAt: string;
   likes: number;
   comments: Comment[];
-  isLiked: boolean;
-  isPremium: boolean;
-};
+  isLiked?: boolean;
+  isSaved?: boolean;
+}
+
+export interface CommunityUser {
+  id: string;
+  name: string;
+  avatar?: string;
+  homeCountry: string;
+  destinationCountry: string;
+  university?: string;
+  joinDate: string;
+  posts: number;
+  comments: number;
+  reputation: number;
+}
