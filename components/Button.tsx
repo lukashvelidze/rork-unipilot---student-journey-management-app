@@ -68,8 +68,8 @@ const Button: React.FC<ButtonProps> = ({
         break;
       case "destructive":
         buttonStyle = {
-          backgroundColor: Colors.error || "#FF3B30",
-          borderColor: Colors.error || "#FF3B30",
+          backgroundColor: "#FF3B30",
+          borderColor: "#FF3B30",
         };
         break;
     }

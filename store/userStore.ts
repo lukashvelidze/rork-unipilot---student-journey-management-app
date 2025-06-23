@@ -58,7 +58,7 @@ export const useUserStore = create<UserState>()(
         set({ isPremium: status });
         const currentUser = get().user;
         if (currentUser) {
-          const updatedUser = { 
+          const updatedUser: UserProfile = { 
             ...currentUser, 
             isPremium: status,
             premiumSince: status ? new Date().toISOString() : null 
@@ -89,6 +89,7 @@ export const useUserStore = create<UserState>()(
             onboardingCompleted: false,
             onboardingStep: 0,
             isPremium: false,
+            premiumSince: null,
           };
           set({ user: defaultUser, isPremium: false });
         } else {

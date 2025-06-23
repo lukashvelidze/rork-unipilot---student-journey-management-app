@@ -28,8 +28,6 @@ export default function UniPilotAIScreen() {
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [showPromoInput, setShowPromoInput] = useState(false);
-  const [promoCode, setPromoCode] = useState("");
   const [messageCount, setMessageCount] = useState(0);
   const flatListRef = useRef<FlatList>(null);
 
