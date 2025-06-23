@@ -232,6 +232,18 @@ export default function OnboardingScreen() {
             <Text style={styles.welcomeText}>
               Your personal guide through the entire international student journey, from university applications to career establishment.
             </Text>
+            
+            {/* Continue button moved below the welcome text */}
+            <View style={styles.welcomeButtonContainer}>
+              <Button
+                title="Continue"
+                onPress={handleNext}
+                loading={isProcessing}
+                fullWidth
+                icon={<ChevronRight size={20} color={Colors.white} />}
+                iconPosition="right"
+              />
+            </View>
           </View>
         );
       
@@ -343,17 +355,18 @@ export default function OnboardingScreen() {
         {renderStep()}
       </ScrollView>
       
-      <View style={styles.footer}>
-        <Button
-          title={step === 4 ? "Get Started" : "Continue"}
-          onPress={handleNext}
-          loading={isProcessing}
-          fullWidth
-          icon={<ChevronRight size={20} color={Colors.white} />}
-          iconPosition="right"
-        />
-        
-        {step > 0 && step < 4 && (
+      {/* Only show footer with continue button for steps other than welcome and final */}
+      {step > 0 && step < 4 && (
+        <View style={styles.footer}>
+          <Button
+            title="Continue"
+            onPress={handleNext}
+            loading={isProcessing}
+            fullWidth
+            icon={<ChevronRight size={20} color={Colors.white} />}
+            iconPosition="right"
+          />
+          
           <TouchableOpacity
             style={styles.skipButton}
             onPress={() => {
@@ -372,8 +385,22 @@ export default function OnboardingScreen() {
           >
             <Text style={styles.skipText}>Skip for now</Text>
           </TouchableOpacity>
-        )}
-      </View>
+        </View>
+      )}
+      
+      {/* Show footer with get started button only for final step */}
+      {step === 4 && (
+        <View style={styles.footer}>
+          <Button
+            title="Get Started"
+            onPress={handleNext}
+            loading={isProcessing}
+            fullWidth
+            icon={<ChevronRight size={20} color={Colors.white} />}
+            iconPosition="right"
+          />
+        </View>
+      )}
     </View>
   );
 }
@@ -428,6 +455,10 @@ const styles = StyleSheet.create({
     color: Colors.lightText,
     textAlign: "center",
     lineHeight: 24,
+    marginBottom: 32,
+  },
+  welcomeButtonContainer: {
+    marginTop: 8,
   },
   stepTitle: {
     fontSize: 24,
