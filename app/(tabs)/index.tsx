@@ -1,7 +1,7 @@
 import React, { useEffect } from "react";
 import { StyleSheet, View, Text, ScrollView, TouchableOpacity } from "react-native";
 import { useRouter } from "expo-router";
-import { Award, TrendingUp, BookOpen, Users } from "lucide-react-native";
+import { Award, TrendingUp, BookOpen, Users, Crown, Zap, Target, Calendar } from "lucide-react-native";
 import Colors from "@/constants/colors";
 import Card from "@/components/Card";
 import ProgressBar from "@/components/ProgressBar";
@@ -50,6 +50,7 @@ export default function HomeScreen() {
   
   const overallProgress = calculateOverallProgress(journeyProgress);
   const dailyQuote = getRandomQuote(generalQuotes);
+  const isPremium = user?.isPremium || false;
   
   // Get current active stage (first incomplete stage)
   const currentStage = journeyProgress.find(stage => !stage.completed) || journeyProgress[0];
@@ -81,12 +82,53 @@ export default function HomeScreen() {
       onPress: () => router.push("/(tabs)/community"),
     },
   ];
+
+  const premiumFeatures = [
+    {
+      title: "AI Assistant",
+      description: "Unlimited access to UniPilot AI",
+      icon: Zap,
+      color: "#FFD700",
+      onPress: () => router.push("/unipilot-ai"),
+    },
+    {
+      title: "Personal Mentor",
+      description: "1-on-1 guidance sessions",
+      icon: Target,
+      color: "#9C27B0",
+      onPress: () => router.push("/mentor"),
+    },
+    {
+      title: "Premium Resources",
+      description: "Exclusive templates & guides",
+      icon: Crown,
+      color: "#FF6B35",
+      onPress: () => router.push("/resources"),
+    },
+    {
+      title: "Priority Support",
+      description: "24/7 premium support",
+      icon: Calendar,
+      color: "#4CAF50",
+      onPress: () => router.push("/support"),
+    },
+  ];
   
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
       <View style={styles.header}>
-        <Text style={styles.greeting}>Welcome back,</Text>
-        <Text style={styles.name}>{user.name}!</Text>
+        <View style={styles.headerTop}>
+          <View>
+            <Text style={styles.greeting}>Welcome back,</Text>
+            <Text style={styles.name}>{user.name}!</Text>
+          </View>
+          {isPremium && (
+            <View style={styles.premiumBadge}>
+              <Crown size={16} color="#FFD700" />
+              <Text style={styles.premiumText}>Premium</Text>
+            </View>
+          )}
+        </View>
       </View>
       
       <QuoteCard 
@@ -123,6 +165,29 @@ export default function HomeScreen() {
         </TouchableOpacity>
       </Card>
       
+      {isPremium && (
+        <Card style={styles.premiumFeaturesCard}>
+          <View style={styles.sectionHeader}>
+            <Crown size={20} color="#FFD700" />
+            <Text style={styles.premiumSectionTitle}>Premium Features</Text>
+          </View>
+          
+          <View style={styles.premiumGrid}>
+            {premiumFeatures.map((feature, index) => (
+              <TouchableOpacity
+                key={index}
+                style={[styles.premiumFeatureCard, { borderLeftColor: feature.color }]}
+                onPress={feature.onPress}
+              >
+                <feature.icon size={20} color={feature.color} />
+                <Text style={styles.premiumFeatureTitle}>{feature.title}</Text>
+                <Text style={styles.premiumFeatureDescription}>{feature.description}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </Card>
+      )}
+      
       {upcomingTasks.length > 0 && (
         <Card style={styles.tasksCard}>
           <View style={styles.sectionHeader}>
@@ -157,6 +222,26 @@ export default function HomeScreen() {
           ))}
         </View>
       </View>
+
+      {!isPremium && (
+        <Card style={styles.upgradeCard}>
+          <View style={styles.upgradeContent}>
+            <Crown size={32} color="#FFD700" />
+            <View style={styles.upgradeText}>
+              <Text style={styles.upgradeTitle}>Unlock Premium Features</Text>
+              <Text style={styles.upgradeDescription}>
+                Get unlimited AI assistance, personal mentoring, and exclusive resources
+              </Text>
+            </View>
+          </View>
+          <TouchableOpacity
+            style={styles.upgradeButton}
+            onPress={() => router.push("/premium")}
+          >
+            <Text style={styles.upgradeButtonText}>Upgrade Now</Text>
+          </TouchableOpacity>
+        </Card>
+      )}
     </ScrollView>
   );
 }
@@ -183,6 +268,11 @@ const styles = StyleSheet.create({
   header: {
     marginBottom: 24,
   },
+  headerTop: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
   greeting: {
     fontSize: 16,
     color: Colors.lightText,
@@ -192,6 +282,22 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: "700",
     color: Colors.text,
+  },
+  premiumBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255, 215, 0, 0.1)",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "rgba(255, 215, 0, 0.3)",
+  },
+  premiumText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#DAA520",
+    marginLeft: 4,
   },
   progressCard: {
     marginBottom: 20,
@@ -237,6 +343,49 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
     color: Colors.primary,
+  },
+  premiumFeaturesCard: {
+    marginBottom: 20,
+    backgroundColor: "rgba(255, 215, 0, 0.05)",
+    borderWidth: 1,
+    borderColor: "rgba(255, 215, 0, 0.2)",
+  },
+  premiumSectionTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: Colors.text,
+    marginLeft: 8,
+  },
+  premiumGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    marginTop: 16,
+  },
+  premiumFeatureCard: {
+    width: "48%",
+    backgroundColor: Colors.white,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 12,
+    borderLeftWidth: 3,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  premiumFeatureTitle: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: Colors.text,
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  premiumFeatureDescription: {
+    fontSize: 12,
+    color: Colors.lightText,
+    lineHeight: 16,
   },
   tasksCard: {
     marginBottom: 20,
@@ -302,5 +451,42 @@ const styles = StyleSheet.create({
   actionDescription: {
     fontSize: 14,
     color: Colors.lightText,
+  },
+  upgradeCard: {
+    backgroundColor: "rgba(255, 215, 0, 0.05)",
+    borderWidth: 1,
+    borderColor: "rgba(255, 215, 0, 0.2)",
+    marginBottom: 20,
+  },
+  upgradeContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  upgradeText: {
+    flex: 1,
+    marginLeft: 16,
+  },
+  upgradeTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: Colors.text,
+    marginBottom: 4,
+  },
+  upgradeDescription: {
+    fontSize: 14,
+    color: Colors.lightText,
+    lineHeight: 20,
+  },
+  upgradeButton: {
+    backgroundColor: "#FFD700",
+    borderRadius: 8,
+    paddingVertical: 12,
+    alignItems: "center",
+  },
+  upgradeButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#000",
   },
 });

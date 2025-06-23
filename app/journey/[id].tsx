@@ -1,62 +1,25 @@
 import React, { useState, useEffect } from "react";
-import { StyleSheet, View, Text, FlatList, TouchableOpacity, Animated } from "react-native";
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { ChevronLeft, Award, CheckCircle2 } from "lucide-react-native";
+import { CheckCircle, Circle, Calendar, Award } from "lucide-react-native";
 import Colors from "@/constants/colors";
-import TaskItem from "@/components/TaskItem";
+import Card from "@/components/Card";
 import ProgressBar from "@/components/ProgressBar";
-import QuoteCard from "@/components/QuoteCard";
-import CelebrationAnimation from "@/components/CelebrationAnimation";
+import TaskItem from "@/components/TaskItem";
 import { useJourneyStore } from "@/store/journeyStore";
 import { JourneyStage } from "@/types/user";
-import { getStageQuote } from "@/mocks/quotes";
 
-export default function JourneyStageScreen() {
+export default function StageDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { journeyProgress, updateTask, recentMilestone, clearRecentMilestone } = useJourneyStore();
-  const [showCelebration, setShowCelebration] = useState(false);
-  const [fadeAnim] = useState(new Animated.Value(0));
-  const [scaleAnim] = useState(new Animated.Value(0.95));
+  const { journeyProgress, updateTaskCompletion, addRecentMilestone } = useJourneyStore();
   
-  const stage = journeyProgress.find((s) => s.stage === id);
-  
-  // Get a quote specific to this stage
-  const stageQuote = getStageQuote(id as JourneyStage);
-  
-  // Fade in animation for the content
-  useEffect(() => {
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 600,
-        useNativeDriver: true,
-      }),
-      Animated.timing(scaleAnim, {
-        toValue: 1,
-        duration: 500,
-        useNativeDriver: true,
-      })
-    ]).start();
-  }, [fadeAnim, scaleAnim]);
-  
-  // Show celebration animation when a milestone is reached
-  useEffect(() => {
-    if (recentMilestone && recentMilestone.stageId === id) {
-      setShowCelebration(true);
-      
-      // Clear the milestone after showing celebration
-      const timer = setTimeout(() => {
-        clearRecentMilestone();
-      }, 3500);
-      
-      return () => clearTimeout(timer);
-    }
-  }, [recentMilestone, clearRecentMilestone, id]);
+  const stageId = id as JourneyStage;
+  const stage = journeyProgress.find(s => s.stage === stageId);
   
   if (!stage) {
     return (
-      <View style={styles.container}>
+      <View style={styles.errorContainer}>
         <Text style={styles.errorText}>Stage not found</Text>
       </View>
     );
@@ -65,7 +28,7 @@ export default function JourneyStageScreen() {
   const getStageTitle = (stageId: string): string => {
     const titles: Record<string, string> = {
       research: "University Research",
-      application: "Application Process",
+      application: "Application Process", 
       visa: "Visa Application",
       pre_departure: "Pre-Departure",
       arrival: "Arrival & Orientation",
@@ -75,150 +38,128 @@ export default function JourneyStageScreen() {
     
     return titles[stageId] || stageId.replace("_", " ");
   };
-  
-  const getStageDescription = (stageId: string): string => {
-    const descriptions: Record<string, string> = {
-      research: "Research potential universities, compare programs, and create a shortlist based on your preferences and requirements.",
-      application: "Prepare and submit applications to your chosen universities, including all required documents and fees.",
-      visa: "Apply for your student visa, prepare for the interview, and gather all necessary documentation.",
-      pre_departure: "Book flights, arrange accommodation, get health insurance, and prepare for your journey abroad.",
-      arrival: "Navigate immigration, settle into your accommodation, attend orientation, and explore your new campus.",
-      academic: "Register for classes, purchase materials, attend lectures, and engage with academic resources.",
-      career: "Prepare for post-graduation opportunities, apply for internships, and explore visa options for work.",
-    };
-    
-    return descriptions[stageId] || "";
-  };
-  
+
   const getStageColor = (stageId: string): string => {
     const colors: Record<string, string> = {
-      research: "#4A90E2", // Blue
-      application: "#9C27B0", // Purple
-      visa: "#4CAF50", // Green
-      pre_departure: "#FF9800", // Orange
-      arrival: "#E91E63", // Pink
-      academic: "#3F51B5", // Indigo
-      career: "#009688", // Teal
+      research: "#4A90E2",
+      application: "#9C27B0", 
+      visa: "#4CAF50",
+      pre_departure: "#FF9800",
+      arrival: "#E91E63",
+      academic: "#3F51B5",
+      career: "#009688",
     };
     
     return colors[stageId] || Colors.primary;
   };
-  
+
   const handleTaskToggle = (taskId: string, completed: boolean) => {
-    updateTask(id as JourneyStage, taskId, completed);
+    updateTaskCompletion(stageId, taskId, completed);
+    
+    // Check if this completion triggers a milestone
+    const updatedStage = journeyProgress.find(s => s.stage === stageId);
+    if (updatedStage) {
+      const completedTasks = updatedStage.tasks.filter(task => task.completed).length;
+      const totalTasks = updatedStage.tasks.length;
+      const newProgress = Math.round((completedTasks / totalTasks) * 100);
+      
+      // Trigger celebration for significant milestones
+      if (completed && (newProgress === 100 || newProgress % 25 === 0)) {
+        addRecentMilestone({
+          type: newProgress === 100 ? "stage_complete" : "progress_milestone",
+          stage: stageId,
+          progress: newProgress,
+          timestamp: Date.now(),
+        });
+        
+        if (newProgress === 100) {
+          Alert.alert(
+            "🎉 Stage Complete!",
+            `Congratulations! You have completed the ${getStageTitle(stageId)} stage.`,
+            [{ text: "Continue", onPress: () => router.back() }]
+          );
+        }
+      }
+    }
   };
-  
+
   const completedTasks = stage.tasks.filter(task => task.completed).length;
   const totalTasks = stage.tasks.length;
-  const stageColor = getStageColor(stage.stage);
+  const stageColor = getStageColor(stageId);
   
   return (
-    <View style={styles.container}>
-      {showCelebration && (
-        <CelebrationAnimation 
-          visible={showCelebration} 
-          type={recentMilestone?.type || "confetti"}
-          onAnimationFinish={() => setShowCelebration(false)}
-        />
-      )}
-      
-      <Animated.View 
-        style={[
-          styles.header,
-          { 
-            opacity: fadeAnim,
-            transform: [{ scale: scaleAnim }],
-            backgroundColor: `${stageColor}10` // 10% opacity of the stage color
-          }
-        ]}
-      >
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={() => router.back()}
-        >
-          <ChevronLeft size={24} color={Colors.text} />
-        </TouchableOpacity>
-        
-        <View style={styles.headerContent}>
-          <View style={styles.titleRow}>
-            <Text style={styles.title}>{getStageTitle(stage.stage)}</Text>
-            <View style={[styles.stageBadge, { backgroundColor: stageColor }]}>
-              <Text style={styles.stageNumber}>Stage {journeyProgress.findIndex(s => s.stage === stage.stage) + 1}</Text>
-            </View>
-          </View>
-          
-          <Text style={styles.description}>{getStageDescription(stage.stage)}</Text>
-          
-          <View style={styles.progressContainer}>
-            <ProgressBar
-              progress={stage.progress}
-              progressColor={stageColor}
-              height={8}
-              backgroundColor={`${stageColor}30`}
-            />
-            <View style={styles.progressTextContainer}>
-              <Text style={styles.progressLabel}>
-                {completedTasks}/{totalTasks} tasks completed
-              </Text>
-              <Text style={[styles.progressText, { color: stageColor }]}>
-                {stage.progress}% Complete
-              </Text>
-            </View>
-          </View>
-        </View>
-      </Animated.View>
-      
-      <View style={styles.content}>
-        <QuoteCard 
-          quote={stageQuote.text} 
-          author={stageQuote.author} 
-          variant="minimal"
-        />
-        
-        <View style={styles.tasksContainer}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.tasksTitle}>Tasks</Text>
-            {completedTasks > 0 && (
-              <View style={styles.completedBadge}>
-                <CheckCircle2 size={14} color={Colors.success} />
-                <Text style={styles.completedText}>{completedTasks} completed</Text>
-              </View>
-            )}
-          </View>
-          
-          <FlatList
-            data={stage.tasks}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }) => (
-              <TaskItem
-                id={item.id}
-                title={item.title}
-                completed={item.completed}
-                dueDate={item.dueDate}
-                onToggle={handleTaskToggle}
-                accentColor={stageColor}
-              />
-            )}
-            contentContainerStyle={styles.tasksList}
-            showsVerticalScrollIndicator={false}
-          />
-        </View>
-        
-        {stage.progress === 100 && (
-          <View style={styles.completionContainer}>
-            <View style={[styles.completionBadge, { backgroundColor: `${stageColor}20` }]}>
-              <Award size={24} color={stageColor} />
-              <Text style={[styles.completionText, { color: stageColor }]}>
-                Stage Completed!
-              </Text>
-            </View>
-            <Text style={styles.nextStageText}>
-              Great job! You've completed all tasks in this stage.
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <Card style={styles.headerCard}>
+        <View style={styles.stageHeader}>
+          <View style={[styles.stageIndicator, { backgroundColor: stageColor }]} />
+          <View style={styles.stageInfo}>
+            <Text style={styles.stageTitle}>{getStageTitle(stageId)}</Text>
+            <Text style={styles.stageSubtitle}>
+              {completedTasks} of {totalTasks} tasks completed
             </Text>
           </View>
-        )}
-      </View>
-    </View>
+          {stage.completed && (
+            <View style={styles.completedBadge}>
+              <CheckCircle size={20} color={Colors.success} />
+              <Text style={styles.completedText}>Completed</Text>
+            </View>
+          )}
+        </View>
+        
+        <View style={styles.progressSection}>
+          <ProgressBar
+            progress={stage.progress}
+            progressColor={stageColor}
+            height={8}
+            backgroundColor={`${stageColor}20`}
+            animated={true}
+          />
+          <View style={styles.progressTextRow}>
+            <Text style={styles.progressLabel}>Progress</Text>
+            <Text style={[styles.progressPercent, { color: stageColor }]}>
+              {stage.progress}%
+            </Text>
+          </View>
+        </View>
+      </Card>
+      
+      <Card style={styles.tasksCard}>
+        <View style={styles.tasksHeader}>
+          <Text style={styles.tasksTitle}>Tasks</Text>
+          <View style={styles.tasksStats}>
+            <Text style={styles.tasksStatsText}>
+              {completedTasks}/{totalTasks}
+            </Text>
+          </View>
+        </View>
+        
+        <View style={styles.tasksList}>
+          {stage.tasks.map((task) => (
+            <TaskItem
+              key={task.id}
+              id={task.id}
+              title={task.title}
+              completed={task.completed}
+              dueDate={task.dueDate}
+              onToggle={handleTaskToggle}
+              accentColor={stageColor}
+            />
+          ))}
+        </View>
+      </Card>
+      
+      {stage.completed && (
+        <Card style={styles.congratsCard}>
+          <View style={styles.congratsContent}>
+            <Award size={32} color={Colors.success} />
+            <Text style={styles.congratsTitle}>Stage Completed!</Text>
+            <Text style={styles.congratsText}>
+              Great job completing the {getStageTitle(stageId)} stage. You are one step closer to your study abroad goals!
+            </Text>
+          </View>
+        </Card>
+      )}
+    </ScrollView>
   );
 }
 
@@ -227,61 +168,65 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.background,
   },
-  header: {
-    padding: 20,
-    paddingTop: 16,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
+  content: {
+    padding: 16,
+    paddingBottom: 32,
   },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: Colors.white,
+  errorContainer: {
+    flex: 1,
     justifyContent: "center",
     alignItems: "center",
+    backgroundColor: Colors.background,
+  },
+  errorText: {
+    fontSize: 16,
+    color: Colors.lightText,
+  },
+  headerCard: {
     marginBottom: 16,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
   },
-  headerContent: {
-    paddingHorizontal: 4,
-  },
-  titleRow: {
+  stageHeader: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 8,
+    marginBottom: 20,
   },
-  title: {
-    fontSize: 24,
-    fontWeight: "700",
-    color: Colors.text,
+  stageIndicator: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    marginRight: 12,
+  },
+  stageInfo: {
     flex: 1,
   },
-  stageBadge: {
+  stageTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: Colors.text,
+    marginBottom: 4,
+  },
+  stageSubtitle: {
+    fontSize: 14,
+    color: Colors.lightText,
+  },
+  completedBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#E8F5E9",
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
   },
-  stageNumber: {
-    color: Colors.white,
+  completedText: {
     fontSize: 12,
+    color: Colors.success,
     fontWeight: "600",
+    marginLeft: 4,
   },
-  description: {
-    fontSize: 14,
-    color: Colors.lightText,
-    lineHeight: 22,
-    marginBottom: 20,
-  },
-  progressContainer: {
+  progressSection: {
     marginTop: 8,
   },
-  progressTextContainer: {
+  progressTextRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
@@ -291,18 +236,14 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.lightText,
   },
-  progressText: {
+  progressPercent: {
     fontSize: 16,
     fontWeight: "700",
   },
-  content: {
-    flex: 1,
-    padding: 20,
+  tasksCard: {
+    marginBottom: 16,
   },
-  tasksContainer: {
-    flex: 1,
-  },
-  sectionHeader: {
+  tasksHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
@@ -313,59 +254,40 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: Colors.text,
   },
-  completedBadge: {
-    flexDirection: "row",
-    alignItems: "center",
+  tasksStats: {
     backgroundColor: Colors.lightBackground,
-    paddingHorizontal: 10,
+    paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 16,
+    borderRadius: 12,
   },
-  completedText: {
-    fontSize: 12,
-    color: Colors.success,
-    fontWeight: "500",
-    marginLeft: 4,
+  tasksStatsText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: Colors.primary,
   },
   tasksList: {
-    paddingBottom: 24,
+    gap: 8,
   },
-  completionContainer: {
+  congratsCard: {
+    backgroundColor: "#E8F5E9",
+    borderWidth: 1,
+    borderColor: "#C8E6C9",
+  },
+  congratsContent: {
     alignItems: "center",
-    marginTop: 16,
-    marginBottom: 24,
-    padding: 16,
-    backgroundColor: Colors.white,
-    borderRadius: 16,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    padding: 8,
   },
-  completionBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    marginBottom: 12,
-  },
-  completionText: {
-    fontSize: 16,
+  congratsTitle: {
+    fontSize: 18,
     fontWeight: "700",
-    marginLeft: 8,
+    color: Colors.success,
+    marginTop: 12,
+    marginBottom: 8,
   },
-  nextStageText: {
+  congratsText: {
     fontSize: 14,
-    color: Colors.lightText,
+    color: Colors.text,
     textAlign: "center",
     lineHeight: 20,
-  },
-  errorText: {
-    fontSize: 16,
-    color: Colors.error,
-    textAlign: "center",
-    marginTop: 24,
   },
 });

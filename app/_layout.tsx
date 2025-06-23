@@ -46,7 +46,9 @@ function RootLayoutNav() {
   
   useEffect(() => {
     // Initialize user when app starts
-    initializeUser();
+    if (initializeUser) {
+      initializeUser();
+    }
   }, [initializeUser]);
 
   return (
