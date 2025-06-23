@@ -203,7 +203,9 @@ export default function OnboardingScreen() {
         console.log("Moving to next step:", nextStep);
 
         setStep(nextStep);
-        saveUserData(nextStep);
+
+        // 🔥 IMPORTANT: Await this if it returns a promise
+        await saveUserData(nextStep);
       } else {
         console.log("Validation failed for step:", step);
       }
