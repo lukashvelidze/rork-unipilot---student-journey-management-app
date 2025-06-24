@@ -5,7 +5,8 @@ import * as SplashScreen from "expo-splash-screen";
 import { useEffect } from "react";
 import { StatusBar } from "expo-status-bar";
 import { Platform } from "react-native";
-import Colors from "@/constants/colors";
+import { useColors } from "@/hooks/useColors";
+import { useThemeStore } from "@/store/themeStore";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { trpc, trpcClient } from "@/lib/trpc";
 import { useUserStore } from "@/store/userStore";
@@ -41,6 +42,8 @@ export default function RootLayout() {
 }
 
 function RootLayoutNav() {
+  const Colors = useColors();
+  const { isDarkMode } = useThemeStore();
   const initializeUser = useUserStore((state) => state.initializeUser);
   
   useEffect(() => {
@@ -56,7 +59,7 @@ function RootLayoutNav() {
 
   return (
     <>
-      <StatusBar style="auto" />
+      <StatusBar style={isDarkMode ? "light" : "auto"} />
       <trpc.Provider client={trpcClient} queryClient={queryClient}>
         <QueryClientProvider client={queryClient}>
           <Stack

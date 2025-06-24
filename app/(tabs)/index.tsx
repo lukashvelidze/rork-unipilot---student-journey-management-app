@@ -2,7 +2,7 @@ import React, { useEffect } from "react";
 import { StyleSheet, View, Text, ScrollView, TouchableOpacity } from "react-native";
 import { useRouter } from "expo-router";
 import { Award, TrendingUp, BookOpen, Users, Crown, Zap, Target, Calendar, FileText, MessageSquare } from "lucide-react-native";
-import Colors from "@/constants/colors";
+import { useColors } from "@/hooks/useColors";
 import Card from "@/components/Card";
 import ProgressBar from "@/components/ProgressBar";
 import QuoteCard from "@/components/QuoteCard";
@@ -14,6 +14,7 @@ import { initialJourneyProgress } from "@/mocks/journeyTasks";
 
 export default function HomeScreen() {
   const router = useRouter();
+  const Colors = useColors();
   const { user, isPremium } = useUserStore();
   const { journeyProgress, setJourneyProgress } = useJourneyStore();
   
@@ -42,8 +43,8 @@ export default function HomeScreen() {
   
   if (!user) {
     return (
-      <View style={styles.loadingContainer}>
-        <Text style={styles.loadingText}>Setting up your journey...</Text>
+      <View style={[styles.loadingContainer, { backgroundColor: Colors.background }]}>
+        <Text style={[styles.loadingText, { color: Colors.lightText }]}>Setting up your journey...</Text>
       </View>
     );
   }
@@ -138,17 +139,17 @@ export default function HomeScreen() {
   ];
   
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
+    <ScrollView style={[styles.container, { backgroundColor: Colors.background }]} contentContainerStyle={styles.scrollContent}>
       <View style={styles.header}>
         <View style={styles.headerTop}>
           <View>
-            <Text style={styles.greeting}>Welcome back,</Text>
-            <Text style={styles.name}>{user.name}!</Text>
+            <Text style={[styles.greeting, { color: Colors.lightText }]}>Welcome back,</Text>
+            <Text style={[styles.name, { color: Colors.text }]}>{user.name}!</Text>
           </View>
           {isPremium && (
-            <View style={styles.premiumBadge}>
+            <View style={[styles.premiumBadge, { backgroundColor: Colors.premiumBackground, borderColor: Colors.premium }]}>
               <Crown size={16} color={Colors.premium} />
-              <Text style={styles.premiumText}>Premium</Text>
+              <Text style={[styles.premiumText, { color: Colors.premium }]}>Premium</Text>
             </View>
           )}
         </View>
@@ -160,17 +161,17 @@ export default function HomeScreen() {
         variant="highlight"
       />
       
-      <Card style={styles.progressCard}>
+      <Card style={[styles.progressCard, { backgroundColor: Colors.card }]}>
         <View style={styles.progressHeader}>
           <View>
-            <Text style={styles.progressTitle}>Your Journey Progress</Text>
-            <Text style={styles.progressSubtitle}>
+            <Text style={[styles.progressTitle, { color: Colors.text }]}>Your Journey Progress</Text>
+            <Text style={[styles.progressSubtitle, { color: Colors.lightText }]}>
               {completedStages} of {journeyProgress.length} stages completed
             </Text>
           </View>
-          <View style={styles.progressBadge}>
+          <View style={[styles.progressBadge, { backgroundColor: Colors.lightBackground }]}>
             <Award size={20} color={Colors.primary} />
-            <Text style={styles.progressPercent}>{overallProgress}%</Text>
+            <Text style={[styles.progressPercent, { color: Colors.primary }]}>{overallProgress}%</Text>
           </View>
         </View>
         
@@ -181,48 +182,48 @@ export default function HomeScreen() {
         />
         
         <TouchableOpacity 
-          style={styles.viewJourneyButton}
+          style={[styles.viewJourneyButton, { backgroundColor: Colors.lightBackground }]}
           onPress={() => router.push("/(tabs)/journey")}
         >
-          <Text style={styles.viewJourneyText}>View Full Journey</Text>
+          <Text style={[styles.viewJourneyText, { color: Colors.primary }]}>View Full Journey</Text>
         </TouchableOpacity>
       </Card>
       
       {isPremium && (
         <>
-          <Card style={styles.premiumFeaturesCard}>
+          <Card style={[styles.premiumFeaturesCard, { backgroundColor: Colors.premiumBackground, borderColor: Colors.premium }]}>
             <View style={styles.sectionHeader}>
               <Crown size={20} color={Colors.premium} />
-              <Text style={styles.premiumSectionTitle}>Premium Features</Text>
+              <Text style={[styles.premiumSectionTitle, { color: Colors.text }]}>Premium Features</Text>
             </View>
             
             <View style={styles.premiumGrid}>
               {premiumFeatures.map((feature, index) => (
                 <TouchableOpacity
                   key={index}
-                  style={[styles.premiumFeatureCard, { borderLeftColor: feature.color }]}
+                  style={[styles.premiumFeatureCard, { backgroundColor: Colors.white, borderLeftColor: feature.color }]}
                   onPress={feature.onPress}
                 >
                   <feature.icon size={20} color={feature.color} />
-                  <Text style={styles.premiumFeatureTitle}>{feature.title}</Text>
-                  <Text style={styles.premiumFeatureDescription}>{feature.description}</Text>
+                  <Text style={[styles.premiumFeatureTitle, { color: Colors.text }]}>{feature.title}</Text>
+                  <Text style={[styles.premiumFeatureDescription, { color: Colors.lightText }]}>{feature.description}</Text>
                 </TouchableOpacity>
               ))}
             </View>
           </Card>
 
-          <Card style={styles.premiumActionsCard}>
-            <Text style={styles.sectionTitle}>Premium Quick Actions</Text>
+          <Card style={[styles.premiumActionsCard, { backgroundColor: Colors.premiumBackground, borderColor: Colors.premium }]}>
+            <Text style={[styles.sectionTitle, { color: Colors.text }]}>Premium Quick Actions</Text>
             <View style={styles.premiumActionsGrid}>
               {premiumQuickActions.map((action, index) => (
                 <TouchableOpacity
                   key={index}
-                  style={[styles.premiumActionCard, { borderColor: action.color }]}
+                  style={[styles.premiumActionCard, { backgroundColor: Colors.white, borderColor: action.color }]}
                   onPress={action.onPress}
                 >
                   <action.icon size={24} color={action.color} />
-                  <Text style={styles.actionTitle}>{action.title}</Text>
-                  <Text style={styles.actionDescription}>{action.description}</Text>
+                  <Text style={[styles.actionTitle, { color: Colors.text }]}>{action.title}</Text>
+                  <Text style={[styles.actionDescription, { color: Colors.lightText }]}>{action.description}</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -231,11 +232,11 @@ export default function HomeScreen() {
       )}
       
       {upcomingTasks.length > 0 && (
-        <Card style={styles.tasksCard}>
+        <Card style={[styles.tasksCard, { backgroundColor: Colors.card }]}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Upcoming Tasks</Text>
+            <Text style={[styles.sectionTitle, { color: Colors.text }]}>Upcoming Tasks</Text>
             <TouchableOpacity onPress={() => router.push(`/journey/${currentStage?.stage}`)}>
-              <Text style={styles.viewAllText}>View All</Text>
+              <Text style={[styles.viewAllText, { color: Colors.primary }]}>View All</Text>
             </TouchableOpacity>
           </View>
           
@@ -246,11 +247,11 @@ export default function HomeScreen() {
               onPress={() => router.push(`/journey/${currentStage?.stage}`)}
             >
               <View style={[styles.taskIndicator, { backgroundColor: task.completed ? Colors.success : Colors.primary }]} />
-              <Text style={[styles.taskTitle, { textDecorationLine: task.completed ? 'line-through' : 'none' }]}>
+              <Text style={[styles.taskTitle, { color: Colors.text, textDecorationLine: task.completed ? 'line-through' : 'none' }]}>
                 {task.title}
               </Text>
               {task.completed && (
-                <View style={styles.taskCompleted}>
+                <View style={[styles.taskCompleted, { backgroundColor: Colors.success }]}>
                   <Text style={styles.taskCompletedText}>✓</Text>
                 </View>
               )}
@@ -260,35 +261,35 @@ export default function HomeScreen() {
       )}
       
       <View style={styles.quickActions}>
-        <Text style={styles.sectionTitle}>Quick Actions</Text>
+        <Text style={[styles.sectionTitle, { color: Colors.text }]}>Quick Actions</Text>
         <View style={styles.actionsGrid}>
           {quickActions.map((action, index) => (
             <TouchableOpacity
               key={index}
-              style={[styles.actionCard, { borderLeftColor: action.color }]}
+              style={[styles.actionCard, { backgroundColor: Colors.white, borderLeftColor: action.color }]}
               onPress={action.onPress}
             >
               <action.icon size={24} color={action.color} />
-              <Text style={styles.actionTitle}>{action.title}</Text>
-              <Text style={styles.actionDescription}>{action.description}</Text>
+              <Text style={[styles.actionTitle, { color: Colors.text }]}>{action.title}</Text>
+              <Text style={[styles.actionDescription, { color: Colors.lightText }]}>{action.description}</Text>
             </TouchableOpacity>
           ))}
         </View>
       </View>
 
       {!isPremium && (
-        <Card style={styles.upgradeCard}>
+        <Card style={[styles.upgradeCard, { backgroundColor: Colors.premiumBackground, borderColor: Colors.premium }]}>
           <View style={styles.upgradeContent}>
             <Crown size={32} color={Colors.premium} />
             <View style={styles.upgradeText}>
-              <Text style={styles.upgradeTitle}>Unlock Premium Features</Text>
-              <Text style={styles.upgradeDescription}>
+              <Text style={[styles.upgradeTitle, { color: Colors.text }]}>Unlock Premium Features</Text>
+              <Text style={[styles.upgradeDescription, { color: Colors.lightText }]}>
                 Get unlimited AI assistance, personal mentoring, and exclusive resources
               </Text>
             </View>
           </View>
           <TouchableOpacity
-            style={styles.upgradeButton}
+            style={[styles.upgradeButton, { backgroundColor: Colors.premium }]}
             onPress={() => router.push("/premium")}
           >
             <Text style={styles.upgradeButtonText}>Upgrade Now</Text>
@@ -302,17 +303,14 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: Colors.background,
   },
   loadingText: {
     fontSize: 16,
-    color: Colors.lightText,
   },
   scrollContent: {
     padding: 20,
@@ -328,28 +326,23 @@ const styles = StyleSheet.create({
   },
   greeting: {
     fontSize: 16,
-    color: Colors.lightText,
     marginBottom: 4,
   },
   name: {
     fontSize: 28,
     fontWeight: "700",
-    color: Colors.text,
   },
   premiumBadge: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: Colors.premiumBackground,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: Colors.premium,
   },
   premiumText: {
     fontSize: 12,
     fontWeight: "600",
-    color: Colors.premium,
     marginLeft: 4,
   },
   progressCard: {
@@ -364,17 +357,14 @@ const styles = StyleSheet.create({
   progressTitle: {
     fontSize: 18,
     fontWeight: "600",
-    color: Colors.text,
     marginBottom: 4,
   },
   progressSubtitle: {
     fontSize: 14,
-    color: Colors.lightText,
   },
   progressBadge: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: Colors.lightBackground,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 16,
@@ -382,31 +372,25 @@ const styles = StyleSheet.create({
   progressPercent: {
     fontSize: 16,
     fontWeight: "700",
-    color: Colors.primary,
     marginLeft: 6,
   },
   viewJourneyButton: {
     marginTop: 16,
     paddingVertical: 12,
     alignItems: "center",
-    backgroundColor: Colors.lightBackground,
     borderRadius: 8,
   },
   viewJourneyText: {
     fontSize: 14,
     fontWeight: "600",
-    color: Colors.primary,
   },
   premiumFeaturesCard: {
     marginBottom: 20,
-    backgroundColor: Colors.premiumBackground,
     borderWidth: 1,
-    borderColor: Colors.premium,
   },
   premiumSectionTitle: {
     fontSize: 18,
     fontWeight: "600",
-    color: Colors.text,
     marginLeft: 8,
   },
   premiumGrid: {
@@ -417,7 +401,6 @@ const styles = StyleSheet.create({
   },
   premiumFeatureCard: {
     width: "48%",
-    backgroundColor: Colors.white,
     borderRadius: 12,
     padding: 12,
     marginBottom: 12,
@@ -431,26 +414,21 @@ const styles = StyleSheet.create({
   premiumFeatureTitle: {
     fontSize: 14,
     fontWeight: "600",
-    color: Colors.text,
     marginTop: 8,
     marginBottom: 4,
   },
   premiumFeatureDescription: {
     fontSize: 12,
-    color: Colors.lightText,
     lineHeight: 16,
   },
   premiumActionsCard: {
     marginBottom: 20,
-    backgroundColor: Colors.premiumBackground,
     borderWidth: 1,
-    borderColor: Colors.premium,
   },
   premiumActionsGrid: {
     marginTop: 12,
   },
   premiumActionCard: {
-    backgroundColor: Colors.white,
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
@@ -473,11 +451,9 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: "600",
-    color: Colors.text,
   },
   viewAllText: {
     fontSize: 14,
-    color: Colors.primary,
     fontWeight: "500",
   },
   taskItem: {
@@ -495,19 +471,17 @@ const styles = StyleSheet.create({
   },
   taskTitle: {
     fontSize: 14,
-    color: Colors.text,
     flex: 1,
   },
   taskCompleted: {
     width: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: Colors.success,
     justifyContent: "center",
     alignItems: "center",
   },
   taskCompletedText: {
-    color: Colors.white,
+    color: "#FFFFFF",
     fontSize: 12,
     fontWeight: "600",
   },
@@ -518,7 +492,6 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   actionCard: {
-    backgroundColor: Colors.white,
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
@@ -532,18 +505,14 @@ const styles = StyleSheet.create({
   actionTitle: {
     fontSize: 16,
     fontWeight: "600",
-    color: Colors.text,
     marginTop: 8,
     marginBottom: 4,
   },
   actionDescription: {
     fontSize: 14,
-    color: Colors.lightText,
   },
   upgradeCard: {
-    backgroundColor: Colors.premiumBackground,
     borderWidth: 1,
-    borderColor: Colors.premium,
     marginBottom: 20,
   },
   upgradeContent: {
@@ -558,16 +527,13 @@ const styles = StyleSheet.create({
   upgradeTitle: {
     fontSize: 18,
     fontWeight: "600",
-    color: Colors.text,
     marginBottom: 4,
   },
   upgradeDescription: {
     fontSize: 14,
-    color: Colors.lightText,
     lineHeight: 20,
   },
   upgradeButton: {
-    backgroundColor: Colors.premium,
     borderRadius: 8,
     paddingVertical: 12,
     alignItems: "center",
@@ -575,6 +541,6 @@ const styles = StyleSheet.create({
   upgradeButtonText: {
     fontSize: 16,
     fontWeight: "600",
-    color: Colors.white,
+    color: "#FFFFFF",
   },
 });

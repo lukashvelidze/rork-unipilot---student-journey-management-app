@@ -2,16 +2,19 @@ import React, { useEffect, useState } from "react";
 import { StyleSheet, View, Text, FlatList, TouchableOpacity, TextInput, Image } from "react-native";
 import { useRouter } from "expo-router";
 import { Plus, Search, X, Crown } from "lucide-react-native";
-import Colors from "@/constants/colors";
+import { useColors } from "@/hooks/useColors";
 import PostCard from "@/components/PostCard";
 import TopicSelector from "@/components/TopicSelector";
 import Card from "@/components/Card";
 import { useCommunityStore } from "@/store/communityStore";
+import { useUserStore } from "@/store/userStore";
 import { Topic } from "@/types/community";
 import { mockPosts } from "@/mocks/communityPosts";
 
 export default function CommunityScreen() {
   const router = useRouter();
+  const Colors = useColors();
+  const { isPremium } = useUserStore();
   const {
     posts,
     filteredPosts,
@@ -62,11 +65,11 @@ export default function CommunityScreen() {
   ];
   
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Community</Text>
+    <View style={[styles.container, { backgroundColor: Colors.background }]}>
+      <View style={[styles.header, { backgroundColor: Colors.card, borderBottomColor: Colors.border }]}>
+        <Text style={[styles.title, { color: Colors.text }]}>Community</Text>
         <TouchableOpacity
-          style={styles.newPostButton}
+          style={[styles.newPostButton, { backgroundColor: Colors.primary }]}
           onPress={() => router.push("/community/new")}
         >
           <Plus size={20} color={Colors.white} />
@@ -74,11 +77,12 @@ export default function CommunityScreen() {
       </View>
       
       <View style={styles.searchContainer}>
-        <View style={styles.searchInputContainer}>
+        <View style={[styles.searchInputContainer, { backgroundColor: Colors.lightBackground }]}>
           <Search size={20} color={Colors.lightText} style={styles.searchIcon} />
           <TextInput
-            style={styles.searchInput}
+            style={[styles.searchInput, { color: Colors.text }]}
             placeholder="Search discussions..."
+            placeholderTextColor={Colors.lightText}
             value={searchQuery}
             onChangeText={handleSearch}
             autoCapitalize="none"
@@ -92,31 +96,33 @@ export default function CommunityScreen() {
         </View>
       </View>
       
-      {/* Premium UniPilot Promotion */}
-      <Card style={styles.premiumPromoCard}>
-        <View style={styles.premiumPromoContent}>
-          <View style={styles.premiumPromoTextContainer}>
-            <View style={styles.premiumPromoHeader}>
-              <Crown size={20} color="#FFD700" style={styles.crownIcon} />
-              <Text style={styles.premiumPromoTitle}>UniPilot Premium</Text>
+      {/* Premium UniPilot Promotion - Only show if not premium */}
+      {!isPremium && (
+        <Card style={[styles.premiumPromoCard, { backgroundColor: Colors.card }]}>
+          <View style={styles.premiumPromoContent}>
+            <View style={styles.premiumPromoTextContainer}>
+              <View style={styles.premiumPromoHeader}>
+                <Crown size={20} color="#FFD700" style={styles.crownIcon} />
+                <Text style={[styles.premiumPromoTitle, { color: Colors.text }]}>UniPilot Premium</Text>
+              </View>
+              <Text style={[styles.premiumPromoDescription, { color: Colors.text }]}>
+                Get expert advice on your visa applications, university choices, and more!
+              </Text>
+              <TouchableOpacity
+                style={[styles.premiumPromoButton, { backgroundColor: Colors.primary }]}
+                onPress={() => router.push("/premium")}
+              >
+                <Text style={styles.premiumPromoButtonText}>Try for $4.99/month</Text>
+              </TouchableOpacity>
             </View>
-            <Text style={styles.premiumPromoDescription}>
-              Get expert advice on your visa applications, university choices, and more!
-            </Text>
-            <TouchableOpacity
-              style={styles.premiumPromoButton}
-              onPress={() => router.push("/premium")}
-            >
-              <Text style={styles.premiumPromoButtonText}>Try for $4.99/month</Text>
-            </TouchableOpacity>
+            <Image 
+              source={{ uri: "https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80" }}
+              style={styles.premiumPromoImage}
+              resizeMode="cover"
+            />
           </View>
-          <Image 
-            source={{ uri: "https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80" }}
-            style={styles.premiumPromoImage}
-            resizeMode="cover"
-          />
-        </View>
-      </Card>
+        </Card>
+      )}
       
       <TopicSelector
         topics={topics}
@@ -141,8 +147,8 @@ export default function CommunityScreen() {
         />
       ) : (
         <View style={styles.emptyContainer}>
-          <Text style={styles.emptyTitle}>No discussions found</Text>
-          <Text style={styles.emptyText}>
+          <Text style={[styles.emptyTitle, { color: Colors.text }]}>No discussions found</Text>
+          <Text style={[styles.emptyText, { color: Colors.lightText }]}>
             {searchQuery
               ? `No results for "${searchQuery}"`
               : selectedTopic
@@ -150,7 +156,7 @@ export default function CommunityScreen() {
               : "Be the first to start a discussion"}
           </Text>
           <TouchableOpacity
-            style={styles.startDiscussionButton}
+            style={[styles.startDiscussionButton, { backgroundColor: Colors.primary }]}
             onPress={() => router.push("/community/new")}
           >
             <Text style={styles.startDiscussionText}>Start Discussion</Text>
@@ -164,7 +170,6 @@ export default function CommunityScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
   },
   header: {
     flexDirection: "row",
@@ -172,18 +177,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
   },
   title: {
     fontSize: 20,
     fontWeight: "700",
-    color: Colors.text,
   },
   newPostButton: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: Colors.primary,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -194,7 +196,6 @@ const styles = StyleSheet.create({
   searchInputContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: Colors.lightBackground,
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 8,
@@ -205,7 +206,6 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 16,
-    color: Colors.text,
   },
   premiumPromoCard: {
     marginHorizontal: 16,
@@ -232,23 +232,20 @@ const styles = StyleSheet.create({
   premiumPromoTitle: {
     fontSize: 16,
     fontWeight: "700",
-    color: Colors.text,
   },
   premiumPromoDescription: {
     fontSize: 14,
-    color: Colors.text,
     marginBottom: 12,
     lineHeight: 18,
   },
   premiumPromoButton: {
-    backgroundColor: Colors.primary,
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: 6,
     alignSelf: "flex-start",
   },
   premiumPromoButtonText: {
-    color: Colors.white,
+    color: "#FFFFFF",
     fontSize: 12,
     fontWeight: "600",
   },
@@ -268,23 +265,20 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 18,
     fontWeight: "600",
-    color: Colors.text,
     marginBottom: 8,
   },
   emptyText: {
     fontSize: 14,
-    color: Colors.lightText,
     textAlign: "center",
     marginBottom: 24,
   },
   startDiscussionButton: {
-    backgroundColor: Colors.primary,
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,
   },
   startDiscussionText: {
-    color: Colors.white,
+    color: "#FFFFFF",
     fontSize: 16,
     fontWeight: "600",
   },

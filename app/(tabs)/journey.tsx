@@ -2,8 +2,8 @@ import React, { useState, useEffect } from "react";
 import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Platform, Animated, Dimensions } from "react-native";
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
-import { Map as MapIcon, ChevronRight, Quote, CheckSquare, Calendar, Clock, Star, Heart, Camera, Plus } from "lucide-react-native";
-import Colors from "@/constants/colors";
+import { Map as MapIcon, ChevronRight, Quote, CheckSquare, Calendar, Clock, Star, Heart, Camera, Plus, Plane, Globe, Timer, MapPin } from "lucide-react-native";
+import { useColors } from "@/hooks/useColors";
 import Card from "@/components/Card";
 import ProgressBar from "@/components/ProgressBar";
 import StageProgress from "@/components/StageProgress";
@@ -20,12 +20,15 @@ const { width } = Dimensions.get("window");
 
 export default function JourneyScreen() {
   const router = useRouter();
+  const Colors = useColors();
   const { user } = useUserStore();
   const { journeyProgress, recentMilestone, clearRecentMilestone, setJourneyProgress } = useJourneyStore();
   const [activeTab, setActiveTab] = useState<"roadmap" | "map" | "timeline" | "memories">("roadmap");
   const [showCelebration, setShowCelebration] = useState(false);
   const [dailyQuote, setDailyQuote] = useState(() => getRandomQuote(generalQuotes));
   const [fadeAnim] = useState(new Animated.Value(0));
+  const [planeAnim] = useState(new Animated.Value(0));
+  const [treeGrowthAnim] = useState(new Animated.Value(0));
   
   // Initialize journey progress if not already set
   useEffect(() => {
@@ -59,6 +62,35 @@ export default function JourneyScreen() {
       useNativeDriver: true,
     }).start();
   }, [fadeAnim]);
+
+  // Plane animation for memories
+  useEffect(() => {
+    if (activeTab === "memories") {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(planeAnim, {
+            toValue: 1,
+            duration: 8000,
+            useNativeDriver: true,
+          }),
+          Animated.timing(planeAnim, {
+            toValue: 0,
+            duration: 0,
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+    }
+  }, [activeTab, planeAnim]);
+
+  // Tree growth animation
+  useEffect(() => {
+    Animated.timing(treeGrowthAnim, {
+      toValue: memories.length / 10, // Grow based on number of memories
+      duration: 1500,
+      useNativeDriver: true,
+    }).start();
+  }, [treeGrowthAnim]);
 
   // Mock timeline data
   const timelineEvents = [
@@ -142,6 +174,24 @@ export default function JourneyScreen() {
       mood: "nervous" as const,
     },
   ];
+
+  // Flight information for map
+  const flightInfo = {
+    duration: "14h 30m",
+    distance: "8,847 km",
+    timeDifference: "+8 hours",
+    stops: 1,
+    airlines: ["Emirates", "Qatar Airways", "Turkish Airlines"],
+    averageCost: "$1,200 - $2,500",
+    bestTimeToBook: "2-3 months in advance",
+    tips: [
+      "Book flights 2-3 months in advance for better prices",
+      "Consider layovers to save money",
+      "Pack essentials in carry-on for long flights",
+      "Arrive at destination 2-3 days before important events",
+      "Check visa requirements for transit countries"
+    ]
+  };
   
   const renderTabContent = () => {
     switch (activeTab) {
@@ -152,16 +202,16 @@ export default function JourneyScreen() {
               <QuoteCard 
                 quote={dailyQuote.text} 
                 author={dailyQuote.author} 
-                variant="highlight"
+                variant="gradient"
               />
             </Animated.View>
             
-            <Card style={styles.instructionCard}>
+            <Card style={[styles.instructionCard, { backgroundColor: Colors.card }]}>
               <View style={styles.instructionContent}>
                 <CheckSquare size={24} color={Colors.primary} />
                 <View style={styles.instructionText}>
-                  <Text style={styles.instructionTitle}>How to Use Your Roadmap</Text>
-                  <Text style={styles.instructionDescription}>
+                  <Text style={[styles.instructionTitle, { color: Colors.text }]}>How to Use Your Roadmap</Text>
+                  <Text style={[styles.instructionDescription, { color: Colors.lightText }]}>
                     Tap on any stage below to view and complete tasks. Each completed task contributes to your overall progress!
                   </Text>
                 </View>
@@ -182,35 +232,80 @@ export default function JourneyScreen() {
       case "map":
         return (
           <View style={styles.mapContainer}>
-            <Card style={styles.mapCard}>
-              <View style={styles.mapPlaceholder}>
-                <MapIcon size={48} color={Colors.primary} />
-                <Text style={styles.mapPlaceholderText}>
-                  Interactive world map coming soon
-                </Text>
-                <Text style={styles.mapDescription}>
-                  Visualize your journey from {user?.homeCountry.name} to {user?.destinationCountry.name} with an interactive globe and flight path.
-                </Text>
+            <Card style={[styles.mapCard, { backgroundColor: Colors.card }]}>
+              <LinearGradient
+                colors={[Colors.primary, Colors.secondary]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.mapGradient}
+              >
+                <View style={styles.mapContent}>
+                  <View style={styles.mapHeader}>
+                    <Globe size={32} color={Colors.white} />
+                    <Text style={styles.mapTitle}>Your Journey Route</Text>
+                  </View>
+                  
+                  <View style={styles.routeInfo}>
+                    <View style={styles.countryPoint}>
+                      <Text style={styles.countryFlag}>{user?.homeCountry.flag}</Text>
+                      <Text style={styles.countryName}>{user?.homeCountry.name}</Text>
+                    </View>
+                    
+                    <View style={styles.flightPath}>
+                      <Plane size={24} color={Colors.white} />
+                      <View style={styles.flightLine} />
+                    </View>
+                    
+                    <View style={styles.countryPoint}>
+                      <Text style={styles.countryFlag}>{user?.destinationCountry.flag}</Text>
+                      <Text style={styles.countryName}>{user?.destinationCountry.name}</Text>
+                    </View>
+                  </View>
+                </View>
+              </LinearGradient>
+            </Card>
+            
+            {/* Flight Statistics */}
+            <Card style={[styles.flightStatsCard, { backgroundColor: Colors.card }]}>
+              <Text style={[styles.sectionTitle, { color: Colors.text }]}>Flight Information</Text>
+              
+              <View style={styles.statsGrid}>
+                <View style={styles.statItem}>
+                  <Timer size={20} color={Colors.primary} />
+                  <Text style={[styles.statLabel, { color: Colors.lightText }]}>Duration</Text>
+                  <Text style={[styles.statValue, { color: Colors.text }]}>{flightInfo.duration}</Text>
+                </View>
+                
+                <View style={styles.statItem}>
+                  <MapPin size={20} color={Colors.secondary} />
+                  <Text style={[styles.statLabel, { color: Colors.lightText }]}>Distance</Text>
+                  <Text style={[styles.statValue, { color: Colors.text }]}>{flightInfo.distance}</Text>
+                </View>
+                
+                <View style={styles.statItem}>
+                  <Clock size={20} color={Colors.accent} />
+                  <Text style={[styles.statLabel, { color: Colors.lightText }]}>Time Diff</Text>
+                  <Text style={[styles.statValue, { color: Colors.text }]}>{flightInfo.timeDifference}</Text>
+                </View>
+                
+                <View style={styles.statItem}>
+                  <Star size={20} color={Colors.warning} />
+                  <Text style={[styles.statLabel, { color: Colors.lightText }]}>Avg Cost</Text>
+                  <Text style={[styles.statValue, { color: Colors.text }]}>{flightInfo.averageCost}</Text>
+                </View>
               </View>
             </Card>
             
-            <View style={styles.countryInfo}>
-              <View style={styles.countryCard}>
-                <Text style={styles.countryFlag}>{user?.homeCountry.flag}</Text>
-                <Text style={styles.countryName}>{user?.homeCountry.name}</Text>
-                <Text style={styles.countryLabel}>Home Country</Text>
-              </View>
-              
-              <View style={styles.arrow}>
-                <ChevronRight size={24} color={Colors.lightText} />
-              </View>
-              
-              <View style={styles.countryCard}>
-                <Text style={styles.countryFlag}>{user?.destinationCountry.flag}</Text>
-                <Text style={styles.countryName}>{user?.destinationCountry.name}</Text>
-                <Text style={styles.countryLabel}>Destination</Text>
-              </View>
-            </View>
+            {/* Travel Tips */}
+            <Card style={[styles.tipsCard, { backgroundColor: Colors.card }]}>
+              <Text style={[styles.sectionTitle, { color: Colors.text }]}>✈️ Travel Tips</Text>
+              {flightInfo.tips.map((tip, index) => (
+                <View key={index} style={styles.tipItem}>
+                  <View style={[styles.tipBullet, { backgroundColor: Colors.primary }]} />
+                  <Text style={[styles.tipText, { color: Colors.lightText }]}>{tip}</Text>
+                </View>
+              ))}
+            </Card>
           </View>
         );
       case "timeline":
@@ -218,13 +313,15 @@ export default function JourneyScreen() {
           <View style={styles.timelineContainer}>
             <View style={styles.timelineHeader}>
               <LinearGradient
-                colors={[Colors.gradientStart, Colors.gradientEnd]}
+                colors={[Colors.memoryPink, Colors.memoryPurple]}
                 start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
+                end={{ x: 1, y: 1 }}
                 style={styles.timelineHeaderGradient}
               >
-                <Text style={styles.timelineTitle}>Your Journey Timeline</Text>
-                <Text style={styles.timelineSubtitle}>Track your progress through key milestones</Text>
+                <View style={styles.timelineHeaderContent}>
+                  <Text style={styles.timelineTitle}>Your Journey Timeline</Text>
+                  <Text style={styles.timelineSubtitle}>Track your progress through key milestones</Text>
+                </View>
               </LinearGradient>
             </View>
 
@@ -252,29 +349,31 @@ export default function JourneyScreen() {
                   <View style={styles.timelineRight}>
                     <Card style={[
                       styles.timelineCard,
-                      event.completed && styles.timelineCardCompleted
+                      { backgroundColor: Colors.card },
+                      event.completed && { backgroundColor: Colors.success + "10" }
                     ]}>
                       <View style={styles.timelineCardHeader}>
                         <Text style={[
                           styles.timelineEventTitle,
-                          event.completed && styles.timelineEventTitleCompleted
+                          { color: Colors.text },
+                          event.completed && { color: Colors.success }
                         ]}>
                           {event.title}
                         </Text>
-                        <Text style={styles.timelineDate}>
+                        <Text style={[styles.timelineDate, { color: Colors.lightText }]}>
                           {new Date(event.date).toLocaleDateString('en-US', { 
                             month: 'short', 
                             day: 'numeric' 
                           })}
                         </Text>
                       </View>
-                      <Text style={styles.timelineEventDescription}>
+                      <Text style={[styles.timelineEventDescription, { color: Colors.lightText }]}>
                         {event.description}
                       </Text>
                       {event.completed && (
-                        <View style={styles.completedBadge}>
+                        <View style={[styles.completedBadge, { backgroundColor: Colors.success + "20" }]}>
                           <CheckSquare size={12} color={Colors.success} />
-                          <Text style={styles.completedText}>Completed</Text>
+                          <Text style={[styles.completedText, { color: Colors.success }]}>Completed</Text>
                         </View>
                       )}
                     </Card>
@@ -289,20 +388,52 @@ export default function JourneyScreen() {
           <View style={styles.memoriesContainer}>
             <View style={styles.memoriesHeader}>
               <LinearGradient
-                colors={[Colors.memoryPink, Colors.memoryPurple]}
+                colors={[Colors.memoryOrange, Colors.memoryBlue]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={styles.memoriesHeaderGradient}
               >
                 <View style={styles.memoriesHeaderContent}>
-                  <Text style={styles.memoriesTitle}>Your Journey Memories</Text>
-                  <Text style={styles.memoriesSubtitle}>Capture & share your special moments</Text>
+                  {/* Animated plane moving across clouds */}
+                  <Animated.View style={[
+                    styles.animatedPlane,
+                    {
+                      transform: [{
+                        translateX: planeAnim.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [-50, width + 50],
+                        })
+                      }]
+                    }
+                  ]}>
+                    <Plane size={24} color={Colors.white} />
+                  </Animated.View>
+                  
+                  <Text style={styles.memoriesTitle}>Journey Memories</Text>
+                  <Text style={styles.memoriesSubtitle}>Capture moments that matter ✨</Text>
+                  
+                  {/* Growing tree visualization */}
+                  <Animated.View style={[
+                    styles.memoryTree,
+                    {
+                      transform: [{
+                        scaleY: treeGrowthAnim.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [0.3, 1],
+                        })
+                      }]
+                    }
+                  ]}>
+                    <Text style={styles.treeEmoji}>🌳</Text>
+                    <Text style={styles.treeText}>{memories.length} memories collected</Text>
+                  </Animated.View>
+                  
                   <TouchableOpacity
                     style={styles.addMemoryButton}
                     onPress={() => router.push("/memories/new")}
                   >
                     <Plus size={20} color={Colors.white} />
-                    <Text style={styles.addMemoryText}>Add Memory</Text>
+                    <Text style={styles.addMemoryText}>Capture Memory</Text>
                   </TouchableOpacity>
                 </View>
               </LinearGradient>
@@ -325,20 +456,21 @@ export default function JourneyScreen() {
                   onPress={() => router.push("/memories/new")}
                 >
                   <LinearGradient
-                    colors={[Colors.memoryOrange, Colors.memoryBlue]}
+                    colors={[Colors.memoryGreen, Colors.memoryPink]}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
                     style={styles.addMemoryGradient}
                   >
                     <Camera size={32} color={Colors.white} />
                     <Text style={styles.addMemoryCardText}>Add New Memory</Text>
+                    <Text style={styles.addMemoryCardSubtext}>Share your journey</Text>
                   </LinearGradient>
                 </TouchableOpacity>
               </View>
 
               <View style={styles.memoriesFooter}>
-                <Text style={styles.memoriesFooterText}>
-                  ✨ Share your beautiful memories on social media
+                <Text style={[styles.memoriesFooterText, { color: Colors.lightText }]}>
+                  📸 Perfect for Instagram stories & social sharing
                 </Text>
               </View>
             </ScrollView>
@@ -351,14 +483,14 @@ export default function JourneyScreen() {
   
   if (!user) {
     return (
-      <View style={styles.loadingContainer}>
-        <Text style={styles.loadingText}>Loading your journey...</Text>
+      <View style={[styles.loadingContainer, { backgroundColor: Colors.background }]}>
+        <Text style={[styles.loadingText, { color: Colors.lightText }]}>Loading your journey...</Text>
       </View>
     );
   }
   
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: Colors.background }]}>
       {showCelebration && (
         <CelebrationAnimation 
           visible={showCelebration} 
@@ -367,8 +499,8 @@ export default function JourneyScreen() {
         />
       )}
       
-      <View style={styles.header}>
-        <Text style={styles.title}>Your Journey</Text>
+      <View style={[styles.header, { backgroundColor: Colors.card, borderBottomColor: Colors.border }]}>
+        <Text style={[styles.title, { color: Colors.text }]}>Your Journey</Text>
         <View style={styles.progressContainer}>
           <ProgressBar 
             progress={overallProgress} 
@@ -376,21 +508,21 @@ export default function JourneyScreen() {
             animated={true}
           />
           <View style={styles.progressTextContainer}>
-            <Text style={styles.progressLabel}>Overall Progress</Text>
-            <Text style={styles.progressText}>{overallProgress}%</Text>
+            <Text style={[styles.progressLabel, { color: Colors.lightText }]}>Overall Progress</Text>
+            <Text style={[styles.progressText, { color: Colors.primary }]}>{overallProgress}%</Text>
           </View>
         </View>
       </View>
       
-      <View style={styles.tabs}>
+      <View style={[styles.tabs, { backgroundColor: Colors.card, borderBottomColor: Colors.border }]}>
         <TouchableOpacity
-          style={[styles.tab, activeTab === "roadmap" && styles.activeTab]}
+          style={[styles.tab, activeTab === "roadmap" && { borderBottomColor: Colors.primary }]}
           onPress={() => setActiveTab("roadmap")}
         >
           <Text
             style={[
               styles.tabText,
-              activeTab === "roadmap" && styles.activeTabText,
+              { color: activeTab === "roadmap" ? Colors.primary : Colors.lightText },
             ]}
           >
             Roadmap
@@ -398,13 +530,13 @@ export default function JourneyScreen() {
         </TouchableOpacity>
         
         <TouchableOpacity
-          style={[styles.tab, activeTab === "map" && styles.activeTab]}
+          style={[styles.tab, activeTab === "map" && { borderBottomColor: Colors.primary }]}
           onPress={() => setActiveTab("map")}
         >
           <Text
             style={[
               styles.tabText,
-              activeTab === "map" && styles.activeTabText,
+              { color: activeTab === "map" ? Colors.primary : Colors.lightText },
             ]}
           >
             Map
@@ -412,13 +544,13 @@ export default function JourneyScreen() {
         </TouchableOpacity>
         
         <TouchableOpacity
-          style={[styles.tab, activeTab === "timeline" && styles.activeTab]}
+          style={[styles.tab, activeTab === "timeline" && { borderBottomColor: Colors.primary }]}
           onPress={() => setActiveTab("timeline")}
         >
           <Text
             style={[
               styles.tabText,
-              activeTab === "timeline" && styles.activeTabText,
+              { color: activeTab === "timeline" ? Colors.primary : Colors.lightText },
             ]}
           >
             Timeline
@@ -426,13 +558,13 @@ export default function JourneyScreen() {
         </TouchableOpacity>
         
         <TouchableOpacity
-          style={[styles.tab, activeTab === "memories" && styles.activeTab]}
+          style={[styles.tab, activeTab === "memories" && { borderBottomColor: Colors.primary }]}
           onPress={() => setActiveTab("memories")}
         >
           <Text
             style={[
               styles.tabText,
-              activeTab === "memories" && styles.activeTabText,
+              { color: activeTab === "memories" ? Colors.primary : Colors.lightText },
             ]}
           >
             Memories
@@ -440,7 +572,7 @@ export default function JourneyScreen() {
         </TouchableOpacity>
       </View>
       
-      <View style={styles.content}>
+      <View style={[styles.content, { backgroundColor: Colors.lightBackground }]}>
         {renderTabContent()}
       </View>
     </View>
@@ -450,23 +582,18 @@ export default function JourneyScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: Colors.background,
   },
   loadingText: {
     fontSize: 16,
-    color: Colors.lightText,
   },
   header: {
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-    backgroundColor: Colors.white,
     ...Platform.select({
       ios: {
         shadowColor: "#000",
@@ -482,7 +609,6 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: "700",
-    color: Colors.text,
     marginBottom: 16,
   },
   progressContainer: {
@@ -496,40 +622,28 @@ const styles = StyleSheet.create({
   },
   progressLabel: {
     fontSize: 14,
-    color: Colors.lightText,
   },
   progressText: {
     fontSize: 16,
     fontWeight: "700",
-    color: Colors.primary,
   },
   tabs: {
     flexDirection: "row",
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-    backgroundColor: Colors.white,
   },
   tab: {
     flex: 1,
     paddingVertical: 14,
     alignItems: "center",
-  },
-  activeTab: {
     borderBottomWidth: 3,
-    borderBottomColor: Colors.primary,
+    borderBottomColor: "transparent",
   },
   tabText: {
     fontSize: 14,
     fontWeight: "500",
-    color: Colors.lightText,
-  },
-  activeTabText: {
-    color: Colors.primary,
-    fontWeight: "600",
   },
   content: {
     flex: 1,
-    backgroundColor: Colors.lightBackground,
   },
   
   // Roadmap styles
@@ -540,9 +654,8 @@ const styles = StyleSheet.create({
   instructionCard: {
     marginTop: 16,
     marginBottom: 16,
-    backgroundColor: Colors.lightBackground,
     borderLeftWidth: 4,
-    borderLeftColor: Colors.primary,
+    borderLeftColor: "#FF6B6B",
   },
   instructionContent: {
     flexDirection: "row",
@@ -555,12 +668,10 @@ const styles = StyleSheet.create({
   instructionTitle: {
     fontSize: 16,
     fontWeight: "600",
-    color: Colors.text,
     marginBottom: 4,
   },
   instructionDescription: {
     fontSize: 14,
-    color: Colors.lightText,
     lineHeight: 20,
   },
   stagesContainer: {
@@ -574,83 +685,104 @@ const styles = StyleSheet.create({
   },
   mapCard: {
     marginBottom: 16,
-    height: 200,
-    justifyContent: "center",
+    padding: 0,
+    overflow: "hidden",
+  },
+  mapGradient: {
+    padding: 24,
+    minHeight: 200,
+  },
+  mapContent: {
+    flex: 1,
+  },
+  mapHeader: {
     alignItems: "center",
-    backgroundColor: Colors.white,
-    borderRadius: 16,
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 4,
-      },
-    }),
+    marginBottom: 24,
   },
-  mapPlaceholder: {
-    alignItems: "center",
-    padding: 16,
+  mapTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#FFFFFF",
+    marginTop: 8,
   },
-  mapPlaceholderText: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: Colors.text,
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  mapDescription: {
-    fontSize: 14,
-    color: Colors.lightText,
-    textAlign: "center",
-    lineHeight: 22,
-    maxWidth: "80%",
-  },
-  countryInfo: {
+  routeInfo: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
   },
-  countryCard: {
-    flex: 1,
-    backgroundColor: Colors.white,
-    borderRadius: 16,
-    padding: 16,
+  countryPoint: {
     alignItems: "center",
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 3,
-      },
-    }),
+    flex: 1,
   },
   countryFlag: {
-    fontSize: 36,
-    marginBottom: 12,
+    fontSize: 32,
+    marginBottom: 8,
   },
   countryName: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: "600",
-    color: Colors.text,
-    marginBottom: 4,
+    color: "#FFFFFF",
     textAlign: "center",
   },
-  countryLabel: {
-    fontSize: 12,
-    color: Colors.lightText,
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
+  flightPath: {
+    alignItems: "center",
+    marginHorizontal: 16,
   },
-  arrow: {
-    marginHorizontal: 12,
+  flightLine: {
+    width: 60,
+    height: 2,
+    backgroundColor: "#FFFFFF",
+    marginTop: 8,
+  },
+  flightStatsCard: {
+    marginBottom: 16,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    marginBottom: 16,
+  },
+  statsGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+  },
+  statItem: {
+    width: "48%",
+    alignItems: "center",
+    padding: 16,
+    borderRadius: 12,
+    backgroundColor: "rgba(255, 107, 107, 0.05)",
+    marginBottom: 12,
+  },
+  statLabel: {
+    fontSize: 12,
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  statValue: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  tipsCard: {
+    marginBottom: 16,
+  },
+  tipItem: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    marginBottom: 12,
+  },
+  tipBullet: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginTop: 6,
+    marginRight: 12,
+  },
+  tipText: {
+    flex: 1,
+    fontSize: 14,
+    lineHeight: 20,
   },
   
   // Timeline styles
@@ -664,10 +796,13 @@ const styles = StyleSheet.create({
     padding: 24,
     paddingTop: 32,
   },
+  timelineHeaderContent: {
+    alignItems: "center",
+  },
   timelineTitle: {
     fontSize: 24,
     fontWeight: "700",
-    color: Colors.white,
+    color: "#FFFFFF",
     marginBottom: 4,
   },
   timelineSubtitle: {
@@ -703,15 +838,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   timelineCard: {
-    backgroundColor: Colors.white,
     borderRadius: 12,
     padding: 16,
     borderLeftWidth: 3,
-    borderLeftColor: Colors.border,
-  },
-  timelineCardCompleted: {
-    borderLeftColor: Colors.success,
-    backgroundColor: "rgba(107, 207, 127, 0.05)",
+    borderLeftColor: "#ECF0F1",
   },
   timelineCardHeader: {
     flexDirection: "row",
@@ -722,21 +852,15 @@ const styles = StyleSheet.create({
   timelineEventTitle: {
     fontSize: 16,
     fontWeight: "600",
-    color: Colors.text,
     flex: 1,
     marginRight: 8,
   },
-  timelineEventTitleCompleted: {
-    color: Colors.success,
-  },
   timelineDate: {
     fontSize: 12,
-    color: Colors.lightText,
     fontWeight: "500",
   },
   timelineEventDescription: {
     fontSize: 14,
-    color: Colors.lightText,
     lineHeight: 20,
     marginBottom: 8,
   },
@@ -744,14 +868,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     alignSelf: "flex-start",
-    backgroundColor: "rgba(107, 207, 127, 0.1)",
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
   },
   completedText: {
     fontSize: 12,
-    color: Colors.success,
     fontWeight: "600",
     marginLeft: 4,
   },
@@ -766,14 +888,24 @@ const styles = StyleSheet.create({
   memoriesHeaderGradient: {
     padding: 24,
     paddingTop: 32,
+    minHeight: 200,
+    position: "relative",
+    overflow: "hidden",
   },
   memoriesHeaderContent: {
     alignItems: "center",
+    position: "relative",
+    zIndex: 2,
+  },
+  animatedPlane: {
+    position: "absolute",
+    top: 20,
+    zIndex: 1,
   },
   memoriesTitle: {
     fontSize: 24,
     fontWeight: "700",
-    color: Colors.white,
+    color: "#FFFFFF",
     marginBottom: 4,
     textAlign: "center",
   },
@@ -782,6 +914,19 @@ const styles = StyleSheet.create({
     color: "rgba(255, 255, 255, 0.9)",
     textAlign: "center",
     marginBottom: 20,
+  },
+  memoryTree: {
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  treeEmoji: {
+    fontSize: 32,
+    marginBottom: 8,
+  },
+  treeText: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "600",
   },
   addMemoryButton: {
     flexDirection: "row",
@@ -794,7 +939,7 @@ const styles = StyleSheet.create({
     borderColor: "rgba(255, 255, 255, 0.3)",
   },
   addMemoryText: {
-    color: Colors.white,
+    color: "#FFFFFF",
     fontSize: 16,
     fontWeight: "600",
     marginLeft: 8,
@@ -821,10 +966,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   addMemoryCardText: {
-    color: Colors.white,
+    color: "#FFFFFF",
     fontSize: 18,
     fontWeight: "600",
     marginTop: 12,
+  },
+  addMemoryCardSubtext: {
+    color: "rgba(255, 255, 255, 0.8)",
+    fontSize: 14,
+    marginTop: 4,
   },
   memoriesFooter: {
     alignItems: "center",
@@ -832,7 +982,6 @@ const styles = StyleSheet.create({
   },
   memoriesFooterText: {
     fontSize: 16,
-    color: Colors.lightText,
     textAlign: "center",
     fontStyle: "italic",
   },

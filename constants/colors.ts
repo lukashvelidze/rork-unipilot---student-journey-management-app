@@ -1,4 +1,4 @@
-export default {
+export const lightColors = {
   // Primary colors - warm and inspiring theme
   primary: "#FF6B6B", // Coral red - warm and energetic
   primaryLight: "#FF8E8E",
@@ -77,3 +77,86 @@ export default {
   quoteBorder: "#FF6B6B",
   quoteAccent: "#4ECDC4",
 };
+
+export const darkColors = {
+  // Primary colors - adjusted for dark mode
+  primary: "#FF6B6B",
+  primaryLight: "#FF8E8E",
+  primaryDark: "#FF4757",
+  secondary: "#4ECDC4",
+  secondaryLight: "#6BCF7F",
+  secondaryDark: "#26D0CE",
+  
+  // Accent colors
+  accent: "#FFD93D",
+  accentLight: "#FFE55C",
+  success: "#6BCF7F",
+  warning: "#FFA726",
+  error: "#FF5252",
+  info: "#42A5F5",
+  
+  // Background colors - dark theme
+  background: "#0F0F0F", // Very dark
+  lightBackground: "#1A1A1A", // Dark gray
+  darkBackground: "#121212", // Almost black
+  card: "#1E1E1E", // Dark card
+  
+  // Text colors - light for dark background
+  text: "#FFFFFF", // White text
+  lightText: "#B0B0B0", // Light gray
+  mutedText: "#6B6B6B", // Muted gray
+  
+  // Border and divider colors
+  border: "#2A2A2A", // Dark border
+  divider: "#252525", // Dark divider
+  
+  // Utility colors
+  white: "#FFFFFF",
+  black: "#000000",
+  transparent: "transparent",
+  
+  // Gradient colors
+  gradientStart: "#FF6B6B",
+  gradientEnd: "#4ECDC4",
+  gradientWarm: "#FFD93D",
+  gradientCool: "#4ECDC4",
+  
+  // Surface colors
+  surface: "#1A1A1A",
+  surfaceElevated: "#2A2A2A",
+  
+  // Interactive states
+  hover: "#2A2A2A",
+  pressed: "#3A3A3A",
+  disabled: "#1A1A1A",
+  
+  // Shadow colors
+  shadowLight: "rgba(0, 0, 0, 0.2)",
+  shadowMedium: "rgba(0, 0, 0, 0.4)",
+  shadowDark: "rgba(0, 0, 0, 0.6)",
+  
+  // Status colors
+  online: "#6BCF7F",
+  offline: "#95A5A6",
+  away: "#FFA726",
+  
+  // Premium colors
+  premium: "#F39C12",
+  premiumLight: "#F7DC6F",
+  premiumBackground: "rgba(243, 156, 18, 0.1)",
+  
+  // Memory/Social colors
+  memoryPink: "#E91E63",
+  memoryPurple: "#9C27B0",
+  memoryOrange: "#FF9800",
+  memoryBlue: "#2196F3",
+  memoryGreen: "#4CAF50",
+  
+  // Quote card colors
+  quoteBackground: "rgba(255, 107, 107, 0.1)",
+  quoteBorder: "#FF6B6B",
+  quoteAccent: "#4ECDC4",
+};
+
+// Export default as light colors for backward compatibility
+export default lightColors;

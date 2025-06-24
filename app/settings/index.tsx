@@ -16,7 +16,8 @@ import {
   Trash2,
   Crown
 } from "lucide-react-native";
-import Colors from "@/constants/colors";
+import { useColors } from "@/hooks/useColors";
+import { useThemeStore } from "@/store/themeStore";
 import Theme from "@/constants/theme";
 import Card from "@/components/Card";
 import Button from "@/components/Button";
@@ -37,10 +38,11 @@ interface SettingItem {
 
 export default function SettingsScreen() {
   const router = useRouter();
+  const Colors = useColors();
   const { user, logout, isPremium } = useUserStore();
+  const { isDarkMode, toggleDarkMode } = useThemeStore();
   
   const [notifications, setNotifications] = useState(true);
-  const [darkMode, setDarkMode] = useState(false);
   const [autoDownload, setAutoDownload] = useState(false);
   
   const handleLogout = () => {
@@ -146,8 +148,8 @@ export default function SettingsScreen() {
           icon: Moon,
           iconColor: Colors.secondary,
           type: "toggle",
-          value: darkMode,
-          onToggle: setDarkMode,
+          value: isDarkMode,
+          onToggle: toggleDarkMode,
         },
         {
           id: "language",
@@ -247,12 +249,13 @@ export default function SettingsScreen() {
           <View style={styles.settingContent}>
             <Text style={[
               styles.settingTitle,
+              { color: Colors.text },
               item.destructive && styles.settingTitleDestructive,
             ]}>
               {item.title}
             </Text>
             {item.subtitle && (
-              <Text style={styles.settingSubtitle}>{item.subtitle}</Text>
+              <Text style={[styles.settingSubtitle, { color: Colors.lightText }]}>{item.subtitle}</Text>
             )}
           </View>
         </View>
@@ -274,22 +277,22 @@ export default function SettingsScreen() {
   };
   
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView style={[styles.container, { backgroundColor: Colors.background }]} contentContainerStyle={styles.content}>
       {/* User Info Header */}
-      <Card style={styles.userCard} variant="elevated">
+      <Card style={[styles.userCard, { backgroundColor: Colors.card }]} variant="elevated">
         <View style={styles.userInfo}>
-          <View style={styles.userAvatar}>
+          <View style={[styles.userAvatar, { backgroundColor: Colors.primary }]}>
             <Text style={styles.userAvatarText}>
               {user?.name?.charAt(0)?.toUpperCase() || "U"}
             </Text>
           </View>
           <View style={styles.userDetails}>
-            <Text style={styles.userName}>{user?.name || "User"}</Text>
-            <Text style={styles.userEmail}>{user?.email || "user@example.com"}</Text>
+            <Text style={[styles.userName, { color: Colors.text }]}>{user?.name || "User"}</Text>
+            <Text style={[styles.userEmail, { color: Colors.lightText }]}>{user?.email || "user@example.com"}</Text>
             {isPremium && (
-              <View style={styles.premiumBadge}>
+              <View style={[styles.premiumBadge, { backgroundColor: Colors.premiumBackground }]}>
                 <Crown size={12} color={Colors.premium} />
-                <Text style={styles.premiumText}>Premium Member</Text>
+                <Text style={[styles.premiumText, { color: Colors.premium }]}>Premium Member</Text>
               </View>
             )}
           </View>
@@ -299,13 +302,13 @@ export default function SettingsScreen() {
       {/* Settings Sections */}
       {settingSections.map((section, sectionIndex) => (
         <View key={section.title} style={styles.section}>
-          <Text style={styles.sectionTitle}>{section.title}</Text>
-          <Card style={styles.sectionCard} variant="default">
+          <Text style={[styles.sectionTitle, { color: Colors.text }]}>{section.title}</Text>
+          <Card style={[styles.sectionCard, { backgroundColor: Colors.card }]} variant="default">
             {section.items.map((item, itemIndex) => (
               <View key={item.id}>
                 {renderSettingItem(item)}
                 {itemIndex < section.items.length - 1 && (
-                  <View style={styles.divider} />
+                  <View style={[styles.divider, { backgroundColor: Colors.divider }]} />
                 )}
               </View>
             ))}
@@ -315,8 +318,8 @@ export default function SettingsScreen() {
       
       {/* App Version */}
       <View style={styles.versionContainer}>
-        <Text style={styles.versionText}>UniPilot v1.0.0</Text>
-        <Text style={styles.versionSubtext}>Made with ❤️ for students worldwide</Text>
+        <Text style={[styles.versionText, { color: Colors.lightText }]}>UniPilot v1.0.0</Text>
+        <Text style={[styles.versionSubtext, { color: Colors.mutedText }]}>Made with ❤️ for students worldwide</Text>
       </View>
     </ScrollView>
   );
@@ -325,7 +328,6 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
   },
   content: {
     padding: 20,
@@ -343,14 +345,13 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: Colors.primary,
     alignItems: "center",
     justifyContent: "center",
   },
   userAvatarText: {
     fontSize: 24,
     fontWeight: "600",
-    color: Colors.white,
+    color: "#FFFFFF",
   },
   userDetails: {
     marginLeft: 16,
@@ -359,18 +360,15 @@ const styles = StyleSheet.create({
   userName: {
     fontSize: 18,
     fontWeight: "600",
-    color: Colors.text,
     marginBottom: 2,
   },
   userEmail: {
     fontSize: 14,
-    color: Colors.lightText,
     marginBottom: 4,
   },
   premiumBadge: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: Colors.premiumBackground,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
@@ -378,7 +376,6 @@ const styles = StyleSheet.create({
   },
   premiumText: {
     fontSize: 12,
-    color: Colors.premium,
     marginLeft: 4,
     fontWeight: "600",
   },
@@ -388,7 +385,6 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: "600",
-    color: Colors.text,
     marginBottom: 8,
     marginLeft: 4,
   },
@@ -425,22 +421,19 @@ const styles = StyleSheet.create({
   settingTitle: {
     fontSize: 16,
     fontWeight: "500",
-    color: Colors.text,
     marginBottom: 2,
   },
   settingTitleDestructive: {
-    color: Colors.error,
+    color: "#FF5252",
   },
   settingSubtitle: {
     fontSize: 14,
-    color: Colors.lightText,
   },
   settingItemRight: {
     marginLeft: 12,
   },
   divider: {
     height: 1,
-    backgroundColor: Colors.divider,
     marginLeft: 72,
   },
   versionContainer: {
@@ -449,11 +442,9 @@ const styles = StyleSheet.create({
   },
   versionText: {
     fontSize: 14,
-    color: Colors.lightText,
     marginBottom: 4,
   },
   versionSubtext: {
     fontSize: 12,
-    color: Colors.mutedText,
   },
 });

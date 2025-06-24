@@ -1,228 +1,133 @@
 import React from "react";
-import { StyleSheet, View, Text, Dimensions } from "react-native";
+import { StyleSheet, View, Text } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import Colors from "@/constants/colors";
-import Theme from "@/constants/theme";
+import { Quote } from "lucide-react-native";
+import { useColors } from "@/hooks/useColors";
 import Card from "./Card";
 
 interface QuoteCardProps {
   quote: string;
   author: string;
-  variant?: "default" | "highlight" | "minimal";
+  variant?: "default" | "highlight" | "gradient";
 }
 
-const { width } = Dimensions.get("window");
+const QuoteCard: React.FC<QuoteCardProps> = ({ quote, author, variant = "default" }) => {
+  const Colors = useColors();
 
-const QuoteCard: React.FC<QuoteCardProps> = ({ 
-  quote, 
-  author, 
-  variant = "default" 
-}) => {
-  if (variant === "highlight") {
+  if (variant === "gradient") {
     return (
-      <View style={styles.highlightContainer}>
+      <Card style={styles.gradientCard}>
         <LinearGradient
-          colors={[Colors.gradientStart, Colors.gradientEnd]}
+          colors={[Colors.memoryPink, Colors.memoryPurple]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={styles.gradientCard}
+          style={styles.gradientBackground}
         >
-          <View style={styles.highlightContent}>
-            <View style={styles.quoteIconContainer}>
-              <Text style={styles.quoteIcon}>✨</Text>
-            </View>
-            <Text style={styles.highlightQuoteText}>
-              {quote}
-            </Text>
-            <View style={styles.authorContainer}>
-              <View style={styles.authorLine} />
-              <Text style={styles.highlightAuthor}>
-                {author}
-              </Text>
-              <View style={styles.authorLine} />
-            </View>
+          <View style={styles.quoteHeader}>
+            <Quote size={24} color="#FFFFFF" />
+            <Text style={styles.gradientQuoteText}>Daily Inspiration</Text>
           </View>
+          <Text style={styles.gradientQuote}>"{quote}"</Text>
+          <Text style={styles.gradientAuthor}>— {author}</Text>
         </LinearGradient>
-      </View>
+      </Card>
     );
   }
 
-  if (variant === "minimal") {
+  if (variant === "highlight") {
     return (
-      <View style={styles.minimalContainer}>
-        <Text style={styles.minimalQuote}>
-          "{quote}"
-        </Text>
-        <Text style={styles.minimalAuthor}>
-          — {author}
-        </Text>
-      </View>
+      <Card style={[styles.highlightCard, { backgroundColor: Colors.card }]}>
+        <LinearGradient
+          colors={[Colors.primary + "10", Colors.secondary + "10"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={styles.highlightBackground}
+        >
+          <View style={styles.quoteHeader}>
+            <Quote size={20} color={Colors.primary} />
+            <Text style={[styles.quoteLabel, { color: Colors.primary }]}>Daily Inspiration</Text>
+          </View>
+          <Text style={[styles.quote, { color: Colors.text }]}>"{quote}"</Text>
+          <Text style={[styles.author, { color: Colors.lightText }]}>— {author}</Text>
+        </LinearGradient>
+      </Card>
     );
   }
 
   return (
-    <Card style={styles.defaultCard}>
-      <View style={styles.defaultContent}>
-        <View style={styles.quoteHeader}>
-          <View style={styles.quoteMark}>
-            <Text style={styles.quoteMarkText}>"</Text>
-          </View>
-          <View style={styles.decorativeDots}>
-            <View style={[styles.dot, { backgroundColor: Colors.primary }]} />
-            <View style={[styles.dot, { backgroundColor: Colors.secondary }]} />
-            <View style={[styles.dot, { backgroundColor: Colors.accent }]} />
-          </View>
-        </View>
-        
-        <Text style={styles.defaultQuoteText}>
-          {quote}
-        </Text>
-        
-        <View style={styles.defaultAuthorContainer}>
-          <View style={styles.authorDivider} />
-          <Text style={styles.defaultAuthor}>
-            {author}
-          </Text>
-        </View>
+    <Card style={[styles.card, { backgroundColor: Colors.card, borderLeftColor: Colors.primary }]}>
+      <View style={styles.quoteHeader}>
+        <Quote size={20} color={Colors.primary} />
+        <Text style={[styles.quoteLabel, { color: Colors.primary }]}>Daily Inspiration</Text>
       </View>
+      <Text style={[styles.quote, { color: Colors.text }]}>"{quote}"</Text>
+      <Text style={[styles.author, { color: Colors.lightText }]}>— {author}</Text>
     </Card>
   );
 };
 
 const styles = StyleSheet.create({
-  // Highlight variant (gradient)
-  highlightContainer: {
-    marginVertical: Theme.spacing.m,
-    borderRadius: 20,
+  card: {
+    marginBottom: 16,
+    borderLeftWidth: 4,
+    padding: 20,
+  },
+  highlightCard: {
+    marginBottom: 16,
+    padding: 0,
     overflow: "hidden",
-    ...Theme.shadow.medium,
   },
   gradientCard: {
-    padding: 24,
-    minHeight: 140,
-    justifyContent: "center",
-  },
-  highlightContent: {
-    alignItems: "center",
-  },
-  quoteIconContainer: {
-    marginBottom: 12,
-  },
-  quoteIcon: {
-    fontSize: 24,
-    opacity: 0.9,
-  },
-  highlightQuoteText: {
-    fontSize: 18,
-    fontWeight: "500",
-    color: Colors.white,
-    textAlign: "center",
-    lineHeight: 26,
-    fontStyle: "italic",
     marginBottom: 16,
-    letterSpacing: 0.3,
+    padding: 0,
+    overflow: "hidden",
   },
-  authorContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    width: "100%",
-    justifyContent: "center",
-  },
-  authorLine: {
-    height: 1,
-    backgroundColor: "rgba(255, 255, 255, 0.3)",
-    flex: 1,
-    maxWidth: 40,
-  },
-  highlightAuthor: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: Colors.white,
-    marginHorizontal: 16,
-    opacity: 0.9,
-  },
-
-  // Default variant
-  defaultCard: {
-    marginVertical: Theme.spacing.m,
-    backgroundColor: Colors.quoteBackground,
-    borderLeftWidth: 4,
-    borderLeftColor: Colors.quoteBorder,
-    borderRadius: 16,
-  },
-  defaultContent: {
+  highlightBackground: {
     padding: 20,
+  },
+  gradientBackground: {
+    padding: 24,
   },
   quoteHeader: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 16,
+    marginBottom: 12,
   },
-  quoteMark: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: Colors.primary,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  quoteMarkText: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: Colors.white,
-    marginTop: -4,
-  },
-  decorativeDots: {
-    flexDirection: "row",
-    gap: 6,
-  },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  defaultQuoteText: {
-    fontSize: 16,
-    lineHeight: 24,
-    color: Colors.text,
-    fontStyle: "italic",
-    marginBottom: 16,
-    letterSpacing: 0.2,
-  },
-  defaultAuthorContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  authorDivider: {
-    width: 30,
-    height: 2,
-    backgroundColor: Colors.quoteAccent,
-    marginRight: 12,
-    borderRadius: 1,
-  },
-  defaultAuthor: {
+  quoteLabel: {
     fontSize: 14,
     fontWeight: "600",
-    color: Colors.primary,
+    marginLeft: 8,
   },
-
-  // Minimal variant
-  minimalContainer: {
-    marginVertical: Theme.spacing.m,
-    paddingHorizontal: 4,
-  },
-  minimalQuote: {
+  quote: {
     fontSize: 16,
     lineHeight: 24,
-    color: Colors.text,
     fontStyle: "italic",
-    marginBottom: 8,
+    marginBottom: 12,
   },
-  minimalAuthor: {
+  gradientQuoteText: {
     fontSize: 14,
-    color: Colors.lightText,
-    textAlign: "right",
+    fontWeight: "600",
+    color: "#FFFFFF",
+    marginLeft: 8,
+  },
+  gradientQuote: {
+    fontSize: 18,
+    lineHeight: 26,
+    fontStyle: "italic",
+    color: "#FFFFFF",
+    marginBottom: 12,
+    textShadowColor: "rgba(0, 0, 0, 0.3)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+  author: {
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  gradientAuthor: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: "rgba(255, 255, 255, 0.9)",
   },
 });
 
