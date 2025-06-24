@@ -269,30 +269,31 @@ export default function PremiumResourcesScreen() {
       </View>
       
       {/* Category Filter */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.categoryScroll}
-        contentContainerStyle={styles.categoryContainer}
-      >
-        {categories.map((category) => (
-          <TouchableOpacity
-            key={category}
-            style={[
-              styles.categoryButton,
-              selectedCategory === category && styles.categoryButtonActive,
-            ]}
-            onPress={() => setSelectedCategory(category)}
-          >
-            <Text style={[
-              styles.categoryButtonText,
-              selectedCategory === category && styles.categoryButtonTextActive,
-            ]}>
-              {category}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+      <View style={styles.categorySection}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.categoryContainer}
+        >
+          {categories.map((category) => (
+            <TouchableOpacity
+              key={category}
+              style={[
+                styles.categoryButton,
+                selectedCategory === category && styles.categoryButtonActive,
+              ]}
+              onPress={() => setSelectedCategory(category)}
+            >
+              <Text style={[
+                styles.categoryButtonText,
+                selectedCategory === category && styles.categoryButtonTextActive,
+              ]}>
+                {category}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
       
       {/* Resources Grid */}
       <ScrollView
@@ -342,20 +343,23 @@ const styles = StyleSheet.create({
   subtitle: {
     ...Theme.typography.caption,
   },
-  categoryScroll: {
+  categorySection: {
     marginBottom: 20,
   },
   categoryContainer: {
     paddingHorizontal: 20,
-    gap: 8,
+    paddingRight: 40, // Extra padding for last item
   },
   categoryButton: {
     paddingHorizontal: 16,
     paddingVertical: 8,
+    marginRight: 8,
     borderRadius: 20,
     backgroundColor: Colors.surface,
     borderWidth: 1,
     borderColor: Colors.border,
+    flexShrink: 0, // Prevent stretching
+    minWidth: 'auto', // Allow natural width
   },
   categoryButtonActive: {
     backgroundColor: Colors.primary,
@@ -365,6 +369,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "500",
     color: Colors.text,
+    textAlign: 'center',
+    flexShrink: 0, // Prevent text from shrinking
   },
   categoryButtonTextActive: {
     color: Colors.white,
