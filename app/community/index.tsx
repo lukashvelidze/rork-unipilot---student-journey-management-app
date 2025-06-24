@@ -45,8 +45,8 @@ export default function CommunityScreen() {
     searchPosts("");
   };
   
-  const handleLike = (postId: string, isLiked: boolean) => {
-    if (isLiked) {
+  const handleLike = (postId: string, isLiked: boolean | undefined) => {
+    if (isLiked === true) {
       unlikePost(postId);
     } else {
       likePost(postId);
