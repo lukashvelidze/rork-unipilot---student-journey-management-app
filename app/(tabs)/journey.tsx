@@ -517,15 +517,15 @@ export default function JourneyScreen() {
                     <View style={styles.memoriesStats}>
                       <View style={styles.statBubble}>
                         <Text style={styles.statNumber}>{memories.length}</Text>
-                        <Text style={styles.statLabel}>Memories</Text>
+                        <Text style={styles.statLabelMemories}>Memories</Text>
                       </View>
                       <View style={styles.statBubble}>
                         <Text style={styles.statNumber}>{Math.round(overallProgress)}%</Text>
-                        <Text style={styles.statLabel}>Progress</Text>
+                        <Text style={styles.statLabelMemories}>Progress</Text>
                       </View>
                       <View style={styles.statBubble}>
                         <Text style={styles.statNumber}>5</Text>
-                        <Text style={styles.statLabel}>Countries</Text>
+                        <Text style={styles.statLabelMemories}>Countries</Text>
                       </View>
                     </View>
                   </View>
@@ -1115,6 +1115,11 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "700",
     color: "#FFFFFF",
+  },
+  statLabelMemories: {
+    fontSize: 12,
+    color: "rgba(255, 255, 255, 0.9)",
+    fontWeight: "500",
   },
   memoriesScroll: {
     flex: 1,
