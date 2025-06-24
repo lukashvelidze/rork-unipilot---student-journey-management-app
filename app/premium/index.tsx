@@ -1,401 +1,222 @@
-import React, { useState, useEffect } from "react";
-import { StyleSheet, View, Text, Image, TouchableOpacity, ScrollView, Alert } from "react-native";
+import React, { useState } from "react";
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert } from "react-native";
 import { useRouter } from "expo-router";
-import { ChevronRight } from "lucide-react-native";
+import { Crown, Check, Zap, Target, FileText, Calendar, MessageSquare, Users, BookOpen, Award } from "lucide-react-native";
 import Colors from "@/constants/colors";
+import Card from "@/components/Card";
 import Button from "@/components/Button";
-import Input from "@/components/Input";
-import CountrySelector from "@/components/CountrySelector";
 import { useUserStore } from "@/store/userStore";
-import { countries } from "@/mocks/countries";
-import { generateId } from "@/utils/helpers";
-import { Country, UserProfile } from "@/types/user";
 
-export default function OnboardingScreen() {
+export default function PremiumScreen() {
   const router = useRouter();
-  const { user, setUser, setOnboardingStep, completeOnboarding } = useUserStore();
-  
-  const [step, setStep] = useState(0);
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [homeCountry, setHomeCountry] = useState<Country | null>(null);
-  const [destinationCountry, setDestinationCountry] = useState<Country | null>(null);
+  const { user, setPremium } = useUserStore();
   const [isProcessing, setIsProcessing] = useState(false);
-  const [errors, setErrors] = useState({
-    name: "",
-    email: "",
-    homeCountry: "",
-    destinationCountry: "",
-  });
   
-  // Check if user exists and has completed onboarding
-  useEffect(() => {
-    console.log("Onboarding screen mounted, user:", user);
-    if (user && user.onboardingCompleted) {
-      console.log("User has completed onboarding, redirecting to home");
-      router.replace("/(tabs)");
-    } else if (user && !user.onboardingCompleted) {
-      // Resume onboarding from last step
-      console.log("Resuming onboarding from step:", user.onboardingStep);
-      setStep(user.onboardingStep);
-      setName(user.name || "");
-      setEmail(user.email || "");
-      if (user.homeCountry && user.homeCountry.code) {
-        setHomeCountry(user.homeCountry);
-      }
-      if (user.destinationCountry && user.destinationCountry.code) {
-        setDestinationCountry(user.destinationCountry);
-      }
-    }
-  }, [user, router]);
+  const isPremium = user?.isPremium || false;
   
-  const validateEmail = (email: string) => {
-    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return re.test(email);
-  };
+  const premiumFeatures = [
+    {
+      icon: Zap,
+      title: "Unlimited AI Assistant",
+      description: "Get unlimited access to UniPilot AI for personalized guidance",
+      color: "#FFD700",
+    },
+    {
+      icon: Target,
+      title: "Personal Mentor",
+      description: "1-on-1 guidance sessions with experienced mentors",
+      color: "#9C27B0",
+    },
+    {
+      icon: FileText,
+      title: "Premium Resources",
+      description: "Exclusive templates, guides, and application materials",
+      color: "#FF6B35",
+    },
+    {
+      icon: Calendar,
+      title: "Priority Support",
+      description: "24/7 premium support with faster response times",
+      color: "#4CAF50",
+    },
+    {
+      icon: MessageSquare,
+      title: "Expert Consultations",
+      description: "Direct access to university admission experts",
+      color: "#2196F3",
+    },
+    {
+      icon: Users,
+      title: "Premium Community",
+      description: "Access to exclusive premium community features",
+      color: "#E91E63",
+    },
+    {
+      icon: BookOpen,
+      title: "Advanced Analytics",
+      description: "Detailed progress tracking and success predictions",
+      color: "#00BCD4",
+    },
+    {
+      icon: Award,
+      title: "Success Guarantee",
+      description: "Money-back guarantee if you don't get accepted",
+      color: "#8BC34A",
+    },
+  ];
   
-  const validateStep = () => {
-    let isValid = true;
-    const newErrors = { ...errors };
+  const handleUpgrade = async () => {
+    if (isProcessing) return;
     
-    switch (step) {
-      case 1:
-        if (!name.trim()) {
-          newErrors.name = "Name is required";
-          isValid = false;
-        } else {
-          newErrors.name = "";
-        }
-        
-        if (!email.trim()) {
-          newErrors.email = "Email is required";
-          isValid = false;
-        } else if (!validateEmail(email)) {
-          newErrors.email = "Please enter a valid email";
-          isValid = false;
-        } else {
-          newErrors.email = "";
-        }
-        break;
-      
-      case 2:
-        if (!homeCountry) {
-          newErrors.homeCountry = "Please select your home country";
-          isValid = false;
-        } else {
-          newErrors.homeCountry = "";
-        }
-        break;
-      
-      case 3:
-        if (!destinationCountry) {
-          newErrors.destinationCountry = "Please select your destination country";
-          isValid = false;
-        } else {
-          newErrors.destinationCountry = "";
-        }
-        break;
-    }
+    setIsProcessing(true);
     
-    setErrors(newErrors);
-    return isValid;
-  };
-  
-  // Save user data based on current step
-  const saveUserData = (nextStep: number) => {
     try {
-      console.log("Saving user data for step:", step, "next step:", nextStep);
+      // Simulate payment processing
+      await new Promise(resolve => setTimeout(resolve, 2000));
       
-      if (step === 0) {
-        // Just update the step
-        if (user) {
-          setOnboardingStep(nextStep);
-        }
-      } else if (step === 1) {
-        // Save name and email
-        if (!user) {
-          // Create new user
-          console.log("Creating new user with name:", name, "email:", email);
-          const newUser: UserProfile = {
-            id: generateId(),
-            name,
-            email,
-            homeCountry: { code: "", name: "", flag: "" },
-            destinationCountry: { code: "", name: "", flag: "" },
-            educationBackground: { level: "bachelors" },
-            testScores: [],
-            universities: [],
-            documents: [],
-            journeyProgress: [],
-            memories: [],
-            onboardingCompleted: false,
-            onboardingStep: nextStep,
-            isPremium: false,
-          };
-          setUser(newUser);
-        } else {
-          // Update existing user
-          console.log("Updating existing user with name:", name, "email:", email);
-          setOnboardingStep(nextStep);
-          setUser({
-            ...user,
-            name,
-            email,
-            onboardingStep: nextStep,
-          });
-        }
-      } else if (step === 2 && homeCountry) {
-        // Save home country
-        console.log("Saving home country:", homeCountry);
-        if (user) {
-          setOnboardingStep(nextStep);
-          setUser({
-            ...user,
-            homeCountry,
-            onboardingStep: nextStep,
-          });
-        }
-      } else if (step === 3 && destinationCountry) {
-        // Save destination country
-        console.log("Saving destination country:", destinationCountry);
-        if (user) {
-          setOnboardingStep(nextStep);
-          setUser({
-            ...user,
-            destinationCountry,
-            onboardingStep: nextStep,
-          });
-        }
-      } else if (step === 4) {
-        // Complete onboarding
-        console.log("Completing onboarding");
-        if (user) {
-          setUser({
-            ...user,
-            onboardingCompleted: true,
-          });
-        }
-        
-        // Navigate to home screen
-        console.log("Navigating to home screen");
-        router.replace("/(tabs)");
-      }
+      // Update user to premium
+      setPremium(true);
+      
+      Alert.alert(
+        "Welcome to Premium!",
+        "You now have access to all premium features. Enjoy your enhanced UniPilot experience!",
+        [
+          {
+            text: "Get Started",
+            onPress: () => router.replace("/(tabs)"),
+          },
+        ]
+      );
     } catch (error) {
-      console.error("Error saving user data:", error);
-      Alert.alert("Error", "There was a problem saving your information. Please try again.");
+      Alert.alert(
+        "Payment Failed",
+        "There was an issue processing your payment. Please try again.",
+        [{ text: "OK" }]
+      );
+    } finally {
+      setIsProcessing(false);
     }
   };
   
-  const handleNext = async () => {
-  if (isProcessing) return;
-
-  setIsProcessing(true);
-  const nextStep = step + 1;
-
-  try {
-    const isValid = step === 0 || validateStep();
-
-    if (!isValid) {
-      console.log("Validation failed at step", step);
-      return;
-    }
-
-    await saveUserData(nextStep); // assume it's async
-    setStep(nextStep);
-    console.log("Moved to step:", nextStep);
-  } catch (error) {
-    console.error("handleNext error:", error);
-    Alert.alert("Error", "Something went wrong. Please try again.");
-  } finally {
-    setTimeout(() => setIsProcessing(false), 300); // smooth debounce
+  const handleManageSubscription = () => {
+    Alert.alert(
+      "Manage Subscription",
+      "You can manage your subscription through your app store account.",
+      [{ text: "OK" }]
+    );
+  };
+  
+  if (isPremium) {
+    return (
+      <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
+        <View style={styles.premiumHeader}>
+          <Crown size={48} color="#FFD700" />
+          <Text style={styles.premiumTitle}>You're Premium!</Text>
+          <Text style={styles.premiumSubtitle}>
+            Enjoy all the exclusive features and benefits
+          </Text>
+        </View>
+        
+        <Card style={styles.statusCard}>
+          <View style={styles.statusHeader}>
+            <Crown size={24} color="#FFD700" />
+            <Text style={styles.statusTitle}>Premium Active</Text>
+          </View>
+          <Text style={styles.statusDescription}>
+            Your premium subscription is active and you have access to all features.
+          </Text>
+          <TouchableOpacity
+            style={styles.manageButton}
+            onPress={handleManageSubscription}
+          >
+            <Text style={styles.manageButtonText}>Manage Subscription</Text>
+          </TouchableOpacity>
+        </Card>
+        
+        <View style={styles.featuresSection}>
+          <Text style={styles.sectionTitle}>Your Premium Features</Text>
+          <View style={styles.featuresGrid}>
+            {premiumFeatures.map((feature, index) => (
+              <Card key={index} style={styles.featureCard}>
+                <feature.icon size={24} color={feature.color} />
+                <Text style={styles.featureTitle}>{feature.title}</Text>
+                <Text style={styles.featureDescription}>{feature.description}</Text>
+                <View style={styles.activeIndicator}>
+                  <Check size={16} color={Colors.success} />
+                  <Text style={styles.activeText}>Active</Text>
+                </View>
+              </Card>
+            ))}
+          </View>
+        </View>
+      </ScrollView>
+    );
   }
-};
-
-  
-  const renderStep = () => {
-    switch (step) {
-      case 0:
-        return (
-          <View style={styles.stepContainer}>
-            <Image
-              source={{ uri: "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80" }}
-              style={styles.welcomeImage}
-              resizeMode="cover"
-            />
-            <Text style={styles.welcomeTitle}>Welcome to UniPilot</Text>
-            <Text style={styles.welcomeText}>
-              Your personal guide through the entire international student journey, from university applications to career establishment.
-            </Text>
-            
-            {/* Continue button moved below the welcome text */}
-            <View style={styles.welcomeButtonContainer}>
-              <Button
-                title="Continue"
-                onPress={handleNext}
-                loading={isProcessing}
-                fullWidth
-                icon={<ChevronRight size={20} color={Colors.white} />}
-                iconPosition="right"
-              />
-            </View>
-          </View>
-        );
-      
-      case 1:
-        return (
-          <View style={styles.stepContainer}>
-            <Text style={styles.stepTitle}>Let's get to know you</Text>
-            <Text style={styles.stepDescription}>
-              We'll use this information to personalize your experience
-            </Text>
-            
-            <Input
-              label="Full Name"
-              placeholder="Enter your full name"
-              value={name}
-              onChangeText={setName}
-              error={errors.name}
-              autoCapitalize="words"
-            />
-            
-            <Input
-              label="Email Address"
-              placeholder="Enter your email address"
-              value={email}
-              onChangeText={setEmail}
-              error={errors.email}
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
-          </View>
-        );
-      
-      case 2:
-        return (
-          <View style={styles.stepContainer}>
-            <Text style={styles.stepTitle}>Where are you from?</Text>
-            <Text style={styles.stepDescription}>
-              Select your home country
-            </Text>
-            
-            <CountrySelector
-              label="Home Country"
-              value={homeCountry}
-              onChange={(country: Country) => setHomeCountry(country)}
-              countries={countries}
-              error={errors.homeCountry}
-            />
-          </View>
-        );
-      
-      case 3:
-        return (
-          <View style={styles.stepContainer}>
-            <Text style={styles.stepTitle}>Where are you going?</Text>
-            <Text style={styles.stepDescription}>
-              Select your destination country for studies
-            </Text>
-            
-            <CountrySelector
-              label="Destination Country"
-              value={destinationCountry}
-              onChange={(country: Country) => setDestinationCountry(country)}
-              countries={countries}
-              error={errors.destinationCountry}
-            />
-          </View>
-        );
-      
-      case 4:
-        return (
-          <View style={styles.stepContainer}>
-            <Image
-              source={{ uri: "https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80" }}
-              style={styles.welcomeImage}
-              resizeMode="cover"
-            />
-            <Text style={styles.stepTitle}>You're all set!</Text>
-            <Text style={styles.stepDescription}>
-              We've created your personalized journey from {homeCountry?.name || "your country"} to {destinationCountry?.name || "your destination"}. Let's get started!
-            </Text>
-          </View>
-        );
-      
-      default:
-        return null;
-    }
-  };
   
   return (
-    <View style={styles.container}>
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
-      >
-        {step > 0 && step < 4 && (
-          <View style={styles.progressContainer}>
-            <View style={styles.progressBar}>
-              <View
-                style={[
-                  styles.progressFill,
-                  { width: `${(step / 4) * 100}%` },
-                ]}
-              />
-            </View>
-            <Text style={styles.progressText}>Step {step} of 4</Text>
+    <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
+      <View style={styles.header}>
+        <Crown size={48} color="#FFD700" />
+        <Text style={styles.title}>Upgrade to Premium</Text>
+        <Text style={styles.subtitle}>
+          Unlock the full potential of your study abroad journey
+        </Text>
+      </View>
+      
+      <Card style={styles.pricingCard}>
+        <View style={styles.pricingHeader}>
+          <Text style={styles.pricingTitle}>UniPilot Premium</Text>
+          <View style={styles.priceContainer}>
+            <Text style={styles.price}>$4.99</Text>
+            <Text style={styles.pricePeriod}>/month</Text>
           </View>
-        )}
+        </View>
         
-        {renderStep()}
-      </ScrollView>
-      
-      {/* Only show footer with continue button for steps other than welcome and final */}
-      {step > 0 && step < 4 && (
-        <View style={styles.footer}>
-          <Button
-            title="Continue"
-            onPress={handleNext}
-            loading={isProcessing}
-            fullWidth
-            icon={<ChevronRight size={20} color={Colors.white} />}
-            iconPosition="right"
-          />
-          
-          <TouchableOpacity
-            style={styles.skipButton}
-            onPress={() => {
-              if (isProcessing) return;
-              setIsProcessing(true);
-              console.log("Skip button pressed, moving to final step");
-              setStep(4);
-              // Update the onboarding step in the store
-              if (user) {
-                setOnboardingStep(4);
-                saveUserData(4);
-              }
-              setIsProcessing(false);
-            }}
-            disabled={isProcessing}
-          >
-            <Text style={styles.skipText}>Skip for now</Text>
-          </TouchableOpacity>
+        <View style={styles.benefitsList}>
+          <Text style={styles.benefitsTitle}>What you get:</Text>
+          {premiumFeatures.map((feature, index) => (
+            <View key={index} style={styles.benefitItem}>
+              <Check size={20} color={Colors.success} />
+              <Text style={styles.benefitText}>{feature.title}</Text>
+            </View>
+          ))}
         </View>
-      )}
+        
+        <Button
+          title="Start Premium - $4.99/month"
+          onPress={handleUpgrade}
+          loading={isProcessing}
+          fullWidth
+          style={styles.upgradeButton}
+        />
+        
+        <Text style={styles.disclaimer}>
+          Cancel anytime. No commitments. 7-day free trial included.
+        </Text>
+      </Card>
       
-      {/* Show footer with get started button only for final step */}
-      {step === 4 && (
-        <View style={styles.footer}>
-          <Button
-            title="Get Started"
-            onPress={handleNext}
-            loading={isProcessing}
-            fullWidth
-            icon={<ChevronRight size={20} color={Colors.white} />}
-            iconPosition="right"
-          />
+      <View style={styles.featuresSection}>
+        <Text style={styles.sectionTitle}>Premium Features</Text>
+        <View style={styles.featuresGrid}>
+          {premiumFeatures.map((feature, index) => (
+            <Card key={index} style={styles.featureCard}>
+              <feature.icon size={24} color={feature.color} />
+              <Text style={styles.featureTitle}>{feature.title}</Text>
+              <Text style={styles.featureDescription}>{feature.description}</Text>
+            </Card>
+          ))}
         </View>
-      )}
-    </View>
+      </View>
+      
+      <Card style={styles.guaranteeCard}>
+        <Award size={32} color={Colors.success} />
+        <Text style={styles.guaranteeTitle}>Success Guarantee</Text>
+        <Text style={styles.guaranteeDescription}>
+          We're so confident in our premium features that we offer a money-back guarantee. 
+          If you don't get accepted to at least one university within 12 months, we'll refund your subscription.
+        </Text>
+      </Card>
+    </ScrollView>
   );
 }
 
@@ -405,79 +226,196 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
   },
   scrollContent: {
-    flexGrow: 1,
-    padding: 24,
+    padding: 20,
+    paddingBottom: 32,
   },
-  progressContainer: {
-    marginBottom: 24,
+  header: {
+    alignItems: "center",
+    marginBottom: 32,
   },
-  progressBar: {
-    height: 4,
-    backgroundColor: Colors.lightBackground,
-    borderRadius: 2,
-    marginBottom: 8,
-  },
-  progressFill: {
-    height: "100%",
-    backgroundColor: Colors.primary,
-    borderRadius: 2,
-  },
-  progressText: {
-    fontSize: 14,
-    color: Colors.lightText,
-    textAlign: "right",
-  },
-  stepContainer: {
-    flex: 1,
-    justifyContent: "center",
-  },
-  welcomeImage: {
-    width: "100%",
-    height: 200,
-    borderRadius: 12,
-    marginBottom: 24,
-  },
-  welcomeTitle: {
+  title: {
     fontSize: 28,
     fontWeight: "700",
     color: Colors.text,
-    marginBottom: 16,
+    marginTop: 16,
+    marginBottom: 8,
     textAlign: "center",
   },
-  welcomeText: {
+  subtitle: {
     fontSize: 16,
     color: Colors.lightText,
     textAlign: "center",
     lineHeight: 24,
+  },
+  premiumHeader: {
+    alignItems: "center",
     marginBottom: 32,
   },
-  welcomeButtonContainer: {
-    marginTop: 8,
-  },
-  stepTitle: {
-    fontSize: 24,
+  premiumTitle: {
+    fontSize: 28,
     fontWeight: "700",
+    color: Colors.text,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  premiumSubtitle: {
+    fontSize: 16,
+    color: Colors.lightText,
+    textAlign: "center",
+  },
+  pricingCard: {
+    marginBottom: 24,
+    backgroundColor: "rgba(255, 215, 0, 0.05)",
+    borderWidth: 2,
+    borderColor: "rgba(255, 215, 0, 0.3)",
+  },
+  pricingHeader: {
+    alignItems: "center",
+    marginBottom: 24,
+  },
+  pricingTitle: {
+    fontSize: 20,
+    fontWeight: "600",
     color: Colors.text,
     marginBottom: 8,
   },
-  stepDescription: {
-    fontSize: 16,
+  priceContainer: {
+    flexDirection: "row",
+    alignItems: "baseline",
+  },
+  price: {
+    fontSize: 36,
+    fontWeight: "700",
+    color: Colors.primary,
+  },
+  pricePeriod: {
+    fontSize: 18,
     color: Colors.lightText,
+    marginLeft: 4,
+  },
+  benefitsList: {
     marginBottom: 24,
-    lineHeight: 24,
   },
-  footer: {
-    padding: 24,
-    borderTopWidth: 1,
-    borderTopColor: Colors.border,
+  benefitsTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: Colors.text,
+    marginBottom: 12,
   },
-  skipButton: {
+  benefitItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  benefitText: {
+    fontSize: 14,
+    color: Colors.text,
+    marginLeft: 12,
+    flex: 1,
+  },
+  upgradeButton: {
+    marginBottom: 16,
+  },
+  disclaimer: {
+    fontSize: 12,
+    color: Colors.lightText,
+    textAlign: "center",
+    lineHeight: 16,
+  },
+  statusCard: {
+    marginBottom: 24,
+    backgroundColor: "rgba(255, 215, 0, 0.05)",
+    borderWidth: 1,
+    borderColor: "rgba(255, 215, 0, 0.3)",
+  },
+  statusHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  statusTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: Colors.text,
+    marginLeft: 8,
+  },
+  statusDescription: {
+    fontSize: 14,
+    color: Colors.lightText,
+    marginBottom: 16,
+    lineHeight: 20,
+  },
+  manageButton: {
+    backgroundColor: Colors.lightBackground,
     paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  manageButtonText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: Colors.primary,
+  },
+  featuresSection: {
+    marginBottom: 24,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: "600",
+    color: Colors.text,
+    marginBottom: 16,
+  },
+  featuresGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+  },
+  featureCard: {
+    width: "48%",
+    marginBottom: 16,
+    padding: 16,
+  },
+  featureTitle: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: Colors.text,
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  featureDescription: {
+    fontSize: 12,
+    color: Colors.lightText,
+    lineHeight: 16,
+  },
+  activeIndicator: {
+    flexDirection: "row",
     alignItems: "center",
     marginTop: 8,
   },
-  skipText: {
+  activeText: {
+    fontSize: 12,
+    color: Colors.success,
+    marginLeft: 4,
+    fontWeight: "500",
+  },
+  guaranteeCard: {
+    alignItems: "center",
+    backgroundColor: "rgba(76, 175, 80, 0.05)",
+    borderWidth: 1,
+    borderColor: "rgba(76, 175, 80, 0.2)",
+  },
+  guaranteeTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: Colors.text,
+    marginTop: 12,
+    marginBottom: 8,
+  },
+  guaranteeDescription: {
     fontSize: 14,
     color: Colors.lightText,
+    textAlign: "center",
+    lineHeight: 20,
   },
 });
