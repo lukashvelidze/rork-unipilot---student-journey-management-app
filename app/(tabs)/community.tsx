@@ -45,7 +45,7 @@ export default function CommunityScreen() {
     searchPosts("");
   };
   
-  const handleLike = (postId: string, isLiked: boolean) => {
+  const handleLike = (postId: string, isLiked: boolean | undefined) => {
     if (isLiked) {
       unlikePost(postId);
     } else {
@@ -53,15 +53,15 @@ export default function CommunityScreen() {
     }
   };
   
-  const topics: { id: Topic; label: string }[] = [
-    { id: "visa", label: "Visa" },
-    { id: "university", label: "University" },
-    { id: "accommodation", label: "Housing" },
-    { id: "finances", label: "Finances" },
-    { id: "culture", label: "Culture" },
-    { id: "academics", label: "Academics" },
-    { id: "career", label: "Career" },
-    { id: "general", label: "General" },
+  const topics: { value: Topic; label: string }[] = [
+    { value: "visa", label: "Visa" },
+    { value: "university", label: "University" },
+    { value: "accommodation", label: "Housing" },
+    { value: "finances", label: "Finances" },
+    { value: "culture", label: "Culture" },
+    { value: "academics", label: "Academics" },
+    { value: "career", label: "Career" },
+    { value: "general", label: "General" },
   ];
   
   return (

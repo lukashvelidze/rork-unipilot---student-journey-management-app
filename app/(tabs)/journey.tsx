@@ -489,12 +489,24 @@ export default function JourneyScreen() {
     );
   }
   
+  // Map celebration animation types to valid types
+  const getCelebrationType = (type: string | undefined) => {
+    switch (type) {
+      case "stage_complete":
+        return "milestone";
+      case "progress_milestone":
+        return "achievement";
+      default:
+        return type as "confetti" | "achievement" | "milestone" | undefined;
+    }
+  };
+  
   return (
     <View style={[styles.container, { backgroundColor: Colors.background }]}>
       {showCelebration && (
         <CelebrationAnimation 
           visible={showCelebration} 
-          type={recentMilestone?.type === "stage_complete" ? "milestone" : recentMilestone?.type || "confetti"}
+          type={getCelebrationType(recentMilestone?.type) || "confetti"}
           onAnimationFinish={() => setShowCelebration(false)}
         />
       )}
