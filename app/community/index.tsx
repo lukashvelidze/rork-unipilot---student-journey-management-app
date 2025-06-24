@@ -40,7 +40,7 @@ export default function CommunityScreen() {
       // Refetch posts to get updated data
       refetch();
     },
-    onError: (error: unknown) => {
+    onError: (error: any) => {
       Alert.alert("Error", "Failed to update like status");
       console.error("Like post error:", error);
     },

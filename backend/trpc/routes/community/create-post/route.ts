@@ -6,7 +6,7 @@ export const createPostProcedure = publicProcedure
     z.object({
       title: z.string().min(1, "Title is required"),
       content: z.string().min(1, "Content is required"),
-      topic: z.enum(["visa", "accommodation", "academics", "social", "general"]),
+      topic: z.enum(["visa", "university", "accommodation", "finances", "culture", "academics", "career", "general"]),
       userId: z.string().default("current_user"),
       userName: z.string().default("Anonymous User"),
       userAvatar: z.string().optional(),
@@ -16,7 +16,7 @@ export const createPostProcedure = publicProcedure
   .mutation(({ input }: { input: {
     title: string;
     content: string;
-    topic: "visa" | "accommodation" | "academics" | "social" | "general";
+    topic: "visa" | "university" | "accommodation" | "finances" | "culture" | "academics" | "career" | "general";
     userId: string;
     userName: string;
     userAvatar?: string;

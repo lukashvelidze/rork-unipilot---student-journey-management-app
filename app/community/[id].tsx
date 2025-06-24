@@ -45,7 +45,7 @@ export default function PostDetailScreen() {
     onSuccess: () => {
       refetch();
     },
-    onError: (error: unknown) => {
+    onError: (error: any) => {
       Alert.alert("Error", "Failed to update like status");
       console.error("Like post error:", error);
     },
@@ -55,14 +55,14 @@ export default function PostDetailScreen() {
     onSuccess: () => {
       refetch();
     },
-    onError: (error: unknown) => {
+    onError: (error: any) => {
       Alert.alert("Error", "Failed to update comment like status");
       console.error("Like comment error:", error);
     },
   });
   
   const addCommentMutation = trpc.community.addComment.useMutation({
-    onSuccess: (newComment: Comment) => {
+    onSuccess: (newComment: any) => {
       // Add comment to local state
       if (post) {
         addComment(post.id, newComment);
@@ -70,7 +70,7 @@ export default function PostDetailScreen() {
       setCommentText("");
       refetch();
     },
-    onError: (error: unknown) => {
+    onError: (error: any) => {
       Alert.alert("Error", "Failed to add comment");
       console.error("Add comment error:", error);
     },
@@ -161,7 +161,7 @@ export default function PostDetailScreen() {
           content: commentText,
           userId: user?.id || "anonymous",
           userName: user?.name || "Anonymous User",
-          userAvatar: user?.avatar,
+          userAvatar: user?.profileImage,
           isPremium: user?.isPremium || false,
         });
       } catch (error) {
@@ -303,7 +303,7 @@ export default function PostDetailScreen() {
             !commentText.trim() && styles.disabledSendButton,
           ]}
           onPress={handleAddComment}
-          disabled={!commentText.trim() || addCommentMutation.isLoading}
+          disabled={!commentText.trim() || addCommentMutation.isPending}
         >
           <Send
             size={20}

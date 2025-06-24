@@ -81,7 +81,7 @@ export default function NewPostScreen() {
           topic,
           userId: user?.id || "anonymous",
           userName: user?.name || "Anonymous User",
-          userAvatar: user?.avatar,
+          userAvatar: user?.profileImage,
           isPremium: user?.isPremium || false,
         });
       } catch (error) {
@@ -133,11 +133,11 @@ export default function NewPostScreen() {
       />
       
       <Button
-        title={createPostMutation.isLoading ? "Creating..." : "Post Discussion"}
+        title={createPostMutation.isPending ? "Creating..." : "Post Discussion"}
         onPress={handleSubmit}
         style={styles.submitButton}
         fullWidth
-        disabled={createPostMutation.isLoading}
+        disabled={createPostMutation.isPending}
       />
     </ScrollView>
   );
