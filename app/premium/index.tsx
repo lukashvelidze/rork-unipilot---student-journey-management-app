@@ -12,12 +12,13 @@ import { useUserStore } from "@/store/userStore";
 
 export default function PremiumScreen() {
   const router = useRouter();
-  const { user, setPremium } = useUserStore();
+  const { user, isPremium, setPremium } = useUserStore();
   const [promoCode, setPromoCode] = useState("");
   const [isProcessingPromo, setIsProcessingPromo] = useState(false);
   const [showPromoInput, setShowPromoInput] = useState(false);
   
-  const isPremium = user?.isPremium || false;
+  // Use the isPremium from store, not just from user object
+  const isUserPremium = isPremium || user?.isPremium || false;
   
   const premiumFeatures = [
     {
@@ -90,29 +91,46 @@ export default function PremiumScreen() {
       // Simulate promo code validation
       await new Promise(resolve => setTimeout(resolve, 1500));
       
-      // Check for valid promo codes
-      const validPromoCodes = ["STUDENT2024", "WELCOME", "BETA", "EARLYBIRD"];
+      // Check for valid promo codes (including admin code)
+      const validPromoCodes = ["STUDENT2024", "WELCOME", "BETA", "EARLYBIRD", "ADMIN"];
       
       if (validPromoCodes.includes(promoCode.toUpperCase())) {
+        // Set premium status
         setPremium(true);
+        
+        // Clear the promo code input
+        setPromoCode("");
+        setShowPromoInput(false);
+        
+        // Show success alert
         Alert.alert(
           "Promo Code Applied!",
-          "Congratulations! You now have access to premium features.",
+          `Congratulations! You now have access to premium features with code: ${promoCode.toUpperCase()}`,
           [
             {
               text: "Explore Features",
-              onPress: () => router.push("/premium/resources"),
+              onPress: () => {
+                // Small delay to ensure state is updated
+                setTimeout(() => {
+                  router.push("/premium/resources");
+                }, 100);
+              },
+            },
+            {
+              text: "Stay Here",
+              style: "cancel",
             },
           ]
         );
       } else {
         Alert.alert(
           "Invalid Promo Code",
-          "The promo code you entered is not valid. Please check and try again.",
+          `The promo code "${promoCode}" is not valid. Please check and try again.\n\nValid codes: STUDENT2024, WELCOME, BETA, EARLYBIRD, ADMIN`,
           [{ text: "OK" }]
         );
       }
     } catch (error) {
+      console.error("Promo code error:", error);
       Alert.alert(
         "Error",
         "There was an issue validating your promo code. Please try again.",
@@ -131,7 +149,14 @@ export default function PremiumScreen() {
     );
   };
   
-  if (isPremium) {
+  // Debug logging
+  React.useEffect(() => {
+    console.log("Premium Screen - isPremium:", isPremium);
+    console.log("Premium Screen - user?.isPremium:", user?.isPremium);
+    console.log("Premium Screen - isUserPremium:", isUserPremium);
+  }, [isPremium, user?.isPremium, isUserPremium]);
+  
+  if (isUserPremium) {
     return (
       <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
         <LinearGradient
@@ -190,6 +215,22 @@ export default function PremiumScreen() {
             ))}
           </View>
         </View>
+        
+        {/* Debug info for testing */}
+        {__DEV__ && (
+          <Card style={styles.debugCard}>
+            <Text style={styles.debugTitle}>Debug Info</Text>
+            <Text style={styles.debugText}>Store isPremium: {isPremium ? "true" : "false"}</Text>
+            <Text style={styles.debugText}>User isPremium: {user?.isPremium ? "true" : "false"}</Text>
+            <Text style={styles.debugText}>Final isPremium: {isUserPremium ? "true" : "false"}</Text>
+            <Button
+              title="Reset Premium (Debug)"
+              onPress={() => setPremium(false)}
+              variant="outline"
+              style={styles.debugButton}
+            />
+          </Card>
+        )}
       </ScrollView>
     );
   }
@@ -227,6 +268,8 @@ export default function PremiumScreen() {
               onChangeText={setPromoCode}
               autoCapitalize="characters"
               style={styles.promoInput}
+              autoCorrect={false}
+              autoComplete="off"
             />
             <View style={styles.promoButtons}>
               <Button
@@ -234,6 +277,7 @@ export default function PremiumScreen() {
                 onPress={handlePromoCode}
                 loading={isProcessingPromo}
                 style={styles.applyButton}
+                disabled={!promoCode.trim() || isProcessingPromo}
               />
               <Button
                 title="Cancel"
@@ -243,6 +287,7 @@ export default function PremiumScreen() {
                 }}
                 variant="outline"
                 style={styles.cancelButton}
+                disabled={isProcessingPromo}
               />
             </View>
           </View>
@@ -258,7 +303,7 @@ export default function PremiumScreen() {
         
         <View style={styles.promoHint}>
           <Text style={styles.hintText}>
-            Try: STUDENT2024, WELCOME, BETA, or EARLYBIRD
+            Try: STUDENT2024, WELCOME, BETA, EARLYBIRD, or ADMIN
           </Text>
         </View>
       </Card>
@@ -336,6 +381,17 @@ export default function PremiumScreen() {
           </View>
         </View>
       </Card>
+      
+      {/* Debug info for testing */}
+      {__DEV__ && (
+        <Card style={styles.debugCard}>
+          <Text style={styles.debugTitle}>Debug Info</Text>
+          <Text style={styles.debugText}>Store isPremium: {isPremium ? "true" : "false"}</Text>
+          <Text style={styles.debugText}>User isPremium: {user?.isPremium ? "true" : "false"}</Text>
+          <Text style={styles.debugText}>Final isPremium: {isUserPremium ? "true" : "false"}</Text>
+          <Text style={styles.debugText}>Current promo code: "{promoCode}"</Text>
+        </Card>
+      )}
     </ScrollView>
   );
 }
@@ -594,5 +650,26 @@ const styles = StyleSheet.create({
   statLabel: {
     fontSize: 12,
     color: Colors.lightText,
+  },
+  debugCard: {
+    marginHorizontal: 20,
+    marginTop: 16,
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  debugTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: Colors.text,
+    marginBottom: 8,
+  },
+  debugText: {
+    fontSize: 12,
+    color: Colors.lightText,
+    marginBottom: 4,
+  },
+  debugButton: {
+    marginTop: 8,
   },
 });
