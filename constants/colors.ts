@@ -14,6 +14,8 @@ export const lightColors = {
   warning: "#FFA726", // Warm orange
   error: "#FF5252", // Soft red
   info: "#42A5F5", // Soft blue
+  academic: "#5C6BC0", // Indigo - scholarly and professional
+  career: "#26A69A", // Teal - professional and growth-oriented
   
   // Background colors - clean and modern
   background: "#FAFAFA", // Very light gray
@@ -94,6 +96,8 @@ export const darkColors = {
   warning: "#FFA726",
   error: "#FF5252",
   info: "#42A5F5",
+  academic: "#5C6BC0", // Indigo - scholarly and professional
+  career: "#26A69A", // Teal - professional and growth-oriented
   
   // Background colors - dark theme
   background: "#0F0F0F", // Very dark
