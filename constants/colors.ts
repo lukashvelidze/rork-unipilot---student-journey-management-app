@@ -1,19 +1,19 @@
 export default {
-  // Primary colors - sophisticated blue/purple theme
-  primary: "#6366F1", // Indigo
-  primaryLight: "#818CF8",
-  primaryDark: "#4F46E5",
-  secondary: "#8B5CF6", // Purple
-  secondaryLight: "#A78BFA",
-  secondaryDark: "#7C3AED",
+  // Primary colors - warm and inspiring theme
+  primary: "#FF6B6B", // Coral red - warm and energetic
+  primaryLight: "#FF8E8E",
+  primaryDark: "#FF4757",
+  secondary: "#4ECDC4", // Teal - calming and fresh
+  secondaryLight: "#6BCF7F",
+  secondaryDark: "#26D0CE",
   
-  // Accent colors - minimal and sophisticated
-  accent: "#06B6D4", // Cyan
-  accentLight: "#67E8F9",
-  success: "#10B981", // Emerald
-  warning: "#F59E0B", // Amber (reduced from previous yellow)
-  error: "#EF4444", // Red
-  info: "#3B82F6", // Blue
+  // Accent colors - sophisticated and warm
+  accent: "#FFD93D", // Warm yellow - optimistic
+  accentLight: "#FFE55C",
+  success: "#6BCF7F", // Fresh green
+  warning: "#FFA726", // Warm orange
+  error: "#FF5252", // Soft red
+  info: "#42A5F5", // Soft blue
   
   // Background colors - clean and modern
   background: "#FAFAFA", // Very light gray
@@ -22,22 +22,24 @@ export default {
   card: "#FFFFFF",
   
   // Text colors - high contrast and readable
-  text: "#0F172A", // Slate 900
-  lightText: "#64748B", // Slate 500
-  mutedText: "#94A3B8", // Slate 400
+  text: "#2C3E50", // Dark blue-gray
+  lightText: "#7F8C8D", // Medium gray
+  mutedText: "#BDC3C7", // Light gray
   
   // Border and divider colors
-  border: "#E2E8F0", // Slate 200
-  divider: "#F1F5F9", // Slate 100
+  border: "#ECF0F1", // Very light gray
+  divider: "#F7F9FC", // Almost white
   
   // Utility colors
   white: "#FFFFFF",
   black: "#000000",
   transparent: "transparent",
   
-  // Gradient colors for futuristic effects
-  gradientStart: "#6366F1",
-  gradientEnd: "#8B5CF6",
+  // Gradient colors for beautiful effects
+  gradientStart: "#FF6B6B",
+  gradientEnd: "#4ECDC4",
+  gradientWarm: "#FFD93D",
+  gradientCool: "#4ECDC4",
   
   // Surface colors for depth
   surface: "#F8FAFC",
@@ -49,17 +51,29 @@ export default {
   disabled: "#F8FAFC",
   
   // Shadow colors
-  shadowLight: "rgba(15, 23, 42, 0.04)",
-  shadowMedium: "rgba(15, 23, 42, 0.08)",
-  shadowDark: "rgba(15, 23, 42, 0.16)",
+  shadowLight: "rgba(44, 62, 80, 0.04)",
+  shadowMedium: "rgba(44, 62, 80, 0.08)",
+  shadowDark: "rgba(44, 62, 80, 0.16)",
   
   // Status colors with better contrast
-  online: "#10B981",
-  offline: "#6B7280",
-  away: "#F59E0B",
+  online: "#6BCF7F",
+  offline: "#95A5A6",
+  away: "#FFA726",
   
-  // Premium colors (purple theme instead of gold)
-  premium: "#8B5CF6", // Purple instead of gold
-  premiumLight: "#A78BFA",
-  premiumBackground: "rgba(139, 92, 246, 0.05)",
+  // Premium colors (warm gold theme)
+  premium: "#F39C12", // Warm gold
+  premiumLight: "#F7DC6F",
+  premiumBackground: "rgba(243, 156, 18, 0.05)",
+  
+  // Memory/Social colors for Instagram-like design
+  memoryPink: "#E91E63",
+  memoryPurple: "#9C27B0",
+  memoryOrange: "#FF9800",
+  memoryBlue: "#2196F3",
+  memoryGreen: "#4CAF50",
+  
+  // Quote card colors
+  quoteBackground: "rgba(255, 107, 107, 0.05)",
+  quoteBorder: "#FF6B6B",
+  quoteAccent: "#4ECDC4",
 };

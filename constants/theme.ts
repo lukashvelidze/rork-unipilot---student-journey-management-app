@@ -82,7 +82,7 @@ export default {
     width,
     height,
   },
-  // Futuristic design elements
+  // Beautiful design elements with warm colors
   card: {
     default: {
       borderRadius: 16,
@@ -111,13 +111,23 @@ export default {
     glass: {
       borderRadius: 20,
       padding: 20,
-      backgroundColor: "rgba(255, 255, 255, 0.8)",
+      backgroundColor: "rgba(255, 255, 255, 0.9)",
       backdropFilter: "blur(10px)",
       borderWidth: 1,
       borderColor: "rgba(255, 255, 255, 0.2)",
     },
+    memory: {
+      borderRadius: 20,
+      overflow: "hidden",
+      backgroundColor: Colors.white,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: 0.15,
+      shadowRadius: 16,
+      elevation: 8,
+    },
   },
-  // Modern typography system
+  // Modern typography system with warm feel
   typography: {
     display: {
       fontSize: 40,
@@ -187,7 +197,7 @@ export default {
       lineHeight: 20,
     },
   },
-  // Interactive elements
+  // Interactive elements with warm colors
   button: {
     small: {
       paddingVertical: 8,
@@ -228,7 +238,7 @@ export default {
       fontSize: 16,
     },
   },
-  // Badge system
+  // Badge system with warm colors
   badge: {
     small: {
       paddingHorizontal: 8,
@@ -267,10 +277,20 @@ export default {
     normal: 250,
     slow: 350,
   },
-  // Gradient definitions
+  // Beautiful gradient definitions
   gradients: {
     primary: {
       colors: [Colors.gradientStart, Colors.gradientEnd],
+      start: { x: 0, y: 0 },
+      end: { x: 1, y: 1 },
+    },
+    warm: {
+      colors: [Colors.gradientStart, Colors.gradientWarm],
+      start: { x: 0, y: 0 },
+      end: { x: 1, y: 0 },
+    },
+    cool: {
+      colors: [Colors.gradientCool, Colors.gradientEnd],
       start: { x: 0, y: 0 },
       end: { x: 1, y: 1 },
     },
@@ -278,6 +298,29 @@ export default {
       colors: ["rgba(255, 255, 255, 0.9)", "rgba(248, 250, 252, 0.9)"],
       start: { x: 0, y: 0 },
       end: { x: 0, y: 1 },
+    },
+    memory: {
+      colors: [Colors.memoryPink, Colors.memoryPurple],
+      start: { x: 0, y: 0 },
+      end: { x: 1, y: 1 },
+    },
+    timeline: {
+      colors: [Colors.primary, Colors.secondary],
+      start: { x: 0, y: 0 },
+      end: { x: 1, y: 0 },
+    },
+  },
+  // Social media inspired elements
+  social: {
+    storyBorder: {
+      borderWidth: 2,
+      borderRadius: 20,
+      padding: 2,
+    },
+    instagramGradient: {
+      colors: ["#833AB4", "#FD1D1D", "#FCB045"],
+      start: { x: 0, y: 0 },
+      end: { x: 1, y: 1 },
     },
   },
 };
