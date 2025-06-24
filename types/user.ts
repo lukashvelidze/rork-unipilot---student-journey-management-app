@@ -20,10 +20,25 @@ export interface University {
   notes?: string;
 }
 
+export type DocumentType = 
+  | "passport"
+  | "visa"
+  | "i20"
+  | "admission_letter"
+  | "financial_documents"
+  | "transcripts"
+  | "test_scores"
+  | "health_insurance"
+  | "transcript"
+  | "recommendation"
+  | "essay"
+  | "certificate"
+  | "other";
+
 export interface Document {
   id: string;
   name: string;
-  type: "transcript" | "recommendation" | "essay" | "certificate" | "passport" | "visa" | "other";
+  type: DocumentType;
   status: "missing" | "in_progress" | "completed";
   uploadDate?: string;
   expiryDate?: string;
