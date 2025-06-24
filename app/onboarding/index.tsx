@@ -221,27 +221,17 @@ export default function OnboardingScreen() {
     switch (step) {
       case 0:
         return (
-          <View style={styles.stepContainer}>
+          <View style={styles.welcomeContainer}>
             <Image
               source={{ uri: "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80" }}
               style={styles.welcomeImage}
               resizeMode="cover"
             />
-            <Text style={styles.welcomeTitle}>Welcome to UniPilot</Text>
-            <Text style={styles.welcomeText}>
-              Your personal guide through the entire international student journey, from university applications to career establishment.
-            </Text>
-            
-            {/* Continue button moved below the welcome text */}
-            <View style={styles.welcomeButtonContainer}>
-              <Button
-                title="Continue"
-                onPress={handleNext}
-                loading={isProcessing}
-                fullWidth
-                icon={<ChevronRight size={20} color={Colors.white} />}
-                iconPosition="right"
-              />
+            <View style={styles.welcomeContent}>
+              <Text style={styles.welcomeTitle}>Welcome to UniPilot</Text>
+              <Text style={styles.welcomeText}>
+                Your personal guide through the entire international student journey, from university applications to career establishment.
+              </Text>
             </View>
           </View>
         );
@@ -333,39 +323,44 @@ export default function OnboardingScreen() {
   
   return (
     <View style={styles.container}>
+      {/* Progress bar - only show for steps 1-4 */}
+      {step > 0 && step < 4 && (
+        <View style={styles.progressContainer}>
+          <View style={styles.progressBar}>
+            <View
+              style={[
+                styles.progressFill,
+                { width: `${(step / 4) * 100}%` },
+              ]}
+            />
+          </View>
+          <Text style={styles.progressText}>Step {step} of 4</Text>
+        </View>
+      )}
+      
+      {/* Main content */}
       <ScrollView
+        style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
-        {step > 0 && step < 4 && (
-          <View style={styles.progressContainer}>
-            <View style={styles.progressBar}>
-              <View
-                style={[
-                  styles.progressFill,
-                  { width: `${(step / 4) * 100}%` },
-                ]}
-              />
-            </View>
-            <Text style={styles.progressText}>Step {step} of 4</Text>
-          </View>
-        )}
-        
         {renderStep()}
       </ScrollView>
       
-      {/* Only show footer with continue button for steps other than welcome and final */}
-      {step > 0 && step < 4 && (
-        <View style={styles.footer}>
-          <Button
-            title="Continue"
-            onPress={handleNext}
-            loading={isProcessing}
-            fullWidth
-            icon={<ChevronRight size={20} color={Colors.white} />}
-            iconPosition="right"
-          />
-          
+      {/* Fixed footer with buttons */}
+      <View style={styles.footer}>
+        <Button
+          title={step === 4 ? "Get Started" : "Continue"}
+          onPress={handleNext}
+          loading={isProcessing}
+          fullWidth
+          icon={<ChevronRight size={20} color={Colors.white} />}
+          iconPosition="right"
+        />
+        
+        {/* Skip button - only show for steps 1-3 */}
+        {step > 0 && step < 4 && (
           <TouchableOpacity
             style={styles.skipButton}
             onPress={() => {
@@ -381,25 +376,12 @@ export default function OnboardingScreen() {
               setIsProcessing(false);
             }}
             disabled={isProcessing}
+            activeOpacity={0.7}
           >
             <Text style={styles.skipText}>Skip for now</Text>
           </TouchableOpacity>
-        </View>
-      )}
-      
-      {/* Show footer with get started button only for final step */}
-      {step === 4 && (
-        <View style={styles.footer}>
-          <Button
-            title="Get Started"
-            onPress={handleNext}
-            loading={isProcessing}
-            fullWidth
-            icon={<ChevronRight size={20} color={Colors.white} />}
-            iconPosition="right"
-          />
-        </View>
-      )}
+        )}
+      </View>
     </View>
   );
 }
@@ -409,12 +391,11 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.background,
   },
-  scrollContent: {
-    flexGrow: 1,
-    padding: 24,
-  },
   progressContainer: {
-    marginBottom: 24,
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    paddingBottom: 16,
+    backgroundColor: Colors.background,
   },
   progressBar: {
     height: 4,
@@ -432,15 +413,29 @@ const styles = StyleSheet.create({
     color: Colors.lightText,
     textAlign: "right",
   },
-  stepContainer: {
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingHorizontal: 24,
+    paddingBottom: 24,
+  },
+  welcomeContainer: {
     flex: 1,
     justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 40,
   },
   welcomeImage: {
     width: "100%",
     height: 200,
     borderRadius: 12,
-    marginBottom: 24,
+    marginBottom: 32,
+  },
+  welcomeContent: {
+    alignItems: "center",
+    paddingHorizontal: 16,
   },
   welcomeTitle: {
     fontSize: 28,
@@ -454,10 +449,12 @@ const styles = StyleSheet.create({
     color: Colors.lightText,
     textAlign: "center",
     lineHeight: 24,
-    marginBottom: 32,
+    maxWidth: 300,
   },
-  welcomeButtonContainer: {
-    marginTop: 8,
+  stepContainer: {
+    flex: 1,
+    justifyContent: "center",
+    paddingVertical: 40,
   },
   stepTitle: {
     fontSize: 24,
@@ -468,18 +465,25 @@ const styles = StyleSheet.create({
   stepDescription: {
     fontSize: 16,
     color: Colors.lightText,
-    marginBottom: 24,
+    marginBottom: 32,
     lineHeight: 24,
   },
   footer: {
     padding: 24,
+    backgroundColor: Colors.background,
     borderTopWidth: 1,
     borderTopColor: Colors.border,
+    // Ensure footer is above other elements
+    zIndex: 1000,
+    elevation: 1000,
   },
   skipButton: {
     paddingVertical: 12,
     alignItems: "center",
-    marginTop: 8,
+    marginTop: 12,
+    // Ensure skip button is touchable
+    zIndex: 1001,
+    elevation: 1001,
   },
   skipText: {
     fontSize: 14,
