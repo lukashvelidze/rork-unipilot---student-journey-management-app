@@ -70,8 +70,10 @@ export interface Memory {
   mood: "excited" | "nervous" | "confident" | "overwhelmed" | "happy" | "proud";
 }
 
+export type EducationLevel = "high_school" | "bachelors" | "masters" | "phd";
+
 export interface EducationBackground {
-  level: "high_school" | "bachelors" | "masters" | "phd";
+  level: EducationLevel;
   institution?: string;
   major?: string;
   gpa?: string;
@@ -82,6 +84,8 @@ export interface UserProfile {
   id: string;
   name: string;
   email: string;
+  bio?: string;
+  careerGoal?: string;
   homeCountry: Country;
   destinationCountry: Country;
   educationBackground: EducationBackground;

@@ -11,14 +11,13 @@ import CountrySelector from "@/components/CountrySelector";
 import Avatar from "@/components/Avatar";
 import { useUserStore } from "@/store/userStore";
 import { countries } from "@/mocks/countries";
-import { Country } from "@/types/user";
+import { Country, EducationLevel } from "@/types/user";
 
 const educationLevels = [
-  { value: "high_school", label: "High School" },
-  { value: "bachelors", label: "Bachelor's Degree" },
-  { value: "masters", label: "Master's Degree" },
-  { value: "phd", label: "PhD" },
-  { value: "other", label: "Other" },
+  { value: "high_school" as EducationLevel, label: "High School" },
+  { value: "bachelors" as EducationLevel, label: "Bachelor's Degree" },
+  { value: "masters" as EducationLevel, label: "Master's Degree" },
+  { value: "phd" as EducationLevel, label: "PhD" },
 ];
 
 const careerGoals = [
@@ -35,14 +34,14 @@ const careerGoals = [
 
 export default function EditProfileScreen() {
   const router = useRouter();
-  const { user, setUser } = useUserStore();
+  const { user, updateUser } = useUserStore();
   
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     homeCountry: null as Country | null,
     destinationCountry: null as Country | null,
-    educationLevel: "bachelors",
+    educationLevel: "bachelors" as EducationLevel,
     careerGoal: "",
     bio: "",
   });
@@ -106,8 +105,7 @@ export default function EditProfileScreen() {
       await new Promise(resolve => setTimeout(resolve, 1000));
       
       if (user) {
-        const updatedUser = {
-          ...user,
+        const updatedUserData = {
           name: formData.name,
           email: formData.email,
           homeCountry: formData.homeCountry || user.homeCountry,
@@ -120,7 +118,7 @@ export default function EditProfileScreen() {
           bio: formData.bio,
         };
         
-        setUser(updatedUser);
+        updateUser(updatedUserData);
         
         Alert.alert(
           "Profile Updated",
