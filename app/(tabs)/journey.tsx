@@ -109,31 +109,37 @@ export default function JourneyScreen() {
     },
   ];
 
-  // Mock memories data
+  // Mock memories data - updated to match Memory interface
   const memories = [
     {
-      id: 1,
+      id: "1",
       title: "First University Visit",
       description: "Visited my dream university campus for the first time. The architecture was breathtaking!",
       date: "2024-02-14",
-      feeling: "excited",
-      imageUri: "https://images.unsplash.com/photo-1562774053-701939374585?w=400&h=300&fit=crop",
+      stage: "research" as const,
+      imageUrl: "https://images.unsplash.com/photo-1562774053-701939374585?w=400&h=300&fit=crop",
+      tags: ["university", "campus", "visit"],
+      mood: "excited" as const,
     },
     {
-      id: 2,
+      id: "2",
       title: "IELTS Results",
       description: "Got my IELTS results - scored 8.0! All that preparation paid off.",
       date: "2024-01-28",
-      feeling: "proud",
-      imageUri: "https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=400&h=300&fit=crop",
+      stage: "research" as const,
+      imageUrl: "https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=400&h=300&fit=crop",
+      tags: ["ielts", "test", "results"],
+      mood: "proud" as const,
     },
     {
-      id: 3,
+      id: "3",
       title: "Scholarship Application",
       description: "Submitted my scholarship application. Fingers crossed!",
       date: "2024-03-05",
-      feeling: "nervous",
-      imageUri: "https://images.unsplash.com/photo-1513475382585-d06e58bcb0e0?w=400&h=300&fit=crop",
+      stage: "application" as const,
+      imageUrl: "https://images.unsplash.com/photo-1513475382585-d06e58bcb0e0?w=400&h=300&fit=crop",
+      tags: ["scholarship", "application"],
+      mood: "nervous" as const,
     },
   ];
   
@@ -356,7 +362,7 @@ export default function JourneyScreen() {
       {showCelebration && (
         <CelebrationAnimation 
           visible={showCelebration} 
-          type={recentMilestone?.type || "confetti"}
+          type={recentMilestone?.type === "stage_complete" ? "milestone" : recentMilestone?.type || "confetti"}
           onAnimationFinish={() => setShowCelebration(false)}
         />
       )}

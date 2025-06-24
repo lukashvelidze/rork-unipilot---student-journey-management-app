@@ -16,8 +16,8 @@ const { width } = Dimensions.get("window");
 const cardWidth = width - 32; // Account for padding
 
 const MemoryCard: React.FC<MemoryCardProps> = ({ memory, onPress }) => {
-  const getFeelingColor = () => {
-    switch (memory.feeling) {
+  const getMoodColor = () => {
+    switch (memory.mood) {
       case "excited":
         return Colors.memoryOrange;
       case "happy":
@@ -26,15 +26,17 @@ const MemoryCard: React.FC<MemoryCardProps> = ({ memory, onPress }) => {
         return Colors.memoryBlue;
       case "proud":
         return Colors.memoryPink;
-      case "sad":
+      case "overwhelmed":
         return Colors.memoryPurple;
+      case "confident":
+        return Colors.primary;
       default:
         return Colors.primary;
     }
   };
 
-  const getFeelingGradient = () => {
-    switch (memory.feeling) {
+  const getMoodGradient = (): [string, string] => {
+    switch (memory.mood) {
       case "excited":
         return [Colors.memoryOrange, "#FF6B35"];
       case "happy":
@@ -43,8 +45,10 @@ const MemoryCard: React.FC<MemoryCardProps> = ({ memory, onPress }) => {
         return [Colors.memoryBlue, "#3498DB"];
       case "proud":
         return [Colors.memoryPink, "#E74C3C"];
-      case "sad":
+      case "overwhelmed":
         return [Colors.memoryPurple, "#8E44AD"];
+      case "confident":
+        return [Colors.primary, Colors.secondary];
       default:
         return [Colors.primary, Colors.secondary];
     }
@@ -55,15 +59,15 @@ const MemoryCard: React.FC<MemoryCardProps> = ({ memory, onPress }) => {
       <View style={styles.cardContainer}>
         {/* Image with gradient overlay */}
         <View style={styles.imageContainer}>
-          {memory.imageUri ? (
+          {memory.imageUrl ? (
             <Image
-              source={{ uri: memory.imageUri }}
+              source={{ uri: memory.imageUrl }}
               style={styles.image}
               resizeMode="cover"
             />
           ) : (
             <LinearGradient
-              colors={getFeelingGradient()}
+              colors={getMoodGradient()}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={styles.placeholderGradient}
@@ -78,11 +82,11 @@ const MemoryCard: React.FC<MemoryCardProps> = ({ memory, onPress }) => {
             style={styles.imageOverlay}
           />
           
-          {/* Floating feeling badge */}
-          <View style={[styles.feelingBadge, { backgroundColor: getFeelingColor() }]}>
+          {/* Floating mood badge */}
+          <View style={[styles.moodBadge, { backgroundColor: getMoodColor() }]}>
             <Heart size={12} color={Colors.white} fill={Colors.white} />
-            <Text style={styles.feelingText}>
-              {memory.feeling.charAt(0).toUpperCase() + memory.feeling.slice(1)}
+            <Text style={styles.moodText}>
+              {memory.mood.charAt(0).toUpperCase() + memory.mood.slice(1)}
             </Text>
           </View>
           
@@ -112,7 +116,7 @@ const MemoryCard: React.FC<MemoryCardProps> = ({ memory, onPress }) => {
         
         {/* Instagram-style border */}
         <LinearGradient
-          colors={getFeelingGradient()}
+          colors={getMoodGradient()}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.borderGradient}
@@ -157,7 +161,7 @@ const styles = StyleSheet.create({
     right: 0,
     height: "60%",
   },
-  feelingBadge: {
+  moodBadge: {
     position: "absolute",
     top: 16,
     left: 16,
@@ -172,7 +176,7 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
-  feelingText: {
+  moodText: {
     color: Colors.white,
     fontSize: 12,
     fontWeight: "600",

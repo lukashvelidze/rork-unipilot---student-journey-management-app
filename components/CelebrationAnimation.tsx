@@ -6,7 +6,7 @@ import Colors from "@/constants/colors";
 interface CelebrationAnimationProps {
   visible: boolean;
   onAnimationFinish?: () => void;
-  type?: "confetti" | "achievement" | "milestone";
+  type?: "confetti" | "achievement" | "milestone" | "stage_complete";
 }
 
 const { width, height } = Dimensions.get("window");
@@ -86,7 +86,7 @@ const CelebrationAnimation: React.FC<CelebrationAnimationProps> = ({
               <View style={styles.star} />
             </View>
           )}
-          {type === "milestone" && (
+          {(type === "milestone" || type === "stage_complete") && (
             <View style={styles.milestoneContainer}>
               <View style={styles.milestone} />
               <View style={[styles.milestone, styles.milestone2]} />
