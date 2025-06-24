@@ -1,18 +1,19 @@
-import React, { useState } from "react";
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, TextInput } from "react-native";
+import React, { useState, useEffect } from "react";
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity, TextInput, Alert } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import { Heart, Send } from "lucide-react-native";
 import Colors from "@/constants/colors";
 import Avatar from "@/components/Avatar";
 import Card from "@/components/Card";
 import { useCommunityStore } from "@/store/communityStore";
+import { useUserStore } from "@/store/userStore";
 import { formatDate, formatTime } from "@/utils/dateUtils";
-import { generateId } from "@/utils/helpers";
+import { trpc } from "@/lib/trpc";
 
 export default function PostDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { user } = useUserStore();
   const {
-    posts,
     likePost,
     unlikePost,
     likeComment,
@@ -22,48 +23,138 @@ export default function PostDetailScreen() {
   
   const [commentText, setCommentText] = useState("");
   
-  const post = posts.find((p) => p.id === id);
+  // Fetch post from backend
+  const { data: post, isLoading, error, refetch } = trpc.community.getPost.useQuery(
+    { id: id! },
+    { enabled: !!id }
+  );
   
-  if (!post) {
+  const likePostMutation = trpc.community.likePost.useMutation({
+    onSuccess: () => {
+      refetch();
+    },
+    onError: (error) => {
+      Alert.alert("Error", "Failed to update like status");
+      console.error("Like post error:", error);
+    },
+  });
+  
+  const likeCommentMutation = trpc.community.likeComment.useMutation({
+    onSuccess: () => {
+      refetch();
+    },
+    onError: (error) => {
+      Alert.alert("Error", "Failed to update comment like status");
+      console.error("Like comment error:", error);
+    },
+  });
+  
+  const addCommentMutation = trpc.community.addComment.useMutation({
+    onSuccess: (newComment) => {
+      // Add comment to local state
+      if (post) {
+        addComment(post.id, newComment);
+      }
+      setCommentText("");
+      refetch();
+    },
+    onError: (error) => {
+      Alert.alert("Error", "Failed to add comment");
+      console.error("Add comment error:", error);
+    },
+  });
+  
+  if (isLoading) {
     return (
       <View style={styles.container}>
-        <Text style={styles.errorText}>Post not found</Text>
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Loading post...</Text>
+        </View>
       </View>
     );
   }
   
-  const handleLikePost = () => {
+  if (error || !post) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>
+            {error?.message || "Post not found"}
+          </Text>
+          <TouchableOpacity
+            style={styles.retryButton}
+            onPress={() => refetch()}
+          >
+            <Text style={styles.retryButtonText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+  
+  const handleLikePost = async () => {
+    // Optimistic update
     if (post.isLiked) {
       unlikePost(post.id);
     } else {
       likePost(post.id);
     }
+    
+    // Update backend
+    try {
+      await likePostMutation.mutateAsync({
+        postId: post.id,
+        isLiked: !post.isLiked,
+      });
+    } catch (error) {
+      // Revert optimistic update on error
+      if (!post.isLiked) {
+        unlikePost(post.id);
+      } else {
+        likePost(post.id);
+      }
+    }
   };
   
-  const handleLikeComment = (commentId: string, isLiked: boolean) => {
+  const handleLikeComment = async (commentId: string, isLiked: boolean) => {
+    // Optimistic update
     if (isLiked) {
       unlikeComment(post.id, commentId);
     } else {
       likeComment(post.id, commentId);
     }
+    
+    // Update backend
+    try {
+      await likeCommentMutation.mutateAsync({
+        postId: post.id,
+        commentId,
+        isLiked: !isLiked,
+      });
+    } catch (error) {
+      // Revert optimistic update on error
+      if (!isLiked) {
+        unlikeComment(post.id, commentId);
+      } else {
+        likeComment(post.id, commentId);
+      }
+    }
   };
   
-  const handleAddComment = () => {
+  const handleAddComment = async () => {
     if (commentText.trim()) {
-      const newComment = {
-        id: generateId(),
-        userId: "current_user", // In a real app, this would be the current user's ID
-        userName: "You", // In a real app, this would be the current user's name
-        userAvatar: undefined, // In a real app, this would be the current user's avatar
-        content: commentText,
-        createdAt: new Date().toISOString(),
-        likes: 0,
-        isLiked: false,
-        isPremium: false,
-      };
-      
-      addComment(post.id, newComment);
-      setCommentText("");
+      try {
+        await addCommentMutation.mutateAsync({
+          postId: post.id,
+          content: commentText,
+          userId: user?.id || "anonymous",
+          userName: user?.name || "Anonymous User",
+          userAvatar: user?.avatar,
+          isPremium: user?.isPremium || false,
+        });
+      } catch (error) {
+        // Error is handled in the mutation
+      }
     }
   };
   
@@ -93,7 +184,7 @@ export default function PostDetailScreen() {
             <View
               style={[
                 styles.topicBadge,
-                { backgroundColor: `${Colors.primary}20` }, // 20% opacity
+                { backgroundColor: `${Colors.primary}20` },
               ]}
             >
               <Text style={styles.topicText}>
@@ -200,7 +291,7 @@ export default function PostDetailScreen() {
             !commentText.trim() && styles.disabledSendButton,
           ]}
           onPress={handleAddComment}
-          disabled={!commentText.trim()}
+          disabled={!commentText.trim() || addCommentMutation.isLoading}
         >
           <Send
             size={20}
@@ -222,7 +313,40 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 16,
-    paddingBottom: 100, // Extra padding for comment input
+    paddingBottom: 100,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 16,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: Colors.lightText,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 16,
+  },
+  errorText: {
+    fontSize: 16,
+    color: Colors.error,
+    textAlign: "center",
+    marginBottom: 16,
+  },
+  retryButton: {
+    backgroundColor: Colors.primary,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: Colors.white,
+    fontSize: 16,
+    fontWeight: "600",
   },
   postCard: {
     marginBottom: 16,
@@ -395,11 +519,5 @@ const styles = StyleSheet.create({
   },
   disabledSendButton: {
     backgroundColor: Colors.lightBackground,
-  },
-  errorText: {
-    fontSize: 16,
-    color: Colors.error,
-    textAlign: "center",
-    marginTop: 24,
   },
 });

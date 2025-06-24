@@ -1,16 +1,15 @@
 import React, { useEffect, useState } from "react";
-import { StyleSheet, View, Text, FlatList, TouchableOpacity, TextInput, Image } from "react-native";
+import { StyleSheet, View, Text, FlatList, TouchableOpacity, TextInput, Image, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { Plus, Search, X, Crown } from "lucide-react-native";
 import { useColors } from "@/hooks/useColors";
 import PostCard from "@/components/PostCard";
-import TopicSelector from "@/components/TopicSelector";
 import Card from "@/components/Card";
 import { useCommunityStore } from "@/store/communityStore";
 import { useUserStore } from "@/store/userStore";
 import { Topic } from "@/types/community";
-import { mockPosts } from "@/mocks/communityPosts";
+import { trpc } from "@/lib/trpc";
 
 export default function CommunityScreen() {
   const router = useRouter();
@@ -20,51 +19,105 @@ export default function CommunityScreen() {
     posts,
     filteredPosts,
     selectedTopic,
+    searchQuery,
+    isLoading,
+    error,
     setPosts,
     filterByTopic,
     searchPosts,
     likePost,
     unlikePost,
+    setLoading,
+    setError,
   } = useCommunityStore();
   
-  const [searchQuery, setSearchQuery] = useState("");
   const isPremium = user?.isPremium || false;
   
-  // Initialize with mock posts if empty
+  // Fetch posts from backend
+  const { data: backendPosts, isLoading: postsLoading, error: postsError, refetch } = trpc.community.getPosts.useQuery({
+    topic: selectedTopic || undefined,
+    search: searchQuery || undefined,
+  });
+  
+  const likePostMutation = trpc.community.likePost.useMutation({
+    onSuccess: () => {
+      // Refetch posts to get updated data
+      refetch();
+    },
+    onError: (error) => {
+      Alert.alert("Error", "Failed to update like status");
+      console.error("Like post error:", error);
+    },
+  });
+  
+  // Update local state when backend data changes
   useEffect(() => {
-    if (posts.length === 0) {
-      setPosts(mockPosts);
+    if (backendPosts) {
+      setPosts(backendPosts);
     }
-  }, [posts.length, setPosts]);
+  }, [backendPosts, setPosts]);
+  
+  // Update loading state
+  useEffect(() => {
+    setLoading(postsLoading);
+  }, [postsLoading, setLoading]);
+  
+  // Update error state
+  useEffect(() => {
+    if (postsError) {
+      setError(postsError.message);
+    } else {
+      setError(null);
+    }
+  }, [postsError, setError]);
   
   const handleSearch = (text: string) => {
-    setSearchQuery(text);
     searchPosts(text);
   };
   
   const clearSearch = () => {
-    setSearchQuery("");
     searchPosts("");
   };
   
-  const handleLike = (postId: string, isLiked: boolean) => {
+  const handleLike = async (postId: string, isLiked: boolean) => {
+    // Optimistic update
     if (isLiked) {
       unlikePost(postId);
     } else {
       likePost(postId);
     }
+    
+    // Update backend
+    try {
+      await likePostMutation.mutateAsync({
+        postId,
+        isLiked: !isLiked,
+      });
+    } catch (error) {
+      // Revert optimistic update on error
+      if (!isLiked) {
+        unlikePost(postId);
+      } else {
+        likePost(postId);
+      }
+    }
   };
   
-  const topics: { value: Topic; label: string }[] = [
-    { value: "visa", label: "Visa" },
-    { value: "university", label: "University" },
-    { value: "accommodation", label: "Housing" },
-    { value: "finances", label: "Finances" },
-    { value: "culture", label: "Culture" },
-    { value: "academics", label: "Academics" },
-    { value: "career", label: "Career" },
-    { value: "general", label: "General" },
-  ];
+  if (error) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: Colors.background }]} edges={['top']}>
+        <View style={styles.errorContainer}>
+          <Text style={[styles.errorText, { color: Colors.error }]}>Error loading posts: {error}</Text>
+          <TouchableOpacity
+            style={[styles.retryButton, { backgroundColor: Colors.primary }]}
+            onPress={() => refetch()}
+          >
+            <Text style={styles.retryButtonText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
   
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: Colors.background }]} edges={['top']}>
@@ -126,14 +179,11 @@ export default function CommunityScreen() {
         </Card>
       )}
       
-      <TopicSelector
-        topics={topics}
-        selectedTopic={selectedTopic}
-        onSelectTopic={filterByTopic}
-        style={styles.topicSelector}
-      />
-      
-      {filteredPosts.length > 0 ? (
+      {isLoading ? (
+        <View style={styles.loadingContainer}>
+          <Text style={[styles.loadingText, { color: Colors.lightText }]}>Loading discussions...</Text>
+        </View>
+      ) : filteredPosts.length > 0 ? (
         <FlatList
           data={filteredPosts}
           keyExtractor={(item) => item.id}
@@ -148,6 +198,8 @@ export default function CommunityScreen() {
           )}
           contentContainerStyle={styles.postsList}
           showsVerticalScrollIndicator={false}
+          refreshing={isLoading}
+          onRefresh={() => refetch()}
         />
       ) : (
         <View style={styles.emptyContainer}>
@@ -257,9 +309,14 @@ const styles = StyleSheet.create({
     flex: 2,
     height: 120,
   },
-  topicSelector: {
-    paddingHorizontal: 0,
-    marginBottom: 8,
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 16,
+  },
+  loadingText: {
+    fontSize: 16,
   },
   postsList: {
     padding: 16,
@@ -286,6 +343,27 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   startDiscussionText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 16,
+  },
+  errorText: {
+    fontSize: 16,
+    textAlign: "center",
+    marginBottom: 16,
+  },
+  retryButton: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  retryButtonText: {
     color: "#FFFFFF",
     fontSize: 16,
     fontWeight: "600",

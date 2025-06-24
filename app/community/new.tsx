@@ -4,13 +4,13 @@ import { useRouter } from "expo-router";
 import Colors from "@/constants/colors";
 import Input from "@/components/Input";
 import Button from "@/components/Button";
-import { useCommunityStore } from "@/store/communityStore";
+import { useUserStore } from "@/store/userStore";
 import { Topic } from "@/types/community";
-import { generateId } from "@/utils/helpers";
+import { trpc } from "@/lib/trpc";
 
 export default function NewPostScreen() {
   const router = useRouter();
-  const { addPost } = useCommunityStore();
+  const { user } = useUserStore();
   
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
@@ -18,6 +18,25 @@ export default function NewPostScreen() {
   const [errors, setErrors] = useState({
     title: "",
     content: "",
+  });
+  
+  const createPostMutation = trpc.community.createPost.useMutation({
+    onSuccess: () => {
+      Alert.alert(
+        "Success",
+        "Post created successfully",
+        [
+          {
+            text: "OK",
+            onPress: () => router.back(),
+          },
+        ]
+      );
+    },
+    onError: (error) => {
+      Alert.alert("Error", "Failed to create post");
+      console.error("Create post error:", error);
+    },
   });
   
   const topics: { value: Topic; label: string }[] = [
@@ -53,35 +72,21 @@ export default function NewPostScreen() {
     return isValid;
   };
   
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (validateForm()) {
-      const newPost = {
-        id: generateId(),
-        userId: "current_user", // In a real app, this would be the current user's ID
-        userName: "You", // In a real app, this would be the current user's name
-        userAvatar: undefined, // In a real app, this would be the current user's avatar
-        title,
-        content,
-        topic,
-        createdAt: new Date().toISOString(),
-        likes: 0,
-        comments: [],
-        isLiked: false,
-        isPremium: false,
-      };
-      
-      addPost(newPost);
-      
-      Alert.alert(
-        "Success",
-        "Post created successfully",
-        [
-          {
-            text: "OK",
-            onPress: () => router.back(),
-          },
-        ]
-      );
+      try {
+        await createPostMutation.mutateAsync({
+          title,
+          content,
+          topic,
+          userId: user?.id || "anonymous",
+          userName: user?.name || "Anonymous User",
+          userAvatar: user?.avatar,
+          isPremium: user?.isPremium || false,
+        });
+      } catch (error) {
+        // Error is handled in the mutation
+      }
     }
   };
   
@@ -128,10 +133,11 @@ export default function NewPostScreen() {
       />
       
       <Button
-        title="Post Discussion"
+        title={createPostMutation.isLoading ? "Creating..." : "Post Discussion"}
         onPress={handleSubmit}
         style={styles.submitButton}
         fullWidth
+        disabled={createPostMutation.isLoading}
       />
     </ScrollView>
   );

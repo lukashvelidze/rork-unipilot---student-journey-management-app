@@ -7,6 +7,7 @@ interface CommunityState {
   selectedTopic: Topic | null;
   isLoading: boolean;
   error: string | null;
+  searchQuery: string;
   setPosts: (posts: Post[]) => void;
   addPost: (post: Post) => void;
   updatePost: (postId: string, postData: Partial<Post>) => void;
@@ -18,6 +19,8 @@ interface CommunityState {
   unlikeComment: (postId: string, commentId: string) => void;
   filterByTopic: (topic: Topic | null) => void;
   searchPosts: (query: string) => void;
+  setLoading: (loading: boolean) => void;
+  setError: (error: string | null) => void;
 }
 
 export const useCommunityStore = create<CommunityState>()((set, get) => ({
@@ -26,140 +29,153 @@ export const useCommunityStore = create<CommunityState>()((set, get) => ({
   selectedTopic: null,
   isLoading: false,
   error: null,
-  setPosts: (posts) => set({ posts, filteredPosts: posts }),
-  addPost: (post) => 
-    set((state) => {
-      const newPosts = [post, ...state.posts];
-      return { 
-        posts: newPosts,
-        filteredPosts: state.selectedTopic 
-          ? newPosts.filter(p => p.topic === state.selectedTopic)
-          : newPosts
-      };
-    }),
-  updatePost: (postId, postData) => 
-    set((state) => {
-      const updatedPosts = state.posts.map((post) => 
-        post.id === postId ? { ...post, ...postData } : post
+  searchQuery: "",
+  
+  setPosts: (posts) => {
+    const state = get();
+    let filtered = posts;
+    
+    // Apply topic filter
+    if (state.selectedTopic) {
+      filtered = filtered.filter(p => p.topic === state.selectedTopic);
+    }
+    
+    // Apply search filter
+    if (state.searchQuery) {
+      const query = state.searchQuery.toLowerCase();
+      filtered = filtered.filter(p => 
+        p.title.toLowerCase().includes(query) || 
+        p.content.toLowerCase().includes(query)
       );
-      return { 
-        posts: updatedPosts,
-        filteredPosts: state.selectedTopic 
-          ? updatedPosts.filter(p => p.topic === state.selectedTopic)
-          : updatedPosts
-      };
-    }),
-  deletePost: (postId) => 
-    set((state) => {
-      const updatedPosts = state.posts.filter((post) => post.id !== postId);
-      return { 
-        posts: updatedPosts,
-        filteredPosts: state.selectedTopic 
-          ? updatedPosts.filter(p => p.topic === state.selectedTopic)
-          : updatedPosts
-      };
-    }),
-  likePost: (postId) => 
-    set((state) => ({
-      posts: state.posts.map((post) => 
-        post.id === postId ? { ...post, likes: post.likes + 1, isLiked: true } : post
-      ),
-      filteredPosts: state.filteredPosts.map((post) => 
-        post.id === postId ? { ...post, likes: post.likes + 1, isLiked: true } : post
-      ),
-    })),
-  unlikePost: (postId) => 
-    set((state) => ({
-      posts: state.posts.map((post) => 
-        post.id === postId ? { ...post, likes: post.likes - 1, isLiked: false } : post
-      ),
-      filteredPosts: state.filteredPosts.map((post) => 
-        post.id === postId ? { ...post, likes: post.likes - 1, isLiked: false } : post
-      ),
-    })),
-  addComment: (postId, comment) => 
-    set((state) => ({
-      posts: state.posts.map((post) => 
-        post.id === postId 
-          ? { ...post, comments: [...post.comments, comment] } 
-          : post
-      ),
-      filteredPosts: state.filteredPosts.map((post) => 
-        post.id === postId 
-          ? { ...post, comments: [...post.comments, comment] } 
-          : post
-      ),
-    })),
-  likeComment: (postId, commentId) => 
-    set((state) => ({
-      posts: state.posts.map((post) => 
-        post.id === postId 
-          ? {
-              ...post,
-              comments: post.comments.map((comment) => 
-                comment.id === commentId 
-                  ? { ...comment, likes: comment.likes + 1, isLiked: true } 
-                  : comment
-              ),
-            } 
-          : post
-      ),
-      filteredPosts: state.filteredPosts.map((post) => 
-        post.id === postId 
-          ? {
-              ...post,
-              comments: post.comments.map((comment) => 
-                comment.id === commentId 
-                  ? { ...comment, likes: comment.likes + 1, isLiked: true } 
-                  : comment
-              ),
-            } 
-          : post
-      ),
-    })),
-  unlikeComment: (postId, commentId) => 
-    set((state) => ({
-      posts: state.posts.map((post) => 
-        post.id === postId 
-          ? {
-              ...post,
-              comments: post.comments.map((comment) => 
-                comment.id === commentId 
-                  ? { ...comment, likes: comment.likes - 1, isLiked: false } 
-                  : comment
-              ),
-            } 
-          : post
-      ),
-      filteredPosts: state.filteredPosts.map((post) => 
-        post.id === postId 
-          ? {
-              ...post,
-              comments: post.comments.map((comment) => 
-                comment.id === commentId 
-                  ? { ...comment, likes: comment.likes - 1, isLiked: false } 
-                  : comment
-              ),
-            } 
-          : post
-      ),
-    })),
-  filterByTopic: (topic) => 
-    set((state) => ({
-      selectedTopic: topic,
-      filteredPosts: topic ? state.posts.filter((post) => post.topic === topic) : state.posts,
-    })),
-  searchPosts: (query) => 
-    set((state) => {
+    }
+    
+    set({ posts, filteredPosts: filtered });
+  },
+  
+  addPost: (post) => {
+    const state = get();
+    const newPosts = [post, ...state.posts];
+    state.setPosts(newPosts);
+  },
+  
+  updatePost: (postId, postData) => {
+    const state = get();
+    const updatedPosts = state.posts.map((post) => 
+      post.id === postId ? { ...post, ...postData } : post
+    );
+    state.setPosts(updatedPosts);
+  },
+  
+  deletePost: (postId) => {
+    const state = get();
+    const updatedPosts = state.posts.filter((post) => post.id !== postId);
+    state.setPosts(updatedPosts);
+  },
+  
+  likePost: (postId) => {
+    const state = get();
+    const updatedPosts = state.posts.map((post) => 
+      post.id === postId ? { ...post, likes: post.likes + 1, isLiked: true } : post
+    );
+    state.setPosts(updatedPosts);
+  },
+  
+  unlikePost: (postId) => {
+    const state = get();
+    const updatedPosts = state.posts.map((post) => 
+      post.id === postId ? { ...post, likes: Math.max(0, post.likes - 1), isLiked: false } : post
+    );
+    state.setPosts(updatedPosts);
+  },
+  
+  addComment: (postId, comment) => {
+    const state = get();
+    const updatedPosts = state.posts.map((post) => 
+      post.id === postId 
+        ? { ...post, comments: [...post.comments, comment] } 
+        : post
+    );
+    state.setPosts(updatedPosts);
+  },
+  
+  likeComment: (postId, commentId) => {
+    const state = get();
+    const updatedPosts = state.posts.map((post) => 
+      post.id === postId 
+        ? {
+            ...post,
+            comments: post.comments.map((comment) => 
+              comment.id === commentId 
+                ? { ...comment, likes: comment.likes + 1, isLiked: true } 
+                : comment
+            ),
+          } 
+        : post
+    );
+    state.setPosts(updatedPosts);
+  },
+  
+  unlikeComment: (postId, commentId) => {
+    const state = get();
+    const updatedPosts = state.posts.map((post) => 
+      post.id === postId 
+        ? {
+            ...post,
+            comments: post.comments.map((comment) => 
+              comment.id === commentId 
+                ? { ...comment, likes: Math.max(0, comment.likes - 1), isLiked: false } 
+                : comment
+            ),
+          } 
+        : post
+    );
+    state.setPosts(updatedPosts);
+  },
+  
+  filterByTopic: (topic) => {
+    const state = get();
+    set({ selectedTopic: topic });
+    
+    let filtered = state.posts;
+    if (topic) {
+      filtered = filtered.filter((post) => post.topic === topic);
+    }
+    
+    // Apply search filter if exists
+    if (state.searchQuery) {
+      const query = state.searchQuery.toLowerCase();
+      filtered = filtered.filter(p => 
+        p.title.toLowerCase().includes(query) || 
+        p.content.toLowerCase().includes(query)
+      );
+    }
+    
+    set({ filteredPosts: filtered });
+  },
+  
+  searchPosts: (query) => {
+    const state = get();
+    set({ searchQuery: query });
+    
+    let filtered = state.posts;
+    
+    // Apply topic filter if exists
+    if (state.selectedTopic) {
+      filtered = filtered.filter(p => p.topic === state.selectedTopic);
+    }
+    
+    // Apply search filter
+    if (query) {
       const lowercaseQuery = query.toLowerCase();
-      const filtered = state.posts.filter((post) => 
+      filtered = filtered.filter((post) => 
         post.title.toLowerCase().includes(lowercaseQuery) || 
         post.content.toLowerCase().includes(lowercaseQuery)
       );
-      return {
-        filteredPosts: state.selectedTopic 
-          ? filtered.filter(p => p.topic === state.selectedTopic)
-          : filtered,
-      };
-    }),
+    }
+    
+    set({ filteredPosts: filtered });
+  },
+  
+  setLoading: (loading) => set({ isLoading: loading }),
+  setError: (error) => set({ error }),
 }));
