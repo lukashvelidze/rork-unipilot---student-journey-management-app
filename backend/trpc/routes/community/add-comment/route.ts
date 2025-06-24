@@ -1,4 +1,4 @@
-import { publicProcedure } from "../../create-context";
+import { publicProcedure } from "../../../create-context";
 import { z } from "zod";
 
 export const addCommentProcedure = publicProcedure
@@ -12,7 +12,7 @@ export const addCommentProcedure = publicProcedure
       isPremium: z.boolean().default(false),
     })
   )
-  .mutation(({ input }) => {
+  .mutation(({ input }: { input: any }) => {
     // In a real app, this would save to a database
     const newComment = {
       id: `comment_${Date.now()}`,

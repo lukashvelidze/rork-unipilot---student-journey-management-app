@@ -1,4 +1,4 @@
-import { publicProcedure } from "../../create-context";
+import { publicProcedure } from "../../../create-context";
 import { z } from "zod";
 
 export const likeCommentProcedure = publicProcedure
@@ -9,7 +9,7 @@ export const likeCommentProcedure = publicProcedure
       isLiked: z.boolean(),
     })
   )
-  .mutation(({ input }) => {
+  .mutation(({ input }: { input: any }) => {
     // In a real app, this would update the database
     return {
       postId: input.postId,

@@ -101,6 +101,7 @@ export interface UserProfile {
   email: string;
   bio?: string;
   careerGoal?: string;
+  avatar?: string;
   homeCountry: Country;
   destinationCountry: Country;
   educationBackground: EducationBackground;

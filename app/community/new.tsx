@@ -33,7 +33,7 @@ export default function NewPostScreen() {
         ]
       );
     },
-    onError: (error) => {
+    onError: (error: any) => {
       Alert.alert("Error", "Failed to create post");
       console.error("Create post error:", error);
     },

@@ -1,4 +1,4 @@
-import { publicProcedure } from "../../create-context";
+import { publicProcedure } from "../../../create-context";
 import { z } from "zod";
 
 // Mock data for now - in a real app this would come from a database
@@ -64,7 +64,7 @@ export const getPostsProcedure = publicProcedure
       search: z.string().optional(),
     }).optional()
   )
-  .query(({ input }) => {
+  .query(({ input }: { input?: any }) => {
     let filteredPosts = [...mockPosts];
     
     if (input?.topic && input.topic !== "all") {

@@ -10,6 +10,18 @@ import { useUserStore } from "@/store/userStore";
 import { formatDate, formatTime } from "@/utils/dateUtils";
 import { trpc } from "@/lib/trpc";
 
+interface Comment {
+  id: string;
+  userId: string;
+  userName: string;
+  userAvatar?: string;
+  content: string;
+  createdAt: string;
+  likes: number;
+  isLiked: boolean;
+  isPremium: boolean;
+}
+
 export default function PostDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user } = useUserStore();
@@ -33,7 +45,7 @@ export default function PostDetailScreen() {
     onSuccess: () => {
       refetch();
     },
-    onError: (error) => {
+    onError: (error: any) => {
       Alert.alert("Error", "Failed to update like status");
       console.error("Like post error:", error);
     },
@@ -43,14 +55,14 @@ export default function PostDetailScreen() {
     onSuccess: () => {
       refetch();
     },
-    onError: (error) => {
+    onError: (error: any) => {
       Alert.alert("Error", "Failed to update comment like status");
       console.error("Like comment error:", error);
     },
   });
   
   const addCommentMutation = trpc.community.addComment.useMutation({
-    onSuccess: (newComment) => {
+    onSuccess: (newComment: any) => {
       // Add comment to local state
       if (post) {
         addComment(post.id, newComment);
@@ -58,7 +70,7 @@ export default function PostDetailScreen() {
       setCommentText("");
       refetch();
     },
-    onError: (error) => {
+    onError: (error: any) => {
       Alert.alert("Error", "Failed to add comment");
       console.error("Add comment error:", error);
     },
@@ -165,9 +177,9 @@ export default function PostDetailScreen() {
           <View style={styles.postHeader}>
             <View style={styles.userContainer}>
               <Avatar
-                source={post.userAvatar}
                 name={post.userName}
                 size="small"
+                imageUrl={post.userAvatar}
               />
               <View style={styles.userInfo}>
                 <View style={styles.nameContainer}>
@@ -224,14 +236,14 @@ export default function PostDetailScreen() {
             Comments ({post.comments.length})
           </Text>
           
-          {post.comments.map((comment) => (
+          {post.comments.map((comment: Comment) => (
             <Card key={comment.id} style={styles.commentCard}>
               <View style={styles.commentHeader}>
                 <View style={styles.commentUser}>
                   <Avatar
-                    source={comment.userAvatar}
                     name={comment.userName}
                     size="small"
+                    imageUrl={comment.userAvatar}
                   />
                   <View style={styles.commentUserInfo}>
                     <View style={styles.commentNameContainer}>
