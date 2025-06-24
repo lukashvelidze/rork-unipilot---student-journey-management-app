@@ -81,7 +81,7 @@ export default function NewPostScreen() {
           topic,
           userId: user?.id || "anonymous",
           userName: user?.name || "Anonymous User",
-          userAvatar: user?.profileImage,
+          userAvatar: user?.avatar,
           isPremium: user?.isPremium || false,
         });
       } catch (error) {

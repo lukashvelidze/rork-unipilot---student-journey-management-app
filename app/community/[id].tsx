@@ -161,7 +161,7 @@ export default function PostDetailScreen() {
           content: commentText,
           userId: user?.id || "anonymous",
           userName: user?.name || "Anonymous User",
-          userAvatar: user?.profileImage,
+          userAvatar: user?.avatar,
           isPremium: user?.isPremium || false,
         });
       } catch (error) {
