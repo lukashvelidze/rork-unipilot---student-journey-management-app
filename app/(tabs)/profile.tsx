@@ -1,5 +1,6 @@
 import React from "react";
 import { StyleSheet, View, Text, ScrollView, TouchableOpacity } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { Settings, Crown, Edit, MapPin, GraduationCap, Target, Calendar } from "lucide-react-native";
 import { useColors } from "@/hooks/useColors";
@@ -16,7 +17,7 @@ export default function ProfileScreen() {
   
   if (!user) {
     return (
-      <View style={[styles.container, { backgroundColor: Colors.background }]}>
+      <SafeAreaView style={[styles.container, { backgroundColor: Colors.background }]} edges={['top']}>
         <Text style={[styles.errorText, { color: Colors.text }]}>User data not available. Please log in.</Text>
         <Button
           title="Logout"
@@ -26,7 +27,7 @@ export default function ProfileScreen() {
           fullWidth
           style={styles.actionButton}
         />
-      </View>
+      </SafeAreaView>
     );
   }
 
@@ -66,149 +67,154 @@ export default function ProfileScreen() {
   ];
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: Colors.background }]} contentContainerStyle={styles.content}>
-      {/* Header with Avatar and Basic Info */}
-      <Card style={[styles.headerCard, { backgroundColor: Colors.card }]} variant="elevated">
-        <View style={styles.profileHeader}>
-          <Avatar
-            size="large"
-            name={user.name}
-            showBorder
-          />
-          <View style={styles.profileInfo}>
-            <Text style={[styles.name, { color: Colors.text }]}>{user.name}</Text>
-            <Text style={[styles.email, { color: Colors.lightText }]}>{user.email}</Text>
-            {isPremium && (
-              <View style={[styles.premiumBadge, { backgroundColor: Colors.premiumBackground }]}>
-                <Crown size={14} color={Colors.premium} />
-                <Text style={[styles.premiumText, { color: Colors.premium }]}>Premium Member</Text>
+    <SafeAreaView style={[styles.container, { backgroundColor: Colors.background }]} edges={['top']}>
+      <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.content}>
+        {/* Header with Avatar and Basic Info */}
+        <Card style={[styles.headerCard, { backgroundColor: Colors.card }]} variant="elevated">
+          <View style={styles.profileHeader}>
+            <Avatar
+              size="large"
+              name={user.name}
+              showBorder
+            />
+            <View style={styles.profileInfo}>
+              <Text style={[styles.name, { color: Colors.text }]}>{user.name}</Text>
+              <Text style={[styles.email, { color: Colors.lightText }]}>{user.email}</Text>
+              {isPremium && (
+                <View style={[styles.premiumBadge, { backgroundColor: Colors.premiumBackground }]}>
+                  <Crown size={14} color={Colors.premium} />
+                  <Text style={[styles.premiumText, { color: Colors.premium }]}>Premium Member</Text>
+                </View>
+              )}
+            </View>
+          </View>
+          
+          {user.bio && (
+            <Text style={[styles.bio, { color: Colors.lightText }]}>{user.bio}</Text>
+          )}
+        </Card>
+        
+        {/* Stats Cards */}
+        <View style={styles.statsContainer}>
+          {profileStats.map((stat, index) => (
+            <Card key={index} style={[styles.statCard, { backgroundColor: Colors.card }]} variant="default">
+              <Text style={[styles.statValue, { color: stat.color }]}>{stat.value}</Text>
+              <Text style={[styles.statLabel, { color: Colors.lightText }]}>{stat.label}</Text>
+            </Card>
+          ))}
+        </View>
+        
+        {/* Quick Actions */}
+        <View style={styles.quickActions}>
+          {quickActions.map((action, index) => (
+            <TouchableOpacity
+              key={index}
+              style={[styles.actionCard, { backgroundColor: Colors.card }]}
+              onPress={action.onPress}
+            >
+              <View style={[styles.actionIcon, { backgroundColor: `${action.color}15` }]}>
+                <action.icon size={24} color={action.color} />
+              </View>
+              <View style={styles.actionContent}>
+                <Text style={[styles.actionTitle, { color: Colors.text }]}>{action.title}</Text>
+                <Text style={[styles.actionSubtitle, { color: Colors.lightText }]}>{action.subtitle}</Text>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </View>
+        
+        {/* Profile Information */}
+        <Card style={[styles.infoCard, { backgroundColor: Colors.card }]} variant="default">
+          <Text style={[styles.sectionTitle, { color: Colors.text }]}>Profile Information</Text>
+          
+          <View style={styles.infoGrid}>
+            <View style={styles.infoItem}>
+              <View style={[styles.infoIcon, { backgroundColor: Colors.surface }]}>
+                <MapPin size={18} color={Colors.primary} />
+              </View>
+              <View style={styles.infoContent}>
+                <Text style={[styles.infoLabel, { color: Colors.lightText }]}>From</Text>
+                <Text style={[styles.infoValue, { color: Colors.text }]}>
+                  {user.homeCountry?.name || "Not set"}
+                </Text>
+              </View>
+            </View>
+            
+            <View style={styles.infoItem}>
+              <View style={[styles.infoIcon, { backgroundColor: Colors.surface }]}>
+                <Target size={18} color={Colors.secondary} />
+              </View>
+              <View style={styles.infoContent}>
+                <Text style={[styles.infoLabel, { color: Colors.lightText }]}>Studying in</Text>
+                <Text style={[styles.infoValue, { color: Colors.text }]}>
+                  {user.destinationCountry?.name || "Not set"}
+                </Text>
+              </View>
+            </View>
+            
+            <View style={styles.infoItem}>
+              <View style={[styles.infoIcon, { backgroundColor: Colors.surface }]}>
+                <GraduationCap size={18} color={Colors.accent} />
+              </View>
+              <View style={styles.infoContent}>
+                <Text style={[styles.infoLabel, { color: Colors.lightText }]}>Education Level</Text>
+                <Text style={[styles.infoValue, { color: Colors.text }]}>
+                  {user.educationBackground?.level || "Not set"}
+                </Text>
+              </View>
+            </View>
+            
+            {user.careerGoal && (
+              <View style={styles.infoItem}>
+                <View style={[styles.infoIcon, { backgroundColor: Colors.surface }]}>
+                  <Target size={18} color={Colors.success} />
+                </View>
+                <View style={styles.infoContent}>
+                  <Text style={[styles.infoLabel, { color: Colors.lightText }]}>Career Interest</Text>
+                  <Text style={[styles.infoValue, { color: Colors.text }]}>{user.careerGoal}</Text>
+                </View>
               </View>
             )}
           </View>
-        </View>
-        
-        {user.bio && (
-          <Text style={[styles.bio, { color: Colors.lightText }]}>{user.bio}</Text>
-        )}
-      </Card>
-      
-      {/* Stats Cards */}
-      <View style={styles.statsContainer}>
-        {profileStats.map((stat, index) => (
-          <Card key={index} style={[styles.statCard, { backgroundColor: Colors.card }]} variant="default">
-            <Text style={[styles.statValue, { color: stat.color }]}>{stat.value}</Text>
-            <Text style={[styles.statLabel, { color: Colors.lightText }]}>{stat.label}</Text>
-          </Card>
-        ))}
-      </View>
-      
-      {/* Quick Actions */}
-      <View style={styles.quickActions}>
-        {quickActions.map((action, index) => (
-          <TouchableOpacity
-            key={index}
-            style={[styles.actionCard, { backgroundColor: Colors.card }]}
-            onPress={action.onPress}
-          >
-            <View style={[styles.actionIcon, { backgroundColor: `${action.color}15` }]}>
-              <action.icon size={24} color={action.color} />
-            </View>
-            <View style={styles.actionContent}>
-              <Text style={[styles.actionTitle, { color: Colors.text }]}>{action.title}</Text>
-              <Text style={[styles.actionSubtitle, { color: Colors.lightText }]}>{action.subtitle}</Text>
-            </View>
-          </TouchableOpacity>
-        ))}
-      </View>
-      
-      {/* Profile Information */}
-      <Card style={[styles.infoCard, { backgroundColor: Colors.card }]} variant="default">
-        <Text style={[styles.sectionTitle, { color: Colors.text }]}>Profile Information</Text>
-        
-        <View style={styles.infoGrid}>
-          <View style={styles.infoItem}>
-            <View style={[styles.infoIcon, { backgroundColor: Colors.surface }]}>
-              <MapPin size={18} color={Colors.primary} />
-            </View>
-            <View style={styles.infoContent}>
-              <Text style={[styles.infoLabel, { color: Colors.lightText }]}>From</Text>
-              <Text style={[styles.infoValue, { color: Colors.text }]}>
-                {user.homeCountry?.name || "Not set"}
-              </Text>
-            </View>
-          </View>
-          
-          <View style={styles.infoItem}>
-            <View style={[styles.infoIcon, { backgroundColor: Colors.surface }]}>
-              <Target size={18} color={Colors.secondary} />
-            </View>
-            <View style={styles.infoContent}>
-              <Text style={[styles.infoLabel, { color: Colors.lightText }]}>Studying in</Text>
-              <Text style={[styles.infoValue, { color: Colors.text }]}>
-                {user.destinationCountry?.name || "Not set"}
-              </Text>
-            </View>
-          </View>
-          
-          <View style={styles.infoItem}>
-            <View style={[styles.infoIcon, { backgroundColor: Colors.surface }]}>
-              <GraduationCap size={18} color={Colors.accent} />
-            </View>
-            <View style={styles.infoContent}>
-              <Text style={[styles.infoLabel, { color: Colors.lightText }]}>Education Level</Text>
-              <Text style={[styles.infoValue, { color: Colors.text }]}>
-                {user.educationBackground?.level || "Not set"}
-              </Text>
-            </View>
-          </View>
-          
-          {user.careerGoal && (
-            <View style={styles.infoItem}>
-              <View style={[styles.infoIcon, { backgroundColor: Colors.surface }]}>
-                <Target size={18} color={Colors.success} />
-              </View>
-              <View style={styles.infoContent}>
-                <Text style={[styles.infoLabel, { color: Colors.lightText }]}>Career Interest</Text>
-                <Text style={[styles.infoValue, { color: Colors.text }]}>{user.careerGoal}</Text>
-              </View>
-            </View>
-          )}
-        </View>
-      </Card>
-      
-      {/* Premium Upgrade (if not premium) */}
-      {!isPremium && (
-        <Card style={[styles.upgradeCard, { backgroundColor: Colors.premiumBackground, borderColor: Colors.premium }]} variant="elevated">
-          <View style={styles.upgradeContent}>
-            <Crown size={32} color={Colors.premium} />
-            <Text style={[styles.upgradeTitle, { color: Colors.text }]}>Unlock Premium Features</Text>
-            <Text style={[styles.upgradeDescription, { color: Colors.lightText }]}>
-              Get access to AI assistance, premium resources, and personalized guidance.
-            </Text>
-            <Button
-              title="Upgrade to Premium"
-              onPress={() => router.push("/premium")}
-              style={styles.upgradeButton}
-            />
-          </View>
         </Card>
-      )}
-      
-      {/* Sign Out Button */}
-      <Button
-        title="Sign Out"
-        onPress={logout}
-        variant="outline"
-        size="medium"
-        fullWidth
-        style={styles.signOutButton}
-      />
-    </ScrollView>
+        
+        {/* Premium Upgrade (if not premium) */}
+        {!isPremium && (
+          <Card style={[styles.upgradeCard, { backgroundColor: Colors.premiumBackground, borderColor: Colors.premium }]} variant="elevated">
+            <View style={styles.upgradeContent}>
+              <Crown size={32} color={Colors.premium} />
+              <Text style={[styles.upgradeTitle, { color: Colors.text }]}>Unlock Premium Features</Text>
+              <Text style={[styles.upgradeDescription, { color: Colors.lightText }]}>
+                Get access to AI assistance, premium resources, and personalized guidance.
+              </Text>
+              <Button
+                title="Upgrade to Premium"
+                onPress={() => router.push("/premium")}
+                style={styles.upgradeButton}
+              />
+            </View>
+          </Card>
+        )}
+        
+        {/* Sign Out Button */}
+        <Button
+          title="Sign Out"
+          onPress={logout}
+          variant="outline"
+          size="medium"
+          fullWidth
+          style={styles.signOutButton}
+        />
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
+  },
+  scrollContainer: {
     flex: 1,
   },
   content: {

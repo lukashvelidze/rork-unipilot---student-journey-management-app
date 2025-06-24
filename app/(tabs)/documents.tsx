@@ -1,19 +1,20 @@
 import React, { useState } from "react";
 import { StyleSheet, View, Text, FlatList, TouchableOpacity } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { Plus, Filter } from "lucide-react-native";
 import { useColors } from "@/hooks/useColors";
 import DocumentCard from "@/components/DocumentCard";
 import { useDocumentStore } from "@/store/documentStore";
-import { DocumentType } from "@/types/user";
+import { Document } from "@/types/user";
 
 export default function DocumentsScreen() {
   const router = useRouter();
   const Colors = useColors();
   const { documents } = useDocumentStore();
-  const [selectedFilter, setSelectedFilter] = useState<DocumentType | "all">("all");
+  const [selectedFilter, setSelectedFilter] = useState<Document["type"] | "all">("all");
   
-  const documentTypes: { id: DocumentType | "all"; label: string }[] = [
+  const documentTypes: { id: Document["type"] | "all"; label: string }[] = [
     { id: "all", label: "All" },
     { id: "passport", label: "Passport" },
     { id: "visa", label: "Visa" },
@@ -31,7 +32,7 @@ export default function DocumentsScreen() {
     : documents.filter(doc => doc.type === selectedFilter);
   
   return (
-    <View style={[styles.container, { backgroundColor: Colors.background }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: Colors.background }]} edges={['top']}>
       <View style={[styles.header, { backgroundColor: Colors.card, borderBottomColor: Colors.border }]}>
         <Text style={[styles.title, { color: Colors.text }]}>Documents</Text>
         <TouchableOpacity
@@ -100,7 +101,7 @@ export default function DocumentsScreen() {
           </TouchableOpacity>
         </View>
       )}
-    </View>
+    </SafeAreaView>
   );
 }
 

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Platform, Animated, Dimensions, ImageBackground } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { Map as MapIcon, ChevronRight, Quote, CheckSquare, Calendar, Clock, Star, Heart, Camera, Plus, Plane, Globe, Timer, MapPin, Sparkles, Image as ImageIcon } from "lucide-react-native";
@@ -625,9 +626,9 @@ export default function JourneyScreen() {
   
   if (!user) {
     return (
-      <View style={[styles.loadingContainer, { backgroundColor: Colors.background }]}>
+      <SafeAreaView style={[styles.loadingContainer, { backgroundColor: Colors.background }]} edges={['top']}>
         <Text style={[styles.loadingText, { color: Colors.lightText }]}>Loading your journey...</Text>
-      </View>
+      </SafeAreaView>
     );
   }
   
@@ -644,7 +645,7 @@ export default function JourneyScreen() {
   };
   
   return (
-    <View style={[styles.container, { backgroundColor: Colors.background }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: Colors.background }]} edges={['top']}>
       {showCelebration && (
         <CelebrationAnimation 
           visible={showCelebration} 
@@ -729,7 +730,7 @@ export default function JourneyScreen() {
       <View style={[styles.content, { backgroundColor: Colors.lightBackground }]}>
         {renderTabContent()}
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 

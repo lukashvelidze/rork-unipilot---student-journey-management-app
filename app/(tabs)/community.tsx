@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { StyleSheet, View, Text, FlatList, TouchableOpacity, TextInput, Image } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { Plus, Search, X, Crown } from "lucide-react-native";
 import { useColors } from "@/hooks/useColors";
@@ -65,7 +66,7 @@ export default function CommunityScreen() {
   ];
   
   return (
-    <View style={[styles.container, { backgroundColor: Colors.background }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: Colors.background }]} edges={['top']}>
       <View style={[styles.header, { backgroundColor: Colors.card, borderBottomColor: Colors.border }]}>
         <Text style={[styles.title, { color: Colors.text }]}>Community</Text>
         <TouchableOpacity
@@ -163,7 +164,7 @@ export default function CommunityScreen() {
           </TouchableOpacity>
         </View>
       )}
-    </View>
+    </SafeAreaView>
   );
 }
 

@@ -5,6 +5,7 @@ import * as SplashScreen from "expo-splash-screen";
 import { useEffect } from "react";
 import { StatusBar } from "expo-status-bar";
 import { Platform } from "react-native";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useThemeStore } from "@/store/themeStore";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -58,11 +59,10 @@ function RootLayoutNav() {
   }, [initializeUser]);
 
   return (
-    <>
+    <SafeAreaProvider>
       <StatusBar 
         style={isDarkMode ? "light" : "dark"} 
         backgroundColor={Colors.background}
-        translucent={false}
       />
       <trpc.Provider client={trpcClient} queryClient={queryClient}>
         <QueryClientProvider client={queryClient}>
@@ -108,6 +108,6 @@ function RootLayoutNav() {
           </Stack>
         </QueryClientProvider>
       </trpc.Provider>
-    </>
+    </SafeAreaProvider>
   );
 }
