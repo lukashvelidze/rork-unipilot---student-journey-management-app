@@ -1,180 +1,401 @@
-import React, { useState } from "react";
-import { StyleSheet, View, Text, ScrollView, TextInput, TouchableOpacity, Image, Alert } from "react-native";
+import React, { useState, useEffect } from "react";
+import { StyleSheet, View, Text, Image, TouchableOpacity, ScrollView, Alert } from "react-native";
 import { useRouter } from "expo-router";
-import { Crown, Check } from "lucide-react-native";
+import { ChevronRight } from "lucide-react-native";
 import Colors from "@/constants/colors";
-import Card from "@/components/Card";
 import Button from "@/components/Button";
+import Input from "@/components/Input";
+import CountrySelector from "@/components/CountrySelector";
 import { useUserStore } from "@/store/userStore";
+import { countries } from "@/mocks/countries";
+import { generateId } from "@/utils/helpers";
+import { Country, UserProfile } from "@/types/user";
 
-export default function PremiumScreen() {
+export default function OnboardingScreen() {
   const router = useRouter();
-  const user = useUserStore((state) => state.user);
-  const setPremium = useUserStore((state) => state.setPremium);
-  const [promoCode, setPromoCode] = useState("");
+  const { user, setUser, updateOnboardingStep, completeOnboarding } = useUserStore();
   
-  const isPremium = user?.isPremium || false;
+  const [step, setStep] = useState(0);
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [homeCountry, setHomeCountry] = useState<Country | null>(null);
+  const [destinationCountry, setDestinationCountry] = useState<Country | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [errors, setErrors] = useState({
+    name: "",
+    email: "",
+    homeCountry: "",
+    destinationCountry: "",
+  });
   
-  const handlePromoCodeSubmit = () => {
-    if (promoCode.toLowerCase() === "admin") {
-      setPremium(true);
-      Alert.alert(
-        "Success",
-        "Promo code applied! You now have access to UniPilot Premium features.",
-        [{ 
-          text: "OK",
-          onPress: () => router.back()
-        }]
-      );
-    } else {
-      Alert.alert(
-        "Invalid Code",
-        "The promo code you entered is not valid. Please try again or subscribe to access premium features.",
-        [{ text: "OK" }]
-      );
+  // Check if user exists and has completed onboarding
+  useEffect(() => {
+    console.log("Onboarding screen mounted, user:", user);
+    if (user && user.onboardingCompleted) {
+      console.log("User has completed onboarding, redirecting to home");
+      router.replace("/(tabs)");
+    } else if (user && !user.onboardingCompleted) {
+      // Resume onboarding from last step
+      console.log("Resuming onboarding from step:", user.onboardingStep);
+      setStep(user.onboardingStep);
+      setName(user.name || "");
+      setEmail(user.email || "");
+      if (user.homeCountry && user.homeCountry.code) {
+        setHomeCountry(user.homeCountry);
+      }
+      if (user.destinationCountry && user.destinationCountry.code) {
+        setDestinationCountry(user.destinationCountry);
+      }
+    }
+  }, [user, router]);
+  
+  const validateEmail = (email: string) => {
+    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return re.test(email);
+  };
+  
+  const validateStep = () => {
+    let isValid = true;
+    const newErrors = { ...errors };
+    
+    switch (step) {
+      case 1:
+        if (!name.trim()) {
+          newErrors.name = "Name is required";
+          isValid = false;
+        } else {
+          newErrors.name = "";
+        }
+        
+        if (!email.trim()) {
+          newErrors.email = "Email is required";
+          isValid = false;
+        } else if (!validateEmail(email)) {
+          newErrors.email = "Please enter a valid email";
+          isValid = false;
+        } else {
+          newErrors.email = "";
+        }
+        break;
+      
+      case 2:
+        if (!homeCountry) {
+          newErrors.homeCountry = "Please select your home country";
+          isValid = false;
+        } else {
+          newErrors.homeCountry = "";
+        }
+        break;
+      
+      case 3:
+        if (!destinationCountry) {
+          newErrors.destinationCountry = "Please select your destination country";
+          isValid = false;
+        } else {
+          newErrors.destinationCountry = "";
+        }
+        break;
+    }
+    
+    setErrors(newErrors);
+    return isValid;
+  };
+  
+  // Save user data based on current step
+  const saveUserData = (nextStep: number) => {
+    try {
+      console.log("Saving user data for step:", step, "next step:", nextStep);
+      
+      if (step === 0) {
+        // Just update the step
+        if (user) {
+          updateOnboardingStep(nextStep);
+        }
+      } else if (step === 1) {
+        // Save name and email
+        if (!user) {
+          // Create new user
+          console.log("Creating new user with name:", name, "email:", email);
+          const newUser: UserProfile = {
+            id: generateId(),
+            name,
+            email,
+            homeCountry: { code: "", name: "", flag: "" },
+            destinationCountry: { code: "", name: "", flag: "" },
+            educationBackground: { level: "bachelors" },
+            testScores: [],
+            universities: [],
+            documents: [],
+            journeyProgress: [],
+            memories: [],
+            onboardingCompleted: false,
+            onboardingStep: nextStep,
+            isPremium: false,
+          };
+          setUser(newUser);
+        } else {
+          // Update existing user
+          console.log("Updating existing user with name:", name, "email:", email);
+          updateOnboardingStep(nextStep);
+          setUser({
+            ...user,
+            name,
+            email,
+            onboardingStep: nextStep,
+          });
+        }
+      } else if (step === 2 && homeCountry) {
+        // Save home country
+        console.log("Saving home country:", homeCountry);
+        if (user) {
+          updateOnboardingStep(nextStep);
+          setUser({
+            ...user,
+            homeCountry,
+            onboardingStep: nextStep,
+          });
+        }
+      } else if (step === 3 && destinationCountry) {
+        // Save destination country
+        console.log("Saving destination country:", destinationCountry);
+        if (user) {
+          updateOnboardingStep(nextStep);
+          setUser({
+            ...user,
+            destinationCountry,
+            onboardingStep: nextStep,
+          });
+        }
+      } else if (step === 4) {
+        // Complete onboarding
+        console.log("Completing onboarding");
+        if (user) {
+          setUser({
+            ...user,
+            onboardingCompleted: true,
+          });
+        }
+        
+        // Navigate to home screen
+        console.log("Navigating to home screen");
+        router.replace("/(tabs)");
+      }
+    } catch (error) {
+      console.error("Error saving user data:", error);
+      Alert.alert("Error", "There was a problem saving your information. Please try again.");
     }
   };
   
-  const handleSubscribe = () => {
-    Alert.alert(
-      "Subscribe to UniPilot Premium",
-      "This will start your subscription at $4.99/month after a 7-day free trial.",
-      [
-        {
-          text: "Cancel",
-          style: "cancel",
-        },
-        {
-          text: "Subscribe",
-          onPress: () => {
-            setPremium(true);
-            Alert.alert(
-              "Subscription Successful",
-              "Welcome to UniPilot Premium! You now have access to all premium features.",
-              [{ 
-                text: "OK",
-                onPress: () => router.back()
-              }]
-            );
-          },
-        },
-      ]
-    );
-  };
+  const handleNext = async () => {
+  if (isProcessing) return;
 
-  return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <View style={styles.header}>
-        <Crown size={28} color="#FFD700" style={styles.crownIcon} />
-        <Text style={styles.title}>UniPilot Premium</Text>
-        <Text style={styles.subtitle}>Unlock exclusive features for your international student journey</Text>
-      </View>
-      
-      <Image 
-        source={{ uri: "https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80" }}
-        style={styles.heroImage}
-        resizeMode="cover"
-      />
-      
-      <Card style={styles.benefitsCard} variant="elevated" borderRadius="large">
-        <Text style={styles.sectionTitle}>Premium Benefits</Text>
-        
-        <View style={styles.benefitItem}>
-          <View style={styles.benefitIcon}>
-            <Check size={18} color={Colors.primary} />
-          </View>
-          <View style={styles.benefitTextContainer}>
-            <Text style={styles.benefitTitle}>Personalized Guidance</Text>
-            <Text style={styles.benefitDescription}>1-on-1 consultations with education experts</Text>
-          </View>
-        </View>
-        
-        <View style={styles.benefitItem}>
-          <View style={styles.benefitIcon}>
-            <Check size={18} color={Colors.primary} />
-          </View>
-          <View style={styles.benefitTextContainer}>
-            <Text style={styles.benefitTitle}>Visa Application Support</Text>
-            <Text style={styles.benefitDescription}>Step-by-step visa application guides</Text>
-          </View>
-        </View>
-        
-        <View style={styles.benefitItem}>
-          <View style={styles.benefitIcon}>
-            <Check size={18} color={Colors.primary} />
-          </View>
-          <View style={styles.benefitTextContainer}>
-            <Text style={styles.benefitTitle}>University Application Templates</Text>
-            <Text style={styles.benefitDescription}>Proven templates for successful applications</Text>
-          </View>
-        </View>
-        
-        <View style={styles.benefitItem}>
-          <View style={styles.benefitIcon}>
-            <Check size={18} color={Colors.primary} />
-          </View>
-          <View style={styles.benefitTextContainer}>
-            <Text style={styles.benefitTitle}>Premium AI Assistant</Text>
-            <Text style={styles.benefitDescription}>Unlimited access to UniPilot AI for personalized advice</Text>
-          </View>
-        </View>
-      </Card>
-      
-      <Card style={styles.pricingCard} variant="elevated" borderRadius="large">
-        <Text style={styles.sectionTitle}>Subscription Plan</Text>
-        <View style={styles.priceContainer}>
-          <Text style={styles.price}>$4.99</Text>
-          <Text style={styles.perMonth}>/month</Text>
-        </View>
-        <Text style={styles.trialInfo}>7-day free trial, cancel anytime</Text>
-        
-        {isPremium ? (
-          <View style={styles.activeSubscriptionContainer}>
-            <View style={styles.activeBadge}>
-              <Crown size={16} color="#FFD700" />
-              <Text style={styles.activeBadgeText}>Active Subscription</Text>
+  setIsProcessing(true);
+  const nextStep = step + 1;
+
+  try {
+    const isValid = step === 0 || validateStep();
+
+    if (!isValid) {
+      console.log("Validation failed at step", step);
+      return;
+    }
+
+    await saveUserData(nextStep); // assume it's async
+    setStep(nextStep);
+    console.log("Moved to step:", nextStep);
+  } catch (error) {
+    console.error("handleNext error:", error);
+    Alert.alert("Error", "Something went wrong. Please try again.");
+  } finally {
+    setTimeout(() => setIsProcessing(false), 300); // smooth debounce
+  }
+};
+
+  
+  const renderStep = () => {
+    switch (step) {
+      case 0:
+        return (
+          <View style={styles.stepContainer}>
+            <Image
+              source={{ uri: "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80" }}
+              style={styles.welcomeImage}
+              resizeMode="cover"
+            />
+            <Text style={styles.welcomeTitle}>Welcome to UniPilot</Text>
+            <Text style={styles.welcomeText}>
+              Your personal guide through the entire international student journey, from university applications to career establishment.
+            </Text>
+            
+            {/* Continue button moved below the welcome text */}
+            <View style={styles.welcomeButtonContainer}>
+              <Button
+                title="Continue"
+                onPress={handleNext}
+                loading={isProcessing}
+                fullWidth
+                icon={<ChevronRight size={20} color={Colors.white} />}
+                iconPosition="right"
+              />
             </View>
-            <Text style={styles.activeMessage}>You have access to all premium features</Text>
           </View>
-        ) : (
-          <Button
-            title="Start 7-Day Free Trial"
-            onPress={handleSubscribe}
-            variant="primary"
-            size="medium"
-            fullWidth
-            style={styles.subscribeButton}
-          />
-        )}
-      </Card>
+        );
       
-      {!isPremium && (
-        <Card style={styles.promoCard} variant="elevated" borderRadius="large">
-          <Text style={styles.sectionTitle}>Have a Promo Code?</Text>
-          <TextInput
-            style={styles.promoInput}
-            placeholder="Enter promo code"
-            value={promoCode}
-            onChangeText={setPromoCode}
-            autoCapitalize="none"
-          />
+      case 1:
+        return (
+          <View style={styles.stepContainer}>
+            <Text style={styles.stepTitle}>Let's get to know you</Text>
+            <Text style={styles.stepDescription}>
+              We'll use this information to personalize your experience
+            </Text>
+            
+            <Input
+              label="Full Name"
+              placeholder="Enter your full name"
+              value={name}
+              onChangeText={setName}
+              error={errors.name}
+              autoCapitalize="words"
+            />
+            
+            <Input
+              label="Email Address"
+              placeholder="Enter your email address"
+              value={email}
+              onChangeText={setEmail}
+              error={errors.email}
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
+          </View>
+        );
+      
+      case 2:
+        return (
+          <View style={styles.stepContainer}>
+            <Text style={styles.stepTitle}>Where are you from?</Text>
+            <Text style={styles.stepDescription}>
+              Select your home country
+            </Text>
+            
+            <CountrySelector
+              label="Home Country"
+              value={homeCountry}
+              onChange={(country: Country) => setHomeCountry(country)}
+              countries={countries}
+              error={errors.homeCountry}
+            />
+          </View>
+        );
+      
+      case 3:
+        return (
+          <View style={styles.stepContainer}>
+            <Text style={styles.stepTitle}>Where are you going?</Text>
+            <Text style={styles.stepDescription}>
+              Select your destination country for studies
+            </Text>
+            
+            <CountrySelector
+              label="Destination Country"
+              value={destinationCountry}
+              onChange={(country: Country) => setDestinationCountry(country)}
+              countries={countries}
+              error={errors.destinationCountry}
+            />
+          </View>
+        );
+      
+      case 4:
+        return (
+          <View style={styles.stepContainer}>
+            <Image
+              source={{ uri: "https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80" }}
+              style={styles.welcomeImage}
+              resizeMode="cover"
+            />
+            <Text style={styles.stepTitle}>You're all set!</Text>
+            <Text style={styles.stepDescription}>
+              We've created your personalized journey from {homeCountry?.name || "your country"} to {destinationCountry?.name || "your destination"}. Let's get started!
+            </Text>
+          </View>
+        );
+      
+      default:
+        return null;
+    }
+  };
+  
+  return (
+    <View style={styles.container}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+      >
+        {step > 0 && step < 4 && (
+          <View style={styles.progressContainer}>
+            <View style={styles.progressBar}>
+              <View
+                style={[
+                  styles.progressFill,
+                  { width: `${(step / 4) * 100}%` },
+                ]}
+              />
+            </View>
+            <Text style={styles.progressText}>Step {step} of 4</Text>
+          </View>
+        )}
+        
+        {renderStep()}
+      </ScrollView>
+      
+      {/* Only show footer with continue button for steps other than welcome and final */}
+      {step > 0 && step < 4 && (
+        <View style={styles.footer}>
           <Button
-            title="Apply Code"
-            onPress={handlePromoCodeSubmit}
-            variant="secondary"
-            size="medium"
+            title="Continue"
+            onPress={handleNext}
+            loading={isProcessing}
             fullWidth
-            style={styles.applyButton}
+            icon={<ChevronRight size={20} color={Colors.white} />}
+            iconPosition="right"
           />
-        </Card>
+          
+          <TouchableOpacity
+            style={styles.skipButton}
+            onPress={() => {
+              if (isProcessing) return;
+              setIsProcessing(true);
+              console.log("Skip button pressed, moving to final step");
+              setStep(4);
+              // Update the onboarding step in the store
+              if (user) {
+                updateOnboardingStep(4);
+                saveUserData(4);
+              }
+              setIsProcessing(false);
+            }}
+            disabled={isProcessing}
+          >
+            <Text style={styles.skipText}>Skip for now</Text>
+          </TouchableOpacity>
+        </View>
       )}
       
-      <View style={styles.footer}>
-        <Text style={styles.footerText}>
-          By subscribing, you agree to our Terms of Service and Privacy Policy
-        </Text>
-      </View>
-    </ScrollView>
+      {/* Show footer with get started button only for final step */}
+      {step === 4 && (
+        <View style={styles.footer}>
+          <Button
+            title="Get Started"
+            onPress={handleNext}
+            loading={isProcessing}
+            fullWidth
+            icon={<ChevronRight size={20} color={Colors.white} />}
+            iconPosition="right"
+          />
+        </View>
+      )}
+    </View>
   );
 }
 
@@ -183,148 +404,80 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.background,
   },
-  content: {
-    padding: 16,
+  scrollContent: {
+    flexGrow: 1,
+    padding: 24,
   },
-  header: {
-    alignItems: "center",
+  progressContainer: {
     marginBottom: 24,
-    paddingVertical: 16,
   },
-  crownIcon: {
+  progressBar: {
+    height: 4,
+    backgroundColor: Colors.lightBackground,
+    borderRadius: 2,
     marginBottom: 8,
   },
-  title: {
-    fontSize: 24,
-    fontWeight: "700",
-    color: Colors.text,
-    marginBottom: 8,
+  progressFill: {
+    height: "100%",
+    backgroundColor: Colors.primary,
+    borderRadius: 2,
   },
-  subtitle: {
-    fontSize: 16,
+  progressText: {
+    fontSize: 14,
     color: Colors.lightText,
-    textAlign: "center",
-    paddingHorizontal: 16,
-    lineHeight: 22,
+    textAlign: "right",
   },
-  heroImage: {
+  stepContainer: {
+    flex: 1,
+    justifyContent: "center",
+  },
+  welcomeImage: {
     width: "100%",
     height: 200,
     borderRadius: 12,
     marginBottom: 24,
   },
-  benefitsCard: {
-    marginBottom: 24,
-    padding: 20,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: Colors.text,
-    marginBottom: 16,
-  },
-  benefitItem: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    marginBottom: 16,
-  },
-  benefitIcon: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: Colors.primaryLight,
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 12,
-  },
-  benefitTextContainer: {
-    flex: 1,
-  },
-  benefitTitle: {
-    fontSize: 16,
-    fontWeight: "500",
-    color: Colors.text,
-    marginBottom: 2,
-  },
-  benefitDescription: {
-    fontSize: 14,
-    color: Colors.lightText,
-  },
-  pricingCard: {
-    marginBottom: 24,
-    padding: 20,
-  },
-  priceContainer: {
-    flexDirection: "row",
-    alignItems: "baseline",
-    marginBottom: 8,
-  },
-  price: {
-    fontSize: 32,
+  welcomeTitle: {
+    fontSize: 28,
     fontWeight: "700",
     color: Colors.text,
+    marginBottom: 16,
+    textAlign: "center",
   },
-  perMonth: {
+  welcomeText: {
     fontSize: 16,
     color: Colors.lightText,
-    marginLeft: 4,
+    textAlign: "center",
+    lineHeight: 24,
+    marginBottom: 32,
   },
-  trialInfo: {
-    fontSize: 14,
-    color: Colors.lightText,
-    marginBottom: 20,
+  welcomeButtonContainer: {
+    marginTop: 8,
   },
-  activeSubscriptionContainer: {
-    alignItems: "center",
-    padding: 16,
-    backgroundColor: "rgba(255, 215, 0, 0.1)",
-    borderRadius: 8,
-  },
-  activeBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "rgba(255, 215, 0, 0.2)",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
+  stepTitle: {
+    fontSize: 24,
+    fontWeight: "700",
+    color: Colors.text,
     marginBottom: 8,
   },
-  activeBadgeText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#DAA520",
-    marginLeft: 6,
-  },
-  activeMessage: {
-    fontSize: 14,
-    color: Colors.text,
-    textAlign: "center",
-  },
-  subscribeButton: {
-    marginTop: 8,
-  },
-  promoCard: {
-    marginBottom: 24,
-    padding: 20,
-  },
-  promoInput: {
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: 8,
-    padding: 12,
+  stepDescription: {
     fontSize: 16,
-    marginBottom: 16,
-  },
-  applyButton: {
-    marginTop: 8,
+    color: Colors.lightText,
+    marginBottom: 24,
+    lineHeight: 24,
   },
   footer: {
-    padding: 16,
-    alignItems: "center",
+    padding: 24,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
   },
-  footerText: {
-    fontSize: 12,
+  skipButton: {
+    paddingVertical: 12,
+    alignItems: "center",
+    marginTop: 8,
+  },
+  skipText: {
+    fontSize: 14,
     color: Colors.lightText,
-    textAlign: "center",
   },
 });
