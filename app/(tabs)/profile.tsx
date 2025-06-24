@@ -2,7 +2,7 @@ import React from "react";
 import { StyleSheet, View, Text, ScrollView, TouchableOpacity } from "react-native";
 import { useRouter } from "expo-router";
 import { Settings, Crown, Edit, MapPin, GraduationCap, Target, Calendar } from "lucide-react-native";
-import Colors from "@/constants/colors";
+import { useColors } from "@/hooks/useColors";
 import Theme from "@/constants/theme";
 import Card from "@/components/Card";
 import Button from "@/components/Button";
@@ -11,12 +11,13 @@ import { useUserStore } from "@/store/userStore";
 
 export default function ProfileScreen() {
   const router = useRouter();
+  const Colors = useColors();
   const { user, isPremium, logout } = useUserStore();
   
   if (!user) {
     return (
-      <View style={styles.container}>
-        <Text style={styles.errorText}>User data not available. Please log in.</Text>
+      <View style={[styles.container, { backgroundColor: Colors.background }]}>
+        <Text style={[styles.errorText, { color: Colors.text }]}>User data not available. Please log in.</Text>
         <Button
           title="Logout"
           onPress={logout}
@@ -65,9 +66,9 @@ export default function ProfileScreen() {
   ];
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView style={[styles.container, { backgroundColor: Colors.background }]} contentContainerStyle={styles.content}>
       {/* Header with Avatar and Basic Info */}
-      <Card style={styles.headerCard} variant="elevated">
+      <Card style={[styles.headerCard, { backgroundColor: Colors.card }]} variant="elevated">
         <View style={styles.profileHeader}>
           <Avatar
             size="large"
@@ -75,28 +76,28 @@ export default function ProfileScreen() {
             showBorder
           />
           <View style={styles.profileInfo}>
-            <Text style={styles.name}>{user.name}</Text>
-            <Text style={styles.email}>{user.email}</Text>
+            <Text style={[styles.name, { color: Colors.text }]}>{user.name}</Text>
+            <Text style={[styles.email, { color: Colors.lightText }]}>{user.email}</Text>
             {isPremium && (
-              <View style={styles.premiumBadge}>
+              <View style={[styles.premiumBadge, { backgroundColor: Colors.premiumBackground }]}>
                 <Crown size={14} color={Colors.premium} />
-                <Text style={styles.premiumText}>Premium Member</Text>
+                <Text style={[styles.premiumText, { color: Colors.premium }]}>Premium Member</Text>
               </View>
             )}
           </View>
         </View>
         
         {user.bio && (
-          <Text style={styles.bio}>{user.bio}</Text>
+          <Text style={[styles.bio, { color: Colors.lightText }]}>{user.bio}</Text>
         )}
       </Card>
       
       {/* Stats Cards */}
       <View style={styles.statsContainer}>
         {profileStats.map((stat, index) => (
-          <Card key={index} style={styles.statCard} variant="default">
+          <Card key={index} style={[styles.statCard, { backgroundColor: Colors.card }]} variant="default">
             <Text style={[styles.statValue, { color: stat.color }]}>{stat.value}</Text>
-            <Text style={styles.statLabel}>{stat.label}</Text>
+            <Text style={[styles.statLabel, { color: Colors.lightText }]}>{stat.label}</Text>
           </Card>
         ))}
       </View>
@@ -106,56 +107,56 @@ export default function ProfileScreen() {
         {quickActions.map((action, index) => (
           <TouchableOpacity
             key={index}
-            style={styles.actionCard}
+            style={[styles.actionCard, { backgroundColor: Colors.card }]}
             onPress={action.onPress}
           >
             <View style={[styles.actionIcon, { backgroundColor: `${action.color}15` }]}>
               <action.icon size={24} color={action.color} />
             </View>
             <View style={styles.actionContent}>
-              <Text style={styles.actionTitle}>{action.title}</Text>
-              <Text style={styles.actionSubtitle}>{action.subtitle}</Text>
+              <Text style={[styles.actionTitle, { color: Colors.text }]}>{action.title}</Text>
+              <Text style={[styles.actionSubtitle, { color: Colors.lightText }]}>{action.subtitle}</Text>
             </View>
           </TouchableOpacity>
         ))}
       </View>
       
       {/* Profile Information */}
-      <Card style={styles.infoCard} variant="default">
-        <Text style={styles.sectionTitle}>Profile Information</Text>
+      <Card style={[styles.infoCard, { backgroundColor: Colors.card }]} variant="default">
+        <Text style={[styles.sectionTitle, { color: Colors.text }]}>Profile Information</Text>
         
         <View style={styles.infoGrid}>
           <View style={styles.infoItem}>
-            <View style={styles.infoIcon}>
+            <View style={[styles.infoIcon, { backgroundColor: Colors.surface }]}>
               <MapPin size={18} color={Colors.primary} />
             </View>
             <View style={styles.infoContent}>
-              <Text style={styles.infoLabel}>From</Text>
-              <Text style={styles.infoValue}>
+              <Text style={[styles.infoLabel, { color: Colors.lightText }]}>From</Text>
+              <Text style={[styles.infoValue, { color: Colors.text }]}>
                 {user.homeCountry?.name || "Not set"}
               </Text>
             </View>
           </View>
           
           <View style={styles.infoItem}>
-            <View style={styles.infoIcon}>
+            <View style={[styles.infoIcon, { backgroundColor: Colors.surface }]}>
               <Target size={18} color={Colors.secondary} />
             </View>
             <View style={styles.infoContent}>
-              <Text style={styles.infoLabel}>Studying in</Text>
-              <Text style={styles.infoValue}>
+              <Text style={[styles.infoLabel, { color: Colors.lightText }]}>Studying in</Text>
+              <Text style={[styles.infoValue, { color: Colors.text }]}>
                 {user.destinationCountry?.name || "Not set"}
               </Text>
             </View>
           </View>
           
           <View style={styles.infoItem}>
-            <View style={styles.infoIcon}>
+            <View style={[styles.infoIcon, { backgroundColor: Colors.surface }]}>
               <GraduationCap size={18} color={Colors.accent} />
             </View>
             <View style={styles.infoContent}>
-              <Text style={styles.infoLabel}>Education Level</Text>
-              <Text style={styles.infoValue}>
+              <Text style={[styles.infoLabel, { color: Colors.lightText }]}>Education Level</Text>
+              <Text style={[styles.infoValue, { color: Colors.text }]}>
                 {user.educationBackground?.level || "Not set"}
               </Text>
             </View>
@@ -163,12 +164,12 @@ export default function ProfileScreen() {
           
           {user.careerGoal && (
             <View style={styles.infoItem}>
-              <View style={styles.infoIcon}>
+              <View style={[styles.infoIcon, { backgroundColor: Colors.surface }]}>
                 <Target size={18} color={Colors.success} />
               </View>
               <View style={styles.infoContent}>
-                <Text style={styles.infoLabel}>Career Interest</Text>
-                <Text style={styles.infoValue}>{user.careerGoal}</Text>
+                <Text style={[styles.infoLabel, { color: Colors.lightText }]}>Career Interest</Text>
+                <Text style={[styles.infoValue, { color: Colors.text }]}>{user.careerGoal}</Text>
               </View>
             </View>
           )}
@@ -177,11 +178,11 @@ export default function ProfileScreen() {
       
       {/* Premium Upgrade (if not premium) */}
       {!isPremium && (
-        <Card style={styles.upgradeCard} variant="elevated">
+        <Card style={[styles.upgradeCard, { backgroundColor: Colors.premiumBackground, borderColor: Colors.premium }]} variant="elevated">
           <View style={styles.upgradeContent}>
             <Crown size={32} color={Colors.premium} />
-            <Text style={styles.upgradeTitle}>Unlock Premium Features</Text>
-            <Text style={styles.upgradeDescription}>
+            <Text style={[styles.upgradeTitle, { color: Colors.text }]}>Unlock Premium Features</Text>
+            <Text style={[styles.upgradeDescription, { color: Colors.lightText }]}>
               Get access to AI assistance, premium resources, and personalized guidance.
             </Text>
             <Button
@@ -209,7 +210,6 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
   },
   content: {
     padding: 20,
@@ -231,18 +231,15 @@ const styles = StyleSheet.create({
   name: {
     fontSize: 22,
     fontWeight: "700",
-    color: Colors.text,
     marginBottom: 4,
   },
   email: {
     fontSize: 14,
-    color: Colors.lightText,
     marginBottom: 8,
   },
   premiumBadge: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: Colors.premiumBackground,
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
@@ -250,13 +247,11 @@ const styles = StyleSheet.create({
   },
   premiumText: {
     fontSize: 12,
-    color: Colors.premium,
     marginLeft: 4,
     fontWeight: "600",
   },
   bio: {
     fontSize: 14,
-    color: Colors.lightText,
     lineHeight: 20,
   },
   statsContainer: {
@@ -276,7 +271,6 @@ const styles = StyleSheet.create({
   },
   statLabel: {
     fontSize: 12,
-    color: Colors.lightText,
     textAlign: "center",
   },
   quickActions: {
@@ -284,7 +278,6 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   actionCard: {
-    backgroundColor: Colors.card,
     padding: 16,
     borderRadius: 16,
     flexDirection: "row",
@@ -305,12 +298,10 @@ const styles = StyleSheet.create({
   actionTitle: {
     fontSize: 16,
     fontWeight: "600",
-    color: Colors.text,
     marginBottom: 2,
   },
   actionSubtitle: {
     fontSize: 14,
-    color: Colors.lightText,
   },
   infoCard: {
     marginBottom: 20,
@@ -319,7 +310,6 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: "600",
-    color: Colors.text,
     marginBottom: 16,
   },
   infoGrid: {
@@ -333,7 +323,6 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: Colors.surface,
     alignItems: "center",
     justifyContent: "center",
     marginRight: 12,
@@ -343,20 +332,16 @@ const styles = StyleSheet.create({
   },
   infoLabel: {
     fontSize: 12,
-    color: Colors.lightText,
     marginBottom: 2,
   },
   infoValue: {
     fontSize: 14,
     fontWeight: "500",
-    color: Colors.text,
   },
   upgradeCard: {
     marginBottom: 20,
     padding: 24,
-    backgroundColor: Colors.premiumBackground,
     borderWidth: 1,
-    borderColor: Colors.premium,
   },
   upgradeContent: {
     alignItems: "center",
@@ -364,13 +349,11 @@ const styles = StyleSheet.create({
   upgradeTitle: {
     fontSize: 18,
     fontWeight: "600",
-    color: Colors.text,
     marginTop: 12,
     marginBottom: 8,
   },
   upgradeDescription: {
     fontSize: 14,
-    color: Colors.lightText,
     textAlign: "center",
     lineHeight: 20,
     marginBottom: 20,
@@ -383,7 +366,6 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 16,
-    color: Colors.text,
     textAlign: "center",
     marginTop: 20,
     marginBottom: 20,

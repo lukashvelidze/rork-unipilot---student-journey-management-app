@@ -59,7 +59,11 @@ function RootLayoutNav() {
 
   return (
     <>
-      <StatusBar style={isDarkMode ? "light" : "dark"} />
+      <StatusBar 
+        style={isDarkMode ? "light" : "dark"} 
+        backgroundColor={Colors.background}
+        translucent={false}
+      />
       <trpc.Provider client={trpcClient} queryClient={queryClient}>
         <QueryClientProvider client={queryClient}>
           <Stack
@@ -70,10 +74,12 @@ function RootLayoutNav() {
               headerTintColor: Colors.text,
               headerTitleStyle: {
                 fontWeight: "600",
+                color: Colors.text,
               },
               contentStyle: {
                 backgroundColor: Colors.background,
               },
+              headerShadowVisible: false,
             }}
           >
             <Stack.Screen name="index" options={{ headerShown: false }} />
