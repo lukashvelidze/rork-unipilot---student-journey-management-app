@@ -1,15 +1,99 @@
+export interface Country {
+  code: string;
+  name: string;
+  flag: string;
+  isPopularDestination?: boolean;
+}
+
+export type EducationLevel = "high_school" | "bachelors" | "masters" | "phd" | "other";
+
+export type JourneyStage = "research" | "application" | "visa" | "pre_departure" | "arrival" | "academic" | "career";
+
+export interface Task {
+  id: string;
+  title: string;
+  completed: boolean;
+  completedDate?: string;
+  notes?: string;
+}
+
+export interface JourneyProgress {
+  stage: JourneyStage;
+  progress: number; // 0-100
+  completed: boolean;
+  completedDate?: string;
+  tasks: Task[];
+}
+
+export interface TestScore {
+  id: string;
+  type: "IELTS" | "TOEFL" | "GRE" | "GMAT" | "SAT" | "ACT" | "Other";
+  score: string;
+  maxScore?: string;
+  date: string;
+  expiryDate?: string;
+}
+
+export interface University {
+  id: string;
+  name: string;
+  country: string;
+  program: string;
+  status: "researching" | "applied" | "accepted" | "rejected" | "waitlisted";
+  applicationDate?: string;
+  decisionDate?: string;
+  notes?: string;
+}
+
+export interface Document {
+  id: string;
+  type: string;
+  name: string;
+  status: "valid" | "expiring_soon" | "expired" | "pending";
+  expiryDate?: string;
+  uploadDate: string;
+  notes?: string;
+}
+
+export interface Memory {
+  id: string;
+  title: string;
+  description: string;
+  date: string;
+  stage: JourneyStage;
+  imageUrl?: string;
+  tags?: string[];
+}
+
+export interface EducationBackground {
+  level: EducationLevel;
+  institution?: string;
+  field?: string;
+  gpa?: string;
+  graduationDate?: string;
+}
+
 export interface UserProfile {
   id: string;
   name: string;
   email: string;
   avatar?: string;
-  country?: string;
-  targetCountry?: string;
-  studyLevel?: "undergraduate" | "graduate" | "phd";
-  fieldOfStudy?: string;
-  isPremium?: boolean;
-  createdAt: string;
-  updatedAt: string;
+  bio?: string;
+  careerGoal?: string;
+  homeCountry: Country;
+  destinationCountry: Country;
+  educationBackground: EducationBackground;
+  testScores: TestScore[];
+  universities: University[];
+  documents: Document[];
+  journeyProgress: JourneyProgress[];
+  memories: Memory[];
+  onboardingCompleted: boolean;
+  onboardingStep: number;
+  isPremium: boolean;
+  premiumSince?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface UserPreferences {

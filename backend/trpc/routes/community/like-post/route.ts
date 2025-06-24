@@ -7,10 +7,17 @@ export const likePostProcedure = publicProcedure
     isLiked: z.boolean(),
   }))
   .mutation(({ input }: { input: { postId: string; isLiked: boolean } }) => {
-    // In a real app, this would update the database
-    return {
-      success: true,
-      postId: input.postId,
-      isLiked: input.isLiked,
-    };
+    try {
+      // In a real app, this would update the database
+      console.log(`${input.isLiked ? 'Liked' : 'Unliked'} post ${input.postId}`);
+      
+      return {
+        success: true,
+        postId: input.postId,
+        isLiked: input.isLiked,
+      };
+    } catch (error) {
+      console.error("Error in likePostProcedure:", error);
+      throw new Error("Failed to update like status");
+    }
   });

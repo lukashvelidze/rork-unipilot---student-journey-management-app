@@ -144,3 +144,113 @@ export const isDateExpiringSoon = (dateString: string): boolean => {
   
   return date > now && date <= thirtyDaysFromNow;
 };
+
+// Get country-specific visa information
+export const getCountryVisaInfo = (countryCode: string) => {
+  const visaInfo: Record<string, { name: string; processingTime: string; fee: string; requirements: string[] }> = {
+    US: {
+      name: "F-1 Student Visa",
+      processingTime: "2-8 weeks",
+      fee: "$185 + SEVIS fee $350",
+      requirements: ["I-20 form", "DS-160 form", "Financial documents", "Visa interview"]
+    },
+    UK: {
+      name: "Student Visa",
+      processingTime: "3 weeks",
+      fee: "£363 + Immigration Health Surcharge",
+      requirements: ["CAS", "Financial evidence", "English proficiency", "Biometric appointment"]
+    },
+    CA: {
+      name: "Study Permit",
+      processingTime: "4-12 weeks",
+      fee: "$150 CAD",
+      requirements: ["Letter of Acceptance", "Proof of funds", "Medical exam (if required)", "Biometrics"]
+    },
+    AU: {
+      name: "Student Visa (500)",
+      processingTime: "4-6 weeks",
+      fee: "$650 AUD",
+      requirements: ["CoE", "OSHC", "Financial evidence", "Health examinations"]
+    },
+    DE: {
+      name: "Student Visa",
+      processingTime: "6-12 weeks",
+      fee: "€75",
+      requirements: ["Admission letter", "Blocked account", "Health insurance", "Academic qualifications"]
+    },
+    NL: {
+      name: "Residence Permit",
+      processingTime: "2-4 weeks",
+      fee: "€174",
+      requirements: ["Admission letter", "Financial proof", "Health insurance", "Academic documents"]
+    },
+    FR: {
+      name: "Student Visa (VLS-TS)",
+      processingTime: "2-4 weeks",
+      fee: "€99",
+      requirements: ["Acceptance letter", "Financial resources", "Academic transcripts", "French proficiency"]
+    }
+  };
+
+  return visaInfo[countryCode] || {
+    name: "Student Visa",
+    processingTime: "Varies",
+    fee: "Varies",
+    requirements: ["Check with embassy/consulate"]
+  };
+};
+
+// Get country-specific cost of living information
+export const getCountryCostInfo = (countryCode: string) => {
+  const costInfo: Record<string, { currency: string; monthlyLiving: string; tuition: string; accommodation: string }> = {
+    US: {
+      currency: "USD",
+      monthlyLiving: "$1,200-2,500",
+      tuition: "$20,000-50,000/year",
+      accommodation: "$500-1,500/month"
+    },
+    UK: {
+      currency: "GBP",
+      monthlyLiving: "£800-1,500",
+      tuition: "£10,000-35,000/year",
+      accommodation: "£400-800/month"
+    },
+    CA: {
+      currency: "CAD",
+      monthlyLiving: "$1,000-1,800",
+      tuition: "$15,000-35,000/year",
+      accommodation: "$400-1,200/month"
+    },
+    AU: {
+      currency: "AUD",
+      monthlyLiving: "$1,400-2,500",
+      tuition: "$20,000-45,000/year",
+      accommodation: "$600-1,500/month"
+    },
+    DE: {
+      currency: "EUR",
+      monthlyLiving: "€700-1,200",
+      tuition: "€0-3,000/year (public)",
+      accommodation: "€300-700/month"
+    },
+    NL: {
+      currency: "EUR",
+      monthlyLiving: "€800-1,400",
+      tuition: "€2,000-15,000/year",
+      accommodation: "€400-800/month"
+    },
+    FR: {
+      currency: "EUR",
+      monthlyLiving: "€600-1,200",
+      tuition: "€170-3,770/year (public)",
+      accommodation: "€300-800/month"
+    }
+  };
+
+  return costInfo[countryCode] || {
+    currency: "Local currency",
+    monthlyLiving: "Varies",
+    tuition: "Varies",
+    accommodation: "Varies"
+  };
+};

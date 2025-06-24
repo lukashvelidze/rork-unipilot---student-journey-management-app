@@ -7,13 +7,16 @@ import Button from "@/components/Button";
 import Input from "@/components/Input";
 import CountrySelector from "@/components/CountrySelector";
 import { useUserStore } from "@/store/userStore";
-import { countries } from "@/mocks/countries";
+import { useJourneyStore } from "@/store/journeyStore";
+import { countries, getPopularDestinations } from "@/mocks/countries";
+import { getJourneyProgressForCountry } from "@/mocks/journeyTasks";
 import { generateId } from "@/utils/helpers";
 import { Country, UserProfile } from "@/types/user";
 
 export default function OnboardingScreen() {
   const router = useRouter();
   const { user, setUser, updateOnboardingStep, completeOnboarding } = useUserStore();
+  const { setJourneyProgress } = useJourneyStore();
   
   const [step, setStep] = useState(0);
   const [name, setName] = useState("");
@@ -102,7 +105,7 @@ export default function OnboardingScreen() {
   };
   
   // Save user data based on current step
-  const saveUserData = (nextStep: number) => {
+  const saveUserData = async (nextStep: number) => {
     try {
       console.log("Saving user data for step:", step, "next step:", nextStep);
       
@@ -158,15 +161,23 @@ export default function OnboardingScreen() {
           });
         }
       } else if (step === 3 && destinationCountry) {
-        // Save destination country
+        // Save destination country and generate customized journey
         console.log("Saving destination country:", destinationCountry);
         if (user) {
+          // Generate country-specific journey progress
+          const customizedJourney = getJourneyProgressForCountry(destinationCountry.code);
+          console.log("Generated customized journey for", destinationCountry.name, ":", customizedJourney.length, "stages");
+          
           updateOnboardingStep(nextStep);
           setUser({
             ...user,
             destinationCountry,
+            journeyProgress: customizedJourney,
             onboardingStep: nextStep,
           });
+          
+          // Also update the journey store
+          setJourneyProgress(customizedJourney);
         }
       } else if (step === 4) {
         // Complete onboarding
@@ -205,8 +216,6 @@ export default function OnboardingScreen() {
         console.log("Moving to next step:", nextStep);
 
         setStep(nextStep);
-
-        // 🔥 IMPORTANT: Await this if it returns a promise
         await saveUserData(nextStep);
       } else {
         console.log("Validation failed for step:", step);
@@ -232,7 +241,7 @@ export default function OnboardingScreen() {
             <View style={styles.welcomeContent}>
               <Text style={styles.welcomeTitle}>Welcome to UniPilot</Text>
               <Text style={styles.welcomeText}>
-                Your personal guide through the entire international student journey, from university applications to career establishment.
+                Your personal guide through the entire international student journey, from university applications to career establishment worldwide.
               </Text>
             </View>
           </View>
@@ -272,7 +281,7 @@ export default function OnboardingScreen() {
           <View style={styles.stepContainer}>
             <Text style={styles.stepTitle}>Where are you from?</Text>
             <Text style={styles.stepDescription}>
-              Select your home country
+              Select your home country to customize your journey
             </Text>
             
             <CountrySelector
@@ -288,10 +297,35 @@ export default function OnboardingScreen() {
       case 3:
         return (
           <View style={styles.stepContainer}>
-            <Text style={styles.stepTitle}>Where are you going?</Text>
+            <Text style={styles.stepTitle}>Where do you want to study?</Text>
             <Text style={styles.stepDescription}>
-              Select your destination country for studies
+              Select your destination country. We'll customize your journey with country-specific requirements, visa processes, and tasks.
             </Text>
+            
+            {/* Show popular destinations first */}
+            <Text style={styles.sectionTitle}>Popular Destinations</Text>
+            <View style={styles.popularDestinations}>
+              {getPopularDestinations().map((country) => (
+                <TouchableOpacity
+                  key={country.code}
+                  style={[
+                    styles.popularDestinationCard,
+                    destinationCountry?.code === country.code && styles.selectedDestination
+                  ]}
+                  onPress={() => setDestinationCountry(country)}
+                >
+                  <Text style={styles.countryFlag}>{country.flag}</Text>
+                  <Text style={[
+                    styles.countryName,
+                    destinationCountry?.code === country.code && styles.selectedCountryName
+                  ]}>
+                    {country.name}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            
+            <Text style={styles.orText}>or choose from all countries</Text>
             
             <CountrySelector
               label="Destination Country"
@@ -299,6 +333,7 @@ export default function OnboardingScreen() {
               onChange={(country: Country) => setDestinationCountry(country)}
               countries={countries}
               error={errors.destinationCountry}
+              placeholder="Search all countries..."
             />
           </View>
         );
@@ -313,7 +348,9 @@ export default function OnboardingScreen() {
             />
             <Text style={styles.stepTitle}>You're all set!</Text>
             <Text style={styles.stepDescription}>
-              We've created your personalized journey from {homeCountry?.name || "your country"} to {destinationCountry?.name || "your destination"}. Let's get started!
+              We've created your personalized journey from {homeCountry?.name || "your country"} to {destinationCountry?.name || "your destination"}. 
+              {"\n\n"}
+              Your journey includes country-specific visa requirements, document checklists, and step-by-step guidance tailored for {destinationCountry?.name || "your destination"}.
             </Text>
           </View>
         );
@@ -365,7 +402,7 @@ export default function OnboardingScreen() {
         {step > 0 && step < 4 && (
           <TouchableOpacity
             style={styles.skipButton}
-            onPress={() => {
+            onPress={async () => {
               if (isProcessing) return;
               setIsProcessing(true);
               console.log("Skip button pressed, moving to final step");
@@ -373,7 +410,7 @@ export default function OnboardingScreen() {
               // Update the onboarding step in the store
               if (user) {
                 updateOnboardingStep(4);
-                saveUserData(4);
+                await saveUserData(4);
               }
               setIsProcessing(false);
             }}
@@ -470,12 +507,56 @@ const styles = StyleSheet.create({
     marginBottom: 32,
     lineHeight: 24,
   },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: Colors.text,
+    marginBottom: 16,
+  },
+  popularDestinations: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 12,
+    marginBottom: 24,
+  },
+  popularDestinationCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: Colors.lightBackground,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: "transparent",
+  },
+  selectedDestination: {
+    backgroundColor: Colors.primary + "20",
+    borderColor: Colors.primary,
+  },
+  countryFlag: {
+    fontSize: 20,
+    marginRight: 8,
+  },
+  countryName: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: Colors.text,
+  },
+  selectedCountryName: {
+    color: Colors.primary,
+    fontWeight: "600",
+  },
+  orText: {
+    fontSize: 14,
+    color: Colors.lightText,
+    textAlign: "center",
+    marginBottom: 16,
+  },
   footer: {
     padding: 24,
     backgroundColor: Colors.background,
     borderTopWidth: 1,
     borderTopColor: Colors.border,
-    // Ensure footer is above other elements
     zIndex: 1000,
     elevation: 1000,
   },
@@ -483,7 +564,6 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     alignItems: "center",
     marginTop: 12,
-    // Ensure skip button is touchable
     zIndex: 1001,
     elevation: 1001,
   },

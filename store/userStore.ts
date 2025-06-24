@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { UserProfile, Country, EducationLevel } from "@/types/user";
-import { initialJourneyProgress } from "@/mocks/journeyTasks";
+import { getJourneyProgressForCountry } from "@/mocks/journeyTasks";
 
 interface UserState {
   user: UserProfile | null;
@@ -24,6 +24,7 @@ interface UserState {
     destinationCountry: Country;
   }) => void;
   setPremium: (isPremium: boolean) => void;
+  updateDestinationCountry: (country: Country) => void;
 }
 
 export const useUserStore = create<UserState>()(
@@ -101,7 +102,7 @@ export const useUserStore = create<UserState>()(
           testScores: [],
           universities: [],
           documents: [],
-          journeyProgress: initialJourneyProgress,
+          journeyProgress: getJourneyProgressForCountry(userData.destinationCountry.code),
           memories: [],
           onboardingCompleted: false,
           onboardingStep: 0,
@@ -122,6 +123,22 @@ export const useUserStore = create<UserState>()(
             : null,
           isPremium,
         })),
+      
+      updateDestinationCountry: (country) =>
+        set((state) => {
+          if (!state.user) return state;
+          
+          // Generate new journey progress for the new destination country
+          const newJourneyProgress = getJourneyProgressForCountry(country.code);
+          
+          return {
+            user: {
+              ...state.user,
+              destinationCountry: country,
+              journeyProgress: newJourneyProgress,
+            },
+          };
+        }),
     }),
     {
       name: "user-storage",

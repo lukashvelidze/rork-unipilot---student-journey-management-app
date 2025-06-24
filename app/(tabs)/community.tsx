@@ -35,6 +35,9 @@ export default function CommunityScreen() {
   const { data: backendPosts, isLoading: postsLoading, error: postsError, refetch } = trpc.community.getPosts.useQuery({
     topic: selectedTopic || undefined,
     search: searchQuery || undefined,
+  }, {
+    retry: 3,
+    retryDelay: 1000,
   });
   
   const likePostMutation = trpc.community.likePost.useMutation({
@@ -42,7 +45,7 @@ export default function CommunityScreen() {
       // Refetch posts to get updated data
       refetch();
     },
-    onError: (error: unknown) => {
+    onError: (error: any) => {
       Alert.alert("Error", "Failed to update like status");
       console.error("Like post error:", error);
     },
@@ -63,7 +66,7 @@ export default function CommunityScreen() {
   // Update error state
   useEffect(() => {
     if (postsError) {
-      setError(postsError.message);
+      setError(postsError.message || "Failed to load posts");
     } else {
       setError(null);
     }
@@ -105,7 +108,9 @@ export default function CommunityScreen() {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: Colors.background }]} edges={['top']}>
         <View style={styles.errorContainer}>
-          <Text style={[styles.errorText, { color: Colors.error }]}>Error loading posts: {error}</Text>
+          <Text style={[styles.errorText, { color: Colors.error }]}>
+            {error.includes("Network error") ? "Unable to connect to server. Please check your internet connection." : `Error loading posts: ${error}`}
+          </Text>
           <TouchableOpacity
             style={[styles.retryButton, { backgroundColor: Colors.primary }]}
             onPress={() => refetch()}

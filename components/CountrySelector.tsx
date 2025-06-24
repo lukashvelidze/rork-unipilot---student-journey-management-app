@@ -1,207 +1,224 @@
 import React, { useState } from "react";
-import {
-  StyleSheet,
-  View,
-  Text,
-  TouchableOpacity,
-  Modal,
-  FlatList,
-  TextInput,
-} from "react-native";
+import { StyleSheet, View, Text, TouchableOpacity, Modal, FlatList, TextInput } from "react-native";
 import { ChevronDown, Search, X } from "lucide-react-native";
-import Colors from "@/constants/colors";
+import { useColors } from "@/hooks/useColors";
 import { Country } from "@/types/user";
 
 interface CountrySelectorProps {
-  label?: string;
-  value?: Country | null;
+  label: string;
+  value: Country | null;
   onChange: (country: Country) => void;
   countries: Country[];
-  placeholder?: string;
   error?: string;
+  placeholder?: string;
 }
 
-const CountrySelector: React.FC<CountrySelectorProps> = ({
+export default function CountrySelector({
   label,
   value,
   onChange,
   countries,
-  placeholder = "Select a country",
   error,
-}) => {
-  const [modalVisible, setModalVisible] = useState(false);
+  placeholder = "Select a country..."
+}: CountrySelectorProps) {
+  const Colors = useColors();
+  const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-
-  const filteredCountries = countries.filter((country) =>
-    country.name.toLowerCase().includes(searchQuery.toLowerCase())
+  
+  const filteredCountries = countries.filter(country =>
+    country.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    country.code.toLowerCase().includes(searchQuery.toLowerCase())
   );
-
+  
   const handleSelect = (country: Country) => {
     onChange(country);
-    setModalVisible(false);
+    setIsOpen(false);
+    setSearchQuery("");
   };
-
+  
+  const clearSearch = () => {
+    setSearchQuery("");
+  };
+  
   return (
     <View style={styles.container}>
-      {label && <Text style={styles.label}>{label}</Text>}
+      <Text style={[styles.label, { color: Colors.text }]}>{label}</Text>
       
       <TouchableOpacity
-        style={[styles.selector, error ? styles.selectorError : null]}
-        onPress={() => setModalVisible(true)}
+        style={[
+          styles.selector,
+          { 
+            backgroundColor: Colors.lightBackground,
+            borderColor: error ? Colors.error : Colors.border,
+          }
+        ]}
+        onPress={() => setIsOpen(true)}
       >
-        {value ? (
-          <View style={styles.selectedCountry}>
-            <Text style={styles.flag}>{value.flag}</Text>
-            <Text style={styles.countryName}>{value.name}</Text>
-          </View>
-        ) : (
-          <Text style={styles.placeholder}>{placeholder}</Text>
-        )}
+        <View style={styles.selectedValue}>
+          {value ? (
+            <>
+              <Text style={styles.flag}>{value.flag}</Text>
+              <Text style={[styles.countryName, { color: Colors.text }]}>
+                {value.name}
+              </Text>
+            </>
+          ) : (
+            <Text style={[styles.placeholder, { color: Colors.lightText }]}>
+              {placeholder}
+            </Text>
+          )}
+        </View>
         <ChevronDown size={20} color={Colors.lightText} />
       </TouchableOpacity>
       
-      {error && <Text style={styles.errorText}>{error}</Text>}
-
+      {error && (
+        <Text style={[styles.error, { color: Colors.error }]}>{error}</Text>
+      )}
+      
       <Modal
-        visible={modalVisible}
+        visible={isOpen}
         animationType="slide"
-        transparent={true}
+        presentationStyle="pageSheet"
+        onRequestClose={() => setIsOpen(false)}
       >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Select Country</Text>
-              <TouchableOpacity
-                onPress={() => setModalVisible(false)}
-                style={styles.closeButton}
-              >
-                <X size={24} color={Colors.text} />
-              </TouchableOpacity>
-            </View>
-            
-            <View style={styles.searchContainer}>
+        <View style={[styles.modal, { backgroundColor: Colors.background }]}>
+          <View style={[styles.modalHeader, { borderBottomColor: Colors.border }]}>
+            <Text style={[styles.modalTitle, { color: Colors.text }]}>
+              {label}
+            </Text>
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={() => setIsOpen(false)}
+            >
+              <X size={24} color={Colors.text} />
+            </TouchableOpacity>
+          </View>
+          
+          <View style={styles.searchContainer}>
+            <View style={[styles.searchInputContainer, { backgroundColor: Colors.lightBackground }]}>
               <Search size={20} color={Colors.lightText} style={styles.searchIcon} />
               <TextInput
-                style={styles.searchInput}
+                style={[styles.searchInput, { color: Colors.text }]}
                 placeholder="Search countries..."
+                placeholderTextColor={Colors.lightText}
                 value={searchQuery}
                 onChangeText={setSearchQuery}
                 autoCapitalize="none"
                 autoCorrect={false}
               />
               {searchQuery.length > 0 && (
-                <TouchableOpacity onPress={() => setSearchQuery("")}>
+                <TouchableOpacity onPress={clearSearch}>
                   <X size={18} color={Colors.lightText} />
                 </TouchableOpacity>
               )}
             </View>
-            
-            <FlatList
-              data={filteredCountries}
-              keyExtractor={(item) => item.code}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={[
-                    styles.countryItem,
-                    value?.code === item.code && styles.selectedItem,
-                  ]}
-                  onPress={() => handleSelect(item)}
-                >
-                  <Text style={styles.countryFlag}>{item.flag}</Text>
-                  <Text style={styles.countryItemName}>{item.name}</Text>
-                </TouchableOpacity>
-              )}
-              style={styles.countryList}
-            />
           </View>
+          
+          <FlatList
+            data={filteredCountries}
+            keyExtractor={(item) => item.code}
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                style={[
+                  styles.countryItem,
+                  { 
+                    backgroundColor: value?.code === item.code ? Colors.primary + "20" : "transparent",
+                    borderBottomColor: Colors.border,
+                  }
+                ]}
+                onPress={() => handleSelect(item)}
+              >
+                <Text style={styles.flag}>{item.flag}</Text>
+                <Text style={[
+                  styles.countryName,
+                  { 
+                    color: value?.code === item.code ? Colors.primary : Colors.text,
+                    fontWeight: value?.code === item.code ? "600" : "400",
+                  }
+                ]}>
+                  {item.name}
+                </Text>
+                {item.isPopularDestination && (
+                  <View style={[styles.popularBadge, { backgroundColor: Colors.secondary }]}>
+                    <Text style={styles.popularText}>Popular</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            )}
+            showsVerticalScrollIndicator={false}
+            ItemSeparatorComponent={() => <View style={styles.separator} />}
+          />
         </View>
       </Modal>
     </View>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {
     marginBottom: 16,
-    width: "100%",
   },
   label: {
-    fontSize: 14,
-    marginBottom: 6,
-    color: Colors.text,
-    fontWeight: "500",
+    fontSize: 16,
+    fontWeight: "600",
+    marginBottom: 8,
   },
   selector: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: 8,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: Colors.card,
+    borderRadius: 8,
+    borderWidth: 1,
   },
-  selectorError: {
-    borderColor: Colors.error,
-  },
-  selectedCountry: {
+  selectedValue: {
     flexDirection: "row",
     alignItems: "center",
+    flex: 1,
   },
   flag: {
     fontSize: 20,
-    marginRight: 8,
+    marginRight: 12,
   },
   countryName: {
     fontSize: 16,
-    color: Colors.text,
+    flex: 1,
   },
   placeholder: {
     fontSize: 16,
-    color: Colors.lightText,
   },
-  errorText: {
-    color: Colors.error,
-    fontSize: 12,
+  error: {
+    fontSize: 14,
     marginTop: 4,
   },
-  modalContainer: {
+  modal: {
     flex: 1,
-    justifyContent: "flex-end",
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-  },
-  modalContent: {
-    backgroundColor: Colors.background,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingTop: 20,
-    maxHeight: "80%",
   },
   modalHeader: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 20,
-    marginBottom: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
   },
   modalTitle: {
     fontSize: 18,
     fontWeight: "600",
-    color: Colors.text,
   },
   closeButton: {
     padding: 4,
   },
   searchContainer: {
+    padding: 16,
+  },
+  searchInputContainer: {
     flexDirection: "row",
     alignItems: "center",
-    marginHorizontal: 20,
-    marginBottom: 16,
+    borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    backgroundColor: Colors.lightBackground,
-    borderRadius: 8,
   },
   searchIcon: {
     marginRight: 8,
@@ -209,30 +226,27 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 16,
-    color: Colors.text,
-  },
-  countryList: {
-    maxHeight: "70%",
   },
   countryItem: {
     flexDirection: "row",
     alignItems: "center",
+    paddingHorizontal: 16,
     paddingVertical: 12,
-    paddingHorizontal: 20,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
   },
-  selectedItem: {
-    backgroundColor: Colors.primaryLight,
+  popularBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 12,
+    marginLeft: 8,
   },
-  countryFlag: {
-    fontSize: 24,
-    marginRight: 12,
+  popularText: {
+    fontSize: 10,
+    fontWeight: "600",
+    color: "#FFFFFF",
   },
-  countryItemName: {
-    fontSize: 16,
-    color: Colors.text,
+  separator: {
+    height: 1,
+    backgroundColor: "transparent",
   },
 });
-
-export default CountrySelector;
