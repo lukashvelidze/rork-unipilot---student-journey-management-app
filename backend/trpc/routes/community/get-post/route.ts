@@ -46,7 +46,7 @@ const mockPosts = [
     userName: "Maria Rodriguez",
     userAvatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?ixlib=rb-1.2.1&auto=format&fit=crop&w=256&q=80",
     title: "Best student accommodation in London?",
-    content: "I'm starting at UCL in September and looking for accommodation recommendations. What are your experiences with university halls vs private housing?\n\nI'm particularly interested in:\n- Cost comparison\n- Social aspects\n- Location convenience\n- Facilities available\n\nAny advice would be greatly appreciated!",
+    content: "I am starting at UCL in September and looking for accommodation recommendations. What are your experiences with university halls vs private housing?\n\nI am particularly interested in:\n- Cost comparison\n- Social aspects\n- Location convenience\n- Facilities available\n\nAny advice would be greatly appreciated!",
     topic: "accommodation" as const,
     createdAt: "2024-01-14T15:45:00Z",
     likes: 18,

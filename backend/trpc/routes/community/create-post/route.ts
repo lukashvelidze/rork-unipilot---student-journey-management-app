@@ -1,30 +1,27 @@
 import { publicProcedure } from "../../../create-context";
 import { z } from "zod";
 
-const topicSchema = z.enum([
-  "visa",
-  "university", 
-  "accommodation",
-  "finances",
-  "culture",
-  "academics",
-  "career",
-  "general"
-]);
-
 export const createPostProcedure = publicProcedure
   .input(
     z.object({
       title: z.string().min(1, "Title is required"),
       content: z.string().min(1, "Content is required"),
-      topic: topicSchema,
+      topic: z.enum(["visa", "accommodation", "academics", "social", "general"]),
       userId: z.string().default("current_user"),
       userName: z.string().default("Anonymous User"),
       userAvatar: z.string().optional(),
       isPremium: z.boolean().default(false),
     })
   )
-  .mutation(({ input }: { input: any }) => {
+  .mutation(({ input }: { input: {
+    title: string;
+    content: string;
+    topic: "visa" | "accommodation" | "academics" | "social" | "general";
+    userId: string;
+    userName: string;
+    userAvatar?: string;
+    isPremium: boolean;
+  } }) => {
     // In a real app, this would save to a database
     const newPost = {
       id: `post_${Date.now()}`,

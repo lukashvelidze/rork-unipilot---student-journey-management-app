@@ -12,7 +12,14 @@ export const addCommentProcedure = publicProcedure
       isPremium: z.boolean().default(false),
     })
   )
-  .mutation(({ input }: { input: any }) => {
+  .mutation(({ input }: { input: {
+    postId: string;
+    content: string;
+    userId: string;
+    userName: string;
+    userAvatar?: string;
+    isPremium: boolean;
+  } }) => {
     // In a real app, this would save to a database
     const newComment = {
       id: `comment_${Date.now()}`,

@@ -35,7 +35,7 @@ const mockPosts = [
     userName: "Maria Rodriguez",
     userAvatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?ixlib=rb-1.2.1&auto=format&fit=crop&w=256&q=80",
     title: "Best student accommodation in London?",
-    content: "I'm starting at UCL in September and looking for accommodation recommendations. What are your experiences with university halls vs private housing?",
+    content: "I am starting at UCL in September and looking for accommodation recommendations. What are your experiences with university halls vs private housing?",
     topic: "accommodation" as const,
     createdAt: "2024-01-14T15:45:00Z",
     likes: 18,
@@ -64,7 +64,7 @@ export const getPostsProcedure = publicProcedure
       search: z.string().optional(),
     }).optional()
   )
-  .query(({ input }: { input?: any }) => {
+  .query(({ input }: { input?: { topic?: string; search?: string } }) => {
     let filteredPosts = [...mockPosts];
     
     if (input?.topic && input.topic !== "all") {

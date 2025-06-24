@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { StyleSheet, View, Text, ScrollView, TouchableOpacity, TextInput, Alert } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import { Heart, Send } from "lucide-react-native";
@@ -45,7 +45,7 @@ export default function PostDetailScreen() {
     onSuccess: () => {
       refetch();
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       Alert.alert("Error", "Failed to update like status");
       console.error("Like post error:", error);
     },
@@ -55,14 +55,14 @@ export default function PostDetailScreen() {
     onSuccess: () => {
       refetch();
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       Alert.alert("Error", "Failed to update comment like status");
       console.error("Like comment error:", error);
     },
   });
   
   const addCommentMutation = trpc.community.addComment.useMutation({
-    onSuccess: (newComment: any) => {
+    onSuccess: (newComment: Comment) => {
       // Add comment to local state
       if (post) {
         addComment(post.id, newComment);
@@ -70,7 +70,7 @@ export default function PostDetailScreen() {
       setCommentText("");
       refetch();
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       Alert.alert("Error", "Failed to add comment");
       console.error("Add comment error:", error);
     },

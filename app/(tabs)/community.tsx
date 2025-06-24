@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import { StyleSheet, View, Text, FlatList, TouchableOpacity, TextInput, Image, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -8,7 +8,6 @@ import PostCard from "@/components/PostCard";
 import Card from "@/components/Card";
 import { useCommunityStore } from "@/store/communityStore";
 import { useUserStore } from "@/store/userStore";
-import { Topic } from "@/types/community";
 import { trpc } from "@/lib/trpc";
 
 export default function CommunityScreen() {
@@ -23,7 +22,6 @@ export default function CommunityScreen() {
     isLoading,
     error,
     setPosts,
-    filterByTopic,
     searchPosts,
     likePost,
     unlikePost,
@@ -44,7 +42,7 @@ export default function CommunityScreen() {
       // Refetch posts to get updated data
       refetch();
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       Alert.alert("Error", "Failed to update like status");
       console.error("Like post error:", error);
     },

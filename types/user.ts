@@ -1,117 +1,27 @@
-export interface Country {
-  code: string;
-  name: string;
-  flag: string;
-}
-
-export interface TestScore {
-  type: "IELTS" | "TOEFL" | "GRE" | "GMAT" | "SAT" | "ACT";
-  score: string;
-  date: string;
-}
-
-export interface University {
-  id: string;
-  name: string;
-  country: string;
-  ranking?: number;
-  applicationStatus: "not_started" | "in_progress" | "submitted" | "accepted" | "rejected";
-  applicationDeadline?: string;
-  notes?: string;
-}
-
-export type DocumentType = 
-  | "passport"
-  | "visa"
-  | "i20"
-  | "admission_letter"
-  | "financial_documents"
-  | "transcripts"
-  | "test_scores"
-  | "health_insurance"
-  | "transcript"
-  | "recommendation"
-  | "essay"
-  | "certificate"
-  | "other";
-
-export interface Document {
-  id: string;
-  name: string;
-  type: DocumentType;
-  status: "missing" | "in_progress" | "completed";
-  uploadDate?: string;
-  expiryDate?: string;
-  notes?: string;
-  fileUrl?: string;
-}
-
-export interface Task {
-  id: string;
-  title: string;
-  description?: string;
-  completed: boolean;
-  dueDate?: string;
-  priority?: "low" | "medium" | "high";
-  category?: string;
-}
-
-export type JourneyStage = 
-  | "research"
-  | "application"
-  | "visa"
-  | "pre_departure"
-  | "arrival"
-  | "academic"
-  | "career";
-
-export interface JourneyProgress {
-  stage: JourneyStage;
-  progress: number;
-  completed: boolean;
-  tasks: Task[];
-  startDate?: string;
-  completedDate?: string;
-}
-
-export interface Memory {
-  id: string;
-  title: string;
-  description: string;
-  date: string;
-  stage: JourneyStage;
-  imageUrl?: string;
-  tags: string[];
-  mood: "excited" | "nervous" | "confident" | "overwhelmed" | "happy" | "proud";
-}
-
-export type EducationLevel = "high_school" | "bachelors" | "masters" | "phd";
-
-export interface EducationBackground {
-  level: EducationLevel;
-  institution?: string;
-  major?: string;
-  gpa?: string;
-  graduationYear?: string;
-}
-
 export interface UserProfile {
   id: string;
   name: string;
   email: string;
-  bio?: string;
-  careerGoal?: string;
   avatar?: string;
-  homeCountry: Country;
-  destinationCountry: Country;
-  educationBackground: EducationBackground;
-  testScores: TestScore[];
-  universities: University[];
-  documents: Document[];
-  journeyProgress: JourneyProgress[];
-  memories: Memory[];
-  onboardingCompleted: boolean;
-  onboardingStep: number;
+  country?: string;
+  targetCountry?: string;
+  studyLevel?: "undergraduate" | "graduate" | "phd";
+  fieldOfStudy?: string;
   isPremium?: boolean;
-  premiumSince?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface UserPreferences {
+  theme: "light" | "dark" | "system";
+  notifications: {
+    push: boolean;
+    email: boolean;
+    community: boolean;
+    journey: boolean;
+  };
+  privacy: {
+    profileVisible: boolean;
+    showProgress: boolean;
+  };
 }
