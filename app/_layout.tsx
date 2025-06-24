@@ -83,6 +83,7 @@ function RootLayoutNav() {
             <Stack.Screen name="community/[id]" options={{ title: "Discussion" }} />
             <Stack.Screen name="memories/new" options={{ title: "New Memory" }} />
             <Stack.Screen name="memories/[id]" options={{ title: "Memory Details" }} />
+            <Stack.Screen name="profile/edit" options={{ title: "Edit Profile" }} />
             <Stack.Screen name="profile/personal" options={{ title: "Personal Information" }} />
             <Stack.Screen name="profile/education" options={{ title: "Education" }} />
             <Stack.Screen name="profile/countries" options={{ title: "Countries" }} />
@@ -93,6 +94,7 @@ function RootLayoutNav() {
             <Stack.Screen name="tasks" options={{ title: "Tasks" }} />
             <Stack.Screen name="calendar" options={{ title: "Calendar" }} />
             <Stack.Screen name="premium" options={{ title: "UniPilot Premium" }} />
+            <Stack.Screen name="premium/resources" options={{ title: "Premium Resources" }} />
             <Stack.Screen name="unipilot-ai" options={{ title: "AI Assistant" }} />
           </Stack>
         </QueryClientProvider>

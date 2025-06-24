@@ -1,8 +1,9 @@
 import React from "react";
 import { StyleSheet, View, Text, ScrollView, TouchableOpacity } from "react-native";
 import { useRouter } from "expo-router";
-import { Settings, Crown } from "lucide-react-native";
+import { Settings, Crown, Edit, MapPin, GraduationCap, Target, Calendar } from "lucide-react-native";
 import Colors from "@/constants/colors";
+import Theme from "@/constants/theme";
 import Card from "@/components/Card";
 import Button from "@/components/Button";
 import Avatar from "@/components/Avatar";
@@ -28,95 +29,179 @@ export default function ProfileScreen() {
     );
   }
 
+  const profileStats = [
+    {
+      label: "Journey Progress",
+      value: "65%",
+      color: Colors.primary,
+    },
+    {
+      label: "Tasks Completed",
+      value: "12",
+      color: Colors.success,
+    },
+    {
+      label: "Documents",
+      value: "5",
+      color: Colors.accent,
+    },
+  ];
+
+  const quickActions = [
+    {
+      title: "Edit Profile",
+      subtitle: "Update your information",
+      icon: Edit,
+      color: Colors.primary,
+      onPress: () => router.push("/profile/edit"),
+    },
+    {
+      title: "Settings",
+      subtitle: "Preferences and privacy",
+      icon: Settings,
+      color: Colors.secondary,
+      onPress: () => router.push("/settings"),
+    },
+  ];
+
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <View style={styles.header}>
-        <View style={styles.profileInfo}>
+      {/* Header with Avatar and Basic Info */}
+      <Card style={styles.headerCard} variant="elevated">
+        <View style={styles.profileHeader}>
           <Avatar
             size="large"
             name={user.name}
             showBorder
           />
-          <View style={styles.nameContainer}>
+          <View style={styles.profileInfo}>
             <Text style={styles.name}>{user.name}</Text>
             <Text style={styles.email}>{user.email}</Text>
             {isPremium && (
               <View style={styles.premiumBadge}>
-                <Crown size={12} color="#FFD700" />
+                <Crown size={14} color={Colors.premium} />
                 <Text style={styles.premiumText}>Premium Member</Text>
               </View>
             )}
           </View>
         </View>
         
-        <TouchableOpacity
-          style={styles.settingsButton}
-          onPress={() => router.push("/settings")}
-        >
-          <Settings size={20} color={Colors.text} />
-        </TouchableOpacity>
+        {user.bio && (
+          <Text style={styles.bio}>{user.bio}</Text>
+        )}
+      </Card>
+      
+      {/* Stats Cards */}
+      <View style={styles.statsContainer}>
+        {profileStats.map((stat, index) => (
+          <Card key={index} style={styles.statCard} variant="default">
+            <Text style={[styles.statValue, { color: stat.color }]}>{stat.value}</Text>
+            <Text style={styles.statLabel}>{stat.label}</Text>
+          </Card>
+        ))}
       </View>
       
-      <Card style={styles.statsCard} variant="elevated" borderRadius="large">
-        <Text style={styles.sectionTitle}>Journey Stats</Text>
-        <View style={styles.statsGrid}>
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>3</Text>
-            <Text style={styles.statLabel}>Stages Completed</Text>
+      {/* Quick Actions */}
+      <View style={styles.quickActions}>
+        {quickActions.map((action, index) => (
+          <TouchableOpacity
+            key={index}
+            style={styles.actionCard}
+            onPress={action.onPress}
+          >
+            <View style={[styles.actionIcon, { backgroundColor: `${action.color}15` }]}>
+              <action.icon size={24} color={action.color} />
+            </View>
+            <View style={styles.actionContent}>
+              <Text style={styles.actionTitle}>{action.title}</Text>
+              <Text style={styles.actionSubtitle}>{action.subtitle}</Text>
+            </View>
+          </TouchableOpacity>
+        ))}
+      </View>
+      
+      {/* Profile Information */}
+      <Card style={styles.infoCard} variant="default">
+        <Text style={styles.sectionTitle}>Profile Information</Text>
+        
+        <View style={styles.infoGrid}>
+          <View style={styles.infoItem}>
+            <View style={styles.infoIcon}>
+              <MapPin size={18} color={Colors.primary} />
+            </View>
+            <View style={styles.infoContent}>
+              <Text style={styles.infoLabel}>From</Text>
+              <Text style={styles.infoValue}>
+                {user.homeCountry?.name || "Not set"}
+              </Text>
+            </View>
           </View>
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>12</Text>
-            <Text style={styles.statLabel}>Tasks Done</Text>
+          
+          <View style={styles.infoItem}>
+            <View style={styles.infoIcon}>
+              <Target size={18} color={Colors.secondary} />
+            </View>
+            <View style={styles.infoContent}>
+              <Text style={styles.infoLabel}>Studying in</Text>
+              <Text style={styles.infoValue}>
+                {user.destinationCountry?.name || "Not set"}
+              </Text>
+            </View>
           </View>
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>5</Text>
-            <Text style={styles.statLabel}>Documents</Text>
+          
+          <View style={styles.infoItem}>
+            <View style={styles.infoIcon}>
+              <GraduationCap size={18} color={Colors.accent} />
+            </View>
+            <View style={styles.infoContent}>
+              <Text style={styles.infoLabel}>Education Level</Text>
+              <Text style={styles.infoValue}>
+                {user.educationBackground?.level || "Not set"}
+              </Text>
+            </View>
           </View>
+          
+          {user.careerGoal && (
+            <View style={styles.infoItem}>
+              <View style={styles.infoIcon}>
+                <Target size={18} color={Colors.success} />
+              </View>
+              <View style={styles.infoContent}>
+                <Text style={styles.infoLabel}>Career Interest</Text>
+                <Text style={styles.infoValue}>{user.careerGoal}</Text>
+              </View>
+            </View>
+          )}
         </View>
       </Card>
       
-      <Card style={styles.infoCard} variant="elevated" borderRadius="large">
-        <Text style={styles.sectionTitle}>Personal Information</Text>
-        <View style={styles.infoItem}>
-          <Text style={styles.infoLabel}>Nationality</Text>
-          <Text style={styles.infoValue}>{user.homeCountry?.name || "Not set"}</Text>
-        </View>
-        <View style={styles.infoItem}>
-          <Text style={styles.infoLabel}>Target Country</Text>
-          <Text style={styles.infoValue}>{user.destinationCountry?.name || "Not set"}</Text>
-        </View>
-        <View style={styles.infoItem}>
-          <Text style={styles.infoLabel}>Education Level</Text>
-          <Text style={styles.infoValue}>{user.educationBackground?.level || "Not set"}</Text>
-        </View>
-        <Button
-          title="Edit Profile"
-          onPress={() => router.push("/profile/edit")}
-          variant="secondary"
-          size="medium"
-          fullWidth
-          style={styles.editButton}
-        />
-      </Card>
+      {/* Premium Upgrade (if not premium) */}
+      {!isPremium && (
+        <Card style={styles.upgradeCard} variant="elevated">
+          <View style={styles.upgradeContent}>
+            <Crown size={32} color={Colors.premium} />
+            <Text style={styles.upgradeTitle}>Unlock Premium Features</Text>
+            <Text style={styles.upgradeDescription}>
+              Get access to AI assistance, premium resources, and personalized guidance.
+            </Text>
+            <Button
+              title="Upgrade to Premium"
+              onPress={() => router.push("/premium")}
+              style={styles.upgradeButton}
+            />
+          </View>
+        </Card>
+      )}
       
-      <View style={styles.actionsContainer}>
-        <Button
-          title="Settings"
-          onPress={() => router.push("/settings")}
-          variant="outline"
-          size="medium"
-          fullWidth
-          style={styles.actionButton}
-        />
-        <Button
-          title="Logout"
-          onPress={logout}
-          variant="destructive"
-          size="medium"
-          fullWidth
-          style={styles.actionButton}
-        />
-      </View>
+      {/* Sign Out Button */}
+      <Button
+        title="Sign Out"
+        onPress={logout}
+        variant="outline"
+        size="medium"
+        fullWidth
+        style={styles.signOutButton}
+      />
     </ScrollView>
   );
 }
@@ -127,53 +212,108 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
   },
   content: {
-    padding: 16,
-    paddingBottom: 100,
+    padding: 20,
+    paddingBottom: 40,
   },
-  header: {
+  headerCard: {
+    marginBottom: 20,
+    padding: 24,
+  },
+  profileHeader: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 24,
-    paddingTop: 16,
+    marginBottom: 16,
   },
   profileInfo: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  nameContainer: {
     marginLeft: 16,
+    flex: 1,
   },
   name: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: "700",
     color: Colors.text,
-    marginBottom: 2,
+    marginBottom: 4,
   },
   email: {
     fontSize: 14,
     color: Colors.lightText,
+    marginBottom: 8,
   },
   premiumBadge: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(255, 215, 0, 0.1)",
-    paddingHorizontal: 8,
+    backgroundColor: Colors.premiumBackground,
+    paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
-    marginTop: 4,
+    alignSelf: "flex-start",
   },
   premiumText: {
     fontSize: 12,
-    color: "#FFD700",
+    color: Colors.premium,
     marginLeft: 4,
     fontWeight: "600",
   },
-  settingsButton: {
-    padding: 10,
+  bio: {
+    fontSize: 14,
+    color: Colors.lightText,
+    lineHeight: 20,
   },
-  statsCard: {
-    marginBottom: 24,
+  statsContainer: {
+    flexDirection: "row",
+    marginBottom: 20,
+    gap: 12,
+  },
+  statCard: {
+    flex: 1,
+    padding: 16,
+    alignItems: "center",
+  },
+  statValue: {
+    fontSize: 20,
+    fontWeight: "700",
+    marginBottom: 4,
+  },
+  statLabel: {
+    fontSize: 12,
+    color: Colors.lightText,
+    textAlign: "center",
+  },
+  quickActions: {
+    marginBottom: 20,
+    gap: 12,
+  },
+  actionCard: {
+    backgroundColor: Colors.card,
+    padding: 16,
+    borderRadius: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    ...Theme.shadow.small,
+  },
+  actionIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 16,
+  },
+  actionContent: {
+    flex: 1,
+  },
+  actionTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: Colors.text,
+    marginBottom: 2,
+  },
+  actionSubtitle: {
+    fontSize: 14,
+    color: Colors.lightText,
+  },
+  infoCard: {
+    marginBottom: 20,
     padding: 20,
   },
   sectionTitle: {
@@ -182,50 +322,64 @@ const styles = StyleSheet.create({
     color: Colors.text,
     marginBottom: 16,
   },
-  statsGrid: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-  statItem: {
-    alignItems: "center",
-  },
-  statValue: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: Colors.primary,
-    marginBottom: 4,
-  },
-  statLabel: {
-    fontSize: 14,
-    color: Colors.lightText,
-    textAlign: "center",
-  },
-  infoCard: {
-    marginBottom: 24,
-    padding: 20,
+  infoGrid: {
+    gap: 16,
   },
   infoItem: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 12,
+    alignItems: "center",
+  },
+  infoIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: Colors.surface,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
+  },
+  infoContent: {
+    flex: 1,
   },
   infoLabel: {
-    fontSize: 16,
+    fontSize: 12,
     color: Colors.lightText,
+    marginBottom: 2,
   },
   infoValue: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: "500",
     color: Colors.text,
   },
-  editButton: {
-    marginTop: 16,
+  upgradeCard: {
+    marginBottom: 20,
+    padding: 24,
+    backgroundColor: Colors.premiumBackground,
+    borderWidth: 1,
+    borderColor: Colors.premium,
   },
-  actionsContainer: {
-    gap: 12,
+  upgradeContent: {
+    alignItems: "center",
   },
-  actionButton: {
+  upgradeTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: Colors.text,
+    marginTop: 12,
     marginBottom: 8,
+  },
+  upgradeDescription: {
+    fontSize: 14,
+    color: Colors.lightText,
+    textAlign: "center",
+    lineHeight: 20,
+    marginBottom: 20,
+  },
+  upgradeButton: {
+    minWidth: 200,
+  },
+  signOutButton: {
+    marginTop: 20,
   },
   errorText: {
     fontSize: 16,
@@ -233,5 +387,8 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginTop: 20,
     marginBottom: 20,
+  },
+  actionButton: {
+    marginBottom: 8,
   },
 });

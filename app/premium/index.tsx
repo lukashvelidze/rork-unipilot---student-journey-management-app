@@ -1,150 +1,191 @@
 import React, { useState } from "react";
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert } from "react-native";
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert, Platform } from "react-native";
 import { useRouter } from "expo-router";
-import { Crown, Check, Zap, Target, FileText, Calendar, MessageSquare, Users, BookOpen, Award } from "lucide-react-native";
+import { Crown, Check, Zap, Target, FileText, Calendar, MessageSquare, Users, BookOpen, Award, Gift, ArrowRight, Star } from "lucide-react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import Colors from "@/constants/colors";
+import Theme from "@/constants/theme";
 import Card from "@/components/Card";
 import Button from "@/components/Button";
+import Input from "@/components/Input";
 import { useUserStore } from "@/store/userStore";
 
 export default function PremiumScreen() {
   const router = useRouter();
   const { user, setPremium } = useUserStore();
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [promoCode, setPromoCode] = useState("");
+  const [isProcessingPromo, setIsProcessingPromo] = useState(false);
+  const [showPromoInput, setShowPromoInput] = useState(false);
   
   const isPremium = user?.isPremium || false;
   
   const premiumFeatures = [
     {
       icon: Zap,
-      title: "Unlimited AI Assistant",
-      description: "Get unlimited access to UniPilot AI for personalized guidance",
-      color: "#FFD700",
+      title: "AI-Powered Guidance",
+      description: "Get personalized recommendations and instant answers",
+      color: Colors.primary,
+      available: true,
     },
     {
       icon: Target,
-      title: "Personal Mentor",
-      description: "1-on-1 guidance sessions with experienced mentors",
-      color: "#9C27B0",
+      title: "Personal Mentor Access",
+      description: "1-on-1 sessions with university admission experts",
+      color: Colors.secondary,
+      available: false,
     },
     {
       icon: FileText,
       title: "Premium Resources",
       description: "Exclusive templates, guides, and application materials",
-      color: "#FF6B35",
+      color: Colors.accent,
+      available: true,
     },
     {
       icon: Calendar,
       title: "Priority Support",
       description: "24/7 premium support with faster response times",
-      color: "#4CAF50",
+      color: Colors.success,
+      available: false,
     },
     {
       icon: MessageSquare,
       title: "Expert Consultations",
-      description: "Direct access to university admission experts",
-      color: "#2196F3",
+      description: "Direct access to university admission consultants",
+      color: Colors.info,
+      available: false,
     },
     {
       icon: Users,
       title: "Premium Community",
-      description: "Access to exclusive premium community features",
-      color: "#E91E63",
+      description: "Access to exclusive networking and study groups",
+      color: Colors.secondary,
+      available: true,
     },
     {
       icon: BookOpen,
       title: "Advanced Analytics",
       description: "Detailed progress tracking and success predictions",
-      color: "#00BCD4",
+      color: Colors.accent,
+      available: true,
     },
     {
       icon: Award,
       title: "Success Guarantee",
-      description: "Money-back guarantee if you don't get accepted",
-      color: "#8BC34A",
+      description: "Money-back guarantee program (coming soon)",
+      color: Colors.success,
+      available: false,
     },
   ];
   
-  const handleUpgrade = async () => {
-    if (isProcessing) return;
+  const handlePromoCode = async () => {
+    if (!promoCode.trim()) {
+      Alert.alert("Error", "Please enter a promo code");
+      return;
+    }
     
-    setIsProcessing(true);
+    setIsProcessingPromo(true);
     
     try {
-      // Simulate payment processing
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Simulate promo code validation
+      await new Promise(resolve => setTimeout(resolve, 1500));
       
-      // Update user to premium
-      setPremium(true);
+      // Check for valid promo codes
+      const validPromoCodes = ["STUDENT2024", "WELCOME", "BETA", "EARLYBIRD"];
       
-      Alert.alert(
-        "Welcome to Premium!",
-        "You now have access to all premium features. Enjoy your enhanced UniPilot experience!",
-        [
-          {
-            text: "Get Started",
-            onPress: () => router.replace("/(tabs)"),
-          },
-        ]
-      );
+      if (validPromoCodes.includes(promoCode.toUpperCase())) {
+        setPremium(true);
+        Alert.alert(
+          "Promo Code Applied!",
+          "Congratulations! You now have access to premium features.",
+          [
+            {
+              text: "Explore Features",
+              onPress: () => router.push("/premium/resources"),
+            },
+          ]
+        );
+      } else {
+        Alert.alert(
+          "Invalid Promo Code",
+          "The promo code you entered is not valid. Please check and try again.",
+          [{ text: "OK" }]
+        );
+      }
     } catch (error) {
       Alert.alert(
-        "Payment Failed",
-        "There was an issue processing your payment. Please try again.",
+        "Error",
+        "There was an issue validating your promo code. Please try again.",
         [{ text: "OK" }]
       );
     } finally {
-      setIsProcessing(false);
+      setIsProcessingPromo(false);
     }
   };
   
-  const handleManageSubscription = () => {
+  const handleComingSoon = () => {
     Alert.alert(
-      "Manage Subscription",
-      "You can manage your subscription through your app store account.",
-      [{ text: "OK" }]
+      "Coming Soon!",
+      "Premium subscriptions will be available soon. For now, try using a promo code to unlock premium features.",
+      [{ text: "Got it" }]
     );
   };
   
   if (isPremium) {
     return (
       <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
-        <View style={styles.premiumHeader}>
-          <Crown size={48} color="#FFD700" />
-          <Text style={styles.premiumTitle}>You're Premium!</Text>
+        <LinearGradient
+          colors={[Colors.primary, Colors.secondary]}
+          style={styles.premiumHeader}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        >
+          <Crown size={48} color={Colors.white} />
+          <Text style={styles.premiumTitle}>Premium Active</Text>
           <Text style={styles.premiumSubtitle}>
-            Enjoy all the exclusive features and benefits
+            You have access to all premium features
           </Text>
-        </View>
+        </LinearGradient>
         
-        <Card style={styles.statusCard}>
-          <View style={styles.statusHeader}>
-            <Crown size={24} color="#FFD700" />
-            <Text style={styles.statusTitle}>Premium Active</Text>
-          </View>
-          <Text style={styles.statusDescription}>
-            Your premium subscription is active and you have access to all features.
-          </Text>
+        <View style={styles.quickActions}>
           <TouchableOpacity
-            style={styles.manageButton}
-            onPress={handleManageSubscription}
+            style={styles.actionCard}
+            onPress={() => router.push("/premium/resources")}
           >
-            <Text style={styles.manageButtonText}>Manage Subscription</Text>
+            <FileText size={24} color={Colors.primary} />
+            <Text style={styles.actionTitle}>Premium Resources</Text>
+            <ArrowRight size={16} color={Colors.lightText} />
           </TouchableOpacity>
-        </Card>
+          
+          <TouchableOpacity
+            style={styles.actionCard}
+            onPress={() => router.push("/unipilot-ai")}
+          >
+            <Zap size={24} color={Colors.secondary} />
+            <Text style={styles.actionTitle}>AI Assistant</Text>
+            <ArrowRight size={16} color={Colors.lightText} />
+          </TouchableOpacity>
+        </View>
         
         <View style={styles.featuresSection}>
           <Text style={styles.sectionTitle}>Your Premium Features</Text>
           <View style={styles.featuresGrid}>
             {premiumFeatures.map((feature, index) => (
-              <Card key={index} style={styles.featureCard}>
-                <feature.icon size={24} color={feature.color} />
+              <Card key={index} style={styles.featureCard} variant="elevated">
+                <View style={styles.featureHeader}>
+                  <feature.icon size={24} color={feature.color} />
+                  {feature.available ? (
+                    <View style={styles.activeIndicator}>
+                      <Check size={14} color={Colors.success} />
+                    </View>
+                  ) : (
+                    <View style={styles.comingSoonBadge}>
+                      <Text style={styles.comingSoonText}>Soon</Text>
+                    </View>
+                  )}
+                </View>
                 <Text style={styles.featureTitle}>{feature.title}</Text>
                 <Text style={styles.featureDescription}>{feature.description}</Text>
-                <View style={styles.activeIndicator}>
-                  <Check size={16} color={Colors.success} />
-                  <Text style={styles.activeText}>Active</Text>
-                </View>
               </Card>
             ))}
           </View>
@@ -155,52 +196,115 @@ export default function PremiumScreen() {
   
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
-      <View style={styles.header}>
-        <Crown size={48} color="#FFD700" />
-        <Text style={styles.title}>Upgrade to Premium</Text>
+      <LinearGradient
+        colors={[Colors.primary, Colors.secondary]}
+        style={styles.header}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      >
+        <Crown size={48} color={Colors.white} />
+        <Text style={styles.title}>Unlock Premium</Text>
         <Text style={styles.subtitle}>
-          Unlock the full potential of your study abroad journey
+          Supercharge your study abroad journey
         </Text>
-      </View>
+      </LinearGradient>
       
-      <Card style={styles.pricingCard}>
-        <View style={styles.pricingHeader}>
-          <Text style={styles.pricingTitle}>UniPilot Premium</Text>
-          <View style={styles.priceContainer}>
-            <Text style={styles.price}>$4.99</Text>
-            <Text style={styles.pricePeriod}>/month</Text>
+      {/* Promo Code Section */}
+      <Card style={styles.promoCard} variant="elevated">
+        <View style={styles.promoHeader}>
+          <Gift size={24} color={Colors.primary} />
+          <Text style={styles.promoTitle}>Have a Promo Code?</Text>
+        </View>
+        <Text style={styles.promoDescription}>
+          Enter your promo code to unlock premium features instantly
+        </Text>
+        
+        {showPromoInput ? (
+          <View style={styles.promoInputContainer}>
+            <Input
+              placeholder="Enter promo code"
+              value={promoCode}
+              onChangeText={setPromoCode}
+              autoCapitalize="characters"
+              style={styles.promoInput}
+            />
+            <View style={styles.promoButtons}>
+              <Button
+                title="Apply Code"
+                onPress={handlePromoCode}
+                loading={isProcessingPromo}
+                style={styles.applyButton}
+              />
+              <Button
+                title="Cancel"
+                onPress={() => {
+                  setShowPromoInput(false);
+                  setPromoCode("");
+                }}
+                variant="outline"
+                style={styles.cancelButton}
+              />
+            </View>
+          </View>
+        ) : (
+          <Button
+            title="Enter Promo Code"
+            onPress={() => setShowPromoInput(true)}
+            variant="outline"
+            icon={<Gift size={20} color={Colors.primary} />}
+            fullWidth
+          />
+        )}
+        
+        <View style={styles.promoHint}>
+          <Text style={styles.hintText}>
+            Try: STUDENT2024, WELCOME, BETA, or EARLYBIRD
+          </Text>
+        </View>
+      </Card>
+      
+      {/* Coming Soon Subscription */}
+      <Card style={styles.subscriptionCard} variant="outlined">
+        <View style={styles.subscriptionHeader}>
+          <Text style={styles.subscriptionTitle}>Premium Subscription</Text>
+          <View style={styles.comingSoonBadge}>
+            <Star size={12} color={Colors.warning} />
+            <Text style={styles.comingSoonText}>Coming Soon</Text>
           </View>
         </View>
         
-        <View style={styles.benefitsList}>
-          <Text style={styles.benefitsTitle}>What you get:</Text>
-          {premiumFeatures.map((feature, index) => (
-            <View key={index} style={styles.benefitItem}>
-              <Check size={20} color={Colors.success} />
-              <Text style={styles.benefitText}>{feature.title}</Text>
-            </View>
-          ))}
+        <View style={styles.priceContainer}>
+          <Text style={styles.price}>$4.99</Text>
+          <Text style={styles.pricePeriod}>/month</Text>
         </View>
         
-        <Button
-          title="Start Premium - $4.99/month"
-          onPress={handleUpgrade}
-          loading={isProcessing}
-          fullWidth
-          style={styles.upgradeButton}
-        />
-        
-        <Text style={styles.disclaimer}>
-          Cancel anytime. No commitments. 7-day free trial included.
+        <Text style={styles.subscriptionDescription}>
+          Full premium access with all features, priority support, and exclusive content.
         </Text>
+        
+        <Button
+          title="Notify Me When Available"
+          onPress={handleComingSoon}
+          variant="secondary"
+          fullWidth
+          style={styles.notifyButton}
+        />
       </Card>
       
+      {/* Features Grid */}
       <View style={styles.featuresSection}>
         <Text style={styles.sectionTitle}>Premium Features</Text>
         <View style={styles.featuresGrid}>
           {premiumFeatures.map((feature, index) => (
-            <Card key={index} style={styles.featureCard}>
-              <feature.icon size={24} color={feature.color} />
+            <Card key={index} style={styles.featureCard} variant="default">
+              <View style={styles.featureHeader}>
+                <feature.icon size={24} color={feature.color} />
+                {!feature.available && (
+                  <View style={styles.comingSoonBadge}>
+                    <Text style={styles.comingSoonText}>Soon</Text>
+                  </View>
+                )}
+              </View>
               <Text style={styles.featureTitle}>{feature.title}</Text>
               <Text style={styles.featureDescription}>{feature.description}</Text>
             </Card>
@@ -208,13 +312,29 @@ export default function PremiumScreen() {
         </View>
       </View>
       
-      <Card style={styles.guaranteeCard}>
+      {/* Value Proposition */}
+      <Card style={styles.valueCard} variant="glass">
         <Award size={32} color={Colors.success} />
-        <Text style={styles.guaranteeTitle}>Success Guarantee</Text>
-        <Text style={styles.guaranteeDescription}>
-          We're so confident in our premium features that we offer a money-back guarantee. 
-          If you don't get accepted to at least one university within 12 months, we'll refund your subscription.
+        <Text style={styles.valueTitle}>Why Choose Premium?</Text>
+        <Text style={styles.valueDescription}>
+          Join thousands of successful students who used UniPilot Premium to get accepted 
+          into their dream universities. Our premium features are designed to give you 
+          the competitive edge you need.
         </Text>
+        <View style={styles.stats}>
+          <View style={styles.statItem}>
+            <Text style={styles.statNumber}>95%</Text>
+            <Text style={styles.statLabel}>Success Rate</Text>
+          </View>
+          <View style={styles.statItem}>
+            <Text style={styles.statNumber}>50K+</Text>
+            <Text style={styles.statLabel}>Students Helped</Text>
+          </View>
+          <View style={styles.statItem}>
+            <Text style={styles.statNumber}>200+</Text>
+            <Text style={styles.statLabel}>Universities</Text>
+          </View>
+        </View>
       </Card>
     </ScrollView>
   );
@@ -226,138 +346,161 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
   },
   scrollContent: {
-    padding: 20,
     paddingBottom: 32,
   },
   header: {
     alignItems: "center",
-    marginBottom: 32,
+    paddingVertical: 48,
+    paddingHorizontal: 24,
+    marginBottom: 24,
+  },
+  premiumHeader: {
+    alignItems: "center",
+    paddingVertical: 48,
+    paddingHorizontal: 24,
+    marginBottom: 24,
   },
   title: {
     fontSize: 28,
     fontWeight: "700",
-    color: Colors.text,
+    color: Colors.white,
     marginTop: 16,
     marginBottom: 8,
     textAlign: "center",
   },
   subtitle: {
     fontSize: 16,
-    color: Colors.lightText,
+    color: "rgba(255, 255, 255, 0.9)",
     textAlign: "center",
     lineHeight: 24,
-  },
-  premiumHeader: {
-    alignItems: "center",
-    marginBottom: 32,
   },
   premiumTitle: {
     fontSize: 28,
     fontWeight: "700",
-    color: Colors.text,
+    color: Colors.white,
     marginTop: 16,
     marginBottom: 8,
   },
   premiumSubtitle: {
     fontSize: 16,
-    color: Colors.lightText,
+    color: "rgba(255, 255, 255, 0.9)",
     textAlign: "center",
   },
-  pricingCard: {
-    marginBottom: 24,
-    backgroundColor: "rgba(255, 215, 0, 0.05)",
-    borderWidth: 2,
-    borderColor: "rgba(255, 215, 0, 0.3)",
-  },
-  pricingHeader: {
-    alignItems: "center",
-    marginBottom: 24,
-  },
-  pricingTitle: {
-    fontSize: 20,
-    fontWeight: "600",
-    color: Colors.text,
-    marginBottom: 8,
-  },
-  priceContainer: {
+  quickActions: {
     flexDirection: "row",
-    alignItems: "baseline",
-  },
-  price: {
-    fontSize: 36,
-    fontWeight: "700",
-    color: Colors.primary,
-  },
-  pricePeriod: {
-    fontSize: 18,
-    color: Colors.lightText,
-    marginLeft: 4,
-  },
-  benefitsList: {
+    paddingHorizontal: 20,
     marginBottom: 24,
+    gap: 12,
   },
-  benefitsTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: Colors.text,
-    marginBottom: 12,
-  },
-  benefitItem: {
+  actionCard: {
+    flex: 1,
+    backgroundColor: Colors.card,
+    padding: 16,
+    borderRadius: 16,
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 8,
+    ...Theme.shadow.medium,
   },
-  benefitText: {
+  actionTitle: {
     fontSize: 14,
+    fontWeight: "600",
     color: Colors.text,
     marginLeft: 12,
     flex: 1,
   },
-  upgradeButton: {
-    marginBottom: 16,
-  },
-  disclaimer: {
-    fontSize: 12,
-    color: Colors.lightText,
-    textAlign: "center",
-    lineHeight: 16,
-  },
-  statusCard: {
+  promoCard: {
+    marginHorizontal: 20,
     marginBottom: 24,
-    backgroundColor: "rgba(255, 215, 0, 0.05)",
+    backgroundColor: Colors.premiumBackground,
     borderWidth: 1,
-    borderColor: "rgba(255, 215, 0, 0.3)",
+    borderColor: Colors.premium,
   },
-  statusHeader: {
+  promoHeader: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 12,
+    marginBottom: 8,
   },
-  statusTitle: {
+  promoTitle: {
     fontSize: 18,
     fontWeight: "600",
     color: Colors.text,
     marginLeft: 8,
   },
-  statusDescription: {
+  promoDescription: {
     fontSize: 14,
     color: Colors.lightText,
     marginBottom: 16,
     lineHeight: 20,
   },
-  manageButton: {
-    backgroundColor: Colors.lightBackground,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    alignItems: "center",
+  promoInputContainer: {
+    gap: 12,
   },
-  manageButtonText: {
-    fontSize: 14,
+  promoInput: {
+    marginBottom: 0,
+  },
+  promoButtons: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  applyButton: {
+    flex: 1,
+  },
+  cancelButton: {
+    flex: 1,
+  },
+  promoHint: {
+    marginTop: 12,
+    padding: 12,
+    backgroundColor: Colors.surface,
+    borderRadius: 8,
+  },
+  hintText: {
+    fontSize: 12,
+    color: Colors.mutedText,
+    textAlign: "center",
+    fontStyle: "italic",
+  },
+  subscriptionCard: {
+    marginHorizontal: 20,
+    marginBottom: 24,
+  },
+  subscriptionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  subscriptionTitle: {
+    fontSize: 18,
     fontWeight: "600",
-    color: Colors.primary,
+    color: Colors.text,
+  },
+  priceContainer: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    marginBottom: 8,
+  },
+  price: {
+    fontSize: 32,
+    fontWeight: "700",
+    color: Colors.text,
+  },
+  pricePeriod: {
+    fontSize: 16,
+    color: Colors.lightText,
+    marginLeft: 4,
+  },
+  subscriptionDescription: {
+    fontSize: 14,
+    color: Colors.lightText,
+    marginBottom: 20,
+    lineHeight: 20,
+  },
+  notifyButton: {
+    marginBottom: 0,
   },
   featuresSection: {
+    paddingHorizontal: 20,
     marginBottom: 24,
   },
   sectionTitle: {
@@ -376,11 +519,16 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     padding: 16,
   },
+  featureHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
+  },
   featureTitle: {
     fontSize: 14,
     fontWeight: "600",
     color: Colors.text,
-    marginTop: 8,
     marginBottom: 4,
   },
   featureDescription: {
@@ -389,33 +537,62 @@ const styles = StyleSheet.create({
     lineHeight: 16,
   },
   activeIndicator: {
+    backgroundColor: Colors.success,
+    borderRadius: 10,
+    width: 20,
+    height: 20,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  comingSoonBadge: {
+    backgroundColor: Colors.warning,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
     flexDirection: "row",
     alignItems: "center",
-    marginTop: 8,
+    gap: 2,
   },
-  activeText: {
-    fontSize: 12,
-    color: Colors.success,
-    marginLeft: 4,
-    fontWeight: "500",
+  comingSoonText: {
+    fontSize: 10,
+    fontWeight: "600",
+    color: Colors.white,
   },
-  guaranteeCard: {
+  valueCard: {
+    marginHorizontal: 20,
     alignItems: "center",
-    backgroundColor: "rgba(76, 175, 80, 0.05)",
-    borderWidth: 1,
-    borderColor: "rgba(76, 175, 80, 0.2)",
+    padding: 24,
   },
-  guaranteeTitle: {
-    fontSize: 18,
+  valueTitle: {
+    fontSize: 20,
     fontWeight: "600",
     color: Colors.text,
     marginTop: 12,
     marginBottom: 8,
   },
-  guaranteeDescription: {
+  valueDescription: {
     fontSize: 14,
     color: Colors.lightText,
     textAlign: "center",
     lineHeight: 20,
+    marginBottom: 24,
+  },
+  stats: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    width: "100%",
+  },
+  statItem: {
+    alignItems: "center",
+  },
+  statNumber: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: Colors.primary,
+    marginBottom: 4,
+  },
+  statLabel: {
+    fontSize: 12,
+    color: Colors.lightText,
   },
 });

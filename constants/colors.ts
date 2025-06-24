@@ -1,21 +1,65 @@
 export default {
-  primary: "#007AFF",
-  primaryLight: "#4DA3FF",
-  secondary: "#5856D6",
-  secondaryLight: "#8B89E8",
-  accent: "#FF6B35", // Added missing accent color
-  background: "#F8F9FA",
+  // Primary colors - futuristic blue/purple theme
+  primary: "#6366F1", // Indigo
+  primaryLight: "#818CF8",
+  primaryDark: "#4F46E5",
+  secondary: "#8B5CF6", // Purple
+  secondaryLight: "#A78BFA",
+  secondaryDark: "#7C3AED",
+  
+  // Accent colors - minimal and sophisticated
+  accent: "#06B6D4", // Cyan
+  accentLight: "#67E8F9",
+  success: "#10B981", // Emerald
+  warning: "#F59E0B", // Amber (reduced from previous yellow)
+  error: "#EF4444", // Red
+  info: "#3B82F6", // Blue
+  
+  // Background colors - clean and modern
+  background: "#FAFAFA", // Very light gray
   lightBackground: "#FFFFFF",
-  white: "#FFFFFF",
+  darkBackground: "#F8FAFC", // Slate
   card: "#FFFFFF",
-  text: "#1C1C1E",
-  lightText: "#8E8E93",
-  border: "#E5E5EA",
-  success: "#34C759",
-  warning: "#FF9500",
-  error: "#FF3B30",
-  info: "#007AFF",
-  gray: "#F2F2F7",
-  lightGray: "#E5E5EA",
-  darkGray: "#8E8E93",
+  
+  // Text colors - high contrast and readable
+  text: "#0F172A", // Slate 900
+  lightText: "#64748B", // Slate 500
+  mutedText: "#94A3B8", // Slate 400
+  
+  // Border and divider colors
+  border: "#E2E8F0", // Slate 200
+  divider: "#F1F5F9", // Slate 100
+  
+  // Utility colors
+  white: "#FFFFFF",
+  black: "#000000",
+  transparent: "transparent",
+  
+  // Gradient colors for futuristic effects
+  gradientStart: "#6366F1",
+  gradientEnd: "#8B5CF6",
+  
+  // Surface colors for depth
+  surface: "#F8FAFC",
+  surfaceElevated: "#FFFFFF",
+  
+  // Interactive states
+  hover: "#F1F5F9",
+  pressed: "#E2E8F0",
+  disabled: "#F8FAFC",
+  
+  // Shadow colors
+  shadowLight: "rgba(15, 23, 42, 0.04)",
+  shadowMedium: "rgba(15, 23, 42, 0.08)",
+  shadowDark: "rgba(15, 23, 42, 0.16)",
+  
+  // Status colors with better contrast
+  online: "#10B981",
+  offline: "#6B7280",
+  away: "#F59E0B",
+  
+  // Premium colors (reduced yellow)
+  premium: "#8B5CF6", // Purple instead of gold
+  premiumLight: "#A78BFA",
+  premiumBackground: "rgba(139, 92, 246, 0.05)",
 };
