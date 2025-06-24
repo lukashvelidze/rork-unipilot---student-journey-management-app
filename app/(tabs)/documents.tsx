@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { StyleSheet, View, Text, FlatList, TouchableOpacity } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { Plus, Filter } from "lucide-react-native";
+import { Plus } from "lucide-react-native";
 import { useColors } from "@/hooks/useColors";
 import DocumentCard from "@/components/DocumentCard";
 import { useDocumentStore } from "@/store/documentStore";
@@ -84,6 +84,7 @@ export default function DocumentsScreen() {
             />
           )}
           contentContainerStyle={styles.documentsList}
+          showsVerticalScrollIndicator={false}
         />
       ) : (
         <View style={styles.emptyContainer}>

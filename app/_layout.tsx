@@ -104,6 +104,7 @@ function RootLayoutNav() {
             <Stack.Screen name="calendar" options={{ title: "Calendar" }} />
             <Stack.Screen name="premium" options={{ title: "UniPilot Premium" }} />
             <Stack.Screen name="premium/resources" options={{ title: "Premium Resources" }} />
+            <Stack.Screen name="premium/[id]" options={{ title: "Resource" }} />
             <Stack.Screen name="unipilot-ai" options={{ title: "AI Assistant" }} />
           </Stack>
         </QueryClientProvider>

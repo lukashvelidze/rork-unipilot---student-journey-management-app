@@ -15,7 +15,7 @@ import { mockPosts } from "@/mocks/communityPosts";
 export default function CommunityScreen() {
   const router = useRouter();
   const Colors = useColors();
-  const { isPremium } = useUserStore();
+  const { user } = useUserStore();
   const {
     posts,
     filteredPosts,
@@ -28,6 +28,7 @@ export default function CommunityScreen() {
   } = useCommunityStore();
   
   const [searchQuery, setSearchQuery] = useState("");
+  const isPremium = user?.isPremium || false;
   
   // Initialize with mock posts if empty
   useEffect(() => {
@@ -129,6 +130,7 @@ export default function CommunityScreen() {
         topics={topics}
         selectedTopic={selectedTopic}
         onSelectTopic={filterByTopic}
+        style={styles.topicSelector}
       />
       
       {filteredPosts.length > 0 ? (
@@ -145,6 +147,7 @@ export default function CommunityScreen() {
             />
           )}
           contentContainerStyle={styles.postsList}
+          showsVerticalScrollIndicator={false}
         />
       ) : (
         <View style={styles.emptyContainer}>
@@ -210,7 +213,7 @@ const styles = StyleSheet.create({
   },
   premiumPromoCard: {
     marginHorizontal: 16,
-    marginBottom: 16,
+    marginBottom: 8,
     padding: 0,
     overflow: "hidden",
   },
@@ -253,6 +256,10 @@ const styles = StyleSheet.create({
   premiumPromoImage: {
     flex: 2,
     height: 120,
+  },
+  topicSelector: {
+    paddingHorizontal: 0,
+    marginBottom: 8,
   },
   postsList: {
     padding: 16,

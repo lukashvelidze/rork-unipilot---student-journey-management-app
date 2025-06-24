@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Linking, Alert } from "react-native";
 import { useRouter } from "expo-router";
-import { FileText, Download, ExternalLink, BookOpen, Video, Users, Target, Calendar, CheckCircle, Lock } from "lucide-react-native";
+import { FileText, ExternalLink, BookOpen, Video, Users, Target, Calendar, CheckCircle, Lock, ArrowRight, Clock, Star } from "lucide-react-native";
 import Colors from "@/constants/colors";
 import Theme from "@/constants/theme";
 import Card from "@/components/Card";
@@ -12,97 +12,114 @@ interface Resource {
   id: string;
   title: string;
   description: string;
-  type: "template" | "guide" | "video" | "webinar" | "tool";
+  type: "guide" | "video" | "webinar" | "tool" | "template";
   category: string;
-  downloadUrl?: string;
-  externalUrl?: string;
   isPremium: boolean;
   isNew?: boolean;
   estimatedTime?: string;
+  difficulty?: "Beginner" | "Intermediate" | "Advanced";
+  rating?: number;
+  completions?: number;
 }
 
 const resources: Resource[] = [
   {
     id: "1",
-    title: "Personal Statement Template",
-    description: "Professional template for crafting compelling personal statements",
-    type: "template",
+    title: "Personal Statement Masterclass",
+    description: "Complete guide to writing compelling personal statements that get you accepted",
+    type: "guide",
     category: "Application Materials",
-    downloadUrl: "https://example.com/personal-statement-template.pdf",
     isPremium: true,
     isNew: true,
     estimatedTime: "30 min",
+    difficulty: "Intermediate",
+    rating: 4.8,
+    completions: 1247,
   },
   {
     id: "2",
-    title: "University Research Guide",
-    description: "Complete guide to researching and selecting the right universities",
+    title: "University Research Strategy",
+    description: "Systematic approach to researching and selecting the perfect universities",
     type: "guide",
     category: "Research",
-    downloadUrl: "https://example.com/university-research-guide.pdf",
     isPremium: true,
     estimatedTime: "45 min",
+    difficulty: "Beginner",
+    rating: 4.9,
+    completions: 2156,
   },
   {
     id: "3",
-    title: "Scholarship Application Masterclass",
-    description: "Video series on finding and applying for scholarships",
+    title: "Scholarship Hunting Masterclass",
+    description: "Find and win scholarships with proven strategies and insider tips",
     type: "video",
     category: "Funding",
-    externalUrl: "https://example.com/scholarship-masterclass",
     isPremium: true,
     estimatedTime: "2 hours",
+    difficulty: "Intermediate",
+    rating: 4.7,
+    completions: 892,
   },
   {
     id: "4",
-    title: "Interview Preparation Kit",
-    description: "Complete kit with common questions and practice scenarios",
-    type: "template",
+    title: "Interview Preparation Bootcamp",
+    description: "Master university interviews with practice questions and expert feedback",
+    type: "guide",
     category: "Interviews",
-    downloadUrl: "https://example.com/interview-prep-kit.pdf",
     isPremium: true,
     estimatedTime: "1 hour",
+    difficulty: "Advanced",
+    rating: 4.8,
+    completions: 634,
   },
   {
     id: "5",
     title: "Visa Application Checklist",
-    description: "Country-specific visa application checklists and requirements",
+    description: "Country-specific visa requirements and step-by-step application guides",
     type: "tool",
     category: "Visa & Legal",
-    downloadUrl: "https://example.com/visa-checklist.pdf",
     isPremium: true,
     estimatedTime: "20 min",
+    difficulty: "Beginner",
+    rating: 4.6,
+    completions: 1823,
   },
   {
     id: "6",
     title: "Monthly Success Webinar",
-    description: "Live webinar with admission experts and successful students",
+    description: "Live sessions with admission experts and successful international students",
     type: "webinar",
     category: "Community",
-    externalUrl: "https://example.com/monthly-webinar",
     isPremium: true,
     isNew: true,
     estimatedTime: "1 hour",
+    difficulty: "Beginner",
+    rating: 4.9,
+    completions: 456,
   },
   {
     id: "7",
-    title: "Budget Planning Spreadsheet",
-    description: "Comprehensive spreadsheet for planning your study abroad budget",
+    title: "Budget Planning Toolkit",
+    description: "Comprehensive financial planning tools for studying abroad",
     type: "tool",
     category: "Financial Planning",
-    downloadUrl: "https://example.com/budget-planner.xlsx",
     isPremium: true,
     estimatedTime: "30 min",
+    difficulty: "Intermediate",
+    rating: 4.5,
+    completions: 1098,
   },
   {
     id: "8",
     title: "Cultural Adaptation Guide",
-    description: "Guide to adapting to life in your destination country",
+    description: "Navigate cultural differences and thrive in your new environment",
     type: "guide",
     category: "Life Abroad",
-    downloadUrl: "https://example.com/cultural-adaptation.pdf",
     isPremium: true,
     estimatedTime: "40 min",
+    difficulty: "Beginner",
+    rating: 4.7,
+    completions: 743,
   },
 ];
 
@@ -122,7 +139,6 @@ export default function PremiumResourcesScreen() {
   const router = useRouter();
   const { user } = useUserStore();
   const [selectedCategory, setSelectedCategory] = useState("All");
-  const [downloadedResources, setDownloadedResources] = useState<string[]>([]);
   
   const isPremium = user?.isPremium || false;
   
@@ -133,7 +149,6 @@ export default function PremiumResourcesScreen() {
   const getTypeIcon = (type: string) => {
     switch (type) {
       case "template":
-        return FileText;
       case "guide":
         return BookOpen;
       case "video":
@@ -150,9 +165,8 @@ export default function PremiumResourcesScreen() {
   const getTypeColor = (type: string) => {
     switch (type) {
       case "template":
-        return Colors.primary;
       case "guide":
-        return Colors.secondary;
+        return Colors.primary;
       case "video":
         return Colors.accent;
       case "webinar":
@@ -164,7 +178,20 @@ export default function PremiumResourcesScreen() {
     }
   };
   
-  const handleResourceAction = async (resource: Resource) => {
+  const getDifficultyColor = (difficulty?: string) => {
+    switch (difficulty) {
+      case "Beginner":
+        return Colors.success;
+      case "Intermediate":
+        return Colors.warning;
+      case "Advanced":
+        return Colors.error;
+      default:
+        return Colors.lightText;
+    }
+  };
+  
+  const handleResourcePress = (resource: Resource) => {
     if (!isPremium) {
       Alert.alert(
         "Premium Required",
@@ -177,84 +204,90 @@ export default function PremiumResourcesScreen() {
       return;
     }
     
-    try {
-      if (resource.downloadUrl) {
-        // Simulate download
-        setDownloadedResources(prev => [...prev, resource.id]);
-        Alert.alert("Download Started", `${resource.title} is being downloaded.`);
-      } else if (resource.externalUrl) {
-        await Linking.openURL(resource.externalUrl);
-      }
-    } catch (error) {
-      Alert.alert("Error", "Unable to access this resource. Please try again.");
-    }
+    // Navigate to the blog post style page
+    router.push(`/premium/${resource.id}`);
   };
   
   const renderResource = (resource: Resource) => {
     const TypeIcon = getTypeIcon(resource.type);
     const typeColor = getTypeColor(resource.type);
-    const isDownloaded = downloadedResources.includes(resource.id);
     
     return (
-      <Card key={resource.id} style={styles.resourceCard} variant="default">
-        <View style={styles.resourceHeader}>
-          <View style={styles.resourceIcon}>
-            <TypeIcon size={20} color={typeColor} />
-          </View>
-          <View style={styles.resourceBadges}>
-            {resource.isNew && (
-              <View style={styles.newBadge}>
-                <Text style={styles.newBadgeText}>NEW</Text>
-              </View>
-            )}
-            {!isPremium && (
-              <View style={styles.premiumBadge}>
-                <Lock size={10} color={Colors.white} />
-              </View>
-            )}
-          </View>
-        </View>
-        
-        <Text style={styles.resourceTitle}>{resource.title}</Text>
-        <Text style={styles.resourceDescription}>{resource.description}</Text>
-        
-        <View style={styles.resourceMeta}>
-          <Text style={styles.resourceCategory}>{resource.category}</Text>
-          {resource.estimatedTime && (
-            <Text style={styles.resourceTime}>{resource.estimatedTime}</Text>
-          )}
-        </View>
-        
-        <View style={styles.resourceActions}>
-          {isDownloaded ? (
-            <View style={styles.downloadedIndicator}>
-              <CheckCircle size={16} color={Colors.success} />
-              <Text style={styles.downloadedText}>Downloaded</Text>
+      <TouchableOpacity
+        key={resource.id}
+        onPress={() => handleResourcePress(resource)}
+        activeOpacity={0.7}
+      >
+        <Card style={styles.resourceCard} variant="default">
+          <View style={styles.resourceHeader}>
+            <View style={[styles.resourceIcon, { backgroundColor: typeColor + "20" }]}>
+              <TypeIcon size={20} color={typeColor} />
             </View>
-          ) : (
-            <TouchableOpacity
-              style={[
-                styles.actionButton,
-                !isPremium && styles.actionButtonDisabled,
-              ]}
-              onPress={() => handleResourceAction(resource)}
-              disabled={!isPremium}
-            >
-              {resource.downloadUrl ? (
-                <Download size={16} color={isPremium ? Colors.primary : Colors.mutedText} />
-              ) : (
-                <ExternalLink size={16} color={isPremium ? Colors.primary : Colors.mutedText} />
+            <View style={styles.resourceBadges}>
+              {resource.isNew && (
+                <View style={styles.newBadge}>
+                  <Text style={styles.newBadgeText}>NEW</Text>
+                </View>
               )}
+              {!isPremium && (
+                <View style={styles.premiumBadge}>
+                  <Lock size={10} color={Colors.white} />
+                </View>
+              )}
+            </View>
+          </View>
+          
+          <Text style={styles.resourceTitle}>{resource.title}</Text>
+          <Text style={styles.resourceDescription}>{resource.description}</Text>
+          
+          <View style={styles.resourceMeta}>
+            <View style={styles.metaRow}>
+              <Text style={styles.resourceCategory}>{resource.category}</Text>
+              {resource.difficulty && (
+                <View style={styles.difficultyBadge}>
+                  <Text style={[styles.difficultyText, { color: getDifficultyColor(resource.difficulty) }]}>
+                    {resource.difficulty}
+                  </Text>
+                </View>
+              )}
+            </View>
+            
+            <View style={styles.metaRow}>
+              {resource.estimatedTime && (
+                <View style={styles.metaItem}>
+                  <Clock size={12} color={Colors.lightText} />
+                  <Text style={styles.metaText}>{resource.estimatedTime}</Text>
+                </View>
+              )}
+              
+              {resource.rating && (
+                <View style={styles.metaItem}>
+                  <Star size={12} color={Colors.warning} />
+                  <Text style={styles.metaText}>{resource.rating}</Text>
+                </View>
+              )}
+              
+              {resource.completions && (
+                <Text style={styles.completionsText}>
+                  {resource.completions.toLocaleString()} completed
+                </Text>
+              )}
+            </View>
+          </View>
+          
+          <View style={styles.resourceActions}>
+            <View style={styles.actionButton}>
               <Text style={[
                 styles.actionButtonText,
                 !isPremium && styles.actionButtonTextDisabled,
               ]}>
-                {resource.downloadUrl ? "Download" : "Open"}
+                {isPremium ? "Read Guide" : "Premium Only"}
               </Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      </Card>
+              <ArrowRight size={16} color={isPremium ? Colors.primary : Colors.mutedText} />
+            </View>
+          </View>
+        </Card>
+      </TouchableOpacity>
     );
   };
   
@@ -264,7 +297,7 @@ export default function PremiumResourcesScreen() {
       <View style={styles.header}>
         <Text style={styles.title}>Premium Resources</Text>
         <Text style={styles.subtitle}>
-          Exclusive materials to accelerate your journey
+          Expert guides and tools to accelerate your journey
         </Text>
       </View>
       
@@ -312,7 +345,7 @@ export default function PremiumResourcesScreen() {
               <Lock size={32} color={Colors.primary} />
               <Text style={styles.upgradeTitle}>Unlock All Resources</Text>
               <Text style={styles.upgradeDescription}>
-                Get access to all premium resources, templates, and exclusive content.
+                Get access to all premium resources, expert guides, and exclusive content to accelerate your study abroad journey.
               </Text>
               <Button
                 title="Upgrade to Premium"
@@ -348,7 +381,7 @@ const styles = StyleSheet.create({
   },
   categoryContainer: {
     paddingHorizontal: 20,
-    paddingRight: 40, // Extra padding for last item
+    paddingRight: 40,
   },
   categoryButton: {
     paddingHorizontal: 16,
@@ -358,8 +391,8 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surface,
     borderWidth: 1,
     borderColor: Colors.border,
-    flexShrink: 0, // Prevent stretching
-    minWidth: 'auto', // Allow natural width
+    flexShrink: 0,
+    minWidth: "auto",
   },
   categoryButtonActive: {
     backgroundColor: Colors.primary,
@@ -369,8 +402,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "500",
     color: Colors.text,
-    textAlign: 'center',
-    flexShrink: 0, // Prevent text from shrinking
+    textAlign: "center",
+    flexShrink: 0,
   },
   categoryButtonTextActive: {
     color: Colors.white,
@@ -398,7 +431,6 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: Colors.surface,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -435,21 +467,43 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.lightText,
     lineHeight: 20,
-    marginBottom: 12,
+    marginBottom: 16,
   },
   resourceMeta: {
+    marginBottom: 16,
+  },
+  metaRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 16,
+    marginBottom: 8,
   },
   resourceCategory: {
     fontSize: 12,
     fontWeight: "500",
     color: Colors.primary,
   },
-  resourceTime: {
+  difficultyBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+    backgroundColor: Colors.lightBackground,
+  },
+  difficultyText: {
+    fontSize: 10,
+    fontWeight: "600",
+  },
+  metaItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  metaText: {
     fontSize: 12,
+    color: Colors.lightText,
+  },
+  completionsText: {
+    fontSize: 11,
     color: Colors.mutedText,
   },
   resourceActions: {
@@ -465,9 +519,6 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surface,
     gap: 4,
   },
-  actionButtonDisabled: {
-    opacity: 0.5,
-  },
   actionButtonText: {
     fontSize: 12,
     fontWeight: "500",
@@ -475,16 +526,6 @@ const styles = StyleSheet.create({
   },
   actionButtonTextDisabled: {
     color: Colors.mutedText,
-  },
-  downloadedIndicator: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
-  downloadedText: {
-    fontSize: 12,
-    fontWeight: "500",
-    color: Colors.success,
   },
   upgradeCard: {
     marginTop: 24,
