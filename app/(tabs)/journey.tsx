@@ -1116,12 +1116,6 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#FFFFFF",
   },
-  statLabel: {
-    fontSize: 12,
-    color: "rgba(255, 255, 255, 0.9)",
-    marginTop: 2,
-    fontWeight: "500",
-  },
   memoriesScroll: {
     flex: 1,
   },
