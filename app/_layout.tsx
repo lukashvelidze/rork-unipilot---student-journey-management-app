@@ -59,7 +59,7 @@ function RootLayoutNav() {
 
   return (
     <>
-      <StatusBar style={isDarkMode ? "light" : "auto"} />
+      <StatusBar style={isDarkMode ? "light" : "dark"} />
       <trpc.Provider client={trpcClient} queryClient={queryClient}>
         <QueryClientProvider client={queryClient}>
           <Stack

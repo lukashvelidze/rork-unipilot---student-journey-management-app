@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Platform, Animated, Dimensions } from "react-native";
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Platform, Animated, Dimensions, ImageBackground } from "react-native";
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
-import { Map as MapIcon, ChevronRight, Quote, CheckSquare, Calendar, Clock, Star, Heart, Camera, Plus, Plane, Globe, Timer, MapPin } from "lucide-react-native";
+import { Map as MapIcon, ChevronRight, Quote, CheckSquare, Calendar, Clock, Star, Heart, Camera, Plus, Plane, Globe, Timer, MapPin, Sparkles, Image as ImageIcon } from "lucide-react-native";
 import { useColors } from "@/hooks/useColors";
 import Card from "@/components/Card";
 import ProgressBar from "@/components/ProgressBar";
@@ -16,7 +16,7 @@ import { calculateOverallProgress } from "@/utils/helpers";
 import { getRandomQuote, generalQuotes } from "@/mocks/quotes";
 import { initialJourneyProgress } from "@/mocks/journeyTasks";
 
-const { width } = Dimensions.get("window");
+const { width, height } = Dimensions.get("window");
 
 export default function JourneyScreen() {
   const router = useRouter();
@@ -28,7 +28,8 @@ export default function JourneyScreen() {
   const [dailyQuote, setDailyQuote] = useState(() => getRandomQuote(generalQuotes));
   const [fadeAnim] = useState(new Animated.Value(0));
   const [planeAnim] = useState(new Animated.Value(0));
-  const [treeGrowthAnim] = useState(new Animated.Value(0));
+  const [sparkleAnim] = useState(new Animated.Value(0));
+  const [memoryFloatAnim] = useState(new Animated.Value(0));
   
   // Initialize journey progress if not already set
   useEffect(() => {
@@ -63,14 +64,15 @@ export default function JourneyScreen() {
     }).start();
   }, [fadeAnim]);
 
-  // Plane animation for memories
+  // Continuous animations for memories page
   useEffect(() => {
     if (activeTab === "memories") {
+      // Plane animation
       Animated.loop(
         Animated.sequence([
           Animated.timing(planeAnim, {
             toValue: 1,
-            duration: 8000,
+            duration: 12000,
             useNativeDriver: true,
           }),
           Animated.timing(planeAnim, {
@@ -80,17 +82,40 @@ export default function JourneyScreen() {
           }),
         ])
       ).start();
-    }
-  }, [activeTab, planeAnim]);
 
-  // Tree growth animation
-  useEffect(() => {
-    Animated.timing(treeGrowthAnim, {
-      toValue: memories.length / 10, // Grow based on number of memories
-      duration: 1500,
-      useNativeDriver: true,
-    }).start();
-  }, [treeGrowthAnim]);
+      // Sparkle animation
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(sparkleAnim, {
+            toValue: 1,
+            duration: 2000,
+            useNativeDriver: true,
+          }),
+          Animated.timing(sparkleAnim, {
+            toValue: 0,
+            duration: 2000,
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+
+      // Memory float animation
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(memoryFloatAnim, {
+            toValue: 1,
+            duration: 3000,
+            useNativeDriver: true,
+          }),
+          Animated.timing(memoryFloatAnim, {
+            toValue: 0,
+            duration: 3000,
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+    }
+  }, [activeTab, planeAnim, sparkleAnim, memoryFloatAnim]);
 
   // Mock timeline data
   const timelineEvents = [
@@ -173,6 +198,26 @@ export default function JourneyScreen() {
       tags: ["scholarship", "application"],
       mood: "nervous" as const,
     },
+    {
+      id: "4",
+      title: "Acceptance Letter",
+      description: "Finally received my acceptance letter! Dreams do come true.",
+      date: "2024-04-12",
+      stage: "application" as const,
+      imageUrl: "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=400&h=300&fit=crop",
+      tags: ["acceptance", "university"],
+      mood: "excited" as const,
+    },
+    {
+      id: "5",
+      title: "Visa Approved",
+      description: "Student visa approved! One step closer to my dreams.",
+      date: "2024-05-20",
+      stage: "visa" as const,
+      imageUrl: "https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=400&h=300&fit=crop",
+      tags: ["visa", "approved"],
+      mood: "happy" as const,
+    },
   ];
 
   // Flight information for map
@@ -197,7 +242,7 @@ export default function JourneyScreen() {
     switch (activeTab) {
       case "roadmap":
         return (
-          <View style={styles.roadmapContainer}>
+          <ScrollView style={styles.roadmapContainer} showsVerticalScrollIndicator={false}>
             <Animated.View style={{ opacity: fadeAnim }}>
               <QuoteCard 
                 quote={dailyQuote.text} 
@@ -227,11 +272,11 @@ export default function JourneyScreen() {
                 />
               ))}
             </View>
-          </View>
+          </ScrollView>
         );
       case "map":
         return (
-          <View style={styles.mapContainer}>
+          <ScrollView style={styles.mapContainer} showsVerticalScrollIndicator={false}>
             <Card style={[styles.mapCard, { backgroundColor: Colors.card }]}>
               <LinearGradient
                 colors={[Colors.primary, Colors.secondary]}
@@ -306,7 +351,7 @@ export default function JourneyScreen() {
                 </View>
               ))}
             </Card>
-          </View>
+          </ScrollView>
         );
       case "timeline":
         return (
@@ -386,92 +431,189 @@ export default function JourneyScreen() {
       case "memories":
         return (
           <View style={styles.memoriesContainer}>
+            {/* Instagram-style Header */}
             <View style={styles.memoriesHeader}>
-              <LinearGradient
-                colors={[Colors.memoryOrange, Colors.memoryBlue]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.memoriesHeaderGradient}
+              <ImageBackground
+                source={{ uri: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&h=400&fit=crop" }}
+                style={styles.memoriesHeaderBackground}
+                imageStyle={styles.memoriesHeaderImage}
               >
-                <View style={styles.memoriesHeaderContent}>
-                  {/* Animated plane moving across clouds */}
+                <LinearGradient
+                  colors={["rgba(255, 107, 107, 0.9)", "rgba(78, 205, 196, 0.9)"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.memoriesHeaderOverlay}
+                >
+                  {/* Animated sparkles */}
+                  <Animated.View style={[
+                    styles.sparkle,
+                    styles.sparkle1,
+                    {
+                      opacity: sparkleAnim.interpolate({
+                        inputRange: [0, 0.5, 1],
+                        outputRange: [0.3, 1, 0.3],
+                      }),
+                      transform: [{
+                        scale: sparkleAnim.interpolate({
+                          inputRange: [0, 0.5, 1],
+                          outputRange: [0.8, 1.2, 0.8],
+                        })
+                      }]
+                    }
+                  ]}>
+                    <Sparkles size={16} color="rgba(255, 255, 255, 0.8)" />
+                  </Animated.View>
+                  
+                  <Animated.View style={[
+                    styles.sparkle,
+                    styles.sparkle2,
+                    {
+                      opacity: sparkleAnim.interpolate({
+                        inputRange: [0, 0.5, 1],
+                        outputRange: [1, 0.3, 1],
+                      }),
+                    }
+                  ]}>
+                    <Sparkles size={12} color="rgba(255, 255, 255, 0.6)" />
+                  </Animated.View>
+                  
+                  <Animated.View style={[
+                    styles.sparkle,
+                    styles.sparkle3,
+                    {
+                      opacity: sparkleAnim.interpolate({
+                        inputRange: [0, 0.5, 1],
+                        outputRange: [0.5, 1, 0.5],
+                      }),
+                    }
+                  ]}>
+                    <Sparkles size={20} color="rgba(255, 255, 255, 0.7)" />
+                  </Animated.View>
+
+                  {/* Animated plane */}
                   <Animated.View style={[
                     styles.animatedPlane,
                     {
                       transform: [{
                         translateX: planeAnim.interpolate({
                           inputRange: [0, 1],
-                          outputRange: [-50, width + 50],
+                          outputRange: [-60, width + 60],
+                        })
+                      }, {
+                        translateY: planeAnim.interpolate({
+                          inputRange: [0, 0.3, 0.7, 1],
+                          outputRange: [0, -10, 10, 0],
                         })
                       }]
                     }
                   ]}>
-                    <Plane size={24} color={Colors.white} />
+                    <Plane size={28} color="rgba(255, 255, 255, 0.9)" />
                   </Animated.View>
-                  
-                  <Text style={styles.memoriesTitle}>Journey Memories</Text>
-                  <Text style={styles.memoriesSubtitle}>Capture moments that matter ✨</Text>
-                  
-                  {/* Growing tree visualization */}
-                  <Animated.View style={[
-                    styles.memoryTree,
-                    {
-                      transform: [{
-                        scaleY: treeGrowthAnim.interpolate({
-                          inputRange: [0, 1],
-                          outputRange: [0.3, 1],
-                        })
-                      }]
-                    }
-                  ]}>
-                    <Text style={styles.treeEmoji}>🌳</Text>
-                    <Text style={styles.treeText}>{memories.length} memories collected</Text>
-                  </Animated.View>
-                  
-                  <TouchableOpacity
-                    style={styles.addMemoryButton}
-                    onPress={() => router.push("/memories/new")}
-                  >
-                    <Plus size={20} color={Colors.white} />
-                    <Text style={styles.addMemoryText}>Capture Memory</Text>
-                  </TouchableOpacity>
-                </View>
-              </LinearGradient>
+
+                  <View style={styles.memoriesHeaderContent}>
+                    <Text style={styles.memoriesTitle}>Journey Memories</Text>
+                    <Text style={styles.memoriesSubtitle}>Capture & share your story ✨</Text>
+                    
+                    <View style={styles.memoriesStats}>
+                      <View style={styles.statBubble}>
+                        <Text style={styles.statNumber}>{memories.length}</Text>
+                        <Text style={styles.statLabel}>Memories</Text>
+                      </View>
+                      <View style={styles.statBubble}>
+                        <Text style={styles.statNumber}>{Math.round(overallProgress)}%</Text>
+                        <Text style={styles.statLabel}>Progress</Text>
+                      </View>
+                      <View style={styles.statBubble}>
+                        <Text style={styles.statNumber}>5</Text>
+                        <Text style={styles.statLabel}>Countries</Text>
+                      </View>
+                    </View>
+                  </View>
+                </LinearGradient>
+              </ImageBackground>
             </View>
 
+            {/* Memories Grid */}
             <ScrollView style={styles.memoriesScroll} showsVerticalScrollIndicator={false}>
+              <View style={styles.memoriesGridHeader}>
+                <Text style={[styles.gridTitle, { color: Colors.text }]}>Your Story So Far</Text>
+                <TouchableOpacity
+                  style={[styles.addMemoryFloatingButton, { backgroundColor: Colors.primary }]}
+                  onPress={() => router.push("/memories/new")}
+                >
+                  <Plus size={20} color={Colors.white} />
+                </TouchableOpacity>
+              </View>
+
               <View style={styles.memoriesGrid}>
-                {memories.map((memory) => (
-                  <View key={memory.id} style={styles.memoryWrapper}>
+                {memories.map((memory, index) => (
+                  <Animated.View 
+                    key={memory.id} 
+                    style={[
+                      styles.memoryWrapper,
+                      {
+                        transform: [{
+                          translateY: memoryFloatAnim.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: [0, index % 2 === 0 ? -5 : 5],
+                          })
+                        }]
+                      }
+                    ]}
+                  >
                     <MemoryCard
                       memory={memory}
                       onPress={() => router.push(`/memories/${memory.id}`)}
                     />
-                  </View>
+                  </Animated.View>
                 ))}
                 
-                {/* Add Memory Card */}
+                {/* Instagram-style Add Memory Card */}
                 <TouchableOpacity
                   style={styles.addMemoryCard}
                   onPress={() => router.push("/memories/new")}
                 >
                   <LinearGradient
-                    colors={[Colors.memoryGreen, Colors.memoryPink]}
+                    colors={["#833AB4", "#FD1D1D", "#FCB045"]}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
                     style={styles.addMemoryGradient}
                   >
-                    <Camera size={32} color={Colors.white} />
-                    <Text style={styles.addMemoryCardText}>Add New Memory</Text>
-                    <Text style={styles.addMemoryCardSubtext}>Share your journey</Text>
+                    <View style={styles.addMemoryContent}>
+                      <View style={styles.addMemoryIconContainer}>
+                        <Camera size={32} color={Colors.white} />
+                      </View>
+                      <Text style={styles.addMemoryCardText}>Create Memory</Text>
+                      <Text style={styles.addMemoryCardSubtext}>Share your moment</Text>
+                      <View style={styles.addMemoryBadge}>
+                        <ImageIcon size={12} color={Colors.white} />
+                        <Text style={styles.addMemoryBadgeText}>Story Ready</Text>
+                      </View>
+                    </View>
                   </LinearGradient>
                 </TouchableOpacity>
               </View>
 
+              {/* Instagram-style Footer */}
               <View style={styles.memoriesFooter}>
-                <Text style={[styles.memoriesFooterText, { color: Colors.lightText }]}>
-                  📸 Perfect for Instagram stories & social sharing
-                </Text>
+                <LinearGradient
+                  colors={[Colors.memoryPink + "20", Colors.memoryPurple + "20"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.memoriesFooterGradient}
+                >
+                  <View style={styles.memoriesFooterContent}>
+                    <Text style={[styles.memoriesFooterTitle, { color: Colors.text }]}>
+                      📸 Ready to Share?
+                    </Text>
+                    <Text style={[styles.memoriesFooterText, { color: Colors.lightText }]}>
+                      Your memories are perfect for Instagram stories & social sharing
+                    </Text>
+                    <TouchableOpacity style={[styles.shareButton, { backgroundColor: Colors.primary }]}>
+                      <Text style={styles.shareButtonText}>Share Story</Text>
+                    </TouchableOpacity>
+                  </View>
+                </LinearGradient>
               </View>
             </ScrollView>
           </View>
@@ -660,8 +802,8 @@ const styles = StyleSheet.create({
   
   // Roadmap styles
   roadmapContainer: {
+    flex: 1,
     padding: 16,
-    paddingBottom: 32,
   },
   instructionCard: {
     marginTop: 16,
@@ -688,12 +830,13 @@ const styles = StyleSheet.create({
   },
   stagesContainer: {
     marginTop: 16,
+    paddingBottom: 32,
   },
   
   // Map styles
   mapContainer: {
+    flex: 1,
     padding: 16,
-    paddingBottom: 32,
   },
   mapCard: {
     marginBottom: 16,
@@ -777,7 +920,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   tipsCard: {
-    marginBottom: 16,
+    marginBottom: 32,
   },
   tipItem: {
     flexDirection: "row",
@@ -890,111 +1033,216 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   
-  // Memories styles
+  // New Instagram-style Memories styles
   memoriesContainer: {
     flex: 1,
   },
   memoriesHeader: {
-    marginBottom: 16,
-  },
-  memoriesHeaderGradient: {
-    padding: 24,
-    paddingTop: 32,
-    minHeight: 200,
+    height: 280,
     position: "relative",
-    overflow: "hidden",
   },
-  memoriesHeaderContent: {
+  memoriesHeaderBackground: {
+    flex: 1,
+  },
+  memoriesHeaderImage: {
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
+  },
+  memoriesHeaderOverlay: {
+    flex: 1,
+    justifyContent: "center",
     alignItems: "center",
     position: "relative",
-    zIndex: 2,
+  },
+  sparkle: {
+    position: "absolute",
+  },
+  sparkle1: {
+    top: 40,
+    left: 60,
+  },
+  sparkle2: {
+    top: 80,
+    right: 80,
+  },
+  sparkle3: {
+    bottom: 60,
+    left: 40,
   },
   animatedPlane: {
     position: "absolute",
-    top: 20,
+    top: 30,
     zIndex: 1,
   },
+  memoriesHeaderContent: {
+    alignItems: "center",
+    zIndex: 2,
+  },
   memoriesTitle: {
-    fontSize: 24,
-    fontWeight: "700",
+    fontSize: 28,
+    fontWeight: "800",
     color: "#FFFFFF",
-    marginBottom: 4,
+    marginBottom: 8,
     textAlign: "center",
+    textShadowColor: "rgba(0, 0, 0, 0.3)",
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
   },
   memoriesSubtitle: {
     fontSize: 16,
-    color: "rgba(255, 255, 255, 0.9)",
+    color: "rgba(255, 255, 255, 0.95)",
     textAlign: "center",
-    marginBottom: 20,
+    marginBottom: 24,
+    fontWeight: "500",
   },
-  memoryTree: {
-    alignItems: "center",
-    marginBottom: 20,
-  },
-  treeEmoji: {
-    fontSize: 32,
-    marginBottom: 8,
-  },
-  treeText: {
-    color: "#FFFFFF",
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  addMemoryButton: {
+  memoriesStats: {
     flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    justifyContent: "space-around",
+    width: "100%",
     paddingHorizontal: 20,
+  },
+  statBubble: {
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    paddingHorizontal: 16,
     paddingVertical: 12,
-    borderRadius: 25,
+    borderRadius: 20,
+    alignItems: "center",
+    minWidth: 70,
     borderWidth: 1,
     borderColor: "rgba(255, 255, 255, 0.3)",
   },
-  addMemoryText: {
+  statNumber: {
+    fontSize: 18,
+    fontWeight: "700",
     color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "600",
-    marginLeft: 8,
+  },
+  statLabel: {
+    fontSize: 12,
+    color: "rgba(255, 255, 255, 0.9)",
+    marginTop: 2,
+    fontWeight: "500",
   },
   memoriesScroll: {
     flex: 1,
-    paddingHorizontal: 16,
+  },
+  memoriesGridHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+  },
+  gridTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+  },
+  addMemoryFloatingButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
   },
   memoriesGrid: {
-    paddingBottom: 16,
+    paddingHorizontal: 16,
+    paddingBottom: 20,
   },
   memoryWrapper: {
-    marginBottom: 16,
+    marginBottom: 20,
   },
   addMemoryCard: {
-    height: 200,
-    borderRadius: 16,
+    height: 240,
+    borderRadius: 20,
     overflow: "hidden",
-    marginBottom: 16,
+    marginBottom: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 10,
   },
   addMemoryGradient: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+    position: "relative",
+  },
+  addMemoryContent: {
+    alignItems: "center",
+  },
+  addMemoryIconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 16,
+    borderWidth: 2,
+    borderColor: "rgba(255, 255, 255, 0.3)",
   },
   addMemoryCardText: {
     color: "#FFFFFF",
-    fontSize: 18,
-    fontWeight: "600",
-    marginTop: 12,
+    fontSize: 20,
+    fontWeight: "700",
+    marginBottom: 4,
   },
   addMemoryCardSubtext: {
-    color: "rgba(255, 255, 255, 0.8)",
+    color: "rgba(255, 255, 255, 0.9)",
     fontSize: 14,
-    marginTop: 4,
+    marginBottom: 16,
+  },
+  addMemoryBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.3)",
+  },
+  addMemoryBadgeText: {
+    color: "#FFFFFF",
+    fontSize: 12,
+    fontWeight: "600",
+    marginLeft: 4,
   },
   memoriesFooter: {
+    margin: 16,
+    borderRadius: 20,
+    overflow: "hidden",
+  },
+  memoriesFooterGradient: {
+    padding: 24,
+  },
+  memoriesFooterContent: {
     alignItems: "center",
-    paddingVertical: 24,
+  },
+  memoriesFooterTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    marginBottom: 8,
   },
   memoriesFooterText: {
-    fontSize: 16,
+    fontSize: 14,
     textAlign: "center",
-    fontStyle: "italic",
+    lineHeight: 20,
+    marginBottom: 16,
+  },
+  shareButton: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 20,
+  },
+  shareButtonText: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "600",
   },
 });
