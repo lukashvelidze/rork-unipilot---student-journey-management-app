@@ -9,11 +9,15 @@ import Card from "@/components/Card";
 import Button from "@/components/Button";
 import Avatar from "@/components/Avatar";
 import { useUserStore } from "@/store/userStore";
+import { useJourneyStore } from "@/store/journeyStore";
+import { useDocumentStore } from "@/store/documentStore";
 
 export default function ProfileScreen() {
   const router = useRouter();
   const Colors = useColors();
   const { user, isPremium, logout } = useUserStore();
+  const { journeyProgress } = useJourneyStore();
+  const { documents } = useDocumentStore();
   
   if (!user) {
     return (
@@ -31,20 +35,42 @@ export default function ProfileScreen() {
     );
   }
 
+  // Calculate real stats from stores
+  const calculateJourneyProgress = () => {
+    if (journeyProgress.length === 0) return 0;
+    
+    const totalTasks = journeyProgress.reduce((sum, stage) => sum + stage.tasks.length, 0);
+    const completedTasks = journeyProgress.reduce((sum, stage) => 
+      sum + stage.tasks.filter(task => task.completed).length, 0
+    );
+    
+    return totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+  };
+
+  const calculateCompletedTasks = () => {
+    return journeyProgress.reduce((sum, stage) => 
+      sum + stage.tasks.filter(task => task.completed).length, 0
+    );
+  };
+
+  const actualJourneyProgress = calculateJourneyProgress();
+  const actualCompletedTasks = calculateCompletedTasks();
+  const actualDocumentCount = documents.length;
+
   const profileStats = [
     {
       label: "Journey Progress",
-      value: "65%",
+      value: `${actualJourneyProgress}%`,
       color: Colors.primary,
     },
     {
       label: "Tasks Completed",
-      value: "12",
+      value: actualCompletedTasks.toString(),
       color: Colors.success,
     },
     {
       label: "Documents",
-      value: "5",
+      value: actualDocumentCount.toString(),
       color: Colors.accent,
     },
   ];

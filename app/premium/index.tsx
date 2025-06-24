@@ -265,15 +265,17 @@ Valid codes: STUDENT2024, WELCOME, BETA, EARLYBIRD, ADMIN`,
         
         {showPromoInput ? (
           <View style={styles.promoInputContainer}>
-            <Input
-              placeholder="Enter promo code"
-              value={promoCode}
-              onChangeText={setPromoCode}
-              autoCapitalize="characters"
-              style={styles.promoInput}
-              autoCorrect={false}
-              autoComplete="off"
-            />
+            <View style={styles.promoInputWrapper}>
+              <Input
+                placeholder="Enter promo code"
+                value={promoCode}
+                onChangeText={setPromoCode}
+                autoCapitalize="characters"
+                style={styles.promoInput}
+                autoCorrect={false}
+                autoComplete="off"
+              />
+            </View>
             <View style={styles.promoButtons}>
               <Button
                 title="Apply Code"
@@ -494,8 +496,12 @@ const styles = StyleSheet.create({
   promoInputContainer: {
     gap: 12,
   },
+  promoInputWrapper: {
+    width: "100%",
+  },
   promoInput: {
     marginBottom: 0,
+    width: "100%",
   },
   promoButtons: {
     flexDirection: "row",

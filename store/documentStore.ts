@@ -12,6 +12,7 @@ interface DocumentState {
   deleteDocument: (documentId: string) => void;
   getDocumentsByType: (type: string) => Document[];
   getExpiringDocuments: () => Document[];
+  getTotalDocuments: () => number;
 }
 
 export const useDocumentStore = create<DocumentState>()(
@@ -47,6 +48,9 @@ export const useDocumentStore = create<DocumentState>()(
           const expiryDate = new Date(doc.expiryDate);
           return expiryDate <= thirtyDaysFromNow && expiryDate >= now;
         });
+      },
+      getTotalDocuments: () => {
+        return get().documents.length;
       },
     }),
     {

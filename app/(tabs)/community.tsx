@@ -47,7 +47,7 @@ export default function CommunityScreen() {
     searchPosts("");
   };
   
-  const handleLike = (postId: string, isLiked: boolean | undefined) => {
+  const handleLike = (postId: string, isLiked: boolean) => {
     if (isLiked) {
       unlikePost(postId);
     } else {
@@ -142,7 +142,7 @@ export default function CommunityScreen() {
               post={item}
               preview
               onPress={() => router.push(`/community/${item.id}`)}
-              onLike={() => handleLike(item.id, item.isLiked)}
+              onLike={() => handleLike(item.id, item.isLiked || false)}
               onComment={() => router.push(`/community/${item.id}`)}
             />
           )}

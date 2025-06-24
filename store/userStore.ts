@@ -41,7 +41,7 @@ export const useUserStore = create<UserState>()(
           const updatedUser = state.user ? { ...state.user, ...userData } : null;
           return {
             user: updatedUser,
-            isPremium: updatedUser?.isPremium || false,
+            isPremium: updatedUser?.isPremium || state.isPremium,
           };
         }),
       
@@ -80,7 +80,7 @@ export const useUserStore = create<UserState>()(
         const state = get();
         if (state.user) {
           console.log("User initialized:", state.user.name);
-          set({ isPremium: state.user.isPremium || false });
+          set({ isPremium: state.user.isPremium || state.isPremium });
         } else {
           console.log("No user found in storage");
         }
