@@ -122,26 +122,38 @@ const Button: React.FC<ButtonProps> = ({
           paddingVertical: 8,
           paddingHorizontal: 16,
           borderRadius: 4,
+          minHeight: 36,
         };
       case "medium":
         return {
           paddingVertical: 12,
           paddingHorizontal: 24,
           borderRadius: 6,
+          minHeight: 48,
         };
       case "large":
         return {
           paddingVertical: 16,
           paddingHorizontal: 32,
           borderRadius: 8,
+          minHeight: 56,
         };
     }
   };
 
-  // Simplified button press handler without platform-specific delays
+  // Enhanced button press handler with better touch handling
   const handlePress = () => {
-    if (disabled || loading) return;
-    onPress();
+    console.log("Button pressed:", title, "disabled:", disabled, "loading:", loading);
+    if (disabled || loading) {
+      console.log("Button press ignored - disabled or loading");
+      return;
+    }
+    
+    try {
+      onPress();
+    } catch (error) {
+      console.error("Error in button onPress:", error);
+    }
   };
 
   return (
@@ -156,6 +168,8 @@ const Button: React.FC<ButtonProps> = ({
         style,
       ]}
       activeOpacity={0.7}
+      // Ensure button is touchable and above other elements
+      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
     >
       {loading ? (
         <ActivityIndicator
@@ -179,6 +193,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     borderRadius: 6,
+    // Ensure button is above other elements
+    zIndex: 100,
+    elevation: 100,
   },
   fullWidth: {
     width: "100%",

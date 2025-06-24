@@ -7,11 +7,13 @@ import PostCard from "@/components/PostCard";
 import TopicSelector from "@/components/TopicSelector";
 import Card from "@/components/Card";
 import { useCommunityStore } from "@/store/communityStore";
+import { useUserStore } from "@/store/userStore";
 import { Topic } from "@/types/community";
 import { mockPosts } from "@/mocks/communityPosts";
 
 export default function CommunityScreen() {
   const router = useRouter();
+  const { user } = useUserStore();
   const {
     posts,
     filteredPosts,
@@ -24,6 +26,7 @@ export default function CommunityScreen() {
   } = useCommunityStore();
   
   const [searchQuery, setSearchQuery] = useState("");
+  const isPremium = user?.isPremium || false;
   
   // Initialize with mock posts if empty
   useEffect(() => {
@@ -42,23 +45,23 @@ export default function CommunityScreen() {
     searchPosts("");
   };
   
-  const handleLike = (postId: string, isLiked: boolean) => {
-    if (isLiked) {
+  const handleLike = (postId: string, isLiked: boolean | undefined) => {
+    if (isLiked === true) {
       unlikePost(postId);
     } else {
       likePost(postId);
     }
   };
   
-  const topics: { id: Topic; label: string }[] = [
-    { id: "visa", label: "Visa" },
-    { id: "university", label: "University" },
-    { id: "accommodation", label: "Housing" },
-    { id: "finances", label: "Finances" },
-    { id: "culture", label: "Culture" },
-    { id: "academics", label: "Academics" },
-    { id: "career", label: "Career" },
-    { id: "general", label: "General" },
+  const topics: { value: Topic; label: string }[] = [
+    { value: "visa", label: "Visa" },
+    { value: "university", label: "University" },
+    { value: "accommodation", label: "Housing" },
+    { value: "finances", label: "Finances" },
+    { value: "culture", label: "Culture" },
+    { value: "academics", label: "Academics" },
+    { value: "career", label: "Career" },
+    { value: "general", label: "General" },
   ];
   
   return (
@@ -93,44 +96,47 @@ export default function CommunityScreen() {
       </View>
       
       {/* Premium UniPilot AI Assistant Promotion */}
-      <Card style={styles.aiAssistantCard}>
-        <View style={styles.aiAssistantContent}>
-          <View style={styles.aiAssistantTextContainer}>
-            <View style={styles.aiAssistantHeader}>
-              <Crown size={20} color="#FFD700" style={styles.crownIcon} />
-              <Text style={styles.aiAssistantTitle}>UniPilot AI Assistant</Text>
+      {!isPremium && (
+        <Card style={styles.aiAssistantCard}>
+          <View style={styles.aiAssistantContent}>
+            <View style={styles.aiAssistantTextContainer}>
+              <View style={styles.aiAssistantHeader}>
+                <Crown size={20} color="#FFD700" style={styles.crownIcon} />
+                <Text style={styles.aiAssistantTitle}>UniPilot AI Assistant</Text>
+              </View>
+              <Text style={styles.aiAssistantDescription}>
+                Get instant answers to your study abroad questions from our AI education expert!
+              </Text>
+              <View style={styles.aiAssistantActions}>
+                <TouchableOpacity
+                  style={styles.aiAssistantButton}
+                  onPress={() => router.push("/unipilot-ai")}
+                >
+                  <MessageCircle size={16} color={Colors.white} style={styles.aiButtonIcon} />
+                  <Text style={styles.aiAssistantButtonText}>Try Now</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.premiumButton}
+                  onPress={() => router.push("/premium")}
+                >
+                  <Text style={styles.premiumButtonText}>$4.99/month</Text>
+                </TouchableOpacity>
+              </View>
             </View>
-            <Text style={styles.aiAssistantDescription}>
-              Get instant answers to your study abroad questions from our AI education expert!
-            </Text>
-            <View style={styles.aiAssistantActions}>
-              <TouchableOpacity
-                style={styles.aiAssistantButton}
-                onPress={() => router.push("/unipilot-ai")}
-              >
-                <MessageCircle size={16} color={Colors.white} style={styles.aiButtonIcon} />
-                <Text style={styles.aiAssistantButtonText}>Try Now</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.premiumButton}
-                onPress={() => router.push("/premium")}
-              >
-                <Text style={styles.premiumButtonText}>$4.99/month</Text>
-              </TouchableOpacity>
-            </View>
+            <Image 
+              source={{ uri: "https://images.unsplash.com/photo-1531482615713-2afd69097998?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80" }}
+              style={styles.aiAssistantImage}
+              resizeMode="cover"
+            />
           </View>
-          <Image 
-            source={{ uri: "https://images.unsplash.com/photo-1531482615713-2afd69097998?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80" }}
-            style={styles.aiAssistantImage}
-            resizeMode="cover"
-          />
-        </View>
-      </Card>
+        </Card>
+      )}
       
       <TopicSelector
         topics={topics}
         selectedTopic={selectedTopic}
         onSelectTopic={filterByTopic}
+        style={styles.topicSelector}
       />
       
       {filteredPosts.length > 0 ? (
@@ -147,6 +153,7 @@ export default function CommunityScreen() {
             />
           )}
           contentContainerStyle={styles.postsList}
+          showsVerticalScrollIndicator={false}
         />
       ) : (
         <View style={styles.emptyContainer}>
@@ -218,7 +225,7 @@ const styles = StyleSheet.create({
   },
   aiAssistantCard: {
     marginHorizontal: 16,
-    marginBottom: 16,
+    marginBottom: 8,
     padding: 0,
     overflow: "hidden",
     borderWidth: 1,
@@ -287,51 +294,9 @@ const styles = StyleSheet.create({
     flex: 2,
     height: 140,
   },
-  premiumPromoCard: {
-    marginHorizontal: 16,
-    marginBottom: 16,
-    padding: 0,
-    overflow: "hidden",
-  },
-  premiumPromoContent: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  premiumPromoTextContainer: {
-    flex: 3,
-    padding: 16,
-  },
-  premiumPromoHeader: {
-    flexDirection: "row",
-    alignItems: "center",
+  topicSelector: {
+    paddingHorizontal: 0,
     marginBottom: 8,
-  },
-  premiumPromoTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: Colors.text,
-  },
-  premiumPromoDescription: {
-    fontSize: 14,
-    color: Colors.text,
-    marginBottom: 12,
-    lineHeight: 18,
-  },
-  premiumPromoButton: {
-    backgroundColor: Colors.primary,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 6,
-    alignSelf: "flex-start",
-  },
-  premiumPromoButtonText: {
-    color: Colors.white,
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  premiumPromoImage: {
-    flex: 2,
-    height: 120,
   },
   postsList: {
     padding: 16,

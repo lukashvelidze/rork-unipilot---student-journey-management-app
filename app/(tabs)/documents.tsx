@@ -1,18 +1,20 @@
 import React, { useState } from "react";
 import { StyleSheet, View, Text, FlatList, TouchableOpacity } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { Plus, Filter } from "lucide-react-native";
-import Colors from "@/constants/colors";
+import { Plus } from "lucide-react-native";
+import { useColors } from "@/hooks/useColors";
 import DocumentCard from "@/components/DocumentCard";
 import { useDocumentStore } from "@/store/documentStore";
-import { DocumentType } from "@/types/user";
+import { Document } from "@/types/user";
 
 export default function DocumentsScreen() {
   const router = useRouter();
+  const Colors = useColors();
   const { documents } = useDocumentStore();
-  const [selectedFilter, setSelectedFilter] = useState<DocumentType | "all">("all");
+  const [selectedFilter, setSelectedFilter] = useState<Document["type"] | "all">("all");
   
-  const documentTypes: { id: DocumentType | "all"; label: string }[] = [
+  const documentTypes: { id: Document["type"] | "all"; label: string }[] = [
     { id: "all", label: "All" },
     { id: "passport", label: "Passport" },
     { id: "visa", label: "Visa" },
@@ -30,18 +32,18 @@ export default function DocumentsScreen() {
     : documents.filter(doc => doc.type === selectedFilter);
   
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Documents</Text>
+    <SafeAreaView style={[styles.container, { backgroundColor: Colors.background }]} edges={['top']}>
+      <View style={[styles.header, { backgroundColor: Colors.card, borderBottomColor: Colors.border }]}>
+        <Text style={[styles.title, { color: Colors.text }]}>Documents</Text>
         <TouchableOpacity
-          style={styles.addButton}
+          style={[styles.addButton, { backgroundColor: Colors.primary }]}
           onPress={() => router.push("/documents/new")}
         >
           <Plus size={20} color={Colors.white} />
         </TouchableOpacity>
       </View>
       
-      <View style={styles.filterContainer}>
+      <View style={[styles.filterContainer, { borderBottomColor: Colors.border }]}>
         <FlatList
           horizontal
           data={documentTypes}
@@ -50,14 +52,16 @@ export default function DocumentsScreen() {
             <TouchableOpacity
               style={[
                 styles.filterItem,
-                selectedFilter === item.id && styles.selectedFilter,
+                { backgroundColor: Colors.lightBackground },
+                selectedFilter === item.id && { backgroundColor: Colors.primary },
               ]}
               onPress={() => setSelectedFilter(item.id)}
             >
               <Text
                 style={[
                   styles.filterText,
-                  selectedFilter === item.id && styles.selectedFilterText,
+                  { color: Colors.lightText },
+                  selectedFilter === item.id && { color: Colors.white },
                 ]}
               >
                 {item.label}
@@ -80,31 +84,31 @@ export default function DocumentsScreen() {
             />
           )}
           contentContainerStyle={styles.documentsList}
+          showsVerticalScrollIndicator={false}
         />
       ) : (
         <View style={styles.emptyContainer}>
-          <Text style={styles.emptyTitle}>No documents found</Text>
-          <Text style={styles.emptyText}>
+          <Text style={[styles.emptyTitle, { color: Colors.text }]}>No documents found</Text>
+          <Text style={[styles.emptyText, { color: Colors.lightText }]}>
             {selectedFilter === "all"
               ? "Add your first document to keep track of important paperwork"
               : `No ${selectedFilter.replace("_", " ")} documents found. Add one to get started.`}
           </Text>
           <TouchableOpacity
-            style={styles.addDocumentButton}
+            style={[styles.addDocumentButton, { backgroundColor: Colors.primary }]}
             onPress={() => router.push("/documents/new")}
           >
-            <Text style={styles.addDocumentText}>Add Document</Text>
+            <Text style={[styles.addDocumentText, { color: Colors.white }]}>Add Document</Text>
           </TouchableOpacity>
         </View>
       )}
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
   },
   header: {
     flexDirection: "row",
@@ -112,24 +116,20 @@ const styles = StyleSheet.create({
     alignItems: "center",
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
   },
   title: {
     fontSize: 20,
     fontWeight: "700",
-    color: Colors.text,
   },
   addButton: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: Colors.primary,
     justifyContent: "center",
     alignItems: "center",
   },
   filterContainer: {
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
   },
   filterList: {
     paddingHorizontal: 16,
@@ -140,18 +140,10 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 20,
     marginRight: 8,
-    backgroundColor: Colors.lightBackground,
-  },
-  selectedFilter: {
-    backgroundColor: Colors.primary,
   },
   filterText: {
     fontSize: 14,
     fontWeight: "500",
-    color: Colors.lightText,
-  },
-  selectedFilterText: {
-    color: Colors.white,
   },
   documentsList: {
     padding: 16,
@@ -165,23 +157,19 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 18,
     fontWeight: "600",
-    color: Colors.text,
     marginBottom: 8,
   },
   emptyText: {
     fontSize: 14,
-    color: Colors.lightText,
     textAlign: "center",
     marginBottom: 24,
   },
   addDocumentButton: {
-    backgroundColor: Colors.primary,
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,
   },
   addDocumentText: {
-    color: Colors.white,
     fontSize: 16,
     fontWeight: "600",
   },

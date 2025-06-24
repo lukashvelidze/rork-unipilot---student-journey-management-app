@@ -1,56 +1,82 @@
 import React from "react";
+import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { Tabs } from "expo-router";
-import { Home, Map, FileText, Users, User } from "lucide-react-native";
-import Colors from "@/constants/colors";
+import { useColors } from "@/hooks/useColors";
+import { useThemeStore } from "@/store/themeStore";
 
 export default function TabLayout() {
+  const Colors = useColors();
+  const { isDarkMode } = useThemeStore();
+
   return (
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: Colors.primary,
         tabBarInactiveTintColor: Colors.lightText,
         tabBarStyle: {
+          backgroundColor: Colors.card,
           borderTopColor: Colors.border,
+          borderTopWidth: 1,
+          paddingTop: 8,
+          paddingBottom: 8,
+          height: 88,
         },
-        headerShown: true,
+        tabBarLabelStyle: {
+          fontSize: 12,
+          fontWeight: "500",
+          marginTop: 4,
+        },
+        headerStyle: {
+          backgroundColor: Colors.background,
+          shadowColor: "transparent",
+          elevation: 0,
+        },
+        headerTintColor: Colors.text,
         headerTitleStyle: {
           fontWeight: "600",
+          color: Colors.text,
         },
+        headerShadowVisible: false,
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
           title: "Home",
-          tabBarIcon: ({ color, size }) => <Home size={size} color={color} />,
+          tabBarIcon: ({ color }) => <FontAwesome size={24} name="home" color={color} />,
+          headerShown: false,
         }}
       />
       <Tabs.Screen
         name="journey"
         options={{
           title: "Journey",
-          tabBarIcon: ({ color, size }) => <Map size={size} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="documents"
-        options={{
-          title: "Documents",
-          tabBarIcon: ({ color, size }) => <FileText size={size} color={color} />,
+          tabBarIcon: ({ color }) => <FontAwesome size={24} name="map" color={color} />,
+          headerShown: false,
         }}
       />
       <Tabs.Screen
         name="community"
         options={{
           title: "Community",
-          tabBarIcon: ({ color, size }) => <Users size={size} color={color} />,
+          tabBarIcon: ({ color }) => <FontAwesome size={24} name="users" color={color} />,
+          headerShown: false,
+        }}
+      />
+      <Tabs.Screen
+        name="documents"
+        options={{
+          title: "Documents",
+          tabBarIcon: ({ color }) => <FontAwesome size={24} name="folder" color={color} />,
+          headerShown: false,
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
           title: "Profile",
-          tabBarIcon: ({ color, size }) => <User size={size} color={color} />,
+          tabBarIcon: ({ color }) => <FontAwesome size={24} name="user" color={color} />,
+          headerShown: false,
         }}
       />
     </Tabs>

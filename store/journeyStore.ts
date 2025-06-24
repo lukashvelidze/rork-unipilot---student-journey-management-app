@@ -17,6 +17,9 @@ interface JourneyState {
   updateTaskCompletion: (stageId: JourneyStage, taskId: string, completed: boolean) => void;
   addRecentMilestone: (milestone: Milestone) => void;
   clearRecentMilestone: () => void;
+  getOverallProgress: () => number;
+  getTotalCompletedTasks: () => number;
+  getTotalTasks: () => number;
 }
 
 export const useJourneyStore = create<JourneyState>()(
@@ -58,6 +61,30 @@ export const useJourneyStore = create<JourneyState>()(
       addRecentMilestone: (milestone) => set({ recentMilestone: milestone }),
       
       clearRecentMilestone: () => set({ recentMilestone: null }),
+      
+      getOverallProgress: () => {
+        const state = get();
+        if (state.journeyProgress.length === 0) return 0;
+        
+        const totalTasks = state.journeyProgress.reduce((sum, stage) => sum + stage.tasks.length, 0);
+        const completedTasks = state.journeyProgress.reduce((sum, stage) => 
+          sum + stage.tasks.filter(task => task.completed).length, 0
+        );
+        
+        return totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+      },
+      
+      getTotalCompletedTasks: () => {
+        const state = get();
+        return state.journeyProgress.reduce((sum, stage) => 
+          sum + stage.tasks.filter(task => task.completed).length, 0
+        );
+      },
+      
+      getTotalTasks: () => {
+        const state = get();
+        return state.journeyProgress.reduce((sum, stage) => sum + stage.tasks.length, 0);
+      },
     }),
     {
       name: "journey-storage",

@@ -5,7 +5,9 @@ import * as SplashScreen from "expo-splash-screen";
 import { useEffect } from "react";
 import { StatusBar } from "expo-status-bar";
 import { Platform } from "react-native";
-import Colors from "@/constants/colors";
+import { SafeAreaProvider } from "react-native-safe-area-context";
+import { useColors } from "@/hooks/useColors";
+import { useThemeStore } from "@/store/themeStore";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { trpc, trpcClient } from "@/lib/trpc";
 import { useUserStore } from "@/store/userStore";
@@ -23,8 +25,7 @@ export default function RootLayout() {
 
   useEffect(() => {
     if (error) {
-      console.error(error);
-      throw error;
+      console.error("Font loading error:", error);
     }
   }, [error]);
 
@@ -34,7 +35,7 @@ export default function RootLayout() {
     }
   }, [loaded]);
 
-  if (!loaded) {
+  if (!loaded && !error) {
     return null;
   }
 
@@ -42,18 +43,27 @@ export default function RootLayout() {
 }
 
 function RootLayoutNav() {
-  const { initializeUser } = useUserStore();
+  const Colors = useColors();
+  const { isDarkMode } = useThemeStore();
+  const initializeUser = useUserStore((state) => state.initializeUser);
   
   useEffect(() => {
     // Initialize user when app starts
     if (initializeUser) {
-      initializeUser();
+      try {
+        initializeUser();
+      } catch (error) {
+        console.error("Error initializing user:", error);
+      }
     }
   }, [initializeUser]);
 
   return (
-    <>
-      <StatusBar style="auto" />
+    <SafeAreaProvider>
+      <StatusBar 
+        style={isDarkMode ? "light" : "dark"} 
+        backgroundColor={Colors.background}
+      />
       <trpc.Provider client={trpcClient} queryClient={queryClient}>
         <QueryClientProvider client={queryClient}>
           <Stack
@@ -64,10 +74,12 @@ function RootLayoutNav() {
               headerTintColor: Colors.text,
               headerTitleStyle: {
                 fontWeight: "600",
+                color: Colors.text,
               },
               contentStyle: {
                 backgroundColor: Colors.background,
               },
+              headerShadowVisible: false,
             }}
           >
             <Stack.Screen name="index" options={{ headerShown: false }} />
@@ -80,6 +92,7 @@ function RootLayoutNav() {
             <Stack.Screen name="community/[id]" options={{ title: "Discussion" }} />
             <Stack.Screen name="memories/new" options={{ title: "New Memory" }} />
             <Stack.Screen name="memories/[id]" options={{ title: "Memory Details" }} />
+            <Stack.Screen name="profile/edit" options={{ title: "Edit Profile" }} />
             <Stack.Screen name="profile/personal" options={{ title: "Personal Information" }} />
             <Stack.Screen name="profile/education" options={{ title: "Education" }} />
             <Stack.Screen name="profile/countries" options={{ title: "Countries" }} />
@@ -90,10 +103,12 @@ function RootLayoutNav() {
             <Stack.Screen name="tasks" options={{ title: "Tasks" }} />
             <Stack.Screen name="calendar" options={{ title: "Calendar" }} />
             <Stack.Screen name="premium" options={{ title: "UniPilot Premium" }} />
+            <Stack.Screen name="premium/resources" options={{ title: "Premium Resources" }} />
+            <Stack.Screen name="premium/[id]" options={{ title: "Resource" }} />
             <Stack.Screen name="unipilot-ai" options={{ title: "AI Assistant" }} />
           </Stack>
         </QueryClientProvider>
       </trpc.Provider>
-    </>
+    </SafeAreaProvider>
   );
 }

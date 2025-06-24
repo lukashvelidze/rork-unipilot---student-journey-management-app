@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from "react";
 import { StyleSheet, View, Animated, Easing, Dimensions } from "react-native";
 import { Platform } from "react-native";
-import Colors from "@/constants/colors";
+import { useColors } from "@/hooks/useColors";
 
 interface CelebrationAnimationProps {
   visible: boolean;
@@ -16,6 +16,7 @@ const CelebrationAnimation: React.FC<CelebrationAnimationProps> = ({
   onAnimationFinish,
   type = "confetti",
 }) => {
+  const Colors = useColors();
   const opacity = useRef(new Animated.Value(0)).current;
   const scale = useRef(new Animated.Value(0.5)).current;
 
@@ -82,15 +83,15 @@ const CelebrationAnimation: React.FC<CelebrationAnimationProps> = ({
       >
         <View style={styles.celebration}>
           {type === "achievement" && (
-            <View style={styles.achievementCircle}>
-              <View style={styles.star} />
+            <View style={[styles.achievementCircle, { backgroundColor: Colors.primary }]}>
+              <View style={[styles.star, { backgroundColor: Colors.white }]} />
             </View>
           )}
           {type === "milestone" && (
             <View style={styles.milestoneContainer}>
-              <View style={styles.milestone} />
-              <View style={[styles.milestone, styles.milestone2]} />
-              <View style={[styles.milestone, styles.milestone3]} />
+              <View style={[styles.milestone, { backgroundColor: Colors.primary }]} />
+              <View style={[styles.milestone, styles.milestone2, { backgroundColor: Colors.success }]} />
+              <View style={[styles.milestone, styles.milestone3, { backgroundColor: "#FFD700" }]} />
             </View>
           )}
           {type === "confetti" && (
@@ -144,7 +145,6 @@ const styles = StyleSheet.create({
     width: 120,
     height: 120,
     borderRadius: 60,
-    backgroundColor: Colors.primary,
     justifyContent: "center",
     alignItems: "center",
     shadowColor: "#000",
@@ -156,7 +156,6 @@ const styles = StyleSheet.create({
   star: {
     width: 60,
     height: 60,
-    backgroundColor: Colors.white,
     borderRadius: 30,
   },
   milestoneContainer: {
@@ -168,15 +167,13 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: Colors.primary,
     margin: 8,
   },
   milestone2: {
-    backgroundColor: Colors.success,
     transform: [{ scale: 1.2 }],
   },
   milestone3: {
-    backgroundColor: "#FFD700",
+    // Default styling
   },
   confettiContainer: {
     ...StyleSheet.absoluteFillObject,

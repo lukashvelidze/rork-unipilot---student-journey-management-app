@@ -20,10 +20,25 @@ export interface University {
   notes?: string;
 }
 
+export type DocumentType = 
+  | "passport"
+  | "visa"
+  | "i20"
+  | "admission_letter"
+  | "financial_documents"
+  | "transcripts"
+  | "test_scores"
+  | "health_insurance"
+  | "transcript"
+  | "recommendation"
+  | "essay"
+  | "certificate"
+  | "other";
+
 export interface Document {
   id: string;
   name: string;
-  type: "transcript" | "recommendation" | "essay" | "certificate" | "passport" | "visa" | "other";
+  type: DocumentType;
   status: "missing" | "in_progress" | "completed";
   uploadDate?: string;
   expiryDate?: string;
@@ -70,8 +85,10 @@ export interface Memory {
   mood: "excited" | "nervous" | "confident" | "overwhelmed" | "happy" | "proud";
 }
 
+export type EducationLevel = "high_school" | "bachelors" | "masters" | "phd";
+
 export interface EducationBackground {
-  level: "high_school" | "bachelors" | "masters" | "phd";
+  level: EducationLevel;
   institution?: string;
   major?: string;
   gpa?: string;
@@ -82,6 +99,8 @@ export interface UserProfile {
   id: string;
   name: string;
   email: string;
+  bio?: string;
+  careerGoal?: string;
   homeCountry: Country;
   destinationCountry: Country;
   educationBackground: EducationBackground;
