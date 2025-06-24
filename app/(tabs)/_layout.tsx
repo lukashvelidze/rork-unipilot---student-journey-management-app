@@ -58,8 +58,8 @@ export default function TabLayout() {
       <Tabs.Screen
         name="community"
         options={{
-          title: "Community",
-          tabBarIcon: ({ color }) => <FontAwesome size={24} name="users" color={color} />,
+          title: "Resources",
+          tabBarIcon: ({ color }) => <FontAwesome size={24} name="book" color={color} />,
           headerShown: false,
         }}
       />
