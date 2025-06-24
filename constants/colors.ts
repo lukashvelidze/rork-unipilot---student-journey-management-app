@@ -18,6 +18,7 @@ const Colors = {
   
   // Border colors
   border: "#E5E5EA",
+  divider: "#E5E5EA",
   
   // Status colors
   success: "#34C759",
@@ -33,6 +34,18 @@ const Colors = {
   gray: "#8E8E93",
   lightGray: "#F2F2F7",
   darkGray: "#48484A",
+  
+  // Academic and career colors
+  academic: "#5856D6",
+  career: "#00C7BE",
+  
+  // Shadow colors
+  shadowLight: "rgba(0, 0, 0, 0.1)",
+  shadowMedium: "rgba(0, 0, 0, 0.15)",
+  shadowDark: "rgba(0, 0, 0, 0.2)",
+  
+  // Input colors
+  inputBackground: "#F2F2F7",
 };
 
 export default Colors;

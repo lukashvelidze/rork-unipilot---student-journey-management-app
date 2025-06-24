@@ -29,12 +29,16 @@ export const useUserStore = create<UserState>()(
       user: null,
       isLoading: false,
       error: null,
+      
       setUser: (user) => set({ user }),
+      
       updateUser: (userData) =>
         set((state) => ({
           user: state.user ? { ...state.user, ...userData } : null,
         })),
+      
       clearUser: () => set({ user: null }),
+      
       completeOnboarding: () =>
         set((state) => ({
           user: state.user
@@ -45,12 +49,14 @@ export const useUserStore = create<UserState>()(
               }
             : null,
         })),
+      
       setOnboardingStep: (step) =>
         set((state) => ({
           user: state.user
             ? { ...state.user, onboardingStep: step }
             : null,
         })),
+      
       initializeUser: () => {
         // This function is called to initialize the user state
         // The actual user data is loaded from AsyncStorage via the persist middleware
@@ -61,6 +67,7 @@ export const useUserStore = create<UserState>()(
           console.log("No user found in storage");
         }
       },
+      
       createUser: (userData) => {
         const newUser: UserProfile = {
           id: Math.random().toString(36).substring(2, 15),
@@ -83,6 +90,7 @@ export const useUserStore = create<UserState>()(
         };
         set({ user: newUser });
       },
+      
       setPremium: (isPremium) =>
         set((state) => ({
           user: state.user

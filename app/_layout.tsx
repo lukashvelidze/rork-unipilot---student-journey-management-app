@@ -23,8 +23,7 @@ export default function RootLayout() {
 
   useEffect(() => {
     if (error) {
-      console.error(error);
-      throw error;
+      console.error("Font loading error:", error);
     }
   }, [error]);
 
@@ -34,7 +33,7 @@ export default function RootLayout() {
     }
   }, [loaded]);
 
-  if (!loaded) {
+  if (!loaded && !error) {
     return null;
   }
 
@@ -42,12 +41,16 @@ export default function RootLayout() {
 }
 
 function RootLayoutNav() {
-  const { initializeUser } = useUserStore();
+  const initializeUser = useUserStore((state) => state.initializeUser);
   
   useEffect(() => {
     // Initialize user when app starts
     if (initializeUser) {
-      initializeUser();
+      try {
+        initializeUser();
+      } catch (error) {
+        console.error("Error initializing user:", error);
+      }
     }
   }, [initializeUser]);
 

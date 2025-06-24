@@ -9,9 +9,9 @@ import { useUserStore } from "@/store/userStore";
 
 export default function PremiumScreen() {
   const router = useRouter();
-  const { user, setPremium } = useUserStore();
+  const user = useUserStore((state) => state.user);
+  const setPremium = useUserStore((state) => state.setPremium);
   const [promoCode, setPromoCode] = useState("");
-  const [message, setMessage] = useState("");
   
   const isPremium = user?.isPremium || false;
   

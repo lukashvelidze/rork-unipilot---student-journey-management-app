@@ -1,7 +1,7 @@
 import React, { useEffect } from "react";
 import { StyleSheet, View, Text, ScrollView, TouchableOpacity } from "react-native";
 import { useRouter } from "expo-router";
-import { Award, TrendingUp, BookOpen, Users, Crown, Zap, Target, Calendar } from "lucide-react-native";
+import { Award, TrendingUp, BookOpen, Users, Crown, Zap, Target, Calendar, FileText, MessageSquare } from "lucide-react-native";
 import Colors from "@/constants/colors";
 import Card from "@/components/Card";
 import ProgressBar from "@/components/ProgressBar";
@@ -113,6 +113,30 @@ export default function HomeScreen() {
       onPress: () => router.push("/support"),
     },
   ];
+
+  const premiumQuickActions = [
+    {
+      title: "AI Assistant",
+      description: "Get personalized guidance",
+      icon: Zap,
+      color: "#FFD700",
+      onPress: () => router.push("/unipilot-ai"),
+    },
+    {
+      title: "Premium Resources",
+      description: "Access exclusive content",
+      icon: FileText,
+      color: "#9C27B0",
+      onPress: () => router.push("/resources"),
+    },
+    {
+      title: "Expert Consultation",
+      description: "Book 1-on-1 sessions",
+      icon: MessageSquare,
+      color: "#4CAF50",
+      onPress: () => router.push("/consultation"),
+    },
+  ];
   
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
@@ -166,26 +190,45 @@ export default function HomeScreen() {
       </Card>
       
       {isPremium && (
-        <Card style={styles.premiumFeaturesCard}>
-          <View style={styles.sectionHeader}>
-            <Crown size={20} color="#FFD700" />
-            <Text style={styles.premiumSectionTitle}>Premium Features</Text>
-          </View>
-          
-          <View style={styles.premiumGrid}>
-            {premiumFeatures.map((feature, index) => (
-              <TouchableOpacity
-                key={index}
-                style={[styles.premiumFeatureCard, { borderLeftColor: feature.color }]}
-                onPress={feature.onPress}
-              >
-                <feature.icon size={20} color={feature.color} />
-                <Text style={styles.premiumFeatureTitle}>{feature.title}</Text>
-                <Text style={styles.premiumFeatureDescription}>{feature.description}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </Card>
+        <>
+          <Card style={styles.premiumFeaturesCard}>
+            <View style={styles.sectionHeader}>
+              <Crown size={20} color="#FFD700" />
+              <Text style={styles.premiumSectionTitle}>Premium Features</Text>
+            </View>
+            
+            <View style={styles.premiumGrid}>
+              {premiumFeatures.map((feature, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={[styles.premiumFeatureCard, { borderLeftColor: feature.color }]}
+                  onPress={feature.onPress}
+                >
+                  <feature.icon size={20} color={feature.color} />
+                  <Text style={styles.premiumFeatureTitle}>{feature.title}</Text>
+                  <Text style={styles.premiumFeatureDescription}>{feature.description}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </Card>
+
+          <Card style={styles.premiumActionsCard}>
+            <Text style={styles.sectionTitle}>Premium Quick Actions</Text>
+            <View style={styles.premiumActionsGrid}>
+              {premiumQuickActions.map((action, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={[styles.premiumActionCard, { borderColor: action.color }]}
+                  onPress={action.onPress}
+                >
+                  <action.icon size={24} color={action.color} />
+                  <Text style={styles.actionTitle}>{action.title}</Text>
+                  <Text style={styles.actionDescription}>{action.description}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </Card>
+        </>
       )}
       
       {upcomingTasks.length > 0 && (
@@ -198,10 +241,21 @@ export default function HomeScreen() {
           </View>
           
           {upcomingTasks.map((task, index) => (
-            <View key={task.id} style={styles.taskItem}>
-              <View style={styles.taskIndicator} />
-              <Text style={styles.taskTitle}>{task.title}</Text>
-            </View>
+            <TouchableOpacity 
+              key={task.id} 
+              style={styles.taskItem}
+              onPress={() => router.push(`/journey/${currentStage?.stage}`)}
+            >
+              <View style={[styles.taskIndicator, { backgroundColor: task.completed ? Colors.success : Colors.primary }]} />
+              <Text style={[styles.taskTitle, { textDecorationLine: task.completed ? 'line-through' : 'none' }]}>
+                {task.title}
+              </Text>
+              {task.completed && (
+                <View style={styles.taskCompleted}>
+                  <Text style={styles.taskCompletedText}>✓</Text>
+                </View>
+              )}
+            </TouchableOpacity>
           ))}
         </Card>
       )}
@@ -387,6 +441,27 @@ const styles = StyleSheet.create({
     color: Colors.lightText,
     lineHeight: 16,
   },
+  premiumActionsCard: {
+    marginBottom: 20,
+    backgroundColor: "rgba(255, 215, 0, 0.03)",
+    borderWidth: 1,
+    borderColor: "rgba(255, 215, 0, 0.15)",
+  },
+  premiumActionsGrid: {
+    marginTop: 12,
+  },
+  premiumActionCard: {
+    backgroundColor: Colors.white,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
   tasksCard: {
     marginBottom: 20,
   },
@@ -409,19 +484,33 @@ const styles = StyleSheet.create({
   taskItem: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 4,
+    borderRadius: 8,
   },
   taskIndicator: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: Colors.primary,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
     marginRight: 12,
   },
   taskTitle: {
     fontSize: 14,
     color: Colors.text,
     flex: 1,
+  },
+  taskCompleted: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: Colors.success,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  taskCompletedText: {
+    color: Colors.white,
+    fontSize: 12,
+    fontWeight: "600",
   },
   quickActions: {
     marginBottom: 20,
