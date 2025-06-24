@@ -1,5 +1,5 @@
 export default {
-  // Primary colors - futuristic blue/purple theme
+  // Primary colors - sophisticated blue/purple theme
   primary: "#6366F1", // Indigo
   primaryLight: "#818CF8",
   primaryDark: "#4F46E5",
@@ -58,7 +58,7 @@ export default {
   offline: "#6B7280",
   away: "#F59E0B",
   
-  // Premium colors (reduced yellow)
+  // Premium colors (purple theme instead of gold)
   premium: "#8B5CF6", // Purple instead of gold
   premiumLight: "#A78BFA",
   premiumBackground: "rgba(139, 92, 246, 0.05)",

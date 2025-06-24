@@ -96,6 +96,7 @@ export default function PremiumScreen() {
       
       if (validPromoCodes.includes(promoCode.toUpperCase())) {
         // Set premium status
+        console.log("Setting premium status to true");
         setPremium(true);
         
         // Clear the promo code input
@@ -125,7 +126,9 @@ export default function PremiumScreen() {
       } else {
         Alert.alert(
           "Invalid Promo Code",
-          `The promo code "${promoCode}" is not valid. Please check and try again.\n\nValid codes: STUDENT2024, WELCOME, BETA, EARLYBIRD, ADMIN`,
+          `The promo code "${promoCode}" is not valid. Please check and try again.
+
+Valid codes: STUDENT2024, WELCOME, BETA, EARLYBIRD, ADMIN`,
           [{ text: "OK" }]
         );
       }

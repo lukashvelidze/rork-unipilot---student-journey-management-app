@@ -13,7 +13,7 @@ import { Country, UserProfile } from "@/types/user";
 
 export default function OnboardingScreen() {
   const router = useRouter();
-  const { user, setUser, setOnboardingStep, completeOnboarding } = useUserStore();
+  const { user, setUser, updateOnboardingStep, completeOnboarding } = useUserStore();
   
   const [step, setStep] = useState(0);
   const [name, setName] = useState("");
@@ -109,7 +109,7 @@ export default function OnboardingScreen() {
       if (step === 0) {
         // Just update the step
         if (user) {
-          setOnboardingStep(nextStep);
+          updateOnboardingStep(nextStep);
         }
       } else if (step === 1) {
         // Save name and email
@@ -120,6 +120,8 @@ export default function OnboardingScreen() {
             id: generateId(),
             name,
             email,
+            bio: "",
+            careerGoal: "",
             homeCountry: { code: "", name: "", flag: "" },
             destinationCountry: { code: "", name: "", flag: "" },
             educationBackground: { level: "bachelors" },
@@ -136,7 +138,7 @@ export default function OnboardingScreen() {
         } else {
           // Update existing user
           console.log("Updating existing user with name:", name, "email:", email);
-          setOnboardingStep(nextStep);
+          updateOnboardingStep(nextStep);
           setUser({
             ...user,
             name,
@@ -148,7 +150,7 @@ export default function OnboardingScreen() {
         // Save home country
         console.log("Saving home country:", homeCountry);
         if (user) {
-          setOnboardingStep(nextStep);
+          updateOnboardingStep(nextStep);
           setUser({
             ...user,
             homeCountry,
@@ -159,7 +161,7 @@ export default function OnboardingScreen() {
         // Save destination country
         console.log("Saving destination country:", destinationCountry);
         if (user) {
-          setOnboardingStep(nextStep);
+          updateOnboardingStep(nextStep);
           setUser({
             ...user,
             destinationCountry,
@@ -370,7 +372,7 @@ export default function OnboardingScreen() {
               setStep(4);
               // Update the onboarding step in the store
               if (user) {
-                setOnboardingStep(4);
+                updateOnboardingStep(4);
                 saveUserData(4);
               }
               setIsProcessing(false);

@@ -15,6 +15,7 @@ interface UserState {
   logout: () => void;
   completeOnboarding: () => void;
   setOnboardingStep: (step: number) => void;
+  updateOnboardingStep: (step: number) => void;
   initializeUser: () => void;
   createUser: (userData: {
     name: string;
@@ -60,6 +61,13 @@ export const useUserStore = create<UserState>()(
         })),
       
       setOnboardingStep: (step) =>
+        set((state) => ({
+          user: state.user
+            ? { ...state.user, onboardingStep: step }
+            : null,
+        })),
+      
+      updateOnboardingStep: (step) =>
         set((state) => ({
           user: state.user
             ? { ...state.user, onboardingStep: step }

@@ -14,7 +14,7 @@ import { initialJourneyProgress } from "@/mocks/journeyTasks";
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { user } = useUserStore();
+  const { user, isPremium } = useUserStore();
   const { journeyProgress, setJourneyProgress } = useJourneyStore();
   
   // Initialize journey progress if not already set
@@ -50,7 +50,6 @@ export default function HomeScreen() {
   
   const overallProgress = calculateOverallProgress(journeyProgress);
   const dailyQuote = getRandomQuote(generalQuotes);
-  const isPremium = user?.isPremium || false;
   
   // Get current active stage (first incomplete stage)
   const currentStage = journeyProgress.find(stage => !stage.completed) || journeyProgress[0];
@@ -88,28 +87,28 @@ export default function HomeScreen() {
       title: "AI Assistant",
       description: "Unlimited access to UniPilot AI",
       icon: Zap,
-      color: "#FFD700",
+      color: Colors.primary,
       onPress: () => router.push("/unipilot-ai"),
     },
     {
       title: "Personal Mentor",
       description: "1-on-1 guidance sessions",
       icon: Target,
-      color: "#9C27B0",
+      color: Colors.secondary,
       onPress: () => router.push("/mentor"),
     },
     {
       title: "Premium Resources",
       description: "Exclusive templates & guides",
       icon: Crown,
-      color: "#FF6B35",
-      onPress: () => router.push("/resources"),
+      color: Colors.accent,
+      onPress: () => router.push("/premium/resources"),
     },
     {
       title: "Priority Support",
       description: "24/7 premium support",
       icon: Calendar,
-      color: "#4CAF50",
+      color: Colors.success,
       onPress: () => router.push("/support"),
     },
   ];
@@ -119,21 +118,21 @@ export default function HomeScreen() {
       title: "AI Assistant",
       description: "Get personalized guidance",
       icon: Zap,
-      color: "#FFD700",
+      color: Colors.primary,
       onPress: () => router.push("/unipilot-ai"),
     },
     {
       title: "Premium Resources",
       description: "Access exclusive content",
       icon: FileText,
-      color: "#9C27B0",
-      onPress: () => router.push("/resources"),
+      color: Colors.secondary,
+      onPress: () => router.push("/premium/resources"),
     },
     {
       title: "Expert Consultation",
       description: "Book 1-on-1 sessions",
       icon: MessageSquare,
-      color: "#4CAF50",
+      color: Colors.success,
       onPress: () => router.push("/consultation"),
     },
   ];
@@ -148,7 +147,7 @@ export default function HomeScreen() {
           </View>
           {isPremium && (
             <View style={styles.premiumBadge}>
-              <Crown size={16} color="#FFD700" />
+              <Crown size={16} color={Colors.premium} />
               <Text style={styles.premiumText}>Premium</Text>
             </View>
           )}
@@ -193,7 +192,7 @@ export default function HomeScreen() {
         <>
           <Card style={styles.premiumFeaturesCard}>
             <View style={styles.sectionHeader}>
-              <Crown size={20} color="#FFD700" />
+              <Crown size={20} color={Colors.premium} />
               <Text style={styles.premiumSectionTitle}>Premium Features</Text>
             </View>
             
@@ -280,7 +279,7 @@ export default function HomeScreen() {
       {!isPremium && (
         <Card style={styles.upgradeCard}>
           <View style={styles.upgradeContent}>
-            <Crown size={32} color="#FFD700" />
+            <Crown size={32} color={Colors.premium} />
             <View style={styles.upgradeText}>
               <Text style={styles.upgradeTitle}>Unlock Premium Features</Text>
               <Text style={styles.upgradeDescription}>
@@ -340,17 +339,17 @@ const styles = StyleSheet.create({
   premiumBadge: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(255, 215, 0, 0.1)",
+    backgroundColor: Colors.premiumBackground,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "rgba(255, 215, 0, 0.3)",
+    borderColor: Colors.premium,
   },
   premiumText: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#DAA520",
+    color: Colors.premium,
     marginLeft: 4,
   },
   progressCard: {
@@ -400,9 +399,9 @@ const styles = StyleSheet.create({
   },
   premiumFeaturesCard: {
     marginBottom: 20,
-    backgroundColor: "rgba(255, 215, 0, 0.05)",
+    backgroundColor: Colors.premiumBackground,
     borderWidth: 1,
-    borderColor: "rgba(255, 215, 0, 0.2)",
+    borderColor: Colors.premium,
   },
   premiumSectionTitle: {
     fontSize: 18,
@@ -443,9 +442,9 @@ const styles = StyleSheet.create({
   },
   premiumActionsCard: {
     marginBottom: 20,
-    backgroundColor: "rgba(255, 215, 0, 0.03)",
+    backgroundColor: Colors.premiumBackground,
     borderWidth: 1,
-    borderColor: "rgba(255, 215, 0, 0.15)",
+    borderColor: Colors.premium,
   },
   premiumActionsGrid: {
     marginTop: 12,
@@ -542,9 +541,9 @@ const styles = StyleSheet.create({
     color: Colors.lightText,
   },
   upgradeCard: {
-    backgroundColor: "rgba(255, 215, 0, 0.05)",
+    backgroundColor: Colors.premiumBackground,
     borderWidth: 1,
-    borderColor: "rgba(255, 215, 0, 0.2)",
+    borderColor: Colors.premium,
     marginBottom: 20,
   },
   upgradeContent: {
@@ -568,7 +567,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   upgradeButton: {
-    backgroundColor: "#FFD700",
+    backgroundColor: Colors.premium,
     borderRadius: 8,
     paddingVertical: 12,
     alignItems: "center",
@@ -576,6 +575,6 @@ const styles = StyleSheet.create({
   upgradeButtonText: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#000",
+    color: Colors.white,
   },
 });
