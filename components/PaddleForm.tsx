@@ -4,7 +4,8 @@ import Button from '@/components/Button';
 import { useUserStore } from '@/store/userStore';
 
 interface PaddleFormProps {
-  productId?: string;
+  productId?: string;  // optional
+  priceId: string;     // required
   productName?: string;
   price?: string;
   onSuccess?: () => void;
@@ -25,7 +26,8 @@ declare global {
 }
 
 const PaddleForm: React.FC<PaddleFormProps> = ({
-  productId = 'pro_01jyk34xa92kd6h2x3vw7sv5tf', // Replace with your sandbox product ID
+  productId = 'pro_01jyk34xa92kd6h2x3vw7sv5tf',
+  priceId = 'pri_01jyk3h7eec66x5m7h31p66r8w',
   productName = 'UniPilot Premium',
   price = '$4.99',
   onSuccess,
@@ -38,8 +40,7 @@ const PaddleForm: React.FC<PaddleFormProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [paddleLoaded, setPaddleLoaded] = useState(false);
 
-  // Strip prefix like 'pri_' or 'pro_' from productId for URL usage
-  const priceIdForUrl = productId.replace(/^(pri_|pro_)/, '');
+  const priceIdForUrl = priceId.replace(/^pri_/, '');
 
   useEffect(() => {
     if (Platform.OS === 'web' && typeof window !== 'undefined') {
@@ -49,8 +50,6 @@ const PaddleForm: React.FC<PaddleFormProps> = ({
 
       script.onload = () => {
         if (window.Paddle) {
-          console.log('✅ Paddle.js loaded');
-
           window.Paddle.Environment.set('sandbox');
 
           try {
@@ -74,8 +73,8 @@ const PaddleForm: React.FC<PaddleFormProps> = ({
 
             setPaddleLoaded(true);
           } catch (error) {
-            console.error('💥 Paddle Setup failed, falling back to vendor method:', error);
-            window.Paddle.Setup({ vendor: 33436 }); // Replace with your sandbox vendor ID
+            console.error('💥 Paddle Setup failed:', error);
+            window.Paddle.Setup({ vendor: 33436 });
             setPaddleLoaded(true);
           }
         }
@@ -96,7 +95,6 @@ const PaddleForm: React.FC<PaddleFormProps> = ({
   }, [user?.email]);
 
   const handleCheckoutSuccess = (data: any) => {
-    console.log('✅ Payment successful:', data);
     setPremium(true);
     Alert.alert('Success!', `Thanks for subscribing to ${productName}.`, [
       { text: 'OK', onPress: onSuccess },
@@ -117,23 +115,19 @@ const PaddleForm: React.FC<PaddleFormProps> = ({
     try {
       if (Platform.OS === 'web') {
         if (window.Paddle && paddleLoaded) {
-          console.log('🛒 Opening Paddle Checkout:', { priceId: productId });
-
           window.Paddle.Checkout.open({
-            items: [{ priceId: productId }],
+            items: [{ priceId }],
             customer: { email: user?.email || '' },
             customData: { userId: user?.id || '', productName },
             settings: { displayMode: 'overlay', theme: 'light' },
           });
         } else {
           const fallbackUrl = `https://sandbox-checkout.paddle.com/checkout/price/${priceIdForUrl}?email=${encodeURIComponent(user?.email || '')}`;
-          console.log('Fallback URL:', fallbackUrl);
           window.open(fallbackUrl, '_blank');
           setIsLoading(false);
         }
       } else {
         const mobileUrl = `https://sandbox-checkout.paddle.com/checkout/price/${priceIdForUrl}?email=${encodeURIComponent(user?.email || '')}`;
-        console.log('Mobile URL:', mobileUrl);
         const supported = await Linking.canOpenURL(mobileUrl);
         if (supported) {
           await Linking.openURL(mobileUrl);
@@ -161,4 +155,3 @@ const PaddleForm: React.FC<PaddleFormProps> = ({
 };
 
 export default PaddleForm;
-
