@@ -7,7 +7,6 @@ import Colors from "@/constants/colors";
 import Theme from "@/constants/theme";
 import Card from "@/components/Card";
 import Button from "@/components/Button";
-import PaddleForm from "@/components/PaddleForm";
 import { useUserStore } from "@/store/userStore";
 
 const { width } = Dimensions.get("window");
@@ -213,11 +212,11 @@ const resourcesContent: Record<string, ResourceContent> = {
 export default function PremiumResourceDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { user, isPremium } = useUserStore();
+  const { user } = useUserStore();
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
   
-  const isUserPremium = isPremium || user?.isPremium || false;
+  const isPremium = user?.isPremium || false;
   const resource = id ? resourcesContent[id] : null;
   
   if (!resource) {
@@ -229,7 +228,7 @@ export default function PremiumResourceDetailScreen() {
     );
   }
   
-  if (!isUserPremium) {
+  if (!isPremium) {
     return (
       <View style={styles.premiumContainer}>
         <LinearGradient
@@ -238,39 +237,13 @@ export default function PremiumResourceDetailScreen() {
         >
           <Text style={styles.premiumTitle}>Premium Content</Text>
           <Text style={styles.premiumDescription}>
-            This resource is only available to premium members. Upgrade to access all premium content and accelerate your study abroad journey.
+            This resource is only available to premium members. Upgrade to access all premium content.
           </Text>
-          
-          <View style={styles.premiumFeatures}>
-            <Text style={styles.featuresTitle}>What you get with Premium:</Text>
-            <Text style={styles.featureItem}>✓ Access to all premium resources</Text>
-            <Text style={styles.featureItem}>✓ AI-powered guidance and recommendations</Text>
-            <Text style={styles.featureItem}>✓ Exclusive templates and tools</Text>
-            <Text style={styles.featureItem}>✓ Priority support and expert consultations</Text>
-          </View>
-          
-          <PaddleForm
-            productId="pro_01jyk34xa92kd6h2x3vw7sv5tf"
-            priceId="pri_01jyk3h7eec66x5m7h31p66r8w"
-            productName="UniPilot Premium"
-            price="$4.99"
-            buttonTitle="Subscribe $4.99"
-            onSuccess={() => {
-              console.log("🎉 Premium subscription successful from resource detail");
-              // Refresh the page to show the content
-              router.replace(`/premium/${id}`);
-            }}
-            onError={(error) => {
-              console.error("💥 Premium subscription error from resource detail:", error);
-            }}
+          <Button
+            title="Upgrade to Premium"
+            onPress={() => router.push("/premium")}
+            style={styles.upgradeButton}
           />
-          
-          <TouchableOpacity 
-            style={styles.backToResourcesButton}
-            onPress={() => router.push("/premium/resources")}
-          >
-            <Text style={styles.backToResourcesText}>Browse All Premium Resources</Text>
-          </TouchableOpacity>
         </LinearGradient>
       </View>
     );
@@ -509,32 +482,8 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     marginBottom: 32,
   },
-  premiumFeatures: {
-    marginBottom: 32,
-    alignSelf: "stretch",
-  },
-  featuresTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: Colors.white,
-    marginBottom: 16,
-    textAlign: "center",
-  },
-  featureItem: {
-    fontSize: 14,
-    color: Colors.white,
-    marginBottom: 8,
-    textAlign: "center",
-  },
-  backToResourcesButton: {
-    marginTop: 16,
-    padding: 12,
-  },
-  backToResourcesText: {
-    fontSize: 14,
-    color: Colors.white,
-    textAlign: "center",
-    textDecorationLine: "underline",
+  upgradeButton: {
+    minWidth: 200,
   },
   header: {
     flexDirection: "row",

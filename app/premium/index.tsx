@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert, Platform } from "react-native";
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert, Platform, Linking } from "react-native";
 import { useRouter } from "expo-router";
 import { Crown, Check, Zap, Target, FileText, Calendar, MessageSquare, Users, BookOpen, Award, Gift, ArrowRight, Star } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
@@ -8,7 +8,6 @@ import Theme from "@/constants/theme";
 import Card from "@/components/Card";
 import Button from "@/components/Button";
 import Input from "@/components/Input";
-import PaddleForm from "@/components/PaddleForm";
 import { useUserStore } from "@/store/userStore";
 
 export default function PremiumScreen() {
@@ -97,7 +96,7 @@ export default function PremiumScreen() {
       
       if (validPromoCodes.includes(promoCode.toUpperCase())) {
         // Set premium status
-        console.log("✅ Valid promo code applied:", promoCode.toUpperCase());
+        console.log("Setting premium status to true");
         setPremium(true);
         
         // Clear the promo code input
@@ -144,15 +143,48 @@ Valid codes: STUDENT2024, WELCOME, BETA, EARLYBIRD, ADMIN`,
       setIsProcessingPromo(false);
     }
   };
-
-  const handleSubscriptionSuccess = () => {
-    console.log("🎉 Subscription successful, navigating to premium resources");
-    router.push("/premium/resources");
-  };
-
-  const handleSubscriptionError = (error: any) => {
-    console.error("💥 Subscription error:", error);
-    // Error is already handled in PaddleForm component
+  
+  const handleSubscribe = async () => {
+    try {
+      if (Platform.OS === 'web') {
+        // For web, use Paddle.js
+        // @ts-ignore - Paddle is loaded via script tag
+        if (typeof window !== 'undefined' && window.Paddle) {
+          // @ts-ignore
+          window.Paddle.Checkout.open({
+            product: 'pro_01j9j8j8j8j8j8j8j8j8j8', // Replace with your actual Paddle product ID
+            email: user?.email || '',
+            successUrl: window.location.origin + '/premium?success=true',
+            closeUrl: window.location.origin + '/premium',
+          });
+        } else {
+          // Fallback: redirect to Paddle checkout page
+          const checkoutUrl = `https://checkout.paddle.com/subscription/pro_01j9j8j8j8j8j8j8j8j8j8?email=${encodeURIComponent(user?.email || '')}`;
+          window.open(checkoutUrl, '_blank');
+        }
+      } else {
+        // For mobile, open Paddle checkout in browser
+        const checkoutUrl = `https://checkout.paddle.com/subscription/pro_01j9j8j8j8j8j8j8j8j8j8?email=${encodeURIComponent(user?.email || '')}`;
+        
+        const supported = await Linking.canOpenURL(checkoutUrl);
+        if (supported) {
+          await Linking.openURL(checkoutUrl);
+        } else {
+          Alert.alert(
+            "Unable to Open Checkout",
+            "Please try again or contact support for assistance.",
+            [{ text: "OK" }]
+          );
+        }
+      }
+    } catch (error) {
+      console.error("Subscription error:", error);
+      Alert.alert(
+        "Subscription Error",
+        "There was an issue opening the checkout. Please try again.",
+        [{ text: "OK" }]
+      );
+    }
   };
   
   // Debug logging
@@ -161,6 +193,32 @@ Valid codes: STUDENT2024, WELCOME, BETA, EARLYBIRD, ADMIN`,
     console.log("Premium Screen - user?.isPremium:", user?.isPremium);
     console.log("Premium Screen - isUserPremium:", isUserPremium);
   }, [isPremium, user?.isPremium, isUserPremium]);
+  
+  // Load Paddle.js for web
+  React.useEffect(() => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      const script = document.createElement('script');
+      script.src = 'https://cdn.paddle.com/paddle/v2/paddle.js';
+      script.async = true;
+      script.onload = () => {
+        // @ts-ignore
+        if (window.Paddle) {
+          // @ts-ignore
+          window.Paddle.Setup({
+            token: 'live_your_paddle_client_token', // Replace with your actual Paddle client token
+            pwCustomer: {
+              email: user?.email || '',
+            },
+          });
+        }
+      };
+      document.head.appendChild(script);
+      
+      return () => {
+        document.head.removeChild(script);
+      };
+    }
+  }, [user?.email]);
   
   if (isUserPremium) {
     return (
@@ -354,14 +412,12 @@ Valid codes: STUDENT2024, WELCOME, BETA, EARLYBIRD, ADMIN`,
           </View>
         </View>
         
-        <PaddleForm
-          productId="pro_01jyk34xa92kd6h2x3vw7sv5tf"
-          priceId="pri_01jyk3h7eec66x5m7h31p66r8w"
-          productName="UniPilot Premium"
-          price="$4.99"
-          buttonTitle="Subscribe $4.99"
-          onSuccess={handleSubscriptionSuccess}
-          onError={handleSubscriptionError}
+        <Button
+          title="Subscribe $4.99"
+          onPress={handleSubscribe}
+          variant="primary"
+          fullWidth
+          style={styles.subscribeButton}
         />
         
         <Text style={styles.subscriptionNote}>
@@ -423,10 +479,6 @@ Valid codes: STUDENT2024, WELCOME, BETA, EARLYBIRD, ADMIN`,
           <Text style={styles.debugText}>User isPremium: {user?.isPremium ? "true" : "false"}</Text>
           <Text style={styles.debugText}>Final isPremium: {isUserPremium ? "true" : "false"}</Text>
           <Text style={styles.debugText}>Current promo code: "{promoCode}"</Text>
-          <Text style={styles.debugText}>Paddle Client Token: {Platform.OS === 'web' ? process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN?.substring(0, 10) + '...' : 'N/A (mobile)'}</Text>
-          <Text style={styles.debugText}>Environment: sandbox</Text>
-          <Text style={styles.debugText}>Product ID: pro_01jyk34xa92kd6h2x3vw7sv5tf</Text>
-          <Text style={styles.debugText}>Price ID: pri_01jyk3h7eec66x5m7h31p66r8w</Text>
         </Card>
       )}
     </ScrollView>

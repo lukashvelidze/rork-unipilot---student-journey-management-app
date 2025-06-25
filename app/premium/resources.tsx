@@ -6,7 +6,6 @@ import Colors from "@/constants/colors";
 import Theme from "@/constants/theme";
 import Card from "@/components/Card";
 import Button from "@/components/Button";
-import PaddleForm from "@/components/PaddleForm";
 import { useUserStore } from "@/store/userStore";
 
 interface Resource {
@@ -138,10 +137,10 @@ const categories = [
 
 export default function PremiumResourcesScreen() {
   const router = useRouter();
-  const { user, isPremium } = useUserStore();
+  const { user } = useUserStore();
   const [selectedCategory, setSelectedCategory] = useState("All");
   
-  const isUserPremium = isPremium || user?.isPremium || false;
+  const isPremium = user?.isPremium || false;
   
   const filteredResources = resources.filter(resource => 
     selectedCategory === "All" || resource.category === selectedCategory
@@ -193,7 +192,7 @@ export default function PremiumResourcesScreen() {
   };
   
   const handleResourcePress = (resource: Resource) => {
-    if (!isUserPremium) {
+    if (!isPremium) {
       Alert.alert(
         "Premium Required",
         "This resource is only available to premium members. Upgrade to access all premium resources.",
@@ -230,7 +229,7 @@ export default function PremiumResourcesScreen() {
                   <Text style={styles.newBadgeText}>NEW</Text>
                 </View>
               )}
-              {!isUserPremium && (
+              {!isPremium && (
                 <View style={styles.premiumBadge}>
                   <Lock size={10} color={Colors.white} />
                 </View>
@@ -280,11 +279,11 @@ export default function PremiumResourcesScreen() {
             <View style={styles.actionButton}>
               <Text style={[
                 styles.actionButtonText,
-                !isUserPremium && styles.actionButtonTextDisabled,
+                !isPremium && styles.actionButtonTextDisabled,
               ]}>
-                {isUserPremium ? "Read Guide" : "Premium Only"}
+                {isPremium ? "Read Guide" : "Premium Only"}
               </Text>
-              <ArrowRight size={16} color={isUserPremium ? Colors.primary : Colors.mutedText} />
+              <ArrowRight size={16} color={isPremium ? Colors.primary : Colors.mutedText} />
             </View>
           </View>
         </Card>
@@ -340,7 +339,7 @@ export default function PremiumResourcesScreen() {
         </View>
         
         {/* Upgrade Prompt for Non-Premium Users */}
-        {!isUserPremium && (
+        {!isPremium && (
           <Card style={styles.upgradeCard} variant="elevated">
             <View style={styles.upgradeContent}>
               <Lock size={32} color={Colors.primary} />
@@ -348,28 +347,10 @@ export default function PremiumResourcesScreen() {
               <Text style={styles.upgradeDescription}>
                 Get access to all premium resources, expert guides, and exclusive content to accelerate your study abroad journey.
               </Text>
-              
-              <View style={styles.upgradeFeatures}>
-                <Text style={styles.upgradeFeatureItem}>✓ 8+ comprehensive guides and masterclasses</Text>
-                <Text style={styles.upgradeFeatureItem}>✓ AI-powered personalized recommendations</Text>
-                <Text style={styles.upgradeFeatureItem}>✓ Exclusive templates and checklists</Text>
-                <Text style={styles.upgradeFeatureItem}>✓ Live webinars with admission experts</Text>
-                <Text style={styles.upgradeFeatureItem}>✓ Priority support and consultations</Text>
-              </View>
-              
-              <PaddleForm
-                productId="pro_01jyk34xa92kd6h2x3vw7sv5tf"
-                priceId="pri_01jyk3h7eec66x5m7h31p66r8w"
-                productName="UniPilot Premium"
-                price="$4.99"
-                buttonTitle="Subscribe $4.99"
-                onSuccess={() => {
-                  console.log("🎉 Premium subscription successful from resources page");
-                  // The page will automatically update when isPremium changes
-                }}
-                onError={(error) => {
-                  console.error("💥 Premium subscription error from resources page:", error);
-                }}
+              <Button
+                title="Upgrade to Premium"
+                onPress={() => router.push("/premium")}
+                style={styles.upgradeButton}
               />
             </View>
           </Card>
@@ -567,14 +548,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginBottom: 20,
   },
-  upgradeFeatures: {
-    alignSelf: "stretch",
-    marginBottom: 24,
-  },
-  upgradeFeatureItem: {
-    fontSize: 14,
-    color: Colors.text,
-    marginBottom: 8,
-    textAlign: "center",
+  upgradeButton: {
+    minWidth: 200,
   },
 });
