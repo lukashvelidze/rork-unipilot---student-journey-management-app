@@ -67,15 +67,6 @@ const PaddleForm: React.FC<PaddleFormProps> = ({
                   console.log('🚪 Checkout closed by user');
                   setIsLoading(false);
                   break;
-                case 'checkout.customer.created':
-                  console.log('👤 Customer created:', data.data);
-                  break;
-                case 'checkout.payment.initiated':
-                  console.log('💳 Payment initiated:', data.data);
-                  break;
-                case 'checkout.payment.completed':
-                  console.log('💰 Payment completed:', data.data);
-                  break;
                 default:
                   console.log('📡 Other Paddle event:', data.name, data.data);
               }
