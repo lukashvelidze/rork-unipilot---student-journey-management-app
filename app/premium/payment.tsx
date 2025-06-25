@@ -1,66 +1,52 @@
 import React, { useState } from "react";
-import { StyleSheet, View, Text, Modal, TouchableOpacity, Alert } from "react-native";
+import { StyleSheet, View, Text, TouchableOpacity, Alert } from "react-native";
 import { useRouter } from "expo-router";
-import { WebView } from "react-native-webview";
 import { X, Crown, Shield, Zap } from "lucide-react-native";
 import Colors from "@/constants/colors";
-import Theme from "@/constants/theme";
 import Card from "@/components/Card";
 import Button from "@/components/Button";
+import PaddleCheckout from "@/components/PaddleCheckout";
 import { useUserStore } from "@/store/userStore";
-
-// Paddle Configuration
-const PADDLE_PRODUCT_ID = 'pro_01jyk34xa92kd6h2x3vw7sv5tf';
-const PADDLE_PRICE_ID = 'pri_01jyk3h7eec66x5m7h31p66r8w';
-const CLIENT_TOKEN = 'test_e8c70f35e280794bf86dfec199c'; // Paddle Sandbox token
-const VENDOR_ID = '33436';
 
 export default function PaymentScreen() {
   const router = useRouter();
   const { user, setPremium } = useUserStore();
-  const [showPaddleCheckout, setShowPaddleCheckout] = useState(false);
+  const [showCheckout, setShowCheckout] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
   const handleSubscribe = () => {
-    setShowPaddleCheckout(true);
+    setShowCheckout(true);
   };
 
-  const handlePaddleNavigation = (navState: any) => {
-    const { url } = navState;
-    console.log("Paddle navigation:", url);
+  const handleCheckoutSuccess = () => {
+    setIsProcessing(true);
     
-    if (url.includes('checkout-complete') || url.includes('success')) {
-      setIsProcessing(true);
-      setShowPaddleCheckout(false);
-      
-      // Set premium status
-      setPremium(true);
-      
-      setTimeout(() => {
-        setIsProcessing(false);
-        Alert.alert(
-          "Welcome to Premium!",
-          "Your subscription is now active. Enjoy all premium features!",
-          [
-            {
-              text: "Explore Features",
-              onPress: () => router.push("/premium/resources"),
-            },
-            {
-              text: "Go to Home",
-              onPress: () => router.push("/(tabs)"),
-              style: "cancel",
-            },
-          ]
-        );
-      }, 1000);
-    } else if (url.includes('checkout-cancel') || url.includes('cancel')) {
-      setShowPaddleCheckout(false);
-      Alert.alert("Subscription Canceled", "You can subscribe anytime from the premium page.");
-    }
+    // Set premium status
+    setPremium(true);
+    
+    setTimeout(() => {
+      setIsProcessing(false);
+      Alert.alert(
+        "Welcome to Premium!",
+        "Your subscription is now active. Enjoy all premium features!",
+        [
+          {
+            text: "Explore Features",
+            onPress: () => router.push("/premium/resources"),
+          },
+          {
+            text: "Go to Home",
+            onPress: () => router.push("/(tabs)"),
+            style: "cancel",
+          },
+        ]
+      );
+    }, 1000);
   };
 
-  const paddleCheckoutUrl = `https://sandbox-checkout.paddle.com/checkout?product_id=${PADDLE_PRODUCT_ID}&price_id=${PADDLE_PRICE_ID}&client_token=${CLIENT_TOKEN}&customer_email=${encodeURIComponent(user?.email || 'user@example.com')}&passthrough=${encodeURIComponent(JSON.stringify({ user_id: user?.id || 'anonymous' }))}`;
+  const handleCheckoutCancel = () => {
+    Alert.alert("Subscription Canceled", "You can subscribe anytime from the premium page.");
+  };
 
   const features = [
     {
@@ -157,33 +143,14 @@ export default function PaymentScreen() {
         </View>
       </View>
 
-      {/* Paddle Checkout Modal */}
-      <Modal
-        visible={showPaddleCheckout}
-        animationType="slide"
-        presentationStyle="pageSheet"
-      >
-        <View style={styles.checkoutModal}>
-          <View style={styles.checkoutHeader}>
-            <Text style={styles.checkoutTitle}>Complete Your Subscription</Text>
-            <TouchableOpacity
-              style={styles.checkoutCloseButton}
-              onPress={() => setShowPaddleCheckout(false)}
-            >
-              <X size={24} color={Colors.text} />
-            </TouchableOpacity>
-          </View>
-          <WebView
-            source={{ uri: paddleCheckoutUrl }}
-            onNavigationStateChange={handlePaddleNavigation}
-            style={styles.webview}
-            startInLoadingState={true}
-            scalesPageToFit={true}
-            javaScriptEnabled={true}
-            domStorageEnabled={true}
-          />
-        </View>
-      </Modal>
+      <PaddleCheckout
+        visible={showCheckout}
+        onClose={() => setShowCheckout(false)}
+        onSuccess={handleCheckoutSuccess}
+        onCancel={handleCheckoutCancel}
+        customerEmail={user?.email || 'user@example.com'}
+        userId={user?.id || 'anonymous'}
+      />
     </View>
   );
 }
@@ -327,29 +294,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: Colors.lightText,
     textAlign: "center",
-  },
-  checkoutModal: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
-  checkoutHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-    backgroundColor: Colors.card,
-  },
-  checkoutTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: Colors.text,
-  },
-  checkoutCloseButton: {
-    padding: 8,
-  },
-  webview: {
-    flex: 1,
   },
 });

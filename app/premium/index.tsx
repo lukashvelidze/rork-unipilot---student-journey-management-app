@@ -1,21 +1,15 @@
 import React, { useState } from "react";
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert, Platform, Modal } from "react-native";
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert } from "react-native";
 import { useRouter } from "expo-router";
-import { Crown, Check, Zap, Target, FileText, Calendar, MessageSquare, Users, BookOpen, Award, Gift, ArrowRight, Star, X } from "lucide-react-native";
+import { Crown, Check, Zap, Target, FileText, Calendar, MessageSquare, Users, BookOpen, Award, Gift, ArrowRight, Star } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { WebView } from "react-native-webview";
 import Colors from "@/constants/colors";
 import Theme from "@/constants/theme";
 import Card from "@/components/Card";
 import Button from "@/components/Button";
 import Input from "@/components/Input";
+import PaddleCheckout from "@/components/PaddleCheckout";
 import { useUserStore } from "@/store/userStore";
-
-// Paddle Configuration
-const PADDLE_PRODUCT_ID = 'pro_01jyk34xa92kd6h2x3vw7sv5tf';
-const PADDLE_PRICE_ID = 'pri_01jyk3h7eec66x5m7h31p66r8w';
-const CLIENT_TOKEN = 'test_e8c70f35e280794bf86dfec199c'; // Paddle Sandbox token
-const VENDOR_ID = '33436';
 
 export default function PremiumScreen() {
   const router = useRouter();
@@ -23,7 +17,7 @@ export default function PremiumScreen() {
   const [promoCode, setPromoCode] = useState("");
   const [isProcessingPromo, setIsProcessingPromo] = useState(false);
   const [showPromoInput, setShowPromoInput] = useState(false);
-  const [showPaddleCheckout, setShowPaddleCheckout] = useState(false);
+  const [showCheckout, setShowCheckout] = useState(false);
   
   // Use the isPremium from store, not just from user object
   const isUserPremium = isPremium || user?.isPremium || false;
@@ -153,37 +147,30 @@ Valid codes: STUDENT2024, WELCOME, BETA, EARLYBIRD, ADMIN`,
   };
   
   const handleSubscribe = () => {
-    router.push("/premium/payment");
+    setShowCheckout(true);
   };
   
-  const handlePaddleNavigation = (navState: any) => {
-    const { url } = navState;
-    console.log("Paddle navigation:", url);
-    
-    if (url.includes('checkout-complete') || url.includes('success')) {
-      setShowPaddleCheckout(false);
-      setPremium(true);
-      Alert.alert(
-        "Welcome to Premium!",
-        "Your subscription is now active. Enjoy all premium features!",
-        [
-          {
-            text: "Explore Features",
-            onPress: () => router.push("/premium/resources"),
-          },
-          {
-            text: "OK",
-            style: "cancel",
-          },
-        ]
-      );
-    } else if (url.includes('checkout-cancel') || url.includes('cancel')) {
-      setShowPaddleCheckout(false);
-      Alert.alert("Subscription Canceled", "You can subscribe anytime from the premium page.");
-    }
+  const handleCheckoutSuccess = () => {
+    setPremium(true);
+    Alert.alert(
+      "Welcome to Premium!",
+      "Your subscription is now active. Enjoy all premium features!",
+      [
+        {
+          text: "Explore Features",
+          onPress: () => router.push("/premium/resources"),
+        },
+        {
+          text: "OK",
+          style: "cancel",
+        },
+      ]
+    );
   };
   
-  const paddleCheckoutUrl = `https://sandbox-checkout.paddle.com/checkout?product_id=${PADDLE_PRODUCT_ID}&price_id=${PADDLE_PRICE_ID}&client_token=${CLIENT_TOKEN}&customer_email=${encodeURIComponent(user?.email || 'user@example.com')}&passthrough=${encodeURIComponent(JSON.stringify({ user_id: user?.id || 'anonymous' }))}`;
+  const handleCheckoutCancel = () => {
+    Alert.alert("Subscription Canceled", "You can subscribe anytime from the premium page.");
+  };
   
   // Debug logging
   React.useEffect(() => {
@@ -454,33 +441,14 @@ Valid codes: STUDENT2024, WELCOME, BETA, EARLYBIRD, ADMIN`,
         </Card>
       )}
       
-      {/* Paddle Checkout Modal */}
-      <Modal
-        visible={showPaddleCheckout}
-        animationType="slide"
-        presentationStyle="pageSheet"
-      >
-        <View style={styles.checkoutModal}>
-          <View style={styles.checkoutHeader}>
-            <Text style={styles.checkoutTitle}>Complete Your Subscription</Text>
-            <TouchableOpacity
-              style={styles.closeButton}
-              onPress={() => setShowPaddleCheckout(false)}
-            >
-              <X size={24} color={Colors.text} />
-            </TouchableOpacity>
-          </View>
-          <WebView
-            source={{ uri: paddleCheckoutUrl }}
-            onNavigationStateChange={handlePaddleNavigation}
-            style={styles.webview}
-            startInLoadingState={true}
-            scalesPageToFit={true}
-            javaScriptEnabled={true}
-            domStorageEnabled={true}
-          />
-        </View>
-      </Modal>
+      <PaddleCheckout
+        visible={showCheckout}
+        onClose={() => setShowCheckout(false)}
+        onSuccess={handleCheckoutSuccess}
+        onCancel={handleCheckoutCancel}
+        customerEmail={user?.email || 'user@example.com'}
+        userId={user?.id || 'anonymous'}
+      />
     </ScrollView>
   );
 }
@@ -799,29 +767,5 @@ const styles = StyleSheet.create({
   },
   debugButton: {
     marginTop: 8,
-  },
-  checkoutModal: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
-  checkoutHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-    backgroundColor: Colors.card,
-  },
-  checkoutTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: Colors.text,
-  },
-  closeButton: {
-    padding: 8,
-  },
-  webview: {
-    flex: 1,
   },
 });
