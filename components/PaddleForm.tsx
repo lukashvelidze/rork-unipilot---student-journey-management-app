@@ -159,7 +159,7 @@ const PaddleForm: React.FC<PaddleFormProps> = ({
           window.Paddle.Checkout.open(checkoutConfig);
         } else {
           console.log('⚠️ Paddle not loaded, using fallback URL...');
-          const fallbackUrl = `https://sandbox-checkout.paddle.com/checkout/price/${priceIdForUrl}?email=${encodeURIComponent(user?.email || '')}`;
+          const fallbackUrl = `https://pay.paddle.io/checkout/price/${priceIdForUrl}?email=${encodeURIComponent(user?.email || '')}`;
           console.log('🔗 Fallback URL:', fallbackUrl);
           window.open(fallbackUrl, '_blank');
           setIsLoading(false);
