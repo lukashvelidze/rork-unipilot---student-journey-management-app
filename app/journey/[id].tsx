@@ -1,26 +1,65 @@
 import React, { useState, useEffect } from "react";
 import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
-import { CheckCircle, Circle, Calendar, Award } from "lucide-react-native";
-import Colors from "@/constants/colors";
+import { useLocalSearchParams, useRouter, useFocusEffect } from "expo-router";
+import { CheckCircle, Circle, Calendar, Award, RefreshCw } from "lucide-react-native";
+import { useColors } from "@/hooks/useColors";
 import Card from "@/components/Card";
 import ProgressBar from "@/components/ProgressBar";
 import TaskItem from "@/components/TaskItem";
 import { useJourneyStore } from "@/store/journeyStore";
+import { useUserStore } from "@/store/userStore";
 import { JourneyStage } from "@/types/user";
 
 export default function StageDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { journeyProgress, updateTaskCompletion, addRecentMilestone } = useJourneyStore();
+  const Colors = useColors();
+  const { journeyProgress, updateTaskCompletion, addRecentMilestone, lastUpdated, refreshJourney } = useJourneyStore();
+  const { user } = useUserStore();
   
   const stageId = id as JourneyStage;
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  
+  // Get the current stage data
   const stage = journeyProgress.find(s => s.stage === stageId);
+  
+  // Refresh data when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      console.log("Stage detail screen focused, refreshing data");
+      refreshJourney();
+    }, [refreshJourney])
+  );
+  
+  // Listen for changes in journey progress
+  useEffect(() => {
+    console.log("Journey progress updated, lastUpdated:", lastUpdated);
+  }, [lastUpdated, journeyProgress]);
+  
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      // Force refresh the journey data
+      refreshJourney();
+      console.log("Manual refresh completed");
+    } catch (error) {
+      console.error("Error refreshing:", error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
   
   if (!stage) {
     return (
-      <View style={styles.errorContainer}>
-        <Text style={styles.errorText}>Stage not found</Text>
+      <View style={[styles.errorContainer, { backgroundColor: Colors.background }]}>
+        <Text style={[styles.errorText, { color: Colors.lightText }]}>Stage not found</Text>
+        <TouchableOpacity 
+          style={[styles.refreshButton, { backgroundColor: Colors.primary }]}
+          onPress={handleRefresh}
+        >
+          <RefreshCw size={16} color={Colors.white} />
+          <Text style={[styles.refreshButtonText, { color: Colors.white }]}>Refresh</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -88,20 +127,25 @@ export default function StageDetailScreen() {
   const stageColor = getStageColor(stageId);
   
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Card style={styles.headerCard}>
+    <ScrollView style={[styles.container, { backgroundColor: Colors.background }]} contentContainerStyle={styles.content}>
+      <Card style={[styles.headerCard, { backgroundColor: Colors.card }]}>
         <View style={styles.stageHeader}>
           <View style={[styles.stageIndicator, { backgroundColor: stageColor }]} />
           <View style={styles.stageInfo}>
-            <Text style={styles.stageTitle}>{getStageTitle(stageId)}</Text>
-            <Text style={styles.stageSubtitle}>
+            <Text style={[styles.stageTitle, { color: Colors.text }]}>{getStageTitle(stageId)}</Text>
+            <Text style={[styles.stageSubtitle, { color: Colors.lightText }]}>
               {completedTasks} of {totalTasks} tasks completed
             </Text>
+            {user?.destinationCountry && (
+              <Text style={[styles.countryInfo, { color: Colors.lightText }]}>
+                Customized for {user.destinationCountry.flag} {user.destinationCountry.name}
+              </Text>
+            )}
           </View>
           {stage.completed && (
-            <View style={styles.completedBadge}>
+            <View style={[styles.completedBadge, { backgroundColor: Colors.successBackground }]}>
               <CheckCircle size={20} color={Colors.success} />
-              <Text style={styles.completedText}>Completed</Text>
+              <Text style={[styles.completedText, { color: Colors.success }]}>Completed</Text>
             </View>
           )}
         </View>
@@ -115,19 +159,30 @@ export default function StageDetailScreen() {
             animated={true}
           />
           <View style={styles.progressTextRow}>
-            <Text style={styles.progressLabel}>Progress</Text>
+            <Text style={[styles.progressLabel, { color: Colors.lightText }]}>Progress</Text>
             <Text style={[styles.progressPercent, { color: stageColor }]}>
               {stage.progress}%
             </Text>
           </View>
         </View>
+        
+        <TouchableOpacity 
+          style={[styles.refreshButton, { backgroundColor: Colors.lightBackground }]}
+          onPress={handleRefresh}
+          disabled={isRefreshing}
+        >
+          <RefreshCw size={16} color={Colors.primary} />
+          <Text style={[styles.refreshButtonText, { color: Colors.primary }]}>
+            {isRefreshing ? "Refreshing..." : "Refresh Tasks"}
+          </Text>
+        </TouchableOpacity>
       </Card>
       
-      <Card style={styles.tasksCard}>
+      <Card style={[styles.tasksCard, { backgroundColor: Colors.card }]}>
         <View style={styles.tasksHeader}>
-          <Text style={styles.tasksTitle}>Tasks</Text>
-          <View style={styles.tasksStats}>
-            <Text style={styles.tasksStatsText}>
+          <Text style={[styles.tasksTitle, { color: Colors.text }]}>Tasks</Text>
+          <View style={[styles.tasksStats, { backgroundColor: Colors.lightBackground }]}>
+            <Text style={[styles.tasksStatsText, { color: Colors.primary }]}>
               {completedTasks}/{totalTasks}
             </Text>
           </View>
@@ -149,11 +204,11 @@ export default function StageDetailScreen() {
       </Card>
       
       {stage.completed && (
-        <Card style={styles.congratsCard}>
+        <Card style={[styles.congratsCard, { backgroundColor: Colors.successBackground, borderColor: Colors.success }]}>
           <View style={styles.congratsContent}>
             <Award size={32} color={Colors.success} />
-            <Text style={styles.congratsTitle}>Stage Completed!</Text>
-            <Text style={styles.congratsText}>
+            <Text style={[styles.congratsTitle, { color: Colors.success }]}>Stage Completed!</Text>
+            <Text style={[styles.congratsText, { color: Colors.text }]}>
               Great job completing the {getStageTitle(stageId)} stage. You are one step closer to your study abroad goals!
             </Text>
           </View>
@@ -166,7 +221,6 @@ export default function StageDetailScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
   },
   content: {
     padding: 16,
@@ -176,11 +230,25 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: Colors.background,
+    padding: 20,
   },
   errorText: {
     fontSize: 16,
-    color: Colors.lightText,
+    marginBottom: 16,
+    textAlign: "center",
+  },
+  refreshButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginTop: 12,
+  },
+  refreshButtonText: {
+    fontSize: 14,
+    fontWeight: "500",
+    marginLeft: 8,
   },
   headerCard: {
     marginBottom: 16,
@@ -202,24 +270,25 @@ const styles = StyleSheet.create({
   stageTitle: {
     fontSize: 20,
     fontWeight: "700",
-    color: Colors.text,
     marginBottom: 4,
   },
   stageSubtitle: {
     fontSize: 14,
-    color: Colors.lightText,
+    marginBottom: 2,
+  },
+  countryInfo: {
+    fontSize: 12,
+    fontStyle: "italic",
   },
   completedBadge: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#E8F5E9",
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
   },
   completedText: {
     fontSize: 12,
-    color: Colors.success,
     fontWeight: "600",
     marginLeft: 4,
   },
@@ -234,7 +303,6 @@ const styles = StyleSheet.create({
   },
   progressLabel: {
     fontSize: 14,
-    color: Colors.lightText,
   },
   progressPercent: {
     fontSize: 16,
@@ -252,10 +320,8 @@ const styles = StyleSheet.create({
   tasksTitle: {
     fontSize: 18,
     fontWeight: "600",
-    color: Colors.text,
   },
   tasksStats: {
-    backgroundColor: Colors.lightBackground,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 12,
@@ -263,15 +329,12 @@ const styles = StyleSheet.create({
   tasksStatsText: {
     fontSize: 14,
     fontWeight: "600",
-    color: Colors.primary,
   },
   tasksList: {
     gap: 8,
   },
   congratsCard: {
-    backgroundColor: "#E8F5E9",
     borderWidth: 1,
-    borderColor: "#C8E6C9",
   },
   congratsContent: {
     alignItems: "center",
@@ -280,13 +343,11 @@ const styles = StyleSheet.create({
   congratsTitle: {
     fontSize: 18,
     fontWeight: "700",
-    color: Colors.success,
     marginTop: 12,
     marginBottom: 8,
   },
   congratsText: {
     fontSize: 14,
-    color: Colors.text,
     textAlign: "center",
     lineHeight: 20,
   },

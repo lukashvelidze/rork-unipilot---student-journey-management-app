@@ -25,6 +25,7 @@ import Card from "@/components/Card";
 import Button from "@/components/Button";
 import CountrySelector from "@/components/CountrySelector";
 import { useUserStore } from "@/store/userStore";
+import { useJourneyStore } from "@/store/journeyStore";
 import { countries } from "@/mocks/countries";
 import { Country } from "@/types/user";
 
@@ -47,6 +48,7 @@ export default function SettingsScreen() {
   const router = useRouter();
   const Colors = useColors();
   const { user, logout, isPremium, updateDestinationCountry, updateHomeCountry } = useUserStore();
+  const { refreshJourney } = useJourneyStore();
   const { isDarkMode, toggleDarkMode } = useThemeStore();
   
   const [notifications, setNotifications] = useState(true);
@@ -116,20 +118,38 @@ export default function SettingsScreen() {
   const handleDestinationCountryChange = (country: Country) => {
     Alert.alert(
       "Change Destination Country",
-      `Changing your destination to ${country.name} will update your journey tasks and requirements. This action cannot be undone. Continue?`,
+      `Changing your destination to ${country.name} will update your journey tasks and requirements with country-specific visa processes, document requirements, and regulations. This action cannot be undone. Continue?`,
       [
         { text: "Cancel", style: "cancel" },
         {
           text: "Change",
           style: "default",
-          onPress: () => {
-            updateDestinationCountry(country);
-            setShowDestinationSelector(false);
-            Alert.alert(
-              "Destination Updated",
-              `Your destination has been changed to ${country.name}. Your journey tasks have been updated with country-specific requirements.`,
-              [{ text: "OK" }]
-            );
+          onPress: async () => {
+            try {
+              console.log("Updating destination country to:", country.name);
+              
+              // Update the destination country in user store
+              updateDestinationCountry(country);
+              
+              // Force refresh the journey store
+              setTimeout(() => {
+                refreshJourney();
+              }, 100);
+              
+              setShowDestinationSelector(false);
+              
+              Alert.alert(
+                "Destination Updated",
+                `Your destination has been changed to ${country.flag} ${country.name}. Your journey tasks have been updated with country-specific requirements including visa processes, document checklists, and local regulations.`,
+                [{ 
+                  text: "View Updated Tasks", 
+                  onPress: () => router.push("/(tabs)/journey")
+                }]
+              );
+            } catch (error) {
+              console.error("Error updating destination country:", error);
+              Alert.alert("Error", "Failed to update destination country. Please try again.");
+            }
           },
         },
       ]
@@ -141,7 +161,7 @@ export default function SettingsScreen() {
     setShowHomeSelector(false);
     Alert.alert(
       "Home Country Updated",
-      `Your home country has been changed to ${country.name}.`,
+      `Your home country has been changed to ${country.flag} ${country.name}.`,
       [{ text: "OK" }]
     );
   };
@@ -185,7 +205,7 @@ export default function SettingsScreen() {
         {
           id: "destinationCountry",
           title: "Destination Country",
-          subtitle: user?.destinationCountry?.name || "Not set",
+          subtitle: user?.destinationCountry?.name ? `${user.destinationCountry.flag} ${user.destinationCountry.name}` : "Not set",
           icon: MapPin,
           iconColor: Colors.accent,
           type: "navigation",
@@ -387,7 +407,7 @@ export default function SettingsScreen() {
           <Card style={[styles.modalCard, { backgroundColor: Colors.card }]}>
             <Text style={[styles.modalTitle, { color: Colors.text }]}>Change Destination Country</Text>
             <Text style={[styles.modalSubtitle, { color: Colors.lightText }]}>
-              This will update your journey tasks with country-specific requirements.
+              This will update your journey tasks with country-specific visa requirements, document checklists, and regulations.
             </Text>
             <CountrySelector
               label="Select Destination Country"

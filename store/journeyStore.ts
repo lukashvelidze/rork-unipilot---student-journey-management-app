@@ -13,6 +13,7 @@ interface Milestone {
 interface JourneyState {
   journeyProgress: JourneyProgress[];
   recentMilestone: Milestone | null;
+  lastUpdated: number;
   setJourneyProgress: (progress: JourneyProgress[]) => void;
   updateTaskCompletion: (stageId: JourneyStage, taskId: string, completed: boolean) => void;
   addRecentMilestone: (milestone: Milestone) => void;
@@ -20,6 +21,8 @@ interface JourneyState {
   getOverallProgress: () => number;
   getTotalCompletedTasks: () => number;
   getTotalTasks: () => number;
+  refreshJourney: () => void;
+  getStageById: (stageId: JourneyStage) => JourneyProgress | undefined;
 }
 
 export const useJourneyStore = create<JourneyState>()(
@@ -27,8 +30,15 @@ export const useJourneyStore = create<JourneyState>()(
     (set, get) => ({
       journeyProgress: [],
       recentMilestone: null,
+      lastUpdated: Date.now(),
       
-      setJourneyProgress: (progress) => set({ journeyProgress: progress }),
+      setJourneyProgress: (progress) => {
+        console.log("Setting new journey progress with", progress.length, "stages");
+        set({ 
+          journeyProgress: progress,
+          lastUpdated: Date.now()
+        });
+      },
       
       updateTaskCompletion: (stageId, taskId, completed) => {
         set((state) => {
@@ -54,7 +64,10 @@ export const useJourneyStore = create<JourneyState>()(
             return stage;
           });
           
-          return { journeyProgress: updatedProgress };
+          return { 
+            journeyProgress: updatedProgress,
+            lastUpdated: Date.now()
+          };
         });
       },
       
@@ -84,6 +97,18 @@ export const useJourneyStore = create<JourneyState>()(
       getTotalTasks: () => {
         const state = get();
         return state.journeyProgress.reduce((sum, stage) => sum + stage.tasks.length, 0);
+      },
+      
+      refreshJourney: () => {
+        set((state) => ({
+          ...state,
+          lastUpdated: Date.now()
+        }));
+      },
+      
+      getStageById: (stageId) => {
+        const state = get();
+        return state.journeyProgress.find(stage => stage.stage === stageId);
       },
     }),
     {

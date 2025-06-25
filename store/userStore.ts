@@ -141,10 +141,14 @@ export const useUserStore = create<UserState>()(
             journeyProgress: newJourneyProgress,
           };
           
-          // Also update the journey store
-          const { useJourneyStore } = require("@/store/journeyStore");
-          const journeyStore = useJourneyStore.getState();
-          journeyStore.setJourneyProgress(newJourneyProgress);
+          // Update the journey store immediately
+          setTimeout(() => {
+            const { useJourneyStore } = require("@/store/journeyStore");
+            const journeyStore = useJourneyStore.getState();
+            console.log("Updating journey store with new progress");
+            journeyStore.setJourneyProgress(newJourneyProgress);
+            journeyStore.refreshJourney();
+          }, 0);
           
           return {
             user: updatedUser,
