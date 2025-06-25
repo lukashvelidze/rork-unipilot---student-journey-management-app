@@ -97,7 +97,7 @@ export default function PremiumScreen() {
       
       if (validPromoCodes.includes(promoCode.toUpperCase())) {
         // Set premium status
-        console.log("Setting premium status to true");
+        console.log("✅ Valid promo code applied:", promoCode.toUpperCase());
         setPremium(true);
         
         // Clear the promo code input
@@ -424,6 +424,9 @@ Valid codes: STUDENT2024, WELCOME, BETA, EARLYBIRD, ADMIN`,
           <Text style={styles.debugText}>Final isPremium: {isUserPremium ? "true" : "false"}</Text>
           <Text style={styles.debugText}>Current promo code: "{promoCode}"</Text>
           <Text style={styles.debugText}>Paddle Client Token: {Platform.OS === 'web' ? process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN?.substring(0, 10) + '...' : 'N/A (mobile)'}</Text>
+          <Text style={styles.debugText}>Environment: sandbox</Text>
+          <Text style={styles.debugText}>Product ID: pro_01jyk34xa92kd6h2x3vw7sv5tf</Text>
+          <Text style={styles.debugText}>Price ID: pri_01jyk3h7eec66x5m7h31p66r8w</Text>
         </Card>
       )}
     </ScrollView>

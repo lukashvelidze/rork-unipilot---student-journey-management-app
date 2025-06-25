@@ -35,22 +35,26 @@ const PaddleForm: React.FC<PaddleFormProps> = ({
   // Remove 'pri_' prefix for URL usage
   const priceIdForUrl = priceId.replace(/^pri_/, '');
   
-  // Hosted checkout ID for fallback (replace with your real ID)
-  const hostedCheckoutId = 'hsc_01yourrealhostedcheckoutid';
+  console.log('👉 PaddleForm initialized with priceId:', priceId);
+  console.log('👉 Price ID for URL (without prefix):', priceIdForUrl);
 
   useEffect(() => {
-    console.log('👉 Initializing Paddle with priceId:', priceId);
+    console.log('🔧 Initializing Paddle with environment: sandbox');
+    console.log('🔧 Using client token:', process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN?.substring(0, 10) + '...');
     
     if (Platform.OS === 'web' && typeof window !== 'undefined') {
       const initPaddle = async () => {
         try {
           const paddleInstance = await initializePaddle({
-            environment: 'sandbox',
+            environment: 'sandbox', // Use 'production' for live environment
             token: process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN || 'test_e8c70f35e280794bf86dfec199c',
             eventCallback: (data) => {
               console.log('🎯 Paddle Event:', data.name, data.data);
               
               switch (data.name) {
+                case 'checkout.loaded':
+                  console.log('📦 Checkout loaded successfully');
+                  break;
                 case 'checkout.completed':
                   console.log('✅ Checkout completed:', data.data);
                   handleCheckoutSuccess(data.data);
@@ -60,14 +64,20 @@ const PaddleForm: React.FC<PaddleFormProps> = ({
                   handleCheckoutError(data.data);
                   break;
                 case 'checkout.closed':
-                  console.log('🚪 Checkout closed');
+                  console.log('🚪 Checkout closed by user');
                   setIsLoading(false);
                   break;
-                case 'checkout.loaded':
-                  console.log('📦 Checkout loaded');
+                case 'checkout.customer.created':
+                  console.log('👤 Customer created:', data.data);
+                  break;
+                case 'checkout.payment.initiated':
+                  console.log('💳 Payment initiated:', data.data);
+                  break;
+                case 'checkout.payment.completed':
+                  console.log('💰 Payment completed:', data.data);
                   break;
                 default:
-                  console.log('📡 Other Paddle event:', data.name);
+                  console.log('📡 Other Paddle event:', data.name, data.data);
               }
             },
           });
@@ -76,79 +86,118 @@ const PaddleForm: React.FC<PaddleFormProps> = ({
             setPaddle(paddleInstance);
             console.log('✅ Paddle initialized successfully');
           } else {
-            throw new Error('Failed to initialize Paddle');
+            throw new Error('Failed to initialize Paddle - instance is null');
           }
         } catch (error) {
           console.error('❌ Failed to initialize Paddle:', error);
-          setPaddleError('Failed to load payment system');
+          setPaddleError('Failed to load payment system. Please refresh and try again.');
         }
       };
 
       initPaddle();
+    } else {
+      console.log('📱 Running on mobile - Paddle.js will use fallback URLs');
     }
-  }, [user?.email, priceId]);
+  }, []);
 
   const handleCheckoutSuccess = (data: any) => {
-    console.log('🎉 Payment successful, setting premium status');
+    console.log('🎉 Payment successful! Setting premium status...');
+    console.log('🎉 Success data:', data);
+    
+    // Set premium status immediately
     setPremium(true);
-    Alert.alert('Success!', `Thanks for subscribing to ${productName}.`, [
-      { text: 'OK', onPress: onSuccess },
-    ]);
-    setIsLoading(false);
+    
+    // Show success message
+    Alert.alert(
+      'Welcome to Premium!', 
+      `Thank you for subscribing to ${productName}. You now have access to all premium features.`,
+      [
+        { 
+          text: 'Explore Premium Features', 
+          onPress: () => {
+            setIsLoading(false);
+            onSuccess?.();
+          }
+        },
+      ]
+    );
   };
 
   const handleCheckoutError = (error: any) => {
     console.error('💥 Payment error:', error);
-    Alert.alert('Error', 'Payment failed. Please try again.', [{ text: 'OK' }]);
-    onError?.(error);
     setIsLoading(false);
+    
+    const errorMessage = error?.message || error?.error || 'Payment failed. Please try again.';
+    Alert.alert(
+      'Payment Error', 
+      errorMessage,
+      [{ text: 'OK' }]
+    );
+    
+    onError?.(error);
   };
 
   const handleSubscribe = async () => {
     console.log('🚀 Starting checkout process...');
+    console.log('🚀 User email:', user?.email);
+    console.log('🚀 Product details:', { productId, priceId, productName });
+    
     setIsLoading(true);
 
     try {
-      const userEmail = encodeURIComponent(user?.email || '');
-
       if (Platform.OS === 'web') {
         if (paddle) {
-          console.log('💳 Opening Paddle checkout with:', {
-            priceId,
-            email: user?.email,
-            productName,
-          });
+          console.log('💳 Opening Paddle checkout overlay...');
 
           const checkoutOptions: CheckoutOpenOptions = {
-            items: [{ priceId, quantity: 1 }],
-            customer: { email: user?.email || '' },
+            items: [{ 
+              priceId: priceId, 
+              quantity: 1 
+            }],
+            customer: { 
+              email: user?.email || '' 
+            },
             customData: {
               userId: user?.id || '',
-              productName,
-              productId,
+              productName: productName,
+              productId: productId,
             },
             settings: {
               displayMode: 'overlay',
               theme: 'light',
+              locale: 'en',
+              allowLogout: false,
             },
           };
 
+          console.log('💳 Checkout options:', checkoutOptions);
           paddle.Checkout.open(checkoutOptions);
         } else {
-          console.log('⚠️ Paddle not loaded, using fallback URL');
-          const fallbackUrl = `https://sandbox-checkout.paddle.com/checkout/price/${priceIdForUrl}?email=${userEmail}`;
+          console.log('⚠️ Paddle not loaded, using fallback URL...');
+          // Fallback to hosted checkout page
+          const userEmail = encodeURIComponent(user?.email || '');
+          const fallbackUrl = `https://pay.paddle.com/checkout/price/${priceIdForUrl}?user_email=${userEmail}`;
+          console.log('🔗 Fallback URL:', fallbackUrl);
+          
           window.open(fallbackUrl, '_blank');
           setIsLoading(false);
         }
       } else {
-        // Mobile fallback
-        console.log('📱 Opening mobile checkout URL');
-        const mobileUrl = `https://sandbox-checkout.paddle.com/checkout/price/${priceIdForUrl}?email=${userEmail}`;
+        // Mobile fallback - open hosted checkout in browser
+        console.log('📱 Opening mobile checkout URL...');
+        const userEmail = encodeURIComponent(user?.email || '');
+        const mobileUrl = `https://pay.paddle.com/checkout/price/${priceIdForUrl}?user_email=${userEmail}`;
+        console.log('🔗 Mobile URL:', mobileUrl);
+        
         const supported = await Linking.canOpenURL(mobileUrl);
         if (supported) {
           await Linking.openURL(mobileUrl);
         } else {
-          Alert.alert('Error', 'Unable to open browser checkout.', [{ text: 'OK' }]);
+          Alert.alert(
+            'Error', 
+            'Unable to open browser for checkout. Please try again.',
+            [{ text: 'OK' }]
+          );
         }
         setIsLoading(false);
       }
@@ -163,7 +212,7 @@ const PaddleForm: React.FC<PaddleFormProps> = ({
     return (
       <Button
         title="Payment System Unavailable"
-        onPress={() => Alert.alert('Error', paddleError)}
+        onPress={() => Alert.alert('Error', paddleError + '\n\nPlease refresh the page and try again.')}
         variant="outline"
         disabled={true}
         fullWidth
