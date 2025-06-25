@@ -18,15 +18,14 @@ declare global {
   interface Window {
     Paddle?: {
       Setup: (config: any) => void;
-      Checkout: {
-        open: (config: any) => void;
-      };
+      Environment: { set: (env: string) => void };
+      Checkout: { open: (config: any) => void };
     };
   }
 }
 
 const PaddleForm: React.FC<PaddleFormProps> = ({
-  productId = 'pri_01jyk3h7eec66x5m7h31p66r8w', // Placeholder - replace with actual product ID
+  productId = 'pri_01jyk3h7eec66x5m7h31p66r8w', // Replace with your sandbox product ID
   productName = 'UniPilot Premium',
   price = '$4.99',
   onSuccess,
@@ -39,175 +38,108 @@ const PaddleForm: React.FC<PaddleFormProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [paddleLoaded, setPaddleLoaded] = useState(false);
 
-  // Load Paddle.js for web
   useEffect(() => {
     if (Platform.OS === 'web' && typeof window !== 'undefined') {
-      console.log('🚀 Loading Paddle.js for web checkout');
-      
       const script = document.createElement('script');
       script.src = 'https://cdn.paddle.com/paddle/v2/paddle.js';
       script.async = true;
-      
+
       script.onload = () => {
-        console.log('✅ Paddle.js loaded successfully');
-        
         if (window.Paddle) {
+          console.log('✅ Paddle.js loaded');
+
+          window.Paddle.Environment.set('sandbox');
+
           try {
-            // Initialize Paddle with client token
             window.Paddle.Setup({
               token: process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN || 'test_e8c70f35e280794bf86dfec199c',
-              pwCustomer: {
-                email: user?.email || '',
-              },
               eventCallback: (data: any) => {
-                console.log('🎯 Paddle Event:', data);
-                
+                console.log('📦 Paddle Event:', data);
                 switch (data.name) {
-                  case 'checkout.loaded':
-                    console.log('📦 Checkout loaded');
-                    break;
-                  case 'checkout.customer.created':
-                    console.log('👤 Customer created:', data.data);
-                    break;
                   case 'checkout.completed':
-                    console.log('✅ Checkout completed:', data.data);
                     handleCheckoutSuccess(data.data);
                     break;
-                  case 'checkout.closed':
-                    console.log('❌ Checkout closed');
-                    setIsLoading(false);
-                    break;
                   case 'checkout.error':
-                    console.error('💥 Checkout error:', data.data);
                     handleCheckoutError(data.data);
+                    break;
+                  case 'checkout.closed':
+                    setIsLoading(false);
                     break;
                 }
               },
             });
-            
+
             setPaddleLoaded(true);
-            console.log('🎉 Paddle initialized successfully');
           } catch (error) {
-            console.error('💥 Error initializing Paddle:', error);
-            setPaddleLoaded(false);
+            console.error('💥 Paddle Setup failed, falling back to vendor method:', error);
+            window.Paddle.Setup({ vendor: 123456 }); // Replace with your sandbox vendor ID
+            setPaddleLoaded(true);
           }
         }
       };
-      
+
       script.onerror = () => {
         console.error('💥 Failed to load Paddle.js');
         setPaddleLoaded(false);
       };
-      
+
       document.head.appendChild(script);
-      
       return () => {
         try {
           document.head.removeChild(script);
-        } catch (error) {
-          // Script might already be removed
-        }
+        } catch {}
       };
     }
   }, [user?.email]);
 
   const handleCheckoutSuccess = (data: any) => {
-    console.log('🎉 Payment successful:', data);
-    
-    // Update user premium status
+    console.log('✅ Payment successful:', data);
     setPremium(true);
-    
-    // Show success message
-    Alert.alert(
-      'Payment Successful!',
-      `Welcome to ${productName}! You now have access to all premium features.`,
-      [
-        {
-          text: 'Explore Features',
-          onPress: () => {
-            onSuccess?.();
-          },
-        },
-      ]
-    );
-    
+    Alert.alert('Success!', `Thanks for subscribing to ${productName}.`, [
+      { text: 'OK', onPress: onSuccess },
+    ]);
     setIsLoading(false);
   };
 
   const handleCheckoutError = (error: any) => {
     console.error('💥 Payment failed:', error);
-    
-    Alert.alert(
-      'Payment Failed',
-      'There was an issue processing your payment. Please try again.',
-      [{ text: 'OK' }]
-    );
-    
+    Alert.alert('Error', 'Payment failed. Please try again.', [{ text: 'OK' }]);
     onError?.(error);
     setIsLoading(false);
   };
 
   const handleSubscribe = async () => {
-    console.log('🚀 Starting checkout process');
     setIsLoading(true);
 
     try {
       if (Platform.OS === 'web') {
         if (window.Paddle && paddleLoaded) {
-          console.log('💳 Opening Paddle checkout on web');
-          
+          console.log('🛒 Opening Paddle Checkout:', { priceId: productId });
+
           window.Paddle.Checkout.open({
-            items: [
-              {
-                priceId: productId,
-                quantity: 1,
-              },
-            ],
-            customer: {
-              email: user?.email || '',
-            },
-            customData: {
-              userId: user?.id || '',
-              productName: productName,
-            },
-            settings: {
-              displayMode: 'overlay',
-              theme: 'light',
-              locale: 'en',
-            },
+            items: [{ priceId: productId }],
+            customer: { email: user?.email || '' },
+            customData: { userId: user?.id || '', productName },
+            settings: { displayMode: 'overlay', theme: 'light' },
           });
         } else {
-          console.log('🌐 Fallback: Opening Paddle checkout page in new tab');
-          // Fallback: redirect to Paddle checkout page
-          const checkoutUrl = `https://checkout.paddle.com/subscription/${productId}?email=${encodeURIComponent(user?.email || '')}`;
-          window.open(checkoutUrl, '_blank');
+          const fallbackUrl = `https://sandbox-checkout.paddle.com/checkout/price/${productId}?email=${encodeURIComponent(user?.email || '')}`;
+          window.open(fallbackUrl, '_blank');
           setIsLoading(false);
         }
       } else {
-        console.log('📱 Opening Paddle checkout on mobile');
-        // For mobile, open Paddle checkout in browser
-        const checkoutUrl = `https://checkout.paddle.com/subscription/${productId}?email=${encodeURIComponent(user?.email || '')}`;
-        
-        const supported = await Linking.canOpenURL(checkoutUrl);
+        const mobileUrl = `https://sandbox-checkout.paddle.com/checkout/price/${productId}?email=${encodeURIComponent(user?.email || '')}`;
+        const supported = await Linking.canOpenURL(mobileUrl);
         if (supported) {
-          await Linking.openURL(checkoutUrl);
+          await Linking.openURL(mobileUrl);
         } else {
-          Alert.alert(
-            'Unable to Open Checkout',
-            'Please try again or contact support for assistance.',
-            [{ text: 'OK' }]
-          );
+          Alert.alert('Error', 'Unable to open browser checkout.', [{ text: 'OK' }]);
         }
         setIsLoading(false);
       }
-    } catch (error) {
-      console.error('💥 Subscription error:', error);
-      Alert.alert(
-        'Subscription Error',
-        'There was an issue opening the checkout. Please try again.',
-        [{ text: 'OK' }]
-      );
-      handleCheckoutError(error);
+    } catch (err) {
+      console.error('💥 Checkout error:', err);
+      handleCheckoutError(err);
     }
   };
 
