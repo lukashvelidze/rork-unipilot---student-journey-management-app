@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert, Platform } from "react-native";
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert, Platform, Linking } from "react-native";
 import { useRouter } from "expo-router";
 import { Crown, Check, Zap, Target, FileText, Calendar, MessageSquare, Users, BookOpen, Award, Gift, ArrowRight, Star } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
@@ -144,12 +144,47 @@ Valid codes: STUDENT2024, WELCOME, BETA, EARLYBIRD, ADMIN`,
     }
   };
   
-  const handleComingSoon = () => {
-    Alert.alert(
-      "Coming Soon!",
-      "Premium subscriptions will be available soon. For now, try using a promo code to unlock premium features.",
-      [{ text: "Got it" }]
-    );
+  const handleSubscribe = async () => {
+    try {
+      if (Platform.OS === 'web') {
+        // For web, use Paddle.js
+        // @ts-ignore - Paddle is loaded via script tag
+        if (typeof window !== 'undefined' && window.Paddle) {
+          // @ts-ignore
+          window.Paddle.Checkout.open({
+            product: 'pro_01j9j8j8j8j8j8j8j8j8j8', // Replace with your actual Paddle product ID
+            email: user?.email || '',
+            successUrl: window.location.origin + '/premium?success=true',
+            closeUrl: window.location.origin + '/premium',
+          });
+        } else {
+          // Fallback: redirect to Paddle checkout page
+          const checkoutUrl = `https://checkout.paddle.com/subscription/pro_01j9j8j8j8j8j8j8j8j8j8?email=${encodeURIComponent(user?.email || '')}`;
+          window.open(checkoutUrl, '_blank');
+        }
+      } else {
+        // For mobile, open Paddle checkout in browser
+        const checkoutUrl = `https://checkout.paddle.com/subscription/pro_01j9j8j8j8j8j8j8j8j8j8?email=${encodeURIComponent(user?.email || '')}`;
+        
+        const supported = await Linking.canOpenURL(checkoutUrl);
+        if (supported) {
+          await Linking.openURL(checkoutUrl);
+        } else {
+          Alert.alert(
+            "Unable to Open Checkout",
+            "Please try again or contact support for assistance.",
+            [{ text: "OK" }]
+          );
+        }
+      }
+    } catch (error) {
+      console.error("Subscription error:", error);
+      Alert.alert(
+        "Subscription Error",
+        "There was an issue opening the checkout. Please try again.",
+        [{ text: "OK" }]
+      );
+    }
   };
   
   // Debug logging
@@ -158,6 +193,32 @@ Valid codes: STUDENT2024, WELCOME, BETA, EARLYBIRD, ADMIN`,
     console.log("Premium Screen - user?.isPremium:", user?.isPremium);
     console.log("Premium Screen - isUserPremium:", isUserPremium);
   }, [isPremium, user?.isPremium, isUserPremium]);
+  
+  // Load Paddle.js for web
+  React.useEffect(() => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      const script = document.createElement('script');
+      script.src = 'https://cdn.paddle.com/paddle/v2/paddle.js';
+      script.async = true;
+      script.onload = () => {
+        // @ts-ignore
+        if (window.Paddle) {
+          // @ts-ignore
+          window.Paddle.Setup({
+            token: 'live_your_paddle_client_token', // Replace with your actual Paddle client token
+            pwCustomer: {
+              email: user?.email || '',
+            },
+          });
+        }
+      };
+      document.head.appendChild(script);
+      
+      return () => {
+        document.head.removeChild(script);
+      };
+    }
+  }, [user?.email]);
   
   if (isUserPremium) {
     return (
@@ -313,13 +374,13 @@ Valid codes: STUDENT2024, WELCOME, BETA, EARLYBIRD, ADMIN`,
         </View>
       </Card>
       
-      {/* Coming Soon Subscription */}
-      <Card style={styles.subscriptionCard} variant="outlined">
+      {/* Premium Subscription */}
+      <Card style={styles.subscriptionCard} variant="elevated">
         <View style={styles.subscriptionHeader}>
           <Text style={styles.subscriptionTitle}>Premium Subscription</Text>
-          <View style={styles.comingSoonBadge}>
-            <Star size={12} color={Colors.warning} />
-            <Text style={styles.comingSoonText}>Coming Soon</Text>
+          <View style={styles.popularBadge}>
+            <Star size={12} color={Colors.white} />
+            <Text style={styles.popularText}>Most Popular</Text>
           </View>
         </View>
         
@@ -329,16 +390,39 @@ Valid codes: STUDENT2024, WELCOME, BETA, EARLYBIRD, ADMIN`,
         </View>
         
         <Text style={styles.subscriptionDescription}>
-          Full premium access with all features, priority support, and exclusive content.
+          Full premium access with all features, priority support, and exclusive content. Cancel anytime.
         </Text>
         
+        <View style={styles.subscriptionFeatures}>
+          <View style={styles.featureItem}>
+            <Check size={16} color={Colors.success} />
+            <Text style={styles.featureItemText}>AI-Powered Guidance</Text>
+          </View>
+          <View style={styles.featureItem}>
+            <Check size={16} color={Colors.success} />
+            <Text style={styles.featureItemText}>Premium Resources & Templates</Text>
+          </View>
+          <View style={styles.featureItem}>
+            <Check size={16} color={Colors.success} />
+            <Text style={styles.featureItemText}>Priority Support</Text>
+          </View>
+          <View style={styles.featureItem}>
+            <Check size={16} color={Colors.success} />
+            <Text style={styles.featureItemText}>Advanced Analytics</Text>
+          </View>
+        </View>
+        
         <Button
-          title="Notify Me When Available"
-          onPress={handleComingSoon}
-          variant="secondary"
+          title="Subscribe $4.99"
+          onPress={handleSubscribe}
+          variant="primary"
           fullWidth
-          style={styles.notifyButton}
+          style={styles.subscribeButton}
         />
+        
+        <Text style={styles.subscriptionNote}>
+          Secure payment powered by Paddle. Cancel anytime from your account settings.
+        </Text>
       </Card>
       
       {/* Features Grid */}
@@ -528,6 +612,8 @@ const styles = StyleSheet.create({
   subscriptionCard: {
     marginHorizontal: 20,
     marginBottom: 24,
+    borderWidth: 2,
+    borderColor: Colors.primary,
   },
   subscriptionHeader: {
     flexDirection: "row",
@@ -539,6 +625,20 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "600",
     color: Colors.text,
+  },
+  popularBadge: {
+    backgroundColor: Colors.primary,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  popularText: {
+    fontSize: 10,
+    fontWeight: "600",
+    color: Colors.white,
   },
   priceContainer: {
     flexDirection: "row",
@@ -561,8 +661,27 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     lineHeight: 20,
   },
-  notifyButton: {
-    marginBottom: 0,
+  subscriptionFeatures: {
+    marginBottom: 24,
+  },
+  featureItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  featureItemText: {
+    fontSize: 14,
+    color: Colors.text,
+    marginLeft: 8,
+  },
+  subscribeButton: {
+    marginBottom: 12,
+  },
+  subscriptionNote: {
+    fontSize: 12,
+    color: Colors.mutedText,
+    textAlign: "center",
+    lineHeight: 16,
   },
   featuresSection: {
     paddingHorizontal: 20,
