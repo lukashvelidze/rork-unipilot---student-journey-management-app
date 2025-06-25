@@ -38,6 +38,9 @@ const PaddleForm: React.FC<PaddleFormProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [paddleLoaded, setPaddleLoaded] = useState(false);
 
+  // Strip prefix like 'pri_' or 'pro_' from productId for URL usage
+  const priceIdForUrl = productId.replace(/^(pri_|pro_)/, '');
+
   useEffect(() => {
     if (Platform.OS === 'web' && typeof window !== 'undefined') {
       const script = document.createElement('script');
@@ -123,12 +126,14 @@ const PaddleForm: React.FC<PaddleFormProps> = ({
             settings: { displayMode: 'overlay', theme: 'light' },
           });
         } else {
-          const fallbackUrl = `https://sandbox-checkout.paddle.com/checkout/price/${productId}?email=${encodeURIComponent(user?.email || '')}`;
+          const fallbackUrl = `https://sandbox-checkout.paddle.com/checkout/price/${priceIdForUrl}?email=${encodeURIComponent(user?.email || '')}`;
+          console.log('Fallback URL:', fallbackUrl);
           window.open(fallbackUrl, '_blank');
           setIsLoading(false);
         }
       } else {
-        const mobileUrl = `https://sandbox-checkout.paddle.com/checkout/price/${productId}?email=${encodeURIComponent(user?.email || '')}`;
+        const mobileUrl = `https://sandbox-checkout.paddle.com/checkout/price/${priceIdForUrl}?email=${encodeURIComponent(user?.email || '')}`;
+        console.log('Mobile URL:', mobileUrl);
         const supported = await Linking.canOpenURL(mobileUrl);
         if (supported) {
           await Linking.openURL(mobileUrl);
@@ -156,3 +161,4 @@ const PaddleForm: React.FC<PaddleFormProps> = ({
 };
 
 export default PaddleForm;
+
