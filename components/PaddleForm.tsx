@@ -25,7 +25,7 @@ declare global {
 }
 
 const PaddleForm: React.FC<PaddleFormProps> = ({
-  productId = 'pri_01jyk3h7eec66x5m7h31p66r8w', // Replace with your sandbox product ID
+  productId = 'pro_01jyk34xa92kd6h2x3vw7sv5tf', // Replace with your sandbox product ID
   productName = 'UniPilot Premium',
   price = '$4.99',
   onSuccess,
@@ -72,7 +72,7 @@ const PaddleForm: React.FC<PaddleFormProps> = ({
             setPaddleLoaded(true);
           } catch (error) {
             console.error('💥 Paddle Setup failed, falling back to vendor method:', error);
-            window.Paddle.Setup({ vendor: 123456 }); // Replace with your sandbox vendor ID
+            window.Paddle.Setup({ vendor: 33436 }); // Replace with your sandbox vendor ID
             setPaddleLoaded(true);
           }
         }
