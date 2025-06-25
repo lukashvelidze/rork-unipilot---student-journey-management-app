@@ -153,7 +153,7 @@ Valid codes: STUDENT2024, WELCOME, BETA, EARLYBIRD, ADMIN`,
   };
   
   const handleSubscribe = () => {
-    setShowPaddleCheckout(true);
+    router.push("/premium/payment");
   };
   
   const handlePaddleNavigation = (navState: any) => {
