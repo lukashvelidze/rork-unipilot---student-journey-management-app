@@ -1,4 +1,5 @@
-import { useEffect, useState, Platform } from "react";
+import { useEffect, useState } from "react";
+import { Platform } from "react-native";
 
 // Web-only Paddle hook
 export const usePaddle = () => {
