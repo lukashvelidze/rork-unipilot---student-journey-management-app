@@ -155,7 +155,7 @@ Valid codes: STUDENT2024, WELCOME, BETA, EARLYBIRD, ADMIN`,
       const data = JSON.parse(event.nativeEvent.data);
       console.log("Paddle message:", data);
       
-      if (data.type === 'checkout.success') {
+      if (data.type === 'checkout.completed') {
         setShowPaddleCheckout(false);
         setPremium(true);
         Alert.alert(
@@ -172,8 +172,6 @@ Valid codes: STUDENT2024, WELCOME, BETA, EARLYBIRD, ADMIN`,
             },
           ]
         );
-      } else if (data.type === 'checkout.error') {
-        Alert.alert("Payment Error", "There was an issue processing your payment. Please try again.");
       } else if (data.type === 'checkout.closed') {
         setShowPaddleCheckout(false);
         Alert.alert("Checkout Closed", "You can subscribe anytime from the premium page.");
@@ -188,8 +186,6 @@ Valid codes: STUDENT2024, WELCOME, BETA, EARLYBIRD, ADMIN`,
 <html>
   <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta charset="UTF-8">
-    <title>Paddle Checkout</title>
     <script src="https://cdn.paddle.com/paddle.js"></script>
     <style>
       body {
@@ -221,12 +217,10 @@ Valid codes: STUDENT2024, WELCOME, BETA, EARLYBIRD, ADMIN`,
       }
     </style>
     <script>
-      function startCheckout() {
+      window.onload = function () {
         try {
           Paddle.Environment.set('sandbox'); // remove this line for production
-          Paddle.Setup({ 
-            token: 'test_e8c70f35e280794bf86dfec199c' 
-          });
+          Paddle.Setup({ token: 'test_e8c70f35e280794bf86dfec199c' });
 
           Paddle.Checkout.open({
             items: [
@@ -258,7 +252,7 @@ Valid codes: STUDENT2024, WELCOME, BETA, EARLYBIRD, ADMIN`,
           // Listen for checkout events
           Paddle.Checkout.on('checkout.completed', function(data) {
             window.ReactNativeWebView.postMessage(JSON.stringify({
-              type: 'checkout.success',
+              type: 'checkout.completed',
               data: data
             }));
           });
@@ -277,26 +271,7 @@ Valid codes: STUDENT2024, WELCOME, BETA, EARLYBIRD, ADMIN`,
             error: error.message
           }));
         }
-      }
-
-      // Wait for Paddle to be loaded with polling method
-      const interval = setInterval(() => {
-        if (window.Paddle && typeof window.Paddle.Checkout === 'object') {
-          clearInterval(interval);
-          startCheckout();
-        }
-      }, 100);
-
-      // Fallback timeout after 10 seconds
-      setTimeout(() => {
-        clearInterval(interval);
-        if (!window.Paddle) {
-          window.ReactNativeWebView.postMessage(JSON.stringify({
-            type: 'checkout.error',
-            error: 'Paddle failed to load'
-          }));
-        }
-      }, 10000);
+      };
     </script>
   </head>
   <body>
@@ -363,12 +338,9 @@ Valid codes: STUDENT2024, WELCOME, BETA, EARLYBIRD, ADMIN`,
                       <Check size={14} color={Colors.success} />
                     </View>
                   ) : (
-                    <TouchableOpacity
-                      style={styles.subscribeFeatureButton}
-                      onPress={handleSubscribe}
-                    >
-                      <Text style={styles.subscribeFeatureText}>Subscribe $4.99</Text>
-                    </TouchableOpacity>
+                    <View style={styles.comingSoonBadge}>
+                      <Text style={styles.comingSoonText}>Soon</Text>
+                    </View>
                   )}
                 </View>
                 <Text style={styles.featureTitle}>{feature.title}</Text>
@@ -532,12 +504,9 @@ Valid codes: STUDENT2024, WELCOME, BETA, EARLYBIRD, ADMIN`,
               <View style={styles.featureHeader}>
                 <feature.icon size={24} color={feature.color} />
                 {!feature.available && (
-                  <TouchableOpacity
-                    style={styles.subscribeFeatureButton}
-                    onPress={handleSubscribe}
-                  >
-                    <Text style={styles.subscribeFeatureText}>Subscribe $4.99</Text>
-                  </TouchableOpacity>
+                  <View style={styles.comingSoonBadge}>
+                    <Text style={styles.comingSoonText}>Soon</Text>
+                  </View>
                 )}
               </View>
               <Text style={styles.featureTitle}>{feature.title}</Text>
@@ -860,13 +829,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  subscribeFeatureButton: {
-    backgroundColor: Colors.primary,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+  comingSoonBadge: {
+    backgroundColor: Colors.warning,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
     borderRadius: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 2,
   },
-  subscribeFeatureText: {
+  comingSoonText: {
     fontSize: 10,
     fontWeight: "600",
     color: Colors.white,
