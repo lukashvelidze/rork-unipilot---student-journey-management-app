@@ -25,6 +25,7 @@ interface UserState {
   }) => void;
   setPremium: (isPremium: boolean) => void;
   updateDestinationCountry: (country: Country) => void;
+  updateHomeCountry: (country: Country) => void;
 }
 
 export const useUserStore = create<UserState>()(
@@ -128,17 +129,37 @@ export const useUserStore = create<UserState>()(
         set((state) => {
           if (!state.user) return state;
           
+          console.log("Updating destination country to:", country.name);
+          
           // Generate new journey progress for the new destination country
           const newJourneyProgress = getJourneyProgressForCountry(country.code);
+          console.log("Generated new journey progress with", newJourneyProgress.length, "stages");
+          
+          const updatedUser = {
+            ...state.user,
+            destinationCountry: country,
+            journeyProgress: newJourneyProgress,
+          };
+          
+          // Also update the journey store
+          const { useJourneyStore } = require("@/store/journeyStore");
+          const journeyStore = useJourneyStore.getState();
+          journeyStore.setJourneyProgress(newJourneyProgress);
           
           return {
-            user: {
-              ...state.user,
-              destinationCountry: country,
-              journeyProgress: newJourneyProgress,
-            },
+            user: updatedUser,
           };
         }),
+      
+      updateHomeCountry: (country) =>
+        set((state) => ({
+          user: state.user
+            ? {
+                ...state.user,
+                homeCountry: country,
+              }
+            : null,
+        })),
     }),
     {
       name: "user-storage",

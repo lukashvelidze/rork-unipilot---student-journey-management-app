@@ -91,9 +91,9 @@ export const getTopicColor = (topic: Topic): string => {
     case "culture":
       return "#9C27B0"; // Purple
     case "academics":
-      return Colors.academic; // Indigo
+      return Colors.info; // Blue
     case "career":
-      return Colors.career; // Teal
+      return Colors.accent; // Teal
     case "general":
     default:
       return Colors.info; // Info blue
@@ -189,6 +189,18 @@ export const getCountryVisaInfo = (countryCode: string) => {
       processingTime: "2-4 weeks",
       fee: "€99",
       requirements: ["Acceptance letter", "Financial resources", "Academic transcripts", "French proficiency"]
+    },
+    SE: {
+      name: "Residence Permit for Studies",
+      processingTime: "2-4 weeks",
+      fee: "SEK 1,500",
+      requirements: ["Admission letter", "Financial proof", "Health insurance", "Academic documents"]
+    },
+    GE: {
+      name: "Student Visa",
+      processingTime: "2-3 weeks",
+      fee: "$20",
+      requirements: ["Admission letter", "Financial proof", "Health insurance", "Academic documents"]
     }
   };
 
@@ -244,6 +256,18 @@ export const getCountryCostInfo = (countryCode: string) => {
       monthlyLiving: "€600-1,200",
       tuition: "€170-3,770/year (public)",
       accommodation: "€300-800/month"
+    },
+    SE: {
+      currency: "SEK",
+      monthlyLiving: "SEK 8,000-12,000",
+      tuition: "SEK 80,000-140,000/year",
+      accommodation: "SEK 4,000-8,000/month"
+    },
+    GE: {
+      currency: "GEL",
+      monthlyLiving: "₾400-800",
+      tuition: "₾2,000-8,000/year",
+      accommodation: "₾200-500/month"
     }
   };
 
@@ -252,5 +276,62 @@ export const getCountryCostInfo = (countryCode: string) => {
     monthlyLiving: "Varies",
     tuition: "Varies",
     accommodation: "Varies"
+  };
+};
+
+// Get country-specific language requirements
+export const getCountryLanguageInfo = (countryCode: string) => {
+  const languageInfo: Record<string, { language: string; tests: string[]; minimumScore: string }> = {
+    US: {
+      language: "English",
+      tests: ["TOEFL", "IELTS", "Duolingo"],
+      minimumScore: "TOEFL 80+ / IELTS 6.5+"
+    },
+    UK: {
+      language: "English", 
+      tests: ["IELTS", "TOEFL", "PTE"],
+      minimumScore: "IELTS 6.0+ / TOEFL 72+"
+    },
+    CA: {
+      language: "English/French",
+      tests: ["IELTS", "TOEFL", "CELPIP", "TEF"],
+      minimumScore: "IELTS 6.5+ / TOEFL 86+"
+    },
+    AU: {
+      language: "English",
+      tests: ["IELTS", "TOEFL", "PTE", "CAE"],
+      minimumScore: "IELTS 6.5+ / TOEFL 79+"
+    },
+    DE: {
+      language: "German/English",
+      tests: ["TestDaF", "DSH", "IELTS", "TOEFL"],
+      minimumScore: "TestDaF 4+ / IELTS 6.5+"
+    },
+    NL: {
+      language: "Dutch/English",
+      tests: ["IELTS", "TOEFL", "NT2"],
+      minimumScore: "IELTS 6.5+ / TOEFL 90+"
+    },
+    FR: {
+      language: "French/English",
+      tests: ["DELF", "DALF", "TCF", "IELTS"],
+      minimumScore: "DELF B2+ / IELTS 6.5+"
+    },
+    SE: {
+      language: "Swedish/English",
+      tests: ["IELTS", "TOEFL", "TISUS"],
+      minimumScore: "IELTS 6.5+ / TOEFL 90+"
+    },
+    GE: {
+      language: "Georgian/English",
+      tests: ["IELTS", "TOEFL"],
+      minimumScore: "IELTS 5.5+ / TOEFL 70+"
+    }
+  };
+
+  return languageInfo[countryCode] || {
+    language: "Local language/English",
+    tests: ["IELTS", "TOEFL"],
+    minimumScore: "Varies by institution"
   };
 };

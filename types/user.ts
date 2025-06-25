@@ -15,6 +15,7 @@ export interface Task {
   completed: boolean;
   completedDate?: string;
   notes?: string;
+  dueDate?: string;
 }
 
 export interface JourneyProgress {
@@ -55,6 +56,8 @@ export interface Document {
   notes?: string;
 }
 
+export type MemoryMood = "excited" | "nervous" | "happy" | "proud" | "grateful" | "accomplished" | "hopeful" | "determined";
+
 export interface Memory {
   id: string;
   title: string;
@@ -63,6 +66,7 @@ export interface Memory {
   stage: JourneyStage;
   imageUrl?: string;
   tags?: string[];
+  mood?: MemoryMood;
 }
 
 export interface EducationBackground {
@@ -108,4 +112,37 @@ export interface UserPreferences {
     profileVisible: boolean;
     showProgress: boolean;
   };
+}
+
+// Country-specific information interfaces
+export interface CountryVisaInfo {
+  name: string;
+  processingTime: string;
+  fee: string;
+  requirements: string[];
+}
+
+export interface CountryCostInfo {
+  currency: string;
+  monthlyLiving: string;
+  tuition: string;
+  accommodation: string;
+}
+
+export interface CountryLanguageInfo {
+  language: string;
+  tests: string[];
+  minimumScore: string;
+}
+
+// Extended country interface with additional study abroad information
+export interface StudyDestination extends Country {
+  visaInfo?: CountryVisaInfo;
+  costInfo?: CountryCostInfo;
+  languageInfo?: CountryLanguageInfo;
+  popularUniversities?: string[];
+  bestTimeToApply?: string;
+  academicYear?: string;
+  workRights?: string;
+  postStudyWork?: string;
 }

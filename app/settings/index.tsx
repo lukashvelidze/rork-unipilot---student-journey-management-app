@@ -14,14 +14,19 @@ import {
   Globe,
   Download,
   Trash2,
-  Crown
+  Crown,
+  MapPin,
+  Home
 } from "lucide-react-native";
 import { useColors } from "@/hooks/useColors";
 import { useThemeStore } from "@/store/themeStore";
 import Theme from "@/constants/theme";
 import Card from "@/components/Card";
 import Button from "@/components/Button";
+import CountrySelector from "@/components/CountrySelector";
 import { useUserStore } from "@/store/userStore";
+import { countries } from "@/mocks/countries";
+import { Country } from "@/types/user";
 
 interface SettingItem {
   id: string;
@@ -29,21 +34,25 @@ interface SettingItem {
   subtitle?: string;
   icon: any;
   iconColor: string;
-  type: "navigation" | "toggle" | "action";
+  type: "navigation" | "toggle" | "action" | "country_selector";
   value?: boolean;
   onPress?: () => void;
   onToggle?: (value: boolean) => void;
   destructive?: boolean;
+  country?: Country | null;
+  onCountryChange?: (country: Country) => void;
 }
 
 export default function SettingsScreen() {
   const router = useRouter();
   const Colors = useColors();
-  const { user, logout, isPremium } = useUserStore();
+  const { user, logout, isPremium, updateDestinationCountry, updateHomeCountry } = useUserStore();
   const { isDarkMode, toggleDarkMode } = useThemeStore();
   
   const [notifications, setNotifications] = useState(true);
   const [autoDownload, setAutoDownload] = useState(false);
+  const [showDestinationSelector, setShowDestinationSelector] = useState(false);
+  const [showHomeSelector, setShowHomeSelector] = useState(false);
   
   const handleLogout = () => {
     Alert.alert(
@@ -104,6 +113,39 @@ export default function SettingsScreen() {
     );
   };
   
+  const handleDestinationCountryChange = (country: Country) => {
+    Alert.alert(
+      "Change Destination Country",
+      `Changing your destination to ${country.name} will update your journey tasks and requirements. This action cannot be undone. Continue?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Change",
+          style: "default",
+          onPress: () => {
+            updateDestinationCountry(country);
+            setShowDestinationSelector(false);
+            Alert.alert(
+              "Destination Updated",
+              `Your destination has been changed to ${country.name}. Your journey tasks have been updated with country-specific requirements.`,
+              [{ text: "OK" }]
+            );
+          },
+        },
+      ]
+    );
+  };
+  
+  const handleHomeCountryChange = (country: Country) => {
+    updateHomeCountry(country);
+    setShowHomeSelector(false);
+    Alert.alert(
+      "Home Country Updated",
+      `Your home country has been changed to ${country.name}.`,
+      [{ text: "OK" }]
+    );
+  };
+  
   const settingSections = [
     {
       title: "Account",
@@ -125,6 +167,29 @@ export default function SettingsScreen() {
           iconColor: Colors.premium,
           type: "navigation",
           onPress: () => router.push("/premium"),
+        },
+      ] as SettingItem[],
+    },
+    {
+      title: "Journey Settings",
+      items: [
+        {
+          id: "homeCountry",
+          title: "Home Country",
+          subtitle: user?.homeCountry?.name || "Not set",
+          icon: Home,
+          iconColor: Colors.secondary,
+          type: "navigation",
+          onPress: () => setShowHomeSelector(true),
+        },
+        {
+          id: "destinationCountry",
+          title: "Destination Country",
+          subtitle: user?.destinationCountry?.name || "Not set",
+          icon: MapPin,
+          iconColor: Colors.accent,
+          type: "navigation",
+          onPress: () => setShowDestinationSelector(true),
         },
       ] as SettingItem[],
     },
@@ -316,6 +381,54 @@ export default function SettingsScreen() {
         </View>
       ))}
       
+      {/* Country Selectors */}
+      {showDestinationSelector && (
+        <View style={styles.modalOverlay}>
+          <Card style={[styles.modalCard, { backgroundColor: Colors.card }]}>
+            <Text style={[styles.modalTitle, { color: Colors.text }]}>Change Destination Country</Text>
+            <Text style={[styles.modalSubtitle, { color: Colors.lightText }]}>
+              This will update your journey tasks with country-specific requirements.
+            </Text>
+            <CountrySelector
+              label="Select Destination Country"
+              value={user?.destinationCountry || null}
+              onChange={handleDestinationCountryChange}
+              countries={countries}
+            />
+            <View style={styles.modalButtons}>
+              <Button
+                title="Cancel"
+                onPress={() => setShowDestinationSelector(false)}
+                variant="outline"
+                style={styles.modalButton}
+              />
+            </View>
+          </Card>
+        </View>
+      )}
+      
+      {showHomeSelector && (
+        <View style={styles.modalOverlay}>
+          <Card style={[styles.modalCard, { backgroundColor: Colors.card }]}>
+            <Text style={[styles.modalTitle, { color: Colors.text }]}>Change Home Country</Text>
+            <CountrySelector
+              label="Select Home Country"
+              value={user?.homeCountry || null}
+              onChange={handleHomeCountryChange}
+              countries={countries}
+            />
+            <View style={styles.modalButtons}>
+              <Button
+                title="Cancel"
+                onPress={() => setShowHomeSelector(false)}
+                variant="outline"
+                style={styles.modalButton}
+              />
+            </View>
+          </Card>
+        </View>
+      )}
+      
       {/* App Version */}
       <View style={styles.versionContainer}>
         <Text style={[styles.versionText, { color: Colors.lightText }]}>UniPilot v1.0.0</Text>
@@ -435,6 +548,40 @@ const styles = StyleSheet.create({
   divider: {
     height: 1,
     marginLeft: 72,
+  },
+  modalOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  modalCard: {
+    width: "100%",
+    maxWidth: 400,
+    padding: 24,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    marginBottom: 8,
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    marginBottom: 20,
+    lineHeight: 20,
+  },
+  modalButtons: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    marginTop: 20,
+  },
+  modalButton: {
+    marginLeft: 12,
   },
   versionContainer: {
     alignItems: "center",
