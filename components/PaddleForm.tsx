@@ -11,7 +11,7 @@ interface PaddleFormProps {
   onSuccess?: () => void;
   onError?: (error: any) => void;
   buttonTitle?: string;
-  buttonVariant?: "primary" | "secondary" | "outline" | "text" | "destructive";
+  buttonVariant?: 'primary' | 'secondary' | 'outline' | 'text' | 'destructive';
   disabled?: boolean;
 }
 
@@ -41,6 +41,7 @@ const PaddleForm: React.FC<PaddleFormProps> = ({
   const [paddleLoaded, setPaddleLoaded] = useState(false);
 
   const priceIdForUrl = priceId.replace(/^pri_/, '');
+  const hostedCheckoutId = 'hsc_01yourrealhostedcheckoutid'; // 🟠 Replace with your real ID
 
   useEffect(() => {
     if (Platform.OS === 'web' && typeof window !== 'undefined') {
@@ -52,33 +53,24 @@ const PaddleForm: React.FC<PaddleFormProps> = ({
         if (window.Paddle) {
           window.Paddle.Environment.set('sandbox');
 
-          const paddleToken = process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN || 'test_e8c70f35e280794bf86dfec199c';
+          window.Paddle.Setup({
+            token: process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN || 'test_e8c70f35e280794bf86dfec199c',
+            eventCallback: (data: any) => {
+              switch (data.name) {
+                case 'checkout.completed':
+                  handleCheckoutSuccess(data.data);
+                  break;
+                case 'checkout.error':
+                  handleCheckoutError(data.data);
+                  break;
+                case 'checkout.closed':
+                  setIsLoading(false);
+                  break;
+              }
+            },
+          });
 
-          try {
-            window.Paddle.Setup({
-              token: paddleToken,
-              eventCallback: (data: any) => {
-                switch (data.name) {
-                  case 'checkout.completed':
-                    handleCheckoutSuccess(data.data);
-                    break;
-                  case 'checkout.error':
-                    handleCheckoutError(data.data);
-                    break;
-                  case 'checkout.closed':
-                    setIsLoading(false);
-                    break;
-                  default:
-                    break;
-                }
-              },
-            });
-            setPaddleLoaded(true);
-          } catch (error) {
-            console.error('Paddle setup failed:', error);
-            window.Paddle.Setup({ vendor: 33436 });
-            setPaddleLoaded(true);
-          }
+          setPaddleLoaded(true);
         }
       };
 
@@ -114,21 +106,30 @@ const PaddleForm: React.FC<PaddleFormProps> = ({
     setIsLoading(true);
 
     try {
+      const userEmail = encodeURIComponent(user?.email || '');
+
       if (Platform.OS === 'web') {
         if (window.Paddle && paddleLoaded) {
           window.Paddle.Checkout.open({
             items: [{ priceId }],
             customer: { email: user?.email || '' },
-            customData: { userId: user?.id || '', productName, productId },
-            settings: { displayMode: 'overlay', theme: 'light' },
+            customData: {
+              userId: user?.id || '',
+              productName,
+              productId,
+            },
+            settings: {
+              displayMode: 'overlay',
+              theme: 'light',
+            },
           });
         } else {
-          const fallbackUrl = `https://pay.paddle.io/checkout/price/${priceIdForUrl}?email=${encodeURIComponent(user?.email || '')}`;
+          const fallbackUrl = `https://pay.paddle.com/checkout/${hostedCheckoutId}?price_id=${priceId}&email=${userEmail}`;
           window.open(fallbackUrl, '_blank');
           setIsLoading(false);
         }
       } else {
-        const mobileUrl = `https://pay.paddle.io/checkout/price/${priceIdForUrl}?email=${encodeURIComponent(user?.email || '')}`;
+        const mobileUrl = `https://pay.paddle.com/checkout/${hostedCheckoutId}?price_id=${priceId}&email=${userEmail}`;
         const supported = await Linking.canOpenURL(mobileUrl);
         if (supported) {
           await Linking.openURL(mobileUrl);
@@ -138,6 +139,7 @@ const PaddleForm: React.FC<PaddleFormProps> = ({
         setIsLoading(false);
       }
     } catch (err) {
+      console.error('Checkout error:', err);
       handleCheckoutError(err);
     }
   };
