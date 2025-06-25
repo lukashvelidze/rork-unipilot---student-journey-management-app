@@ -1,8 +1,9 @@
 import React, { useState } from "react";
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert, Platform, Linking } from "react-native";
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert, Platform, Modal } from "react-native";
 import { useRouter } from "expo-router";
-import { Crown, Check, Zap, Target, FileText, Calendar, MessageSquare, Users, BookOpen, Award, Gift, ArrowRight, Star } from "lucide-react-native";
+import { Crown, Check, Zap, Target, FileText, Calendar, MessageSquare, Users, BookOpen, Award, Gift, ArrowRight, Star, X } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
+import { WebView } from "react-native-webview";
 import Colors from "@/constants/colors";
 import Theme from "@/constants/theme";
 import Card from "@/components/Card";
@@ -10,12 +11,19 @@ import Button from "@/components/Button";
 import Input from "@/components/Input";
 import { useUserStore } from "@/store/userStore";
 
+// Paddle Configuration
+const PADDLE_PRODUCT_ID = 'pro_01jyk34xa92kd6h2x3vw7sv5tf';
+const PADDLE_PRICE_ID = 'pri_01jyk3h7eec66x5m7h31p66r8w';
+const CLIENT_TOKEN = 'test_e8c70f35e280794bf86dfec199c'; // Paddle Sandbox token
+const VENDOR_ID = '33436';
+
 export default function PremiumScreen() {
   const router = useRouter();
   const { user, isPremium, setPremium } = useUserStore();
   const [promoCode, setPromoCode] = useState("");
   const [isProcessingPromo, setIsProcessingPromo] = useState(false);
   const [showPromoInput, setShowPromoInput] = useState(false);
+  const [showPaddleCheckout, setShowPaddleCheckout] = useState(false);
   
   // Use the isPremium from store, not just from user object
   const isUserPremium = isPremium || user?.isPremium || false;
@@ -144,48 +152,38 @@ Valid codes: STUDENT2024, WELCOME, BETA, EARLYBIRD, ADMIN`,
     }
   };
   
-  const handleSubscribe = async () => {
-    try {
-      if (Platform.OS === 'web') {
-        // For web, use Paddle.js
-        // @ts-ignore - Paddle is loaded via script tag
-        if (typeof window !== 'undefined' && window.Paddle) {
-          // @ts-ignore
-          window.Paddle.Checkout.open({
-            product: 'pro_01j9j8j8j8j8j8j8j8j8j8', // Replace with your actual Paddle product ID
-            email: user?.email || '',
-            successUrl: window.location.origin + '/premium?success=true',
-            closeUrl: window.location.origin + '/premium',
-          });
-        } else {
-          // Fallback: redirect to Paddle checkout page
-          const checkoutUrl = `https://checkout.paddle.com/subscription/pro_01j9j8j8j8j8j8j8j8j8j8?email=${encodeURIComponent(user?.email || '')}`;
-          window.open(checkoutUrl, '_blank');
-        }
-      } else {
-        // For mobile, open Paddle checkout in browser
-        const checkoutUrl = `https://checkout.paddle.com/subscription/pro_01j9j8j8j8j8j8j8j8j8j8?email=${encodeURIComponent(user?.email || '')}`;
-        
-        const supported = await Linking.canOpenURL(checkoutUrl);
-        if (supported) {
-          await Linking.openURL(checkoutUrl);
-        } else {
-          Alert.alert(
-            "Unable to Open Checkout",
-            "Please try again or contact support for assistance.",
-            [{ text: "OK" }]
-          );
-        }
-      }
-    } catch (error) {
-      console.error("Subscription error:", error);
+  const handleSubscribe = () => {
+    setShowPaddleCheckout(true);
+  };
+  
+  const handlePaddleNavigation = (navState: any) => {
+    const { url } = navState;
+    console.log("Paddle navigation:", url);
+    
+    if (url.includes('checkout-complete') || url.includes('success')) {
+      setShowPaddleCheckout(false);
+      setPremium(true);
       Alert.alert(
-        "Subscription Error",
-        "There was an issue opening the checkout. Please try again.",
-        [{ text: "OK" }]
+        "Welcome to Premium!",
+        "Your subscription is now active. Enjoy all premium features!",
+        [
+          {
+            text: "Explore Features",
+            onPress: () => router.push("/premium/resources"),
+          },
+          {
+            text: "OK",
+            style: "cancel",
+          },
+        ]
       );
+    } else if (url.includes('checkout-cancel') || url.includes('cancel')) {
+      setShowPaddleCheckout(false);
+      Alert.alert("Subscription Canceled", "You can subscribe anytime from the premium page.");
     }
   };
+  
+  const paddleCheckoutUrl = `https://sandbox-checkout.paddle.com/checkout?product_id=${PADDLE_PRODUCT_ID}&price_id=${PADDLE_PRICE_ID}&client_token=${CLIENT_TOKEN}&customer_email=${encodeURIComponent(user?.email || 'user@example.com')}&passthrough=${encodeURIComponent(JSON.stringify({ user_id: user?.id || 'anonymous' }))}`;
   
   // Debug logging
   React.useEffect(() => {
@@ -193,32 +191,6 @@ Valid codes: STUDENT2024, WELCOME, BETA, EARLYBIRD, ADMIN`,
     console.log("Premium Screen - user?.isPremium:", user?.isPremium);
     console.log("Premium Screen - isUserPremium:", isUserPremium);
   }, [isPremium, user?.isPremium, isUserPremium]);
-  
-  // Load Paddle.js for web
-  React.useEffect(() => {
-    if (Platform.OS === 'web' && typeof window !== 'undefined') {
-      const script = document.createElement('script');
-      script.src = 'https://cdn.paddle.com/paddle/v2/paddle.js';
-      script.async = true;
-      script.onload = () => {
-        // @ts-ignore
-        if (window.Paddle) {
-          // @ts-ignore
-          window.Paddle.Setup({
-            token: 'live_your_paddle_client_token', // Replace with your actual Paddle client token
-            pwCustomer: {
-              email: user?.email || '',
-            },
-          });
-        }
-      };
-      document.head.appendChild(script);
-      
-      return () => {
-        document.head.removeChild(script);
-      };
-    }
-  }, [user?.email]);
   
   if (isUserPremium) {
     return (
@@ -481,6 +453,34 @@ Valid codes: STUDENT2024, WELCOME, BETA, EARLYBIRD, ADMIN`,
           <Text style={styles.debugText}>Current promo code: "{promoCode}"</Text>
         </Card>
       )}
+      
+      {/* Paddle Checkout Modal */}
+      <Modal
+        visible={showPaddleCheckout}
+        animationType="slide"
+        presentationStyle="pageSheet"
+      >
+        <View style={styles.checkoutModal}>
+          <View style={styles.checkoutHeader}>
+            <Text style={styles.checkoutTitle}>Complete Your Subscription</Text>
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={() => setShowPaddleCheckout(false)}
+            >
+              <X size={24} color={Colors.text} />
+            </TouchableOpacity>
+          </View>
+          <WebView
+            source={{ uri: paddleCheckoutUrl }}
+            onNavigationStateChange={handlePaddleNavigation}
+            style={styles.webview}
+            startInLoadingState={true}
+            scalesPageToFit={true}
+            javaScriptEnabled={true}
+            domStorageEnabled={true}
+          />
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
@@ -799,5 +799,29 @@ const styles = StyleSheet.create({
   },
   debugButton: {
     marginTop: 8,
+  },
+  checkoutModal: {
+    flex: 1,
+    backgroundColor: Colors.background,
+  },
+  checkoutHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+    backgroundColor: Colors.card,
+  },
+  checkoutTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: Colors.text,
+  },
+  closeButton: {
+    padding: 8,
+  },
+  webview: {
+    flex: 1,
   },
 });
