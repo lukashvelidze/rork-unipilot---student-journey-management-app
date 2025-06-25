@@ -166,7 +166,7 @@ const PaddleForm: React.FC<PaddleFormProps> = ({
         }
       } else {
         console.log('📱 Opening mobile checkout...');
-        const mobileUrl = `https://sandbox-checkout.paddle.com/checkout/price/${priceIdForUrl}?email=${encodeURIComponent(user?.email || '')}`;
+        const mobileUrl = `https://pay.paddle.io/checkout/price/${priceIdForUrl}?email=${encodeURIComponent(user?.email || '')}`;
         console.log('🔗 Mobile URL:', mobileUrl);
         
         const supported = await Linking.canOpenURL(mobileUrl);
