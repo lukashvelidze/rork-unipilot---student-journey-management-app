@@ -11,6 +11,7 @@ export const lightColors = {
   accent: "#FFD93D", // Warm yellow - optimistic
   accentLight: "#FFE55C",
   success: "#6BCF7F", // Fresh green
+  successBackground: "rgba(107, 207, 127, 0.1)", // Light success background
   warning: "#FFA726", // Warm orange
   error: "#FF5252", // Soft red
   info: "#42A5F5", // Soft blue
@@ -93,6 +94,7 @@ export const darkColors = {
   accent: "#FFD93D",
   accentLight: "#FFE55C",
   success: "#6BCF7F",
+  successBackground: "rgba(107, 207, 127, 0.15)", // Light success background for dark mode
   warning: "#FFA726",
   error: "#FF5252",
   info: "#42A5F5",
