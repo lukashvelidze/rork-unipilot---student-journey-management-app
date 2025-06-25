@@ -355,7 +355,8 @@ Valid codes: STUDENT2024, WELCOME, BETA, EARLYBIRD, ADMIN`,
         </View>
         
         <PaddleForm
-          productId="pro_01jyk3zvady7bm4h0cxn8e37ye"
+          productId="pro_01jyk34xa92kd6h2x3vw7sv5tf"
+          priceId="pri_01jyk3h7eec66x5m7h31p66r8w"
           productName="UniPilot Premium"
           price="$4.99"
           buttonTitle="Subscribe $4.99"
