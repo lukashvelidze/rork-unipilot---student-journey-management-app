@@ -26,7 +26,7 @@ declare global {
 }
 
 const PaddleForm: React.FC<PaddleFormProps> = ({
-  productId = 'pro_01jyk3zvady7bm4h0cxn8e37ye', // Placeholder - replace with actual product ID
+  productId = 'pro_01jyk34xa92kd6h2x3vw7sv5tf', // Placeholder - replace with actual product ID
   productName = 'UniPilot Premium',
   price = '$4.99',
   onSuccess,
