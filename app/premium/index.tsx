@@ -164,7 +164,7 @@ Valid codes: STUDENT2024, WELCOME, BETA, EARLYBIRD, ADMIN`,
         }
       } else {
         // For mobile, open Paddle checkout in browser
-        const checkoutUrl = `https://checkout.paddle.com/subscription/pro_01j9j8j8j8j8j8j8j8j8j8?email=${encodeURIComponent(user?.email || '')}`;
+        const checkoutUrl = `https://checkout.paddle.com/subscription/pro_01jyk34xa92kd6h2x3vw7sv5tf?email=${encodeURIComponent(user?.email || '')}`;
         
         const supported = await Linking.canOpenURL(checkoutUrl);
         if (supported) {
