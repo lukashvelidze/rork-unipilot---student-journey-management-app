@@ -6,7 +6,7 @@ export default function PremiumScreen({ user }) {
   const [showCheckout, setShowCheckout] = useState(false);
   const email = encodeURIComponent(user?.email || "test@example.com");
 
-  const checkoutUrl = `https://yourdomain.com/checkout.html?email=${email}`;
+  const checkoutUrl = `https://lukashvelidze.github.io/unipilot/checkout.html?email=${email}`;
 
   if (showCheckout) {
     return <WebView source={{ uri: checkoutUrl }} />;
