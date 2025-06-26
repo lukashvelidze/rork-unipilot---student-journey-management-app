@@ -1,6 +1,6 @@
 import React from "react";
-import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { Tabs } from "expo-router";
+import { Home, Map, Users, FileText, User } from "lucide-react-native";
 import { useColors } from "@/hooks/useColors";
 import { useThemeStore } from "@/store/themeStore";
 
@@ -43,7 +43,7 @@ export default function TabLayout() {
         name="index"
         options={{
           title: "Home",
-          tabBarIcon: ({ color }) => <FontAwesome size={24} name="home" color={color} />,
+          tabBarIcon: ({ color }) => <Home size={24} color={color} />,
           headerShown: false,
         }}
       />
@@ -51,7 +51,7 @@ export default function TabLayout() {
         name="journey"
         options={{
           title: "Journey",
-          tabBarIcon: ({ color }) => <FontAwesome size={24} name="map" color={color} />,
+          tabBarIcon: ({ color }) => <Map size={24} color={color} />,
           headerShown: false,
         }}
       />
@@ -59,7 +59,7 @@ export default function TabLayout() {
         name="community"
         options={{
           title: "Community",
-          tabBarIcon: ({ color }) => <FontAwesome size={24} name="users" color={color} />,
+          tabBarIcon: ({ color }) => <Users size={24} color={color} />,
           headerShown: false,
         }}
       />
@@ -67,7 +67,7 @@ export default function TabLayout() {
         name="documents"
         options={{
           title: "Documents",
-          tabBarIcon: ({ color }) => <FontAwesome size={24} name="folder" color={color} />,
+          tabBarIcon: ({ color }) => <FileText size={24} color={color} />,
           headerShown: false,
         }}
       />
@@ -75,7 +75,7 @@ export default function TabLayout() {
         name="profile"
         options={{
           title: "Profile",
-          tabBarIcon: ({ color }) => <FontAwesome size={24} name="user" color={color} />,
+          tabBarIcon: ({ color }) => <User size={24} color={color} />,
           headerShown: false,
         }}
       />

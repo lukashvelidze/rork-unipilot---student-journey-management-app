@@ -1,8 +1,8 @@
 import React, { useState } from "react";
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Image, Dimensions } from "react-native";
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Image, Dimensions, Alert, Linking } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
-import { ArrowLeft, Clock, BookOpen, Star, Download, Share, Heart, Bookmark } from "lucide-react-native";
+import { ArrowLeft, Clock, BookOpen, Star, Download, Share, Heart, Bookmark, Play, Users, Target, CheckCircle, ExternalLink, Zap, Award, TrendingUp } from "lucide-react-native";
 import Colors from "@/constants/colors";
 import Theme from "@/constants/theme";
 import Card from "@/components/Card";
@@ -16,11 +16,13 @@ interface ResourceContent {
   title: string;
   description: string;
   category: string;
+  type: "guide" | "video" | "webinar" | "tool" | "template" | "course" | "calculator";
   estimatedTime: string;
   difficulty: "Beginner" | "Intermediate" | "Advanced";
   author: string;
   publishedDate: string;
   heroImage: string;
+  features: string[];
   content: {
     introduction: string;
     sections: {
@@ -28,195 +30,298 @@ interface ResourceContent {
       content: string;
       tips?: string[];
       examples?: string[];
+      tools?: string[];
     }[];
     conclusion: string;
     actionItems: string[];
   };
   relatedResources: string[];
+  tools?: {
+    name: string;
+    description: string;
+    action: string;
+  }[];
+  downloads?: {
+    name: string;
+    type: string;
+    size: string;
+  }[];
 }
 
 const resourcesContent: Record<string, ResourceContent> = {
   "1": {
     id: "1",
-    title: "Personal Statement Template",
-    description: "Professional template for crafting compelling personal statements",
+    title: "Personal Statement Masterclass",
+    description: "Complete guide to writing compelling personal statements that get you accepted",
     category: "Application Materials",
-    estimatedTime: "30 min",
+    type: "guide",
+    estimatedTime: "45 min",
     difficulty: "Intermediate",
     author: "Dr. Sarah Johnson",
     publishedDate: "2024-01-15",
     heroImage: "https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=800&h=400&fit=crop",
+    features: ["Step-by-step guide", "Real examples", "Expert feedback", "Templates included"],
     content: {
-      introduction: "Your personal statement is your opportunity to tell your unique story and convince admissions committees why you're the perfect fit for their program. This comprehensive guide will walk you through creating a compelling personal statement that stands out.",
+      introduction: "Your personal statement is your opportunity to tell your unique story and convince admissions committees why you're the perfect fit for their program. This comprehensive masterclass will walk you through creating a compelling personal statement that stands out from thousands of applications.",
       sections: [
         {
           title: "Understanding the Purpose",
-          content: "A personal statement serves multiple purposes: it showcases your personality, demonstrates your writing skills, explains your motivation, and highlights your unique experiences. Admissions committees read thousands of applications, so your statement needs to be memorable and authentic.",
+          content: "A personal statement serves multiple critical purposes: it showcases your personality beyond grades, demonstrates your writing skills, explains your motivation for the field, and highlights your unique experiences. Admissions committees read thousands of applications, so your statement needs to be memorable, authentic, and compelling.",
           tips: [
-            "Be authentic and genuine in your writing",
-            "Show, don't just tell your experiences",
-            "Connect your past experiences to future goals",
-            "Demonstrate growth and self-reflection"
+            "Be authentic and genuine in your writing - admissions officers can spot fake stories",
+            "Show, don't just tell your experiences with specific examples",
+            "Connect your past experiences to future goals clearly",
+            "Demonstrate growth and self-reflection throughout your journey"
           ]
         },
         {
           title: "Structure and Format",
-          content: "A well-structured personal statement typically follows a clear format: engaging opening, body paragraphs that tell your story, and a strong conclusion that ties everything together.",
+          content: "A well-structured personal statement typically follows a clear format: engaging opening that hooks the reader, body paragraphs that tell your story chronologically or thematically, and a strong conclusion that ties everything together and looks forward.",
           examples: [
-            "Hook: Start with a compelling anecdote or question",
-            "Body: 2-3 main themes or experiences",
-            "Conclusion: Future goals and program fit"
+            "Hook: Start with a compelling anecdote, question, or moment of realization",
+            "Body: 2-3 main themes or transformative experiences",
+            "Conclusion: Future goals and how this program fits your journey"
+          ],
+          tools: [
+            "Personal Statement Template",
+            "Structure Checker",
+            "Word Count Optimizer"
           ]
         },
         {
           title: "Common Mistakes to Avoid",
-          content: "Many applicants make similar mistakes that can weaken their personal statements. Being aware of these pitfalls can help you create a stronger application.",
+          content: "Many applicants make similar mistakes that can weaken their personal statements. Being aware of these pitfalls can help you create a stronger, more impactful application that stands out for the right reasons.",
           tips: [
-            "Avoid clichés and generic statements",
+            "Avoid clichés and generic statements like 'I want to help people'",
             "Don't repeat information from other parts of your application",
-            "Avoid being too modest or too boastful",
-            "Don't exceed the word limit"
+            "Avoid being too modest or too boastful - find the right balance",
+            "Don't exceed the word limit - every word should count",
+            "Avoid controversial topics unless directly relevant to your field"
+          ]
+        },
+        {
+          title: "Advanced Writing Techniques",
+          content: "Take your personal statement to the next level with advanced writing techniques that create emotional connection and memorable impact.",
+          tips: [
+            "Use the 'show, don't tell' principle with vivid examples",
+            "Create narrative tension and resolution",
+            "Use sensory details to make your experiences come alive",
+            "Employ the 'so what?' test for every paragraph"
           ]
         }
       ],
-      conclusion: "Remember, your personal statement is your chance to show who you are beyond grades and test scores. Take time to reflect on your experiences, be authentic in your writing, and clearly articulate why you're passionate about your chosen field of study.",
+      conclusion: "Remember, your personal statement is your chance to show who you are beyond grades and test scores. Take time to reflect on your experiences, be authentic in your writing, and clearly articulate why you're passionate about your chosen field. With the strategies and templates in this masterclass, you'll create a personal statement that opens doors to your dream university.",
       actionItems: [
-        "Brainstorm key experiences and themes",
-        "Create an outline with main points",
-        "Write your first draft",
-        "Get feedback from mentors or advisors",
-        "Revise and polish your statement",
-        "Proofread for grammar and spelling"
+        "Brainstorm key experiences and themes using our worksheet",
+        "Create an outline with main points and supporting details",
+        "Write your first draft using our template",
+        "Get feedback from mentors, advisors, or our expert review service",
+        "Revise and polish your statement using our checklist",
+        "Proofread for grammar and spelling with our tools",
+        "Submit with confidence!"
       ]
     },
-    relatedResources: ["2", "4", "8"]
+    relatedResources: ["2", "4", "8"],
+    tools: [
+      {
+        name: "Personal Statement Template",
+        description: "Professional template with proven structure",
+        action: "Download Template"
+      },
+      {
+        name: "AI Writing Assistant",
+        description: "Get suggestions and improvements",
+        action: "Launch Tool"
+      },
+      {
+        name: "Expert Review Service",
+        description: "Get professional feedback",
+        action: "Book Review"
+      }
+    ],
+    downloads: [
+      {
+        name: "Personal Statement Template",
+        type: "PDF",
+        size: "2.3 MB"
+      },
+      {
+        name: "Example Statements Collection",
+        type: "PDF",
+        size: "5.1 MB"
+      },
+      {
+        name: "Brainstorming Worksheet",
+        type: "PDF",
+        size: "1.2 MB"
+      }
+    ]
   },
-  "2": {
-    id: "2",
-    title: "University Research Guide",
-    description: "Complete guide to researching and selecting the right universities",
-    category: "Research",
-    estimatedTime: "45 min",
+  "6": {
+    id: "6",
+    title: "AI Essay Generator",
+    description: "Generate personalized essays, SOPs, and cover letters using advanced AI",
+    category: "AI Tools",
+    type: "tool",
+    estimatedTime: "15 min",
     difficulty: "Beginner",
-    author: "Prof. Michael Chen",
-    publishedDate: "2024-01-20",
-    heroImage: "https://images.unsplash.com/photo-1562774053-701939374585?w=800&h=400&fit=crop",
-    content: {
-      introduction: "Choosing the right university is one of the most important decisions in your academic journey. This comprehensive guide will help you research and evaluate universities systematically to find the perfect fit for your goals.",
-      sections: [
-        {
-          title: "Defining Your Criteria",
-          content: "Before diving into research, it's crucial to understand what you're looking for in a university. Consider factors like academic programs, location, campus culture, size, and financial considerations.",
-          tips: [
-            "List your must-haves vs. nice-to-haves",
-            "Consider your learning style and preferences",
-            "Think about career goals and industry connections",
-            "Evaluate financial constraints realistically"
-          ]
-        },
-        {
-          title: "Research Methods and Resources",
-          content: "There are numerous ways to gather information about universities. Use multiple sources to get a comprehensive view of each institution.",
-          examples: [
-            "Official university websites and virtual tours",
-            "University rankings and guidebooks",
-            "Student forums and social media groups",
-            "Alumni networks and informational interviews",
-            "University fairs and information sessions"
-          ]
-        },
-        {
-          title: "Evaluating Academic Programs",
-          content: "The quality and fit of academic programs should be your primary consideration. Look beyond rankings to understand what makes a program excellent for your specific goals.",
-          tips: [
-            "Review curriculum and course offerings",
-            "Research faculty expertise and research opportunities",
-            "Check accreditation and program reputation",
-            "Look at graduate outcomes and employment rates"
-          ]
-        }
-      ],
-      conclusion: "Thorough university research takes time, but it's an investment in your future. Use this systematic approach to evaluate your options and make an informed decision that aligns with your academic and career goals.",
-      actionItems: [
-        "Create a list of evaluation criteria",
-        "Research 10-15 potential universities",
-        "Create a comparison spreadsheet",
-        "Attend virtual information sessions",
-        "Connect with current students or alumni",
-        "Narrow down to your top 5-8 choices"
-      ]
-    },
-    relatedResources: ["1", "3", "5"]
-  },
-  "3": {
-    id: "3",
-    title: "Scholarship Application Masterclass",
-    description: "Video series on finding and applying for scholarships",
-    category: "Funding",
-    estimatedTime: "2 hours",
-    difficulty: "Intermediate",
-    author: "Lisa Rodriguez",
+    author: "UniPilot AI Team",
     publishedDate: "2024-02-01",
-    heroImage: "https://images.unsplash.com/photo-1513475382585-d06e58bcb0e0?w=800&h=400&fit=crop",
+    heroImage: "https://images.unsplash.com/photo-1677442136019-21780ecad995?w=800&h=400&fit=crop",
+    features: ["AI-powered writing", "Multiple formats", "Plagiarism check", "Expert review"],
     content: {
-      introduction: "Scholarships can significantly reduce the financial burden of studying abroad. This masterclass will teach you how to find, apply for, and win scholarships that align with your profile and goals.",
+      introduction: "Harness the power of advanced AI to create compelling essays, statements of purpose, and cover letters. Our AI Essay Generator uses cutting-edge technology to help you craft personalized, high-quality content that reflects your unique story and goals.",
       sections: [
         {
-          title: "Types of Scholarships",
-          content: "Understanding different types of scholarships helps you target your applications more effectively. Each type has different criteria and application processes.",
+          title: "How AI Writing Works",
+          content: "Our AI Essay Generator uses advanced natural language processing to understand your background, goals, and requirements, then generates personalized content that maintains your authentic voice while ensuring professional quality and structure.",
+          tips: [
+            "Provide detailed information about your background and goals",
+            "Be specific about the program and university you're applying to",
+            "Review and personalize the generated content",
+            "Use the AI as a starting point, not a final product"
+          ]
+        },
+        {
+          title: "Supported Document Types",
+          content: "Generate various types of application documents with specialized templates and AI models trained for each format.",
           examples: [
-            "Merit-based scholarships (academic achievement)",
-            "Need-based scholarships (financial circumstances)",
-            "Demographic scholarships (background, identity)",
-            "Field-specific scholarships (major or career focus)",
-            "University-specific scholarships (institutional funding)"
+            "Personal Statements for university applications",
+            "Statements of Purpose for graduate programs",
+            "Cover Letters for scholarship applications",
+            "Motivation Letters for exchange programs",
+            "Research Proposals for PhD applications"
           ]
         },
         {
-          title: "Finding Scholarship Opportunities",
-          content: "The key to scholarship success is finding opportunities that match your profile. Use multiple search strategies to uncover hidden gems.",
-          tips: [
-            "Use scholarship search engines and databases",
-            "Check with your target universities directly",
-            "Research professional associations in your field",
-            "Look into government and foundation programs",
-            "Network with alumni and current students"
-          ]
-        },
-        {
-          title: "Crafting Winning Applications",
-          content: "A successful scholarship application tells a compelling story while meeting all requirements. Attention to detail and authentic storytelling are crucial.",
-          tips: [
-            "Read requirements carefully and follow instructions",
-            "Tailor each application to the specific scholarship",
-            "Highlight achievements relevant to the scholarship",
-            "Get strong letters of recommendation",
-            "Proofread everything multiple times"
+          title: "Quality Assurance",
+          content: "Every generated document goes through multiple quality checks to ensure originality, coherence, and professional standards.",
+          tools: [
+            "Plagiarism Detection",
+            "Grammar and Style Checker",
+            "Readability Analysis",
+            "Expert Review Option"
           ]
         }
       ],
-      conclusion: "Scholarship applications require time and effort, but the financial benefits make it worthwhile. Start early, stay organized, and apply to multiple opportunities to maximize your chances of success.",
+      conclusion: "The AI Essay Generator is a powerful tool to help you overcome writer's block and create compelling application documents. Remember to always review, personalize, and refine the generated content to ensure it truly represents your voice and story.",
       actionItems: [
-        "Create a scholarship search strategy",
-        "Build a master application with essays and documents",
-        "Research and list 20+ potential scholarships",
-        "Create an application timeline and deadlines",
-        "Request letters of recommendation early",
-        "Submit applications well before deadlines"
+        "Input your background information and goals",
+        "Select the type of document you need",
+        "Generate your first draft using AI",
+        "Review and personalize the content",
+        "Run plagiarism and grammar checks",
+        "Get expert feedback if needed",
+        "Finalize and submit your application"
       ]
     },
-    relatedResources: ["2", "7", "4"]
+    relatedResources: ["1", "4", "11"],
+    tools: [
+      {
+        name: "AI Essay Generator",
+        description: "Generate personalized essays and SOPs",
+        action: "Launch Generator"
+      },
+      {
+        name: "Plagiarism Checker",
+        description: "Ensure originality of your content",
+        action: "Check Plagiarism"
+      },
+      {
+        name: "Grammar Assistant",
+        description: "Perfect your writing style",
+        action: "Check Grammar"
+      }
+    ]
+  },
+  "9": {
+    id: "9",
+    title: "Flight Booking Masterclass",
+    description: "Learn how to find the cheapest flights and travel hacks for students",
+    category: "Travel",
+    type: "guide",
+    estimatedTime: "35 min",
+    difficulty: "Beginner",
+    author: "Travel Expert Mike Chen",
+    publishedDate: "2024-02-10",
+    heroImage: "https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=800&h=400&fit=crop",
+    features: ["Booking strategies", "Price alerts", "Route optimization", "Student discounts"],
+    content: {
+      introduction: "Master the art of finding cheap flights with proven strategies used by travel experts. This comprehensive guide will save you hundreds of dollars on your study abroad journey and teach you insider secrets that airlines don't want you to know.",
+      sections: [
+        {
+          title: "Best Booking Strategies",
+          content: "Learn when to book, how to find the best deals, and which tools to use for maximum savings on international flights.",
+          tips: [
+            "Book international flights 2-3 months in advance for best prices",
+            "Use incognito mode to avoid price tracking cookies",
+            "Compare prices across multiple booking sites",
+            "Consider nearby airports for significant savings",
+            "Be flexible with dates - mid-week flights are often cheaper"
+          ]
+        },
+        {
+          title: "Student Discounts and Special Deals",
+          content: "Discover exclusive student discounts and special programs that can save you up to 50% on flights.",
+          examples: [
+            "Student Universe - exclusive student fares",
+            "STA Travel - student and youth discounts",
+            "Airline student programs - direct discounts",
+            "Credit card travel rewards - maximize points",
+            "Group booking discounts - travel with friends"
+          ]
+        },
+        {
+          title: "Advanced Search Techniques",
+          content: "Use professional search techniques to find hidden deals and error fares that can save you thousands.",
+          tools: [
+            "Google Flights - comprehensive search",
+            "Skyscanner - flexible date search",
+            "Momondo - creative routing",
+            "ITA Matrix - advanced search options"
+          ]
+        }
+      ],
+      conclusion: "With these strategies and tools, you'll be able to find the best flight deals and save money for your studies abroad. Remember to always book with reputable airlines and read the fine print before purchasing.",
+      actionItems: [
+        "Set up price alerts for your route",
+        "Compare prices across multiple platforms",
+        "Check for student discounts",
+        "Consider alternative airports and routes",
+        "Book at the optimal time",
+        "Purchase travel insurance",
+        "Prepare for your journey"
+      ]
+    },
+    relatedResources: ["5", "7", "8"],
+    tools: [
+      {
+        name: "Flight Price Tracker",
+        description: "Track prices and get alerts",
+        action: "Set Alert"
+      },
+      {
+        name: "Route Optimizer",
+        description: "Find the best routes and connections",
+        action: "Optimize Route"
+      },
+      {
+        name: "Student Discount Finder",
+        description: "Find exclusive student deals",
+        action: "Find Discounts"
+      }
+    ]
   }
 };
 
 export default function PremiumResourceDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { user } = useUserStore();
+  const { user, isPremium } = useUserStore();
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
+  const [activeSection, setActiveSection] = useState(0);
   
-  const isPremium = user?.isPremium || false;
   const resource = id ? resourcesContent[id] : null;
   
   if (!resource) {
@@ -235,14 +340,16 @@ export default function PremiumResourceDetailScreen() {
           colors={[Colors.primary, Colors.secondary]}
           style={styles.premiumGradient}
         >
+          <Zap size={48} color={Colors.white} />
           <Text style={styles.premiumTitle}>Premium Content</Text>
           <Text style={styles.premiumDescription}>
-            This resource is only available to premium members. Upgrade to access all premium content.
+            This resource is only available to premium members. Upgrade to access all premium content and accelerate your study abroad journey!
           </Text>
           <Button
             title="Upgrade to Premium"
             onPress={() => router.push("/premium")}
             style={styles.upgradeButton}
+            icon={<Award size={20} color={Colors.white} />}
           />
         </LinearGradient>
       </View>
@@ -257,6 +364,41 @@ export default function PremiumResourceDetailScreen() {
       default: return Colors.primary;
     }
   };
+  
+  const getTypeIcon = (type: string) => {
+    switch (type) {
+      case "video": return Play;
+      case "webinar": return Users;
+      case "tool": return Target;
+      case "course": return Award;
+      case "calculator": return TrendingUp;
+      default: return BookOpen;
+    }
+  };
+  
+  const handleToolAction = (tool: any) => {
+    Alert.alert(
+      tool.name,
+      `${tool.description}\n\nThis tool is now available in your premium dashboard.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Open Tool", onPress: () => console.log(`Opening ${tool.name}`) },
+      ]
+    );
+  };
+  
+  const handleDownload = (download: any) => {
+    Alert.alert(
+      "Download Ready",
+      `${download.name} (${download.type}, ${download.size}) is ready for download.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Download", onPress: () => console.log(`Downloading ${download.name}`) },
+      ]
+    );
+  };
+  
+  const TypeIcon = getTypeIcon(resource.type);
   
   return (
     <View style={styles.container}>
@@ -296,8 +438,14 @@ export default function PremiumResourceDetailScreen() {
             style={styles.heroOverlay}
           >
             <View style={styles.heroContent}>
-              <View style={styles.categoryBadge}>
-                <Text style={styles.categoryText}>{resource.category}</Text>
+              <View style={styles.heroHeader}>
+                <View style={styles.categoryBadge}>
+                  <TypeIcon size={16} color={Colors.white} />
+                  <Text style={styles.categoryText}>{resource.category}</Text>
+                </View>
+                <View style={styles.typeBadge}>
+                  <Text style={styles.typeText}>{resource.type.toUpperCase()}</Text>
+                </View>
               </View>
               <Text style={styles.heroTitle}>{resource.title}</Text>
               <Text style={styles.heroDescription}>{resource.description}</Text>
@@ -333,6 +481,19 @@ export default function PremiumResourceDetailScreen() {
             </Text>
           </View>
           
+          {/* Features */}
+          <View style={styles.featuresContainer}>
+            <Text style={styles.featuresTitle}>What's Included:</Text>
+            <View style={styles.featuresList}>
+              {resource.features.map((feature, index) => (
+                <View key={index} style={styles.featureItem}>
+                  <CheckCircle size={14} color={Colors.success} />
+                  <Text style={styles.featureText}>{feature}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+          
           <View style={styles.actionRow}>
             <TouchableOpacity
               style={[styles.likeButton, isLiked && styles.likeButtonActive]}
@@ -355,19 +516,68 @@ export default function PremiumResourceDetailScreen() {
           </View>
         </Card>
         
+        {/* Tools Section */}
+        {resource.tools && (
+          <Card style={styles.toolsCard}>
+            <Text style={styles.toolsTitle}>🛠️ Interactive Tools</Text>
+            <View style={styles.toolsList}>
+              {resource.tools.map((tool, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={styles.toolItem}
+                  onPress={() => handleToolAction(tool)}
+                >
+                  <View style={styles.toolInfo}>
+                    <Text style={styles.toolName}>{tool.name}</Text>
+                    <Text style={styles.toolDescription}>{tool.description}</Text>
+                  </View>
+                  <View style={styles.toolAction}>
+                    <Text style={styles.toolActionText}>{tool.action}</Text>
+                    <ExternalLink size={16} color={Colors.primary} />
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </Card>
+        )}
+        
         {/* Content */}
         <Card style={styles.contentCard}>
           <Text style={styles.introductionTitle}>Introduction</Text>
           <Text style={styles.introductionText}>{resource.content.introduction}</Text>
           
+          {/* Section Navigation */}
+          <View style={styles.sectionNav}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              {resource.content.sections.map((section, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={[
+                    styles.sectionNavItem,
+                    activeSection === index && styles.sectionNavItemActive
+                  ]}
+                  onPress={() => setActiveSection(index)}
+                >
+                  <Text style={[
+                    styles.sectionNavText,
+                    activeSection === index && styles.sectionNavTextActive
+                  ]}>
+                    {section.title}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+          
+          {/* Active Section Content */}
           {resource.content.sections.map((section, index) => (
-            <View key={index} style={styles.section}>
+            <View key={index} style={[styles.section, activeSection !== index && styles.sectionHidden]}>
               <Text style={styles.sectionTitle}>{section.title}</Text>
               <Text style={styles.sectionContent}>{section.content}</Text>
               
               {section.tips && (
                 <View style={styles.tipsContainer}>
-                  <Text style={styles.tipsTitle}>💡 Key Tips:</Text>
+                  <Text style={styles.tipsTitle}>💡 Pro Tips:</Text>
                   {section.tips.map((tip, tipIndex) => (
                     <View key={tipIndex} style={styles.tipItem}>
                       <View style={styles.tipBullet} />
@@ -383,6 +593,18 @@ export default function PremiumResourceDetailScreen() {
                   {section.examples.map((example, exampleIndex) => (
                     <View key={exampleIndex} style={styles.exampleItem}>
                       <Text style={styles.exampleText}>{example}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+              
+              {section.tools && (
+                <View style={styles.sectionToolsContainer}>
+                  <Text style={styles.sectionToolsTitle}>🔧 Tools for this section:</Text>
+                  {section.tools.map((tool, toolIndex) => (
+                    <View key={toolIndex} style={styles.sectionToolItem}>
+                      <Target size={14} color={Colors.primary} />
+                      <Text style={styles.sectionToolText}>{tool}</Text>
                     </View>
                   ))}
                 </View>
@@ -408,6 +630,28 @@ export default function PremiumResourceDetailScreen() {
           </View>
         </Card>
         
+        {/* Downloads Section */}
+        {resource.downloads && (
+          <Card style={styles.downloadsCard}>
+            <Text style={styles.downloadsTitle}>📥 Downloads</Text>
+            <View style={styles.downloadsList}>
+              {resource.downloads.map((download, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={styles.downloadItem}
+                  onPress={() => handleDownload(download)}
+                >
+                  <View style={styles.downloadInfo}>
+                    <Text style={styles.downloadName}>{download.name}</Text>
+                    <Text style={styles.downloadMeta}>{download.type} • {download.size}</Text>
+                  </View>
+                  <Download size={20} color={Colors.primary} />
+                </TouchableOpacity>
+              ))}
+            </View>
+          </Card>
+        )}
+        
         {/* Related Resources */}
         <Card style={styles.relatedCard}>
           <Text style={styles.relatedTitle}>Related Resources</Text>
@@ -431,6 +675,7 @@ export default function PremiumResourceDetailScreen() {
                     <Text style={styles.relatedItemCategory}>{relatedResource.category}</Text>
                     <Text style={styles.relatedItemTime}>{relatedResource.estimatedTime}</Text>
                   </View>
+                  <ArrowRight size={16} color={Colors.lightText} />
                 </TouchableOpacity>
               );
             })}
@@ -472,6 +717,7 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: "700",
     color: Colors.white,
+    marginTop: 16,
     marginBottom: 16,
     textAlign: "center",
   },
@@ -524,17 +770,35 @@ const styles = StyleSheet.create({
   heroContent: {
     padding: 20,
   },
+  heroHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+  },
   categoryBadge: {
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: Colors.primary,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
-    alignSelf: "flex-start",
-    marginBottom: 12,
+    gap: 6,
   },
   categoryText: {
     color: Colors.white,
     fontSize: 12,
+    fontWeight: "600",
+  },
+  typeBadge: {
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  typeText: {
+    color: Colors.white,
+    fontSize: 10,
     fontWeight: "600",
   },
   heroTitle: {
@@ -585,6 +849,27 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.lightText,
   },
+  featuresContainer: {
+    marginBottom: 16,
+  },
+  featuresTitle: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: Colors.text,
+    marginBottom: 8,
+  },
+  featuresList: {
+    gap: 6,
+  },
+  featureItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  featureText: {
+    fontSize: 13,
+    color: Colors.lightText,
+  },
   actionRow: {
     flexDirection: "row",
     gap: 12,
@@ -624,6 +909,54 @@ const styles = StyleSheet.create({
     color: Colors.white,
     fontWeight: "500",
   },
+  toolsCard: {
+    margin: 16,
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  toolsTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: Colors.text,
+    marginBottom: 16,
+  },
+  toolsList: {
+    gap: 12,
+  },
+  toolItem: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: 16,
+    backgroundColor: Colors.lightBackground,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  toolInfo: {
+    flex: 1,
+    marginRight: 12,
+  },
+  toolName: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: Colors.text,
+    marginBottom: 2,
+  },
+  toolDescription: {
+    fontSize: 12,
+    color: Colors.lightText,
+  },
+  toolAction: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  toolActionText: {
+    fontSize: 12,
+    fontWeight: "500",
+    color: Colors.primary,
+  },
   contentCard: {
     margin: 16,
     marginTop: 8,
@@ -641,8 +974,35 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     marginBottom: 24,
   },
+  sectionNav: {
+    marginBottom: 24,
+  },
+  sectionNavItem: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    marginRight: 8,
+    borderRadius: 20,
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  sectionNavItemActive: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+  },
+  sectionNavText: {
+    fontSize: 12,
+    fontWeight: "500",
+    color: Colors.text,
+  },
+  sectionNavTextActive: {
+    color: Colors.white,
+  },
   section: {
     marginBottom: 32,
+  },
+  sectionHidden: {
+    display: "none",
   },
   sectionTitle: {
     fontSize: 18,
@@ -693,6 +1053,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderLeftWidth: 4,
     borderLeftColor: Colors.secondary,
+    marginBottom: 16,
   },
   examplesTitle: {
     fontSize: 16,
@@ -708,6 +1069,27 @@ const styles = StyleSheet.create({
     color: Colors.text,
     lineHeight: 20,
     fontStyle: "italic",
+  },
+  sectionToolsContainer: {
+    backgroundColor: Colors.flightBackground,
+    padding: 16,
+    borderRadius: 12,
+  },
+  sectionToolsTitle: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: Colors.text,
+    marginBottom: 8,
+  },
+  sectionToolItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 4,
+    gap: 8,
+  },
+  sectionToolText: {
+    fontSize: 13,
+    color: Colors.text,
   },
   conclusionSection: {
     backgroundColor: Colors.primary + "10",
@@ -763,6 +1145,43 @@ const styles = StyleSheet.create({
     color: Colors.text,
     lineHeight: 20,
   },
+  downloadsCard: {
+    margin: 16,
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  downloadsTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: Colors.text,
+    marginBottom: 16,
+  },
+  downloadsList: {
+    gap: 12,
+  },
+  downloadItem: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: 16,
+    backgroundColor: Colors.lightBackground,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  downloadInfo: {
+    flex: 1,
+  },
+  downloadName: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: Colors.text,
+    marginBottom: 2,
+  },
+  downloadMeta: {
+    fontSize: 12,
+    color: Colors.lightText,
+  },
   relatedCard: {
     margin: 16,
     marginTop: 8,
@@ -782,6 +1201,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.lightBackground,
     borderRadius: 12,
     overflow: "hidden",
+    alignItems: "center",
   },
   relatedImage: {
     width: 80,

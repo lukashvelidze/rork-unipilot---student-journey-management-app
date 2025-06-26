@@ -79,6 +79,11 @@ export const lightColors = {
   quoteBackground: "rgba(255, 107, 107, 0.05)",
   quoteBorder: "#FF6B6B",
   quoteAccent: "#4ECDC4",
+  
+  // Flight search colors
+  flightPrimary: "#1976D2",
+  flightSecondary: "#42A5F5",
+  flightBackground: "rgba(25, 118, 210, 0.05)",
 };
 
 export const darkColors = {
@@ -162,6 +167,11 @@ export const darkColors = {
   quoteBackground: "rgba(255, 107, 107, 0.1)",
   quoteBorder: "#FF6B6B",
   quoteAccent: "#4ECDC4",
+  
+  // Flight search colors
+  flightPrimary: "#1976D2",
+  flightSecondary: "#42A5F5",
+  flightBackground: "rgba(25, 118, 210, 0.1)",
 };
 
 // Export default as light colors for backward compatibility

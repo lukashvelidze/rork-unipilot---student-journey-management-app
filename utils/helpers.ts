@@ -93,7 +93,7 @@ export const getTopicColor = (topic: Topic): string => {
     case "academics":
       return Colors.info; // Blue
     case "career":
-      return Colors.accent; // Teal
+      return Colors.career; // Teal
     case "general":
     default:
       return Colors.info; // Info blue
@@ -334,4 +334,74 @@ export const getCountryLanguageInfo = (countryCode: string) => {
     tests: ["IELTS", "TOEFL"],
     minimumScore: "Varies by institution"
   };
+};
+
+// Flight search utilities
+export const formatFlightDuration = (minutes: number): string => {
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  return `${hours}h ${mins}m`;
+};
+
+export const getFlightStops = (stops: number): string => {
+  if (stops === 0) return "Direct";
+  if (stops === 1) return "1 stop";
+  return `${stops} stops`;
+};
+
+export const formatFlightPrice = (price: number, currency: string): string => {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: currency,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(price);
+};
+
+export const getFlightDealStatus = (priceChange?: "up" | "down" | "same"): { color: string; text: string } => {
+  switch (priceChange) {
+    case "down":
+      return { color: Colors.success, text: "Price dropped" };
+    case "up":
+      return { color: Colors.error, text: "Price increased" };
+    case "same":
+      return { color: Colors.lightText, text: "Price stable" };
+    default:
+      return { color: Colors.lightText, text: "New price" };
+  }
+};
+
+// Memory utilities
+export const getMoodColor = (mood: string): string => {
+  switch (mood) {
+    case "excited":
+      return Colors.memoryOrange;
+    case "happy":
+      return Colors.memoryGreen;
+    case "proud":
+      return Colors.memoryBlue;
+    case "nervous":
+      return Colors.memoryPurple;
+    case "grateful":
+      return Colors.memoryPink;
+    default:
+      return Colors.primary;
+  }
+};
+
+export const getMoodEmoji = (mood: string): string => {
+  switch (mood) {
+    case "excited":
+      return "🤩";
+    case "happy":
+      return "😊";
+    case "proud":
+      return "😤";
+    case "nervous":
+      return "😰";
+    case "grateful":
+      return "🙏";
+    default:
+      return "😊";
+  }
 };

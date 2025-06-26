@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Linking, Alert } from "react-native";
 import { useRouter } from "expo-router";
-import { FileText, ExternalLink, BookOpen, Video, Users, Target, Calendar, CheckCircle, Lock, ArrowRight, Clock, Star } from "lucide-react-native";
+import { FileText, ExternalLink, BookOpen, Video, Users, Target, Calendar, CheckCircle, Lock, ArrowRight, Clock, Star, Brain, TrendingUp, Shield, Headphones, Globe, DollarSign, Plane, Award, Zap } from "lucide-react-native";
 import Colors from "@/constants/colors";
 import Theme from "@/constants/theme";
 import Card from "@/components/Card";
@@ -12,114 +12,182 @@ interface Resource {
   id: string;
   title: string;
   description: string;
-  type: "guide" | "video" | "webinar" | "tool" | "template";
+  type: "guide" | "video" | "webinar" | "tool" | "template" | "course" | "calculator";
   category: string;
   isPremium: boolean;
   isNew?: boolean;
+  isPopular?: boolean;
   estimatedTime?: string;
   difficulty?: "Beginner" | "Intermediate" | "Advanced";
   rating?: number;
   completions?: number;
+  features?: string[];
 }
 
 const resources: Resource[] = [
   {
     id: "1",
     title: "Personal Statement Masterclass",
-    description: "Complete guide to writing compelling personal statements that get you accepted",
+    description: "Complete guide to writing compelling personal statements that get you accepted into top universities",
     type: "guide",
     category: "Application Materials",
     isPremium: true,
     isNew: true,
-    estimatedTime: "30 min",
+    isPopular: true,
+    estimatedTime: "45 min",
     difficulty: "Intermediate",
-    rating: 4.8,
-    completions: 1247,
+    rating: 4.9,
+    completions: 2847,
+    features: ["Step-by-step guide", "Real examples", "Expert feedback", "Templates included"]
   },
   {
     id: "2",
     title: "University Research Strategy",
-    description: "Systematic approach to researching and selecting the perfect universities",
+    description: "Systematic approach to researching and selecting the perfect universities for your goals",
     type: "guide",
     category: "Research",
     isPremium: true,
-    estimatedTime: "45 min",
+    estimatedTime: "60 min",
     difficulty: "Beginner",
-    rating: 4.9,
-    completions: 2156,
+    rating: 4.8,
+    completions: 3156,
+    features: ["Research framework", "Comparison tools", "Decision matrix", "Country guides"]
   },
   {
     id: "3",
     title: "Scholarship Hunting Masterclass",
-    description: "Find and win scholarships with proven strategies and insider tips",
+    description: "Find and win scholarships with proven strategies and insider tips from successful applicants",
     type: "video",
     category: "Funding",
     isPremium: true,
-    estimatedTime: "2 hours",
+    isPopular: true,
+    estimatedTime: "2.5 hours",
     difficulty: "Intermediate",
-    rating: 4.7,
-    completions: 892,
+    rating: 4.9,
+    completions: 1892,
+    features: ["Video tutorials", "Scholarship database", "Application tracker", "Success stories"]
   },
   {
     id: "4",
     title: "Interview Preparation Bootcamp",
-    description: "Master university interviews with practice questions and expert feedback",
-    type: "guide",
+    description: "Master university interviews with practice questions, expert feedback, and confidence-building techniques",
+    type: "course",
     category: "Interviews",
     isPremium: true,
-    estimatedTime: "1 hour",
+    estimatedTime: "3 hours",
     difficulty: "Advanced",
     rating: 4.8,
-    completions: 634,
+    completions: 1234,
+    features: ["Mock interviews", "Question bank", "Expert feedback", "Confidence building"]
   },
   {
     id: "5",
-    title: "Visa Application Checklist",
-    description: "Country-specific visa requirements and step-by-step application guides",
+    title: "Visa Application Toolkit",
+    description: "Country-specific visa requirements, step-by-step guides, and document checklists",
     type: "tool",
     category: "Visa & Legal",
     isPremium: true,
-    estimatedTime: "20 min",
+    isNew: true,
+    estimatedTime: "30 min",
     difficulty: "Beginner",
-    rating: 4.6,
-    completions: 1823,
+    rating: 4.7,
+    completions: 2823,
+    features: ["Country-specific guides", "Document checklists", "Timeline planner", "Requirements tracker"]
   },
   {
     id: "6",
-    title: "Monthly Success Webinar",
-    description: "Live sessions with admission experts and successful international students",
-    type: "webinar",
-    category: "Community",
+    title: "AI Essay Generator",
+    description: "Generate personalized essays, SOPs, and cover letters using advanced AI technology",
+    type: "tool",
+    category: "AI Tools",
     isPremium: true,
     isNew: true,
-    estimatedTime: "1 hour",
+    isPopular: true,
+    estimatedTime: "15 min",
     difficulty: "Beginner",
     rating: 4.9,
-    completions: 456,
+    completions: 4567,
+    features: ["AI-powered writing", "Multiple formats", "Plagiarism check", "Expert review"]
   },
   {
     id: "7",
-    title: "Budget Planning Toolkit",
-    description: "Comprehensive financial planning tools for studying abroad",
-    type: "tool",
+    title: "Budget Planning Calculator",
+    description: "Comprehensive financial planning tools for studying abroad with cost breakdowns",
+    type: "calculator",
     category: "Financial Planning",
     isPremium: true,
-    estimatedTime: "30 min",
+    estimatedTime: "20 min",
     difficulty: "Intermediate",
-    rating: 4.5,
-    completions: 1098,
+    rating: 4.6,
+    completions: 2098,
+    features: ["Cost calculator", "Budget planner", "Currency converter", "Savings tracker"]
   },
   {
     id: "8",
     title: "Cultural Adaptation Guide",
-    description: "Navigate cultural differences and thrive in your new environment",
+    description: "Navigate cultural differences and thrive in your new environment with insider tips",
     type: "guide",
     category: "Life Abroad",
     isPremium: true,
     estimatedTime: "40 min",
     difficulty: "Beginner",
     rating: 4.7,
-    completions: 743,
+    completions: 1743,
+    features: ["Cultural insights", "Adaptation strategies", "Local customs", "Social integration"]
+  },
+  {
+    id: "9",
+    title: "Flight Booking Masterclass",
+    description: "Learn how to find the cheapest flights, best routes, and travel hacks for students",
+    type: "guide",
+    category: "Travel",
+    isPremium: true,
+    isNew: true,
+    estimatedTime: "35 min",
+    difficulty: "Beginner",
+    rating: 4.8,
+    completions: 1567,
+    features: ["Booking strategies", "Price alerts", "Route optimization", "Student discounts"]
+  },
+  {
+    id: "10",
+    title: "Success Webinar Series",
+    description: "Monthly live sessions with admission experts, successful students, and industry leaders",
+    type: "webinar",
+    category: "Community",
+    isPremium: true,
+    isPopular: true,
+    estimatedTime: "1 hour",
+    difficulty: "Beginner",
+    rating: 4.9,
+    completions: 856,
+    features: ["Live sessions", "Expert Q&A", "Networking", "Recorded access"]
+  },
+  {
+    id: "11",
+    title: "IELTS/TOEFL Prep Course",
+    description: "Comprehensive test preparation with practice tests, strategies, and score improvement tips",
+    type: "course",
+    category: "Test Preparation",
+    isPremium: true,
+    estimatedTime: "8 hours",
+    difficulty: "Intermediate",
+    rating: 4.8,
+    completions: 3421,
+    features: ["Practice tests", "Score analysis", "Improvement strategies", "Expert tips"]
+  },
+  {
+    id: "12",
+    title: "Career Planning Toolkit",
+    description: "Plan your career path with industry insights, job market analysis, and networking strategies",
+    type: "tool",
+    category: "Career Development",
+    isPremium: true,
+    estimatedTime: "50 min",
+    difficulty: "Advanced",
+    rating: 4.7,
+    completions: 1876,
+    features: ["Career mapping", "Industry insights", "Networking guide", "Job search strategies"]
   },
 ];
 
@@ -130,17 +198,19 @@ const categories = [
   "Funding",
   "Interviews",
   "Visa & Legal",
-  "Community",
+  "AI Tools",
   "Financial Planning",
   "Life Abroad",
+  "Travel",
+  "Community",
+  "Test Preparation",
+  "Career Development",
 ];
 
 export default function PremiumResourcesScreen() {
   const router = useRouter();
-  const { user } = useUserStore();
+  const { user, isPremium } = useUserStore();
   const [selectedCategory, setSelectedCategory] = useState("All");
-  
-  const isPremium = user?.isPremium || false;
   
   const filteredResources = resources.filter(resource => 
     selectedCategory === "All" || resource.category === selectedCategory
@@ -157,6 +227,10 @@ export default function PremiumResourcesScreen() {
         return Users;
       case "tool":
         return Target;
+      case "course":
+        return Award;
+      case "calculator":
+        return TrendingUp;
       default:
         return FileText;
     }
@@ -173,6 +247,10 @@ export default function PremiumResourcesScreen() {
         return Colors.success;
       case "tool":
         return Colors.info;
+      case "course":
+        return Colors.academic;
+      case "calculator":
+        return Colors.career;
       default:
         return Colors.primary;
     }
@@ -194,11 +272,11 @@ export default function PremiumResourcesScreen() {
   const handleResourcePress = (resource: Resource) => {
     if (!isPremium) {
       Alert.alert(
-        "Premium Required",
-        "This resource is only available to premium members. Upgrade to access all premium resources.",
+        "🔒 Premium Required",
+        `"${resource.title}" is a premium resource. Upgrade to access all premium content and accelerate your study abroad journey!`,
         [
           { text: "Cancel", style: "cancel" },
-          { text: "Upgrade", onPress: () => router.push("/premium") },
+          { text: "Upgrade Now", onPress: () => router.push("/premium") },
         ]
       );
       return;
@@ -225,8 +303,14 @@ export default function PremiumResourcesScreen() {
             </View>
             <View style={styles.resourceBadges}>
               {resource.isNew && (
-                <View style={styles.newBadge}>
+                <View style={[styles.newBadge, { backgroundColor: Colors.success }]}>
                   <Text style={styles.newBadgeText}>NEW</Text>
+                </View>
+              )}
+              {resource.isPopular && (
+                <View style={[styles.popularBadge, { backgroundColor: Colors.warning }]}>
+                  <Star size={10} color={Colors.white} />
+                  <Text style={styles.popularBadgeText}>Popular</Text>
                 </View>
               )}
               {!isPremium && (
@@ -239,6 +323,20 @@ export default function PremiumResourcesScreen() {
           
           <Text style={styles.resourceTitle}>{resource.title}</Text>
           <Text style={styles.resourceDescription}>{resource.description}</Text>
+          
+          {resource.features && (
+            <View style={styles.featuresList}>
+              {resource.features.slice(0, 2).map((feature, idx) => (
+                <View key={idx} style={styles.featureItem}>
+                  <CheckCircle size={12} color={Colors.success} />
+                  <Text style={styles.featureText}>{feature}</Text>
+                </View>
+              ))}
+              {resource.features.length > 2 && (
+                <Text style={styles.moreFeatures}>+{resource.features.length - 2} more features</Text>
+              )}
+            </View>
+          )}
           
           <View style={styles.resourceMeta}>
             <View style={styles.metaRow}>
@@ -281,7 +379,7 @@ export default function PremiumResourcesScreen() {
                 styles.actionButtonText,
                 !isPremium && styles.actionButtonTextDisabled,
               ]}>
-                {isPremium ? "Read Guide" : "Premium Only"}
+                {isPremium ? "Access Resource" : "Premium Only"}
               </Text>
               <ArrowRight size={16} color={isPremium ? Colors.primary : Colors.mutedText} />
             </View>
@@ -297,8 +395,35 @@ export default function PremiumResourcesScreen() {
       <View style={styles.header}>
         <Text style={styles.title}>Premium Resources</Text>
         <Text style={styles.subtitle}>
-          Expert guides and tools to accelerate your journey
+          Expert guides, AI tools, and exclusive content to accelerate your journey
         </Text>
+        
+        {isPremium && (
+          <View style={styles.premiumStatus}>
+            <Zap size={16} color={Colors.premium} />
+            <Text style={styles.premiumStatusText}>Premium Active - Full Access</Text>
+          </View>
+        )}
+      </View>
+      
+      {/* Stats */}
+      <View style={styles.statsContainer}>
+        <View style={styles.statCard}>
+          <Text style={styles.statNumber}>{resources.length}</Text>
+          <Text style={styles.statLabel}>Resources</Text>
+        </View>
+        <View style={styles.statCard}>
+          <Text style={styles.statNumber}>50K+</Text>
+          <Text style={styles.statLabel}>Students Helped</Text>
+        </View>
+        <View style={styles.statCard}>
+          <Text style={styles.statNumber}>4.8★</Text>
+          <Text style={styles.statLabel}>Avg Rating</Text>
+        </View>
+        <View style={styles.statCard}>
+          <Text style={styles.statNumber}>95%</Text>
+          <Text style={styles.statLabel}>Success Rate</Text>
+        </View>
       </View>
       
       {/* Category Filter */}
@@ -343,14 +468,35 @@ export default function PremiumResourcesScreen() {
           <Card style={styles.upgradeCard} variant="elevated">
             <View style={styles.upgradeContent}>
               <Lock size={32} color={Colors.primary} />
-              <Text style={styles.upgradeTitle}>Unlock All Resources</Text>
+              <Text style={styles.upgradeTitle}>Unlock All Premium Resources</Text>
               <Text style={styles.upgradeDescription}>
-                Get access to all premium resources, expert guides, and exclusive content to accelerate your study abroad journey.
+                Get instant access to all {resources.length} premium resources, AI tools, expert guides, and exclusive content. Join 50,000+ successful students who achieved their dreams with UniPilot Premium.
               </Text>
+              
+              <View style={styles.upgradeFeatures}>
+                <View style={styles.upgradeFeature}>
+                  <CheckCircle size={16} color={Colors.success} />
+                  <Text style={styles.upgradeFeatureText}>All premium resources</Text>
+                </View>
+                <View style={styles.upgradeFeature}>
+                  <CheckCircle size={16} color={Colors.success} />
+                  <Text style={styles.upgradeFeatureText}>AI-powered tools</Text>
+                </View>
+                <View style={styles.upgradeFeature}>
+                  <CheckCircle size={16} color={Colors.success} />
+                  <Text style={styles.upgradeFeatureText}>Expert guidance</Text>
+                </View>
+                <View style={styles.upgradeFeature}>
+                  <CheckCircle size={16} color={Colors.success} />
+                  <Text style={styles.upgradeFeatureText}>24/7 support</Text>
+                </View>
+              </View>
+              
               <Button
                 title="Upgrade to Premium"
                 onPress={() => router.push("/premium")}
                 style={styles.upgradeButton}
+                icon={<Zap size={20} color={Colors.white} />}
               />
             </View>
           </Card>
@@ -375,6 +521,47 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     ...Theme.typography.caption,
+    marginBottom: 12,
+  },
+  premiumStatus: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: Colors.premiumBackground,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    alignSelf: "flex-start",
+    gap: 6,
+  },
+  premiumStatusText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: Colors.premium,
+  },
+  statsContainer: {
+    flexDirection: "row",
+    paddingHorizontal: 20,
+    marginBottom: 20,
+    gap: 8,
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: Colors.card,
+    padding: 12,
+    borderRadius: 12,
+    alignItems: "center",
+    ...Theme.shadow.small,
+  },
+  statNumber: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: Colors.primary,
+    marginBottom: 2,
+  },
+  statLabel: {
+    fontSize: 10,
+    color: Colors.lightText,
+    textAlign: "center",
   },
   categorySection: {
     marginBottom: 20,
@@ -439,12 +626,24 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   newBadge: {
-    backgroundColor: Colors.success,
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 8,
   },
   newBadgeText: {
+    fontSize: 10,
+    fontWeight: "600",
+    color: Colors.white,
+  },
+  popularBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+    gap: 2,
+  },
+  popularBadgeText: {
     fontSize: 10,
     fontWeight: "600",
     color: Colors.white,
@@ -467,7 +666,26 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.lightText,
     lineHeight: 20,
-    marginBottom: 16,
+    marginBottom: 12,
+  },
+  featuresList: {
+    marginBottom: 12,
+  },
+  featureItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 4,
+    gap: 6,
+  },
+  featureText: {
+    fontSize: 12,
+    color: Colors.text,
+  },
+  moreFeatures: {
+    fontSize: 11,
+    color: Colors.lightText,
+    fontStyle: "italic",
+    marginTop: 2,
   },
   resourceMeta: {
     marginBottom: 16,
@@ -540,6 +758,7 @@ const styles = StyleSheet.create({
     color: Colors.text,
     marginTop: 12,
     marginBottom: 8,
+    textAlign: "center",
   },
   upgradeDescription: {
     fontSize: 14,
@@ -547,6 +766,20 @@ const styles = StyleSheet.create({
     textAlign: "center",
     lineHeight: 20,
     marginBottom: 20,
+  },
+  upgradeFeatures: {
+    alignSelf: "stretch",
+    marginBottom: 24,
+  },
+  upgradeFeature: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+    gap: 8,
+  },
+  upgradeFeatureText: {
+    fontSize: 14,
+    color: Colors.text,
   },
   upgradeButton: {
     minWidth: 200,

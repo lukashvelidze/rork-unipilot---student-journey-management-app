@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Platform, Animated, Dimensions, ImageBackground } from "react-native";
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Platform, Animated, Dimensions, ImageBackground, Alert, Linking } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
-import { ChevronRight, Quote, CheckSquare, Calendar, Clock, Star, Heart, Camera, Plus, Plane, Globe, Timer, MapPin, Sparkles, Image as ImageIcon } from "lucide-react-native";
+import { ChevronRight, Quote, CheckSquare, Calendar, Clock, Star, Heart, Camera, Plus, Plane, Globe, Timer, MapPin, Sparkles, Image as ImageIcon, Search, Filter, TrendingDown, TrendingUp, ExternalLink, Crown } from "lucide-react-native";
 import { useColors } from "@/hooks/useColors";
 import Card from "@/components/Card";
 import ProgressBar from "@/components/ProgressBar";
@@ -11,6 +11,8 @@ import StageProgress from "@/components/StageProgress";
 import QuoteCard from "@/components/QuoteCard";
 import CelebrationAnimation from "@/components/CelebrationAnimation";
 import MemoryCard from "@/components/MemoryCard";
+import Button from "@/components/Button";
+import Input from "@/components/Input";
 import { useJourneyStore } from "@/store/journeyStore";
 import { useUserStore } from "@/store/userStore";
 import { calculateOverallProgress } from "@/utils/helpers";
@@ -22,8 +24,17 @@ const { width, height } = Dimensions.get("window");
 export default function JourneyScreen() {
   const router = useRouter();
   const Colors = useColors();
-  const { user } = useUserStore();
-  const { journeyProgress, recentMilestone, clearRecentMilestone, setJourneyProgress } = useJourneyStore();
+  const { user, isPremium } = useUserStore();
+  const { 
+    journeyProgress, 
+    recentMilestone, 
+    clearRecentMilestone, 
+    setJourneyProgress,
+    flightSearchResults,
+    flightSearchLoading,
+    searchFlights,
+    clearFlightResults
+  } = useJourneyStore();
   const [activeTab, setActiveTab] = useState<"roadmap" | "map" | "timeline" | "memories">("roadmap");
   const [showCelebration, setShowCelebration] = useState(false);
   const [dailyQuote, setDailyQuote] = useState(() => getRandomQuote(generalQuotes));
@@ -32,6 +43,13 @@ export default function JourneyScreen() {
   const [sparkleAnim] = useState(new Animated.Value(0));
   const [memoryFloatAnim] = useState(new Animated.Value(0));
   
+  // Flight search state
+  const [showFlightSearch, setShowFlightSearch] = useState(false);
+  const [flightFrom, setFlightFrom] = useState("");
+  const [flightTo, setFlightTo] = useState("");
+  const [departDate, setDepartDate] = useState("");
+  const [passengers, setPassengers] = useState("1");
+  
   // Initialize journey progress if not already set
   useEffect(() => {
     if (user && journeyProgress.length === 0) {
@@ -39,6 +57,14 @@ export default function JourneyScreen() {
       setJourneyProgress(initialJourneyProgress);
     }
   }, [user, journeyProgress.length, setJourneyProgress]);
+  
+  // Set default flight search values based on user's countries
+  useEffect(() => {
+    if (user && !flightFrom && !flightTo) {
+      setFlightFrom(user.homeCountry.name);
+      setFlightTo(user.destinationCountry.name);
+    }
+  }, [user, flightFrom, flightTo]);
   
   const overallProgress = calculateOverallProgress(journeyProgress);
   
@@ -167,57 +193,79 @@ export default function JourneyScreen() {
     },
   ];
 
-  // Mock memories data - updated to match Memory interface
+  // Enhanced memories data with more interactive features
   const memories = [
     {
       id: "1",
       title: "First University Visit",
-      description: "Visited my dream university campus for the first time. The architecture was breathtaking!",
+      description: "Visited my dream university campus for the first time. The architecture was breathtaking and I could already imagine myself studying here!",
       date: "2024-02-14",
       stage: "research" as const,
       imageUrl: "https://images.unsplash.com/photo-1562774053-701939374585?w=400&h=300&fit=crop",
       tags: ["university", "campus", "visit"],
       mood: "excited" as const,
+      likes: 24,
+      comments: 8,
     },
     {
       id: "2",
-      title: "IELTS Results",
-      description: "Got my IELTS results - scored 8.0! All that preparation paid off.",
+      title: "IELTS Results Day",
+      description: "Got my IELTS results - scored 8.0! All that preparation and late-night study sessions finally paid off. Feeling so proud!",
       date: "2024-01-28",
       stage: "research" as const,
       imageUrl: "https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=400&h=300&fit=crop",
-      tags: ["ielts", "test", "results"],
+      tags: ["ielts", "test", "results", "achievement"],
       mood: "proud" as const,
+      likes: 45,
+      comments: 12,
     },
     {
       id: "3",
       title: "Scholarship Application",
-      description: "Submitted my scholarship application. Fingers crossed!",
+      description: "Just submitted my scholarship application after weeks of preparation. The essay took forever but I'm happy with the result. Fingers crossed! 🤞",
       date: "2024-03-05",
       stage: "application" as const,
       imageUrl: "https://images.unsplash.com/photo-1513475382585-d06e58bcb0e0?w=400&h=300&fit=crop",
-      tags: ["scholarship", "application"],
+      tags: ["scholarship", "application", "essay"],
       mood: "nervous" as const,
+      likes: 18,
+      comments: 6,
     },
     {
       id: "4",
-      title: "Acceptance Letter",
-      description: "Finally received my acceptance letter! Dreams do come true.",
+      title: "Acceptance Letter! 🎉",
+      description: "I can't believe it! Finally received my acceptance letter from my dream university. Dreams really do come true with hard work and persistence!",
       date: "2024-04-12",
       stage: "application" as const,
       imageUrl: "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=400&h=300&fit=crop",
-      tags: ["acceptance", "university"],
+      tags: ["acceptance", "university", "dreams"],
       mood: "excited" as const,
+      likes: 89,
+      comments: 23,
     },
     {
       id: "5",
-      title: "Visa Approved",
-      description: "Student visa approved! One step closer to my dreams.",
+      title: "Visa Approved! ✈️",
+      description: "Student visa approved! One step closer to my dreams. The interview went better than expected and now I can finally start planning my departure.",
       date: "2024-05-20",
       stage: "visa" as const,
       imageUrl: "https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=400&h=300&fit=crop",
-      tags: ["visa", "approved"],
+      tags: ["visa", "approved", "travel"],
       mood: "happy" as const,
+      likes: 67,
+      comments: 15,
+    },
+    {
+      id: "6",
+      title: "Packing Adventures",
+      description: "Started packing for the big move! It's amazing how much stuff you accumulate over the years. Deciding what to take and what to leave behind is harder than expected.",
+      date: "2024-07-10",
+      stage: "pre_departure" as const,
+      imageUrl: "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=400&h=300&fit=crop",
+      tags: ["packing", "moving", "preparation"],
+      mood: "excited" as const,
+      likes: 32,
+      comments: 9,
     },
   ];
 
@@ -237,6 +285,47 @@ export default function JourneyScreen() {
       "Arrive at destination 2-3 days before important events",
       "Check visa requirements for transit countries"
     ]
+  };
+  
+  const handleFlightSearch = async () => {
+    if (!isPremium) {
+      Alert.alert(
+        "Premium Feature",
+        "Flight search is a premium feature. Upgrade to access smart flight search with price comparison and deals!",
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Upgrade", onPress: () => router.push("/premium") },
+        ]
+      );
+      return;
+    }
+    
+    if (!flightFrom || !flightTo) {
+      Alert.alert("Error", "Please enter both departure and destination cities");
+      return;
+    }
+    
+    const searchParams = {
+      from: flightFrom,
+      to: flightTo,
+      departDate: departDate || new Date().toISOString().split('T')[0],
+      passengers: parseInt(passengers) || 1,
+      class: "economy" as const,
+    };
+    
+    await searchFlights(searchParams);
+    setShowFlightSearch(false);
+  };
+  
+  const handleBookFlight = (bookingUrl: string) => {
+    Alert.alert(
+      "Book Flight",
+      "You will be redirected to the airline's website to complete your booking.",
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Continue", onPress: () => Linking.openURL(bookingUrl) },
+      ]
+    );
   };
   
   const renderTabContent = () => {
@@ -310,6 +399,155 @@ export default function JourneyScreen() {
                 </View>
               </LinearGradient>
             </Card>
+            
+            {/* Premium Flight Search */}
+            <Card style={[styles.flightSearchCard, { backgroundColor: Colors.card }]}>
+              <View style={styles.flightSearchHeader}>
+                <View style={styles.flightSearchTitleContainer}>
+                  <Plane size={24} color={Colors.flightPrimary} />
+                  <Text style={[styles.flightSearchTitle, { color: Colors.text }]}>Smart Flight Search</Text>
+                  {!isPremium && (
+                    <View style={styles.premiumBadge}>
+                      <Crown size={12} color={Colors.white} />
+                      <Text style={styles.premiumBadgeText}>Premium</Text>
+                    </View>
+                  )}
+                </View>
+                <Text style={[styles.flightSearchSubtitle, { color: Colors.lightText }]}>
+                  Find the best flight deals with our AI-powered search
+                </Text>
+              </View>
+              
+              {!showFlightSearch ? (
+                <Button
+                  title={isPremium ? "Search Flights" : "Upgrade for Flight Search"}
+                  onPress={() => isPremium ? setShowFlightSearch(true) : router.push("/premium")}
+                  icon={<Search size={20} color={Colors.white} />}
+                  style={styles.searchButton}
+                />
+              ) : (
+                <View style={styles.flightSearchForm}>
+                  <View style={styles.flightInputRow}>
+                    <View style={styles.flightInputHalf}>
+                      <Text style={[styles.inputLabel, { color: Colors.text }]}>From</Text>
+                      <Input
+                        value={flightFrom}
+                        onChangeText={setFlightFrom}
+                        placeholder="Departure city"
+                        style={styles.flightInput}
+                      />
+                    </View>
+                    <View style={styles.flightInputHalf}>
+                      <Text style={[styles.inputLabel, { color: Colors.text }]}>To</Text>
+                      <Input
+                        value={flightTo}
+                        onChangeText={setFlightTo}
+                        placeholder="Destination city"
+                        style={styles.flightInput}
+                      />
+                    </View>
+                  </View>
+                  
+                  <View style={styles.flightInputRow}>
+                    <View style={styles.flightInputHalf}>
+                      <Text style={[styles.inputLabel, { color: Colors.text }]}>Departure Date</Text>
+                      <Input
+                        value={departDate}
+                        onChangeText={setDepartDate}
+                        placeholder="YYYY-MM-DD"
+                        style={styles.flightInput}
+                      />
+                    </View>
+                    <View style={styles.flightInputHalf}>
+                      <Text style={[styles.inputLabel, { color: Colors.text }]}>Passengers</Text>
+                      <Input
+                        value={passengers}
+                        onChangeText={setPassengers}
+                        placeholder="1"
+                        keyboardType="numeric"
+                        style={styles.flightInput}
+                      />
+                    </View>
+                  </View>
+                  
+                  <View style={styles.flightSearchButtons}>
+                    <Button
+                      title="Search"
+                      onPress={handleFlightSearch}
+                      loading={flightSearchLoading}
+                      style={styles.searchFlightButton}
+                    />
+                    <Button
+                      title="Cancel"
+                      onPress={() => setShowFlightSearch(false)}
+                      variant="outline"
+                      style={styles.cancelSearchButton}
+                    />
+                  </View>
+                </View>
+              )}
+            </Card>
+            
+            {/* Flight Results */}
+            {flightSearchResults.length > 0 && (
+              <Card style={[styles.flightResultsCard, { backgroundColor: Colors.card }]}>
+                <View style={styles.flightResultsHeader}>
+                  <Text style={[styles.flightResultsTitle, { color: Colors.text }]}>Flight Results</Text>
+                  <TouchableOpacity onPress={clearFlightResults}>
+                    <Text style={[styles.clearResults, { color: Colors.primary }]}>Clear</Text>
+                  </TouchableOpacity>
+                </View>
+                
+                <ScrollView style={styles.flightResultsList} showsVerticalScrollIndicator={false}>
+                  {flightSearchResults.map((flight) => (
+                    <TouchableOpacity
+                      key={flight.id}
+                      style={[styles.flightResultItem, { backgroundColor: Colors.lightBackground }]}
+                      onPress={() => handleBookFlight(flight.bookingUrl)}
+                    >
+                      <View style={styles.flightResultHeader}>
+                        <Text style={[styles.flightAirline, { color: Colors.text }]}>{flight.airline}</Text>
+                        <View style={styles.flightPrice}>
+                          <Text style={[styles.flightPriceAmount, { color: Colors.primary }]}>
+                            ${flight.price}
+                          </Text>
+                          {flight.priceChange && (
+                            <View style={styles.priceChange}>
+                              {flight.priceChange === "down" ? (
+                                <TrendingDown size={12} color={Colors.success} />
+                              ) : flight.priceChange === "up" ? (
+                                <TrendingUp size={12} color={Colors.error} />
+                              ) : null}
+                            </View>
+                          )}
+                          {flight.deal && (
+                            <View style={[styles.dealBadge, { backgroundColor: Colors.success }]}>
+                              <Text style={styles.dealText}>Deal</Text>
+                            </View>
+                          )}
+                        </View>
+                      </View>
+                      
+                      <View style={styles.flightDetails}>
+                        <Text style={[styles.flightTime, { color: Colors.lightText }]}>
+                          {flight.departure.time} → {flight.arrival.time}
+                        </Text>
+                        <Text style={[styles.flightDuration, { color: Colors.lightText }]}>
+                          {flight.duration} • {flight.stops === 0 ? "Direct" : `${flight.stops} stop${flight.stops > 1 ? "s" : ""}`}
+                        </Text>
+                      </View>
+                      
+                      <View style={styles.flightRoute}>
+                        <Text style={[styles.flightAirport, { color: Colors.text }]}>
+                          {flight.departure.airport} → {flight.arrival.airport}
+                        </Text>
+                        <ExternalLink size={16} color={Colors.primary} />
+                      </View>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </Card>
+            )}
             
             {/* Flight Statistics */}
             <Card style={[styles.flightStatsCard, { backgroundColor: Colors.card }]}>
@@ -396,7 +634,7 @@ export default function JourneyScreen() {
                     <Card style={[
                       styles.timelineCard,
                       { backgroundColor: Colors.card },
-                      event.completed && { backgroundColor: Colors.success + "10" }
+                      event.completed && { backgroundColor: Colors.successBackground }
                     ]}>
                       <View style={styles.timelineCardHeader}>
                         <Text style={[
@@ -417,7 +655,7 @@ export default function JourneyScreen() {
                         {event.description}
                       </Text>
                       {event.completed && (
-                        <View style={[styles.completedBadge, { backgroundColor: Colors.success + "20" }]}>
+                        <View style={[styles.completedBadge, { backgroundColor: Colors.successBackground }]}>
                           <CheckSquare size={12} color={Colors.success} />
                           <Text style={[styles.completedText, { color: Colors.success }]}>Completed</Text>
                         </View>
@@ -525,8 +763,10 @@ export default function JourneyScreen() {
                         <Text style={styles.statLabelMemories}>Progress</Text>
                       </View>
                       <View style={styles.statBubble}>
-                        <Text style={styles.statNumber}>5</Text>
-                        <Text style={styles.statLabelMemories}>Countries</Text>
+                        <Text style={styles.statNumber}>
+                          {memories.reduce((sum, memory) => sum + memory.likes, 0)}
+                        </Text>
+                        <Text style={styles.statLabelMemories}>Likes</Text>
                       </View>
                     </View>
                   </View>
@@ -562,10 +802,50 @@ export default function JourneyScreen() {
                       }
                     ]}
                   >
-                    <MemoryCard
-                      memory={memory}
+                    <TouchableOpacity
+                      style={styles.enhancedMemoryCard}
                       onPress={() => router.push(`/memories/${memory.id}`)}
-                    />
+                      activeOpacity={0.9}
+                    >
+                      <ImageBackground
+                        source={{ uri: memory.imageUrl }}
+                        style={styles.memoryCardBackground}
+                        imageStyle={styles.memoryCardImage}
+                      >
+                        <LinearGradient
+                          colors={["transparent", "rgba(0,0,0,0.8)"]}
+                          style={styles.memoryCardOverlay}
+                        >
+                          <View style={styles.memoryCardContent}>
+                            <View style={styles.memoryCardHeader}>
+                              <View style={[styles.memoryMoodBadge, { backgroundColor: Colors.memoryPink }]}>
+                                <Text style={styles.memoryMoodText}>{memory.mood}</Text>
+                              </View>
+                              <View style={styles.memoryStats}>
+                                <View style={styles.memoryStat}>
+                                  <Heart size={12} color={Colors.white} />
+                                  <Text style={styles.memoryStatText}>{memory.likes}</Text>
+                                </View>
+                                <View style={styles.memoryStat}>
+                                  <MessageSquare size={12} color={Colors.white} />
+                                  <Text style={styles.memoryStatText}>{memory.comments}</Text>
+                                </View>
+                              </View>
+                            </View>
+                            
+                            <View style={styles.memoryCardFooter}>
+                              <Text style={styles.memoryCardTitle}>{memory.title}</Text>
+                              <Text style={styles.memoryCardDate}>
+                                {new Date(memory.date).toLocaleDateString('en-US', { 
+                                  month: 'short', 
+                                  day: 'numeric' 
+                                })}
+                              </Text>
+                            </View>
+                          </View>
+                        </LinearGradient>
+                      </ImageBackground>
+                    </TouchableOpacity>
                   </Animated.View>
                 ))}
                 
@@ -595,7 +875,7 @@ export default function JourneyScreen() {
                 </TouchableOpacity>
               </View>
 
-              {/* Instagram-style Footer */}
+              {/* Enhanced Footer with Social Features */}
               <View style={styles.memoriesFooter}>
                 <LinearGradient
                   colors={[Colors.memoryPink + "20", Colors.memoryPurple + "20"]}
@@ -608,11 +888,17 @@ export default function JourneyScreen() {
                       📸 Ready to Share?
                     </Text>
                     <Text style={[styles.memoriesFooterText, { color: Colors.lightText }]}>
-                      Your memories are perfect for Instagram stories & social sharing
+                      Your memories are perfect for Instagram stories & social sharing. Connect with other students on their journey!
                     </Text>
-                    <TouchableOpacity style={[styles.shareButton, { backgroundColor: Colors.primary }]}>
-                      <Text style={styles.shareButtonText}>Share Story</Text>
-                    </TouchableOpacity>
+                    
+                    <View style={styles.socialButtons}>
+                      <TouchableOpacity style={[styles.socialButton, { backgroundColor: Colors.primary }]}>
+                        <Text style={styles.socialButtonText}>Share Story</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity style={[styles.socialButton, { backgroundColor: Colors.secondary }]}>
+                        <Text style={styles.socialButtonText}>Join Community</Text>
+                      </TouchableOpacity>
+                    </View>
                   </View>
                 </LinearGradient>
               </View>
@@ -890,6 +1176,157 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
     marginTop: 8,
   },
+  
+  // Flight Search styles
+  flightSearchCard: {
+    marginBottom: 16,
+    padding: 20,
+  },
+  flightSearchHeader: {
+    marginBottom: 16,
+  },
+  flightSearchTitleContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  flightSearchTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    marginLeft: 8,
+    flex: 1,
+  },
+  premiumBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F39C12",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 4,
+  },
+  premiumBadgeText: {
+    fontSize: 10,
+    fontWeight: "600",
+    color: "#FFFFFF",
+  },
+  flightSearchSubtitle: {
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  searchButton: {
+    marginTop: 8,
+  },
+  flightSearchForm: {
+    gap: 16,
+  },
+  flightInputRow: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  flightInputHalf: {
+    flex: 1,
+  },
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: "500",
+    marginBottom: 8,
+  },
+  flightInput: {
+    marginBottom: 0,
+  },
+  flightSearchButtons: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  searchFlightButton: {
+    flex: 1,
+  },
+  cancelSearchButton: {
+    flex: 1,
+  },
+  
+  // Flight Results styles
+  flightResultsCard: {
+    marginBottom: 16,
+    padding: 20,
+  },
+  flightResultsHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  flightResultsTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+  },
+  clearResults: {
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  flightResultsList: {
+    maxHeight: 400,
+  },
+  flightResultItem: {
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.05)",
+  },
+  flightResultHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  flightAirline: {
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  flightPrice: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  flightPriceAmount: {
+    fontSize: 18,
+    fontWeight: "700",
+  },
+  priceChange: {
+    marginLeft: 4,
+  },
+  dealBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  dealText: {
+    fontSize: 10,
+    fontWeight: "600",
+    color: "#FFFFFF",
+  },
+  flightDetails: {
+    marginBottom: 8,
+  },
+  flightTime: {
+    fontSize: 14,
+    marginBottom: 2,
+  },
+  flightDuration: {
+    fontSize: 12,
+  },
+  flightRoute: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  flightAirport: {
+    fontSize: 12,
+    fontWeight: "500",
+  },
+  
   flightStatsCard: {
     marginBottom: 16,
   },
@@ -1034,7 +1471,7 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   
-  // New Instagram-style Memories styles
+  // Enhanced Memories styles
   memoriesContainer: {
     flex: 1,
   },
@@ -1155,6 +1592,82 @@ const styles = StyleSheet.create({
   memoryWrapper: {
     marginBottom: 20,
   },
+  enhancedMemoryCard: {
+    height: 240,
+    borderRadius: 20,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 10,
+  },
+  memoryCardBackground: {
+    flex: 1,
+  },
+  memoryCardImage: {
+    borderRadius: 20,
+  },
+  memoryCardOverlay: {
+    flex: 1,
+    justifyContent: "space-between",
+    padding: 16,
+  },
+  memoryCardContent: {
+    flex: 1,
+    justifyContent: "space-between",
+  },
+  memoryCardHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+  },
+  memoryMoodBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  memoryMoodText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#FFFFFF",
+    textTransform: "capitalize",
+  },
+  memoryStats: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  memoryStat: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "rgba(0,0,0,0.3)",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  memoryStatText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#FFFFFF",
+  },
+  memoryCardFooter: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-end",
+  },
+  memoryCardTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#FFFFFF",
+    flex: 1,
+    marginRight: 8,
+  },
+  memoryCardDate: {
+    fontSize: 12,
+    color: "rgba(255, 255, 255, 0.8)",
+    fontWeight: "500",
+  },
   addMemoryCard: {
     height: 240,
     borderRadius: 20,
@@ -1235,12 +1748,16 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginBottom: 16,
   },
-  shareButton: {
-    paddingHorizontal: 24,
+  socialButtons: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  socialButton: {
+    paddingHorizontal: 20,
     paddingVertical: 12,
     borderRadius: 20,
   },
-  shareButtonText: {
+  socialButtonText: {
     color: "#FFFFFF",
     fontSize: 14,
     fontWeight: "600",
