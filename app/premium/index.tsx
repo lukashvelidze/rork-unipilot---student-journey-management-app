@@ -33,7 +33,7 @@ export default function PremiumScreen() {
       title: "Personal Mentor Access",
       description: "1-on-1 sessions with university admission experts",
       color: Colors.secondary,
-      available: false,
+      available: true,
     },
     {
       icon: FileText,
@@ -47,14 +47,14 @@ export default function PremiumScreen() {
       title: "Priority Support",
       description: "24/7 premium support with faster response times",
       color: Colors.success,
-      available: false,
+      available: true,
     },
     {
       icon: MessageSquare,
       title: "Expert Consultations",
       description: "Direct access to university admission consultants",
       color: Colors.info,
-      available: false,
+      available: true,
     },
     {
       icon: Users,
@@ -73,9 +73,9 @@ export default function PremiumScreen() {
     {
       icon: Award,
       title: "Success Guarantee",
-      description: "Money-back guarantee program (coming soon)",
+      description: "Money-back guarantee program",
       color: Colors.success,
-      available: false,
+      available: true,
     },
   ];
   
@@ -163,19 +163,11 @@ Valid codes: STUDENT2024, WELCOME, BETA, EARLYBIRD, ADMIN`,
           window.open(checkoutUrl, '_blank');
         }
       } else {
-        // For mobile, open Paddle checkout in browser
-        const checkoutUrl = `https://checkout.paddle.com/subscription/pro_01jyk34xa92kd6h2x3vw7sv5tf?email=${encodeURIComponent(user?.email || '')}`;
-        
-        const supported = await Linking.canOpenURL(checkoutUrl);
-        if (supported) {
-          await Linking.openURL(checkoutUrl);
-        } else {
-          Alert.alert(
-            "Unable to Open Checkout",
-            "Please try again or contact support for assistance.",
-            [{ text: "OK" }]
-          );
-        }
+        // For mobile, navigate to WebView checkout screen
+        router.push({
+          pathname: '/premium/checkout',
+          params: { email: user?.email || '' }
+        });
       }
     } catch (error) {
       console.error("Subscription error:", error);
@@ -263,15 +255,9 @@ Valid codes: STUDENT2024, WELCOME, BETA, EARLYBIRD, ADMIN`,
               <Card key={index} style={styles.featureCard} variant="elevated">
                 <View style={styles.featureHeader}>
                   <feature.icon size={24} color={feature.color} />
-                  {feature.available ? (
-                    <View style={styles.activeIndicator}>
-                      <Check size={14} color={Colors.success} />
-                    </View>
-                  ) : (
-                    <View style={styles.comingSoonBadge}>
-                      <Text style={styles.comingSoonText}>Soon</Text>
-                    </View>
-                  )}
+                  <View style={styles.activeIndicator}>
+                    <Check size={14} color={Colors.success} />
+                  </View>
                 </View>
                 <Text style={styles.featureTitle}>{feature.title}</Text>
                 <Text style={styles.featureDescription}>{feature.description}</Text>
@@ -433,11 +419,6 @@ Valid codes: STUDENT2024, WELCOME, BETA, EARLYBIRD, ADMIN`,
             <Card key={index} style={styles.featureCard} variant="default">
               <View style={styles.featureHeader}>
                 <feature.icon size={24} color={feature.color} />
-                {!feature.available && (
-                  <View style={styles.comingSoonBadge}>
-                    <Text style={styles.comingSoonText}>Soon</Text>
-                  </View>
-                )}
               </View>
               <Text style={styles.featureTitle}>{feature.title}</Text>
               <Text style={styles.featureDescription}>{feature.description}</Text>
