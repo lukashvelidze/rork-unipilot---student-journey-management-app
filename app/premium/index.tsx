@@ -152,14 +152,14 @@ Valid codes: STUDENT2024, WELCOME, BETA, EARLYBIRD, ADMIN`,
         if (typeof window !== 'undefined' && window.Paddle) {
           // @ts-ignore
           window.Paddle.Checkout.open({
-            product: 'pro_01j9j8j8j8j8j8j8j8j8j8', // Replace with your actual Paddle product ID
+            product: 'pro_01jyk34xa92kd6h2x3vw7sv5tf', 
             email: user?.email || '',
             successUrl: window.location.origin + '/premium?success=true',
             closeUrl: window.location.origin + '/premium',
           });
         } else {
           // Fallback: redirect to Paddle checkout page
-          const checkoutUrl = `https://checkout.paddle.com/subscription/pro_01j9j8j8j8j8j8j8j8j8j8?email=${encodeURIComponent(user?.email || '')}`;
+          const checkoutUrl = `https://checkout.paddle.com/subscription/pro_01jyk34xa92kd6h2x3vw7sv5tf?email=${encodeURIComponent(user?.email || '')}`;
           window.open(checkoutUrl, '_blank');
         }
       } else {
@@ -205,7 +205,7 @@ Valid codes: STUDENT2024, WELCOME, BETA, EARLYBIRD, ADMIN`,
         if (window.Paddle) {
           // @ts-ignore
           window.Paddle.Setup({
-            token: 'live_your_paddle_client_token', // Replace with your actual Paddle client token
+            token: 'test_c25cc3df5ddfcd6b3b2a8420700', // Replace with your actual Paddle client token
             pwCustomer: {
               email: user?.email || '',
             },
