@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert, Platform } from "react-native";
 import { useRouter } from "expo-router";
-import { Crown, Check, Zap, Target, FileText, Calendar, MessageSquare, Users, BookOpen, Award, Gift, ArrowRight, Star, Plane, Brain, TrendingUp, Shield, Headphones, Video, Globe, DollarSign } from "lucide-react-native";
+import { Crown, Check, Zap, Target, FileText, Calendar, MessageSquare, Users, BookOpen, Award, Gift, ChevronRight, Star, Plane, Brain, TrendingUp, Shield, Headphones, Video, Globe, DollarSign } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import Colors from "@/constants/colors";
 import Theme from "@/constants/theme";
@@ -97,7 +97,7 @@ export default function PremiumScreen() {
       icon: Globe,
       title: "Country-Specific Guidance",
       description: "Detailed guides and requirements for 50+ countries and 1000+ universities",
-      color: Colors.career,
+      color: Colors.primary,
       available: true,
       benefits: ["Country guides", "Visa assistance", "Cultural preparation", "Local insights"]
     },
@@ -105,7 +105,7 @@ export default function PremiumScreen() {
       icon: DollarSign,
       title: "Scholarship Maximizer",
       description: "AI-powered scholarship matching and application optimization tools",
-      color: Colors.premium,
+      color: Colors.secondary,
       available: true,
       benefits: ["Scholarship matching", "Application optimizer", "Funding calculator", "Success tracker"]
     },
@@ -113,7 +113,7 @@ export default function PremiumScreen() {
       icon: Headphones,
       title: "Personal Success Coach",
       description: "Dedicated success coach for accountability and motivation throughout your journey",
-      color: Colors.academic,
+      color: Colors.accent,
       available: false,
       benefits: ["Personal coach", "Weekly check-ins", "Goal setting", "Motivation support"]
     },
@@ -249,7 +249,7 @@ export default function PremiumScreen() {
           >
             <FileText size={24} color={Colors.primary} />
             <Text style={styles.actionTitle}>Premium Resources</Text>
-            <ArrowRight size={16} color={Colors.lightText} />
+            <ChevronRight size={16} color={Colors.lightText} />
           </TouchableOpacity>
           
           <TouchableOpacity
@@ -258,7 +258,7 @@ export default function PremiumScreen() {
           >
             <Zap size={24} color={Colors.secondary} />
             <Text style={styles.actionTitle}>AI Assistant</Text>
-            <ArrowRight size={16} color={Colors.lightText} />
+            <ChevronRight size={16} color={Colors.lightText} />
           </TouchableOpacity>
         </View>
         

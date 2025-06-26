@@ -46,3 +46,25 @@ export interface CommunityUser {
   comments: number;
   reputation: number;
 }
+
+// Enhanced community post type with additional fields
+export interface CommunityPost {
+  id: string;
+  title: string;
+  content: string;
+  author: {
+    id: string;
+    name: string;
+    avatar?: string;
+    country: string;
+    university?: string;
+  };
+  topic: Topic;
+  likes: number;
+  comments: number;
+  createdAt: string;
+  updatedAt: string;
+  tags: string[];
+  isLiked?: boolean;
+  isPinned?: boolean;
+}

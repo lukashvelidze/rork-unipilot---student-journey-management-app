@@ -3,7 +3,7 @@ import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Platform, Animate
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
-import { ChevronRight, Quote, CheckSquare, Calendar, Clock, Star, Heart, Camera, Plus, Plane, Globe, Timer, MapPin, Sparkles, Image as ImageIcon, Search, Filter, TrendingDown, TrendingUp, ExternalLink, Crown } from "lucide-react-native";
+import { ChevronRight, Quote, CheckSquare, Calendar, Clock, Star, Heart, Camera, Plus, Plane, Globe, Timer, MapPin, Sparkles, Image as ImageIcon, Search, Filter, TrendingDown, TrendingUp, ExternalLink, Crown, MessageSquare } from "lucide-react-native";
 import { useColors } from "@/hooks/useColors";
 import Card from "@/components/Card";
 import ProgressBar from "@/components/ProgressBar";
@@ -634,7 +634,7 @@ export default function JourneyScreen() {
                     <Card style={[
                       styles.timelineCard,
                       { backgroundColor: Colors.card },
-                      event.completed && { backgroundColor: Colors.successBackground }
+                      event.completed && { backgroundColor: Colors.lightBackground }
                     ]}>
                       <View style={styles.timelineCardHeader}>
                         <Text style={[
@@ -655,7 +655,7 @@ export default function JourneyScreen() {
                         {event.description}
                       </Text>
                       {event.completed && (
-                        <View style={[styles.completedBadge, { backgroundColor: Colors.successBackground }]}>
+                        <View style={[styles.completedBadge, { backgroundColor: Colors.lightBackground }]}>
                           <CheckSquare size={12} color={Colors.success} />
                           <Text style={[styles.completedText, { color: Colors.success }]}>Completed</Text>
                         </View>

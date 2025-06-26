@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Image, Dimensions, Alert, Linking } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
-import { ArrowLeft, Clock, BookOpen, Star, Download, Share, Heart, Bookmark, Play, Users, Target, CheckCircle, ExternalLink, Zap, Award, TrendingUp } from "lucide-react-native";
+import { ArrowLeft, Clock, BookOpen, Star, Download, Share, Heart, Bookmark, Play, Users, Target, CheckCircle, ExternalLink, Zap, Award, TrendingUp, ChevronRight } from "lucide-react-native";
 import Colors from "@/constants/colors";
 import Theme from "@/constants/theme";
 import Card from "@/components/Card";
@@ -379,7 +379,9 @@ export default function PremiumResourceDetailScreen() {
   const handleToolAction = (tool: any) => {
     Alert.alert(
       tool.name,
-      `${tool.description}\n\nThis tool is now available in your premium dashboard.`,
+      `${tool.description}
+
+This tool is now available in your premium dashboard.`,
       [
         { text: "Cancel", style: "cancel" },
         { text: "Open Tool", onPress: () => console.log(`Opening ${tool.name}`) },
@@ -675,7 +677,7 @@ export default function PremiumResourceDetailScreen() {
                     <Text style={styles.relatedItemCategory}>{relatedResource.category}</Text>
                     <Text style={styles.relatedItemTime}>{relatedResource.estimatedTime}</Text>
                   </View>
-                  <ArrowRight size={16} color={Colors.lightText} />
+                  <ChevronRight size={16} color={Colors.lightText} />
                 </TouchableOpacity>
               );
             })}
