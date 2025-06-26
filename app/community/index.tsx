@@ -11,7 +11,7 @@ import { trpc } from "@/lib/trpc";
 
 export default function CommunityScreen() {
   const router = useRouter();
-  const { user, isPremium } = useUserStore();
+  const { user } = useUserStore();
   const {
     posts,
     filteredPosts,
@@ -27,7 +27,7 @@ export default function CommunityScreen() {
     setError,
   } = useCommunityStore();
   
-  const isUserPremium = isPremium || user?.isPremium || false;
+  const isPremium = user?.isPremium || false;
   
   // Fetch posts from backend
   const { data: backendPosts, isLoading: postsLoading, error: postsError, refetch } = trpc.community.getPosts.useQuery({
@@ -147,7 +147,7 @@ export default function CommunityScreen() {
       </View>
       
       {/* Premium UniPilot AI Assistant Promotion */}
-      {!isUserPremium && (
+      {!isPremium && (
         <Card style={styles.aiAssistantCard}>
           <View style={styles.aiAssistantContent}>
             <View style={styles.aiAssistantTextContainer}>
@@ -170,7 +170,7 @@ export default function CommunityScreen() {
                   style={styles.premiumButton}
                   onPress={() => router.push("/premium")}
                 >
-                  <Text style={styles.premiumButtonText}>Subscribe $4.99</Text>
+                  <Text style={styles.premiumButtonText}>$4.99/month</Text>
                 </TouchableOpacity>
               </View>
             </View>

@@ -137,10 +137,10 @@ const categories = [
 
 export default function PremiumResourcesScreen() {
   const router = useRouter();
-  const { user, isPremium } = useUserStore();
+  const { user } = useUserStore();
   const [selectedCategory, setSelectedCategory] = useState("All");
   
-  const isUserPremium = isPremium || user?.isPremium || false;
+  const isPremium = user?.isPremium || false;
   
   const filteredResources = resources.filter(resource => 
     selectedCategory === "All" || resource.category === selectedCategory
@@ -192,13 +192,13 @@ export default function PremiumResourcesScreen() {
   };
   
   const handleResourcePress = (resource: Resource) => {
-    if (!isUserPremium) {
+    if (!isPremium) {
       Alert.alert(
         "Premium Required",
         "This resource is only available to premium members. Upgrade to access all premium resources.",
         [
           { text: "Cancel", style: "cancel" },
-          { text: "Subscribe $4.99", onPress: () => router.push("/premium") },
+          { text: "Upgrade", onPress: () => router.push("/premium") },
         ]
       );
       return;
@@ -229,7 +229,7 @@ export default function PremiumResourcesScreen() {
                   <Text style={styles.newBadgeText}>NEW</Text>
                 </View>
               )}
-              {!isUserPremium && (
+              {!isPremium && (
                 <View style={styles.premiumBadge}>
                   <Lock size={10} color={Colors.white} />
                 </View>
@@ -279,11 +279,11 @@ export default function PremiumResourcesScreen() {
             <View style={styles.actionButton}>
               <Text style={[
                 styles.actionButtonText,
-                !isUserPremium && styles.actionButtonTextDisabled,
+                !isPremium && styles.actionButtonTextDisabled,
               ]}>
-                {isUserPremium ? "Read Guide" : "Premium Only"}
+                {isPremium ? "Read Guide" : "Premium Only"}
               </Text>
-              <ArrowRight size={16} color={isUserPremium ? Colors.primary : Colors.mutedText} />
+              <ArrowRight size={16} color={isPremium ? Colors.primary : Colors.mutedText} />
             </View>
           </View>
         </Card>
@@ -339,7 +339,7 @@ export default function PremiumResourcesScreen() {
         </View>
         
         {/* Upgrade Prompt for Non-Premium Users */}
-        {!isUserPremium && (
+        {!isPremium && (
           <Card style={styles.upgradeCard} variant="elevated">
             <View style={styles.upgradeContent}>
               <Lock size={32} color={Colors.primary} />
@@ -348,7 +348,7 @@ export default function PremiumResourcesScreen() {
                 Get access to all premium resources, expert guides, and exclusive content to accelerate your study abroad journey.
               </Text>
               <Button
-                title="Subscribe $4.99"
+                title="Upgrade to Premium"
                 onPress={() => router.push("/premium")}
                 style={styles.upgradeButton}
               />

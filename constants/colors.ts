@@ -13,11 +13,8 @@ export const lightColors = {
   success: "#6BCF7F", // Fresh green
   successBackground: "rgba(107, 207, 127, 0.1)", // Light success background
   warning: "#FFA726", // Warm orange
-  warningBackground: "rgba(255, 167, 38, 0.1)", // Light warning background
   error: "#FF5252", // Soft red
-  errorBackground: "rgba(255, 82, 82, 0.1)", // Light error background
   info: "#42A5F5", // Soft blue
-  infoBackground: "rgba(66, 165, 245, 0.1)", // Light info background
   academic: "#5C6BC0", // Indigo - scholarly and professional
   career: "#26A69A", // Teal - professional and growth-oriented
   
@@ -99,11 +96,8 @@ export const darkColors = {
   success: "#6BCF7F",
   successBackground: "rgba(107, 207, 127, 0.15)", // Light success background for dark mode
   warning: "#FFA726",
-  warningBackground: "rgba(255, 167, 38, 0.15)", // Light warning background for dark mode
   error: "#FF5252",
-  errorBackground: "rgba(255, 82, 82, 0.15)", // Light error background for dark mode
   info: "#42A5F5",
-  infoBackground: "rgba(66, 165, 245, 0.15)", // Light info background for dark mode
   academic: "#5C6BC0", // Indigo - scholarly and professional
   career: "#26A69A", // Teal - professional and growth-oriented
   

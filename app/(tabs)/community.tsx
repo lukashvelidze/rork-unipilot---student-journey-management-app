@@ -13,7 +13,7 @@ import { trpc } from "@/lib/trpc";
 export default function CommunityScreen() {
   const router = useRouter();
   const Colors = useColors();
-  const { user, isPremium } = useUserStore();
+  const { user } = useUserStore();
   const {
     posts,
     filteredPosts,
@@ -29,7 +29,7 @@ export default function CommunityScreen() {
     setError,
   } = useCommunityStore();
   
-  const isUserPremium = isPremium || user?.isPremium || false;
+  const isPremium = user?.isPremium || false;
   
   // Fetch posts from backend
   const { data: backendPosts, isLoading: postsLoading, error: postsError, refetch } = trpc.community.getPosts.useQuery({
@@ -155,7 +155,7 @@ export default function CommunityScreen() {
       </View>
       
       {/* Premium UniPilot Promotion - Only show if not premium */}
-      {!isUserPremium && (
+      {!isPremium && (
         <Card style={[styles.premiumPromoCard, { backgroundColor: Colors.card }]}>
           <View style={styles.premiumPromoContent}>
             <View style={styles.premiumPromoTextContainer}>
@@ -170,7 +170,7 @@ export default function CommunityScreen() {
                 style={[styles.premiumPromoButton, { backgroundColor: Colors.primary }]}
                 onPress={() => router.push("/premium")}
               >
-                <Text style={styles.premiumPromoButtonText}>Subscribe $4.99</Text>
+                <Text style={styles.premiumPromoButtonText}>Try for $4.99/month</Text>
               </TouchableOpacity>
             </View>
             <Image 
