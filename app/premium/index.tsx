@@ -1,9 +1,11 @@
 import { WebView } from 'react-native-webview';
 import React, { useState } from 'react';
 import { Platform, Button } from 'react-native';
+import { useUserStore } from '@/store/userStore';
 
-export default function PremiumScreen({ user }) {
+export default function PremiumScreen() {
   const [showCheckout, setShowCheckout] = useState(false);
+  const { user, setPremium } = useUserStore();
 
   const email = user?.email || "test@example.com";
   const checkoutUrl = `https://lukashvelidze.github.io/unipilot/checkout.html?email=${encodeURIComponent(email)}`;
