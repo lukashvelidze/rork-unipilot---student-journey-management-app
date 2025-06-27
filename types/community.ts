@@ -68,3 +68,6 @@ export interface CommunityPost {
   isLiked?: boolean;
   isPinned?: boolean;
 }
+
+// Export CommunityPost for backward compatibility
+export { CommunityPost as default };

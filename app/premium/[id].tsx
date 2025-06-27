@@ -157,158 +157,156 @@ const resourcesContent: Record<string, ResourceContent> = {
       }
     ]
   },
-  "6": {
-    id: "6",
-    title: "AI Essay Generator",
-    description: "Generate personalized essays, SOPs, and cover letters using advanced AI",
-    category: "AI Tools",
+  "mentor": {
+    id: "mentor",
+    title: "Personal Mentor Access",
+    description: "Get 1-on-1 guidance from university admission experts and successful alumni",
+    category: "Mentoring",
     type: "tool",
-    estimatedTime: "15 min",
+    estimatedTime: "Ongoing",
     difficulty: "Beginner",
-    author: "UniPilot AI Team",
+    author: "UniPilot Mentor Team",
     publishedDate: "2024-02-01",
-    heroImage: "https://images.unsplash.com/photo-1677442136019-21780ecad995?w=800&h=400&fit=crop",
-    features: ["AI-powered writing", "Multiple formats", "Plagiarism check", "Expert review"],
+    heroImage: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=800&h=400&fit=crop",
+    features: ["1-on-1 sessions", "Expert guidance", "Mock interviews", "Application review"],
     content: {
-      introduction: "Harness the power of advanced AI to create compelling essays, statements of purpose, and cover letters. Our AI Essay Generator uses cutting-edge technology to help you craft personalized, high-quality content that reflects your unique story and goals.",
+      introduction: "Connect with experienced mentors who have successfully navigated the study abroad journey. Our personal mentors provide tailored guidance, expert insights, and ongoing support to help you achieve your academic goals.",
       sections: [
         {
-          title: "How AI Writing Works",
-          content: "Our AI Essay Generator uses advanced natural language processing to understand your background, goals, and requirements, then generates personalized content that maintains your authentic voice while ensuring professional quality and structure.",
+          title: "How Personal Mentoring Works",
+          content: "Our mentoring program pairs you with experienced professionals who understand your specific field and destination country. Each mentor brings years of experience in admissions, career development, and international education.",
           tips: [
-            "Provide detailed information about your background and goals",
-            "Be specific about the program and university you're applying to",
-            "Review and personalize the generated content",
-            "Use the AI as a starting point, not a final product"
+            "Schedule regular sessions to maintain momentum",
+            "Come prepared with specific questions and goals",
+            "Be open to feedback and constructive criticism",
+            "Take notes during sessions for future reference"
           ]
         },
         {
-          title: "Supported Document Types",
-          content: "Generate various types of application documents with specialized templates and AI models trained for each format.",
+          title: "Types of Mentoring Support",
+          content: "Our mentors provide comprehensive support across all aspects of your study abroad journey, from initial planning to post-graduation career guidance.",
           examples: [
-            "Personal Statements for university applications",
-            "Statements of Purpose for graduate programs",
-            "Cover Letters for scholarship applications",
-            "Motivation Letters for exchange programs",
-            "Research Proposals for PhD applications"
+            "University selection and program matching",
+            "Application strategy and timeline planning",
+            "Personal statement and essay review",
+            "Interview preparation and practice",
+            "Scholarship application guidance",
+            "Career planning and networking advice"
           ]
         },
         {
-          title: "Quality Assurance",
-          content: "Every generated document goes through multiple quality checks to ensure originality, coherence, and professional standards.",
+          title: "Mentor Expertise Areas",
+          content: "Our diverse team of mentors covers all major fields of study and destination countries, ensuring you get specialized guidance for your specific goals.",
           tools: [
-            "Plagiarism Detection",
-            "Grammar and Style Checker",
-            "Readability Analysis",
-            "Expert Review Option"
+            "Engineering and Technology",
+            "Business and Management",
+            "Medicine and Healthcare",
+            "Arts and Humanities",
+            "Sciences and Research"
           ]
         }
       ],
-      conclusion: "The AI Essay Generator is a powerful tool to help you overcome writer's block and create compelling application documents. Remember to always review, personalize, and refine the generated content to ensure it truly represents your voice and story.",
+      conclusion: "Personal mentoring is one of the most valuable investments you can make in your study abroad journey. Our mentors have helped thousands of students achieve their dreams and are committed to your success.",
       actionItems: [
-        "Input your background information and goals",
-        "Select the type of document you need",
-        "Generate your first draft using AI",
-        "Review and personalize the content",
-        "Run plagiarism and grammar checks",
-        "Get expert feedback if needed",
-        "Finalize and submit your application"
+        "Complete your profile to match with the right mentor",
+        "Schedule your first consultation session",
+        "Prepare questions and goals for your meeting",
+        "Follow through on mentor recommendations",
+        "Maintain regular communication",
+        "Provide feedback to improve the experience"
       ]
     },
-    relatedResources: ["1", "4", "11"],
+    relatedResources: ["analytics", "resources"],
     tools: [
       {
-        name: "AI Essay Generator",
-        description: "Generate personalized essays and SOPs",
-        action: "Launch Generator"
+        name: "Mentor Matching",
+        description: "Find the perfect mentor for your goals",
+        action: "Find Mentor"
       },
       {
-        name: "Plagiarism Checker",
-        description: "Ensure originality of your content",
-        action: "Check Plagiarism"
+        name: "Session Scheduler",
+        description: "Book your mentoring sessions",
+        action: "Schedule Session"
       },
       {
-        name: "Grammar Assistant",
-        description: "Perfect your writing style",
-        action: "Check Grammar"
+        name: "Progress Tracker",
+        description: "Track your mentoring progress",
+        action: "View Progress"
       }
     ]
   },
-  "9": {
-    id: "9",
-    title: "Flight Booking Masterclass",
-    description: "Learn how to find the cheapest flights and travel hacks for students",
-    category: "Travel",
-    type: "guide",
-    estimatedTime: "35 min",
-    difficulty: "Beginner",
-    author: "Travel Expert Mike Chen",
-    publishedDate: "2024-02-10",
-    heroImage: "https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=800&h=400&fit=crop",
-    features: ["Booking strategies", "Price alerts", "Route optimization", "Student discounts"],
+  "analytics": {
+    id: "analytics",
+    title: "Advanced Analytics",
+    description: "Detailed progress tracking, success predictions, and performance insights",
+    category: "Analytics",
+    type: "tool",
+    estimatedTime: "Ongoing",
+    difficulty: "Intermediate",
+    author: "UniPilot Analytics Team",
+    publishedDate: "2024-02-15",
+    heroImage: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800&h=400&fit=crop",
+    features: ["Progress tracking", "Success predictions", "Performance insights", "Goal setting"],
     content: {
-      introduction: "Master the art of finding cheap flights with proven strategies used by travel experts. This comprehensive guide will save you hundreds of dollars on your study abroad journey and teach you insider secrets that airlines don't want you to know.",
+      introduction: "Leverage the power of data to optimize your study abroad journey. Our advanced analytics provide deep insights into your progress, predict your success probability, and help you make data-driven decisions.",
       sections: [
         {
-          title: "Best Booking Strategies",
-          content: "Learn when to book, how to find the best deals, and which tools to use for maximum savings on international flights.",
+          title: "Progress Tracking",
+          content: "Monitor your journey with comprehensive tracking across all stages of your study abroad process. Our analytics dashboard provides real-time insights into your progress and areas for improvement.",
           tips: [
-            "Book international flights 2-3 months in advance for best prices",
-            "Use incognito mode to avoid price tracking cookies",
-            "Compare prices across multiple booking sites",
-            "Consider nearby airports for significant savings",
-            "Be flexible with dates - mid-week flights are often cheaper"
+            "Check your dashboard regularly for updates",
+            "Set weekly and monthly progress goals",
+            "Use insights to prioritize your tasks",
+            "Compare your progress with successful students"
           ]
         },
         {
-          title: "Student Discounts and Special Deals",
-          content: "Discover exclusive student discounts and special programs that can save you up to 50% on flights.",
+          title: "Success Prediction Models",
+          content: "Our AI-powered models analyze thousands of successful applications to predict your likelihood of acceptance at different universities and programs.",
           examples: [
-            "Student Universe - exclusive student fares",
-            "STA Travel - student and youth discounts",
-            "Airline student programs - direct discounts",
-            "Credit card travel rewards - maximize points",
-            "Group booking discounts - travel with friends"
+            "University acceptance probability",
+            "Scholarship award likelihood",
+            "Visa approval chances",
+            "Program completion success rate"
           ]
         },
         {
-          title: "Advanced Search Techniques",
-          content: "Use professional search techniques to find hidden deals and error fares that can save you thousands.",
+          title: "Performance Benchmarking",
+          content: "Compare your performance against successful students with similar profiles and goals to identify areas for improvement and optimization.",
           tools: [
-            "Google Flights - comprehensive search",
-            "Skyscanner - flexible date search",
-            "Momondo - creative routing",
-            "ITA Matrix - advanced search options"
+            "Peer Comparison Dashboard",
+            "Success Metrics Tracker",
+            "Goal Achievement Monitor",
+            "Performance Improvement Suggestions"
           ]
         }
       ],
-      conclusion: "With these strategies and tools, you'll be able to find the best flight deals and save money for your studies abroad. Remember to always book with reputable airlines and read the fine print before purchasing.",
+      conclusion: "Data-driven decision making is crucial for study abroad success. Our analytics help you understand where you stand, what you need to improve, and how to optimize your chances of success.",
       actionItems: [
-        "Set up price alerts for your route",
-        "Compare prices across multiple platforms",
-        "Check for student discounts",
-        "Consider alternative airports and routes",
-        "Book at the optimal time",
-        "Purchase travel insurance",
-        "Prepare for your journey"
+        "Set up your analytics dashboard",
+        "Define your success metrics and goals",
+        "Review weekly progress reports",
+        "Act on improvement recommendations",
+        "Track your success probability over time",
+        "Celebrate milestone achievements"
       ]
     },
-    relatedResources: ["5", "7", "8"],
+    relatedResources: ["mentor", "webinars"],
     tools: [
       {
-        name: "Flight Price Tracker",
-        description: "Track prices and get alerts",
-        action: "Set Alert"
+        name: "Analytics Dashboard",
+        description: "Comprehensive progress tracking",
+        action: "View Dashboard"
       },
       {
-        name: "Route Optimizer",
-        description: "Find the best routes and connections",
-        action: "Optimize Route"
+        name: "Success Predictor",
+        description: "AI-powered success predictions",
+        action: "Check Predictions"
       },
       {
-        name: "Student Discount Finder",
-        description: "Find exclusive student deals",
-        action: "Find Discounts"
+        name: "Goal Tracker",
+        description: "Set and track your goals",
+        action: "Manage Goals"
       }
     ]
   }

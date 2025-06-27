@@ -2,7 +2,7 @@ import React, { useEffect } from "react";
 import { StyleSheet, View, Text, ScrollView, TouchableOpacity } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { Award, TrendingUp, BookOpen, Users, Crown, Zap, Target, Calendar, FileText, MessageSquare } from "lucide-react-native";
+import { Award, TrendingUp, BookOpen, Users, Crown, Zap, Target, Calendar, UserCheck, BarChart3, Video } from "lucide-react-native";
 import { useColors } from "@/hooks/useColors";
 import Card from "@/components/Card";
 import ProgressBar from "@/components/ProgressBar";
@@ -76,9 +76,9 @@ export default function HomeScreen() {
       onPress: () => router.push("/(tabs)/documents"),
     },
     {
-      title: "Join Community",
-      description: "Connect with others",
-      icon: Users,
+      title: "Premium Features",
+      description: "Explore premium tools",
+      icon: Crown,
       color: Colors.accent,
       onPress: () => router.push("/(tabs)/community"),
     },
@@ -86,32 +86,32 @@ export default function HomeScreen() {
 
   const premiumFeatures = [
     {
-      title: "AI Assistant",
-      description: "Unlimited access to UniPilot AI",
-      icon: Zap,
-      color: Colors.primary,
-      onPress: () => router.push("/unipilot-ai"),
-    },
-    {
       title: "Personal Mentor",
       description: "1-on-1 guidance sessions",
-      icon: Target,
+      icon: UserCheck,
+      color: Colors.primary,
+      onPress: () => router.push("/premium/mentor"),
+    },
+    {
+      title: "Advanced Analytics",
+      description: "Track your progress",
+      icon: BarChart3,
       color: Colors.secondary,
-      onPress: () => router.push("/mentor"),
+      onPress: () => router.push("/premium/analytics"),
     },
     {
       title: "Premium Resources",
       description: "Exclusive templates & guides",
-      icon: Crown,
+      icon: BookOpen,
       color: Colors.accent,
       onPress: () => router.push("/premium/resources"),
     },
     {
-      title: "Priority Support",
-      description: "24/7 premium support",
-      icon: Calendar,
+      title: "Exclusive Webinars",
+      description: "Live expert sessions",
+      icon: Video,
       color: Colors.success,
-      onPress: () => router.push("/support"),
+      onPress: () => router.push("/premium/webinars"),
     },
   ];
 
@@ -126,16 +126,16 @@ export default function HomeScreen() {
     {
       title: "Premium Resources",
       description: "Access exclusive content",
-      icon: FileText,
+      icon: BookOpen,
       color: Colors.secondary,
       onPress: () => router.push("/premium/resources"),
     },
     {
-      title: "Expert Consultation",
+      title: "Personal Mentor",
       description: "Book 1-on-1 sessions",
-      icon: MessageSquare,
+      icon: UserCheck,
       color: Colors.success,
-      onPress: () => router.push("/consultation"),
+      onPress: () => router.push("/premium/mentor"),
     },
   ];
   
@@ -286,7 +286,7 @@ export default function HomeScreen() {
               <View style={styles.upgradeText}>
                 <Text style={[styles.upgradeTitle, { color: Colors.text }]}>Unlock Premium Features</Text>
                 <Text style={[styles.upgradeDescription, { color: Colors.lightText }]}>
-                  Get unlimited AI assistance, personal mentoring, and exclusive resources
+                  Get personal mentoring, advanced analytics, and exclusive resources for just $4.99/month
                 </Text>
               </View>
             </View>
@@ -294,7 +294,7 @@ export default function HomeScreen() {
               style={[styles.upgradeButton, { backgroundColor: Colors.premium }]}
               onPress={() => router.push("/premium")}
             >
-              <Text style={styles.upgradeButtonText}>Upgrade Now</Text>
+              <Text style={styles.upgradeButtonText}>Upgrade Now - $4.99/month</Text>
             </TouchableOpacity>
           </Card>
         )}

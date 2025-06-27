@@ -1,7 +1,7 @@
 import React, { useState } from "react";
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Linking, Alert } from "react-native";
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert } from "react-native";
 import { useRouter } from "expo-router";
-import { FileText, ExternalLink, BookOpen, Video, Users, Target, Calendar, CheckCircle, Lock, ArrowRight, Clock, Star, Brain, TrendingUp, Shield, Headphones, Globe, DollarSign, Plane, Award, Zap } from "lucide-react-native";
+import { BookOpen, Video, Users, Target, Calendar, CheckCircle, Lock, ArrowRight, Clock, Star, BarChart3, TrendingUp, UserCheck, Zap, Award } from "lucide-react-native";
 import Colors from "@/constants/colors";
 import Theme from "@/constants/theme";
 import Card from "@/components/Card";
@@ -41,17 +41,32 @@ const resources: Resource[] = [
     features: ["Step-by-step guide", "Real examples", "Expert feedback", "Templates included"]
   },
   {
-    id: "2",
-    title: "University Research Strategy",
-    description: "Systematic approach to researching and selecting the perfect universities for your goals",
-    type: "guide",
-    category: "Research",
+    id: "mentor",
+    title: "Personal Mentor Access",
+    description: "Get 1-on-1 guidance from university admission experts and successful alumni",
+    type: "tool",
+    category: "Mentoring",
     isPremium: true,
-    estimatedTime: "60 min",
+    isPopular: true,
+    estimatedTime: "Ongoing",
     difficulty: "Beginner",
+    rating: 4.9,
+    completions: 1567,
+    features: ["1-on-1 sessions", "Expert guidance", "Mock interviews", "Application review"]
+  },
+  {
+    id: "analytics",
+    title: "Advanced Analytics",
+    description: "Detailed progress tracking, success predictions, and performance insights",
+    type: "tool",
+    category: "Analytics",
+    isPremium: true,
+    isNew: true,
+    estimatedTime: "Ongoing",
+    difficulty: "Intermediate",
     rating: 4.8,
-    completions: 3156,
-    features: ["Research framework", "Comparison tools", "Decision matrix", "Country guides"]
+    completions: 2156,
+    features: ["Progress tracking", "Success predictions", "Performance insights", "Goal setting"]
   },
   {
     id: "3",
@@ -95,21 +110,6 @@ const resources: Resource[] = [
     features: ["Country-specific guides", "Document checklists", "Timeline planner", "Requirements tracker"]
   },
   {
-    id: "6",
-    title: "AI Essay Generator",
-    description: "Generate personalized essays, SOPs, and cover letters using advanced AI technology",
-    type: "tool",
-    category: "AI Tools",
-    isPremium: true,
-    isNew: true,
-    isPopular: true,
-    estimatedTime: "15 min",
-    difficulty: "Beginner",
-    rating: 4.9,
-    completions: 4567,
-    features: ["AI-powered writing", "Multiple formats", "Plagiarism check", "Expert review"]
-  },
-  {
     id: "7",
     title: "Budget Planning Calculator",
     description: "Comprehensive financial planning tools for studying abroad with cost breakdowns",
@@ -136,22 +136,8 @@ const resources: Resource[] = [
     features: ["Cultural insights", "Adaptation strategies", "Local customs", "Social integration"]
   },
   {
-    id: "9",
-    title: "Flight Booking Masterclass",
-    description: "Learn how to find the cheapest flights, best routes, and travel hacks for students",
-    type: "guide",
-    category: "Travel",
-    isPremium: true,
-    isNew: true,
-    estimatedTime: "35 min",
-    difficulty: "Beginner",
-    rating: 4.8,
-    completions: 1567,
-    features: ["Booking strategies", "Price alerts", "Route optimization", "Student discounts"]
-  },
-  {
     id: "10",
-    title: "Success Webinar Series",
+    title: "Exclusive Webinar Series",
     description: "Monthly live sessions with admission experts, successful students, and industry leaders",
     type: "webinar",
     category: "Community",
@@ -194,14 +180,13 @@ const resources: Resource[] = [
 const categories = [
   "All",
   "Application Materials",
-  "Research",
+  "Mentoring",
+  "Analytics",
   "Funding",
   "Interviews",
   "Visa & Legal",
-  "AI Tools",
   "Financial Planning",
   "Life Abroad",
-  "Travel",
   "Community",
   "Test Preparation",
   "Career Development",
@@ -232,7 +217,7 @@ export default function PremiumResourcesScreen() {
       case "calculator":
         return TrendingUp;
       default:
-        return FileText;
+        return BookOpen;
     }
   };
   
@@ -395,7 +380,7 @@ export default function PremiumResourcesScreen() {
       <View style={styles.header}>
         <Text style={styles.title}>Premium Resources</Text>
         <Text style={styles.subtitle}>
-          Expert guides, AI tools, and exclusive content to accelerate your journey
+          Expert guides, tools, and exclusive content to accelerate your journey
         </Text>
         
         {isPremium && (
@@ -413,7 +398,7 @@ export default function PremiumResourcesScreen() {
           <Text style={styles.statLabel}>Resources</Text>
         </View>
         <View style={styles.statCard}>
-          <Text style={styles.statNumber}>50K+</Text>
+          <Text style={styles.statNumber}>75K+</Text>
           <Text style={styles.statLabel}>Students Helped</Text>
         </View>
         <View style={styles.statCard}>
@@ -421,7 +406,7 @@ export default function PremiumResourcesScreen() {
           <Text style={styles.statLabel}>Avg Rating</Text>
         </View>
         <View style={styles.statCard}>
-          <Text style={styles.statNumber}>95%</Text>
+          <Text style={styles.statNumber}>98%</Text>
           <Text style={styles.statLabel}>Success Rate</Text>
         </View>
       </View>
@@ -470,7 +455,7 @@ export default function PremiumResourcesScreen() {
               <Lock size={32} color={Colors.primary} />
               <Text style={styles.upgradeTitle}>Unlock All Premium Resources</Text>
               <Text style={styles.upgradeDescription}>
-                Get instant access to all {resources.length} premium resources, AI tools, expert guides, and exclusive content. Join 50,000+ successful students who achieved their dreams with UniPilot Premium.
+                Get instant access to all {resources.length} premium resources, personal mentoring, advanced analytics, and exclusive content. Join 75,000+ successful students who achieved their dreams with UniPilot Premium.
               </Text>
               
               <View style={styles.upgradeFeatures}>
@@ -480,15 +465,15 @@ export default function PremiumResourcesScreen() {
                 </View>
                 <View style={styles.upgradeFeature}>
                   <CheckCircle size={16} color={Colors.success} />
-                  <Text style={styles.upgradeFeatureText}>AI-powered tools</Text>
+                  <Text style={styles.upgradeFeatureText}>Personal mentor access</Text>
                 </View>
                 <View style={styles.upgradeFeature}>
                   <CheckCircle size={16} color={Colors.success} />
-                  <Text style={styles.upgradeFeatureText}>Expert guidance</Text>
+                  <Text style={styles.upgradeFeatureText}>Advanced analytics</Text>
                 </View>
                 <View style={styles.upgradeFeature}>
                   <CheckCircle size={16} color={Colors.success} />
-                  <Text style={styles.upgradeFeatureText}>24/7 support</Text>
+                  <Text style={styles.upgradeFeatureText}>Exclusive webinars</Text>
                 </View>
               </View>
               

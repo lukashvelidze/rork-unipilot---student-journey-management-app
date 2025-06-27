@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Platform, Animated, Dimensions, ImageBackground, Alert, Linking } from "react-native";
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Platform, Animated, Dimensions, ImageBackground, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
-import { ChevronRight, Quote, CheckSquare, Calendar, Clock, Star, Heart, Camera, Plus, Plane, Globe, Timer, MapPin, Sparkles, Image as ImageIcon, Search, Filter, TrendingDown, TrendingUp, ExternalLink, Crown, MessageSquare } from "lucide-react-native";
+import { ChevronRight, Quote, CheckSquare, Calendar, Clock, Star, Heart, Camera, Plus, Globe, Timer, MapPin, Sparkles, Image as ImageIcon, Award } from "lucide-react-native";
 import { useColors } from "@/hooks/useColors";
 import Card from "@/components/Card";
 import ProgressBar from "@/components/ProgressBar";
@@ -12,7 +12,6 @@ import QuoteCard from "@/components/QuoteCard";
 import CelebrationAnimation from "@/components/CelebrationAnimation";
 import MemoryCard from "@/components/MemoryCard";
 import Button from "@/components/Button";
-import Input from "@/components/Input";
 import { useJourneyStore } from "@/store/journeyStore";
 import { useUserStore } from "@/store/userStore";
 import { calculateOverallProgress } from "@/utils/helpers";
@@ -30,10 +29,6 @@ export default function JourneyScreen() {
     recentMilestone, 
     clearRecentMilestone, 
     setJourneyProgress,
-    flightSearchResults,
-    flightSearchLoading,
-    searchFlights,
-    clearFlightResults
   } = useJourneyStore();
   const [activeTab, setActiveTab] = useState<"roadmap" | "map" | "timeline" | "memories">("roadmap");
   const [showCelebration, setShowCelebration] = useState(false);
@@ -43,13 +38,6 @@ export default function JourneyScreen() {
   const [sparkleAnim] = useState(new Animated.Value(0));
   const [memoryFloatAnim] = useState(new Animated.Value(0));
   
-  // Flight search state
-  const [showFlightSearch, setShowFlightSearch] = useState(false);
-  const [flightFrom, setFlightFrom] = useState("");
-  const [flightTo, setFlightTo] = useState("");
-  const [departDate, setDepartDate] = useState("");
-  const [passengers, setPassengers] = useState("1");
-  
   // Initialize journey progress if not already set
   useEffect(() => {
     if (user && journeyProgress.length === 0) {
@@ -57,14 +45,6 @@ export default function JourneyScreen() {
       setJourneyProgress(initialJourneyProgress);
     }
   }, [user, journeyProgress.length, setJourneyProgress]);
-  
-  // Set default flight search values based on user's countries
-  useEffect(() => {
-    if (user && !flightFrom && !flightTo) {
-      setFlightFrom(user.homeCountry.name);
-      setFlightTo(user.destinationCountry.name);
-    }
-  }, [user, flightFrom, flightTo]);
   
   const overallProgress = calculateOverallProgress(journeyProgress);
   
@@ -193,7 +173,7 @@ export default function JourneyScreen() {
     },
   ];
 
-  // Enhanced memories data with more interactive features
+  // Enhanced memories data with Instagram-style milestone badges
   const memories = [
     {
       id: "1",
@@ -206,6 +186,8 @@ export default function JourneyScreen() {
       mood: "excited" as const,
       likes: 24,
       comments: 8,
+      badge: "🏛️",
+      badgeTitle: "Campus Explorer",
     },
     {
       id: "2",
@@ -218,6 +200,8 @@ export default function JourneyScreen() {
       mood: "proud" as const,
       likes: 45,
       comments: 12,
+      badge: "🎯",
+      badgeTitle: "Test Master",
     },
     {
       id: "3",
@@ -230,6 +214,8 @@ export default function JourneyScreen() {
       mood: "nervous" as const,
       likes: 18,
       comments: 6,
+      badge: "💰",
+      badgeTitle: "Scholarship Hunter",
     },
     {
       id: "4",
@@ -242,6 +228,8 @@ export default function JourneyScreen() {
       mood: "excited" as const,
       likes: 89,
       comments: 23,
+      badge: "🎓",
+      badgeTitle: "Accepted!",
     },
     {
       id: "5",
@@ -254,6 +242,8 @@ export default function JourneyScreen() {
       mood: "happy" as const,
       likes: 67,
       comments: 15,
+      badge: "✈️",
+      badgeTitle: "Visa Approved",
     },
     {
       id: "6",
@@ -266,6 +256,8 @@ export default function JourneyScreen() {
       mood: "excited" as const,
       likes: 32,
       comments: 9,
+      badge: "📦",
+      badgeTitle: "Packing Pro",
     },
   ];
 
@@ -285,47 +277,6 @@ export default function JourneyScreen() {
       "Arrive at destination 2-3 days before important events",
       "Check visa requirements for transit countries"
     ]
-  };
-  
-  const handleFlightSearch = async () => {
-    if (!isPremium) {
-      Alert.alert(
-        "Premium Feature",
-        "Flight search is a premium feature. Upgrade to access smart flight search with price comparison and deals!",
-        [
-          { text: "Cancel", style: "cancel" },
-          { text: "Upgrade", onPress: () => router.push("/premium") },
-        ]
-      );
-      return;
-    }
-    
-    if (!flightFrom || !flightTo) {
-      Alert.alert("Error", "Please enter both departure and destination cities");
-      return;
-    }
-    
-    const searchParams = {
-      from: flightFrom,
-      to: flightTo,
-      departDate: departDate || new Date().toISOString().split('T')[0],
-      passengers: parseInt(passengers) || 1,
-      class: "economy" as const,
-    };
-    
-    await searchFlights(searchParams);
-    setShowFlightSearch(false);
-  };
-  
-  const handleBookFlight = (bookingUrl: string) => {
-    Alert.alert(
-      "Book Flight",
-      "You will be redirected to the airline's website to complete your booking.",
-      [
-        { text: "Cancel", style: "cancel" },
-        { text: "Continue", onPress: () => Linking.openURL(bookingUrl) },
-      ]
-    );
   };
   
   const renderTabContent = () => {
@@ -387,8 +338,7 @@ export default function JourneyScreen() {
                     </View>
                     
                     <View style={styles.flightPath}>
-                      <Plane size={24} color={Colors.white} />
-                      <View style={styles.flightLine} />
+                      <Text style={styles.flightLine}>✈️ -------- ✈️</Text>
                     </View>
                     
                     <View style={styles.countryPoint}>
@@ -399,155 +349,6 @@ export default function JourneyScreen() {
                 </View>
               </LinearGradient>
             </Card>
-            
-            {/* Premium Flight Search */}
-            <Card style={[styles.flightSearchCard, { backgroundColor: Colors.card }]}>
-              <View style={styles.flightSearchHeader}>
-                <View style={styles.flightSearchTitleContainer}>
-                  <Plane size={24} color={Colors.flightPrimary} />
-                  <Text style={[styles.flightSearchTitle, { color: Colors.text }]}>Smart Flight Search</Text>
-                  {!isPremium && (
-                    <View style={styles.premiumBadge}>
-                      <Crown size={12} color={Colors.white} />
-                      <Text style={styles.premiumBadgeText}>Premium</Text>
-                    </View>
-                  )}
-                </View>
-                <Text style={[styles.flightSearchSubtitle, { color: Colors.lightText }]}>
-                  Find the best flight deals with our AI-powered search
-                </Text>
-              </View>
-              
-              {!showFlightSearch ? (
-                <Button
-                  title={isPremium ? "Search Flights" : "Upgrade for Flight Search"}
-                  onPress={() => isPremium ? setShowFlightSearch(true) : router.push("/premium")}
-                  icon={<Search size={20} color={Colors.white} />}
-                  style={styles.searchButton}
-                />
-              ) : (
-                <View style={styles.flightSearchForm}>
-                  <View style={styles.flightInputRow}>
-                    <View style={styles.flightInputHalf}>
-                      <Text style={[styles.inputLabel, { color: Colors.text }]}>From</Text>
-                      <Input
-                        value={flightFrom}
-                        onChangeText={setFlightFrom}
-                        placeholder="Departure city"
-                        style={styles.flightInput}
-                      />
-                    </View>
-                    <View style={styles.flightInputHalf}>
-                      <Text style={[styles.inputLabel, { color: Colors.text }]}>To</Text>
-                      <Input
-                        value={flightTo}
-                        onChangeText={setFlightTo}
-                        placeholder="Destination city"
-                        style={styles.flightInput}
-                      />
-                    </View>
-                  </View>
-                  
-                  <View style={styles.flightInputRow}>
-                    <View style={styles.flightInputHalf}>
-                      <Text style={[styles.inputLabel, { color: Colors.text }]}>Departure Date</Text>
-                      <Input
-                        value={departDate}
-                        onChangeText={setDepartDate}
-                        placeholder="YYYY-MM-DD"
-                        style={styles.flightInput}
-                      />
-                    </View>
-                    <View style={styles.flightInputHalf}>
-                      <Text style={[styles.inputLabel, { color: Colors.text }]}>Passengers</Text>
-                      <Input
-                        value={passengers}
-                        onChangeText={setPassengers}
-                        placeholder="1"
-                        keyboardType="numeric"
-                        style={styles.flightInput}
-                      />
-                    </View>
-                  </View>
-                  
-                  <View style={styles.flightSearchButtons}>
-                    <Button
-                      title="Search"
-                      onPress={handleFlightSearch}
-                      loading={flightSearchLoading}
-                      style={styles.searchFlightButton}
-                    />
-                    <Button
-                      title="Cancel"
-                      onPress={() => setShowFlightSearch(false)}
-                      variant="outline"
-                      style={styles.cancelSearchButton}
-                    />
-                  </View>
-                </View>
-              )}
-            </Card>
-            
-            {/* Flight Results */}
-            {flightSearchResults.length > 0 && (
-              <Card style={[styles.flightResultsCard, { backgroundColor: Colors.card }]}>
-                <View style={styles.flightResultsHeader}>
-                  <Text style={[styles.flightResultsTitle, { color: Colors.text }]}>Flight Results</Text>
-                  <TouchableOpacity onPress={clearFlightResults}>
-                    <Text style={[styles.clearResults, { color: Colors.primary }]}>Clear</Text>
-                  </TouchableOpacity>
-                </View>
-                
-                <ScrollView style={styles.flightResultsList} showsVerticalScrollIndicator={false}>
-                  {flightSearchResults.map((flight) => (
-                    <TouchableOpacity
-                      key={flight.id}
-                      style={[styles.flightResultItem, { backgroundColor: Colors.lightBackground }]}
-                      onPress={() => handleBookFlight(flight.bookingUrl)}
-                    >
-                      <View style={styles.flightResultHeader}>
-                        <Text style={[styles.flightAirline, { color: Colors.text }]}>{flight.airline}</Text>
-                        <View style={styles.flightPrice}>
-                          <Text style={[styles.flightPriceAmount, { color: Colors.primary }]}>
-                            ${flight.price}
-                          </Text>
-                          {flight.priceChange && (
-                            <View style={styles.priceChange}>
-                              {flight.priceChange === "down" ? (
-                                <TrendingDown size={12} color={Colors.success} />
-                              ) : flight.priceChange === "up" ? (
-                                <TrendingUp size={12} color={Colors.error} />
-                              ) : null}
-                            </View>
-                          )}
-                          {flight.deal && (
-                            <View style={[styles.dealBadge, { backgroundColor: Colors.success }]}>
-                              <Text style={styles.dealText}>Deal</Text>
-                            </View>
-                          )}
-                        </View>
-                      </View>
-                      
-                      <View style={styles.flightDetails}>
-                        <Text style={[styles.flightTime, { color: Colors.lightText }]}>
-                          {flight.departure.time} → {flight.arrival.time}
-                        </Text>
-                        <Text style={[styles.flightDuration, { color: Colors.lightText }]}>
-                          {flight.duration} • {flight.stops === 0 ? "Direct" : `${flight.stops} stop${flight.stops > 1 ? "s" : ""}`}
-                        </Text>
-                      </View>
-                      
-                      <View style={styles.flightRoute}>
-                        <Text style={[styles.flightAirport, { color: Colors.text }]}>
-                          {flight.departure.airport} → {flight.arrival.airport}
-                        </Text>
-                        <ExternalLink size={16} color={Colors.primary} />
-                      </View>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              </Card>
-            )}
             
             {/* Flight Statistics */}
             <Card style={[styles.flightStatsCard, { backgroundColor: Colors.card }]}>
@@ -729,26 +530,6 @@ export default function JourneyScreen() {
                     <Sparkles size={20} color="rgba(255, 255, 255, 0.7)" />
                   </Animated.View>
 
-                  {/* Animated plane */}
-                  <Animated.View style={[
-                    styles.animatedPlane,
-                    {
-                      transform: [{
-                        translateX: planeAnim.interpolate({
-                          inputRange: [0, 1],
-                          outputRange: [-60, width + 60],
-                        })
-                      }, {
-                        translateY: planeAnim.interpolate({
-                          inputRange: [0, 0.3, 0.7, 1],
-                          outputRange: [0, -10, 10, 0],
-                        })
-                      }]
-                    }
-                  ]}>
-                    <Plane size={28} color="rgba(255, 255, 255, 0.9)" />
-                  </Animated.View>
-
                   <View style={styles.memoriesHeaderContent}>
                     <Text style={styles.memoriesTitle}>Journey Memories</Text>
                     <Text style={styles.memoriesSubtitle}>Capture & share your story ✨</Text>
@@ -818,17 +599,14 @@ export default function JourneyScreen() {
                         >
                           <View style={styles.memoryCardContent}>
                             <View style={styles.memoryCardHeader}>
-                              <View style={[styles.memoryMoodBadge, { backgroundColor: Colors.memoryPink }]}>
-                                <Text style={styles.memoryMoodText}>{memory.mood}</Text>
+                              <View style={[styles.memoryBadge, { backgroundColor: Colors.memoryPink }]}>
+                                <Text style={styles.memoryBadgeEmoji}>{memory.badge}</Text>
+                                <Text style={styles.memoryBadgeTitle}>{memory.badgeTitle}</Text>
                               </View>
                               <View style={styles.memoryStats}>
                                 <View style={styles.memoryStat}>
                                   <Heart size={12} color={Colors.white} />
                                   <Text style={styles.memoryStatText}>{memory.likes}</Text>
-                                </View>
-                                <View style={styles.memoryStat}>
-                                  <MessageSquare size={12} color={Colors.white} />
-                                  <Text style={styles.memoryStatText}>{memory.comments}</Text>
                                 </View>
                               </View>
                             </View>
@@ -895,8 +673,11 @@ export default function JourneyScreen() {
                       <TouchableOpacity style={[styles.socialButton, { backgroundColor: Colors.primary }]}>
                         <Text style={styles.socialButtonText}>Share Story</Text>
                       </TouchableOpacity>
-                      <TouchableOpacity style={[styles.socialButton, { backgroundColor: Colors.secondary }]}>
-                        <Text style={styles.socialButtonText}>Join Community</Text>
+                      <TouchableOpacity 
+                        style={[styles.socialButton, { backgroundColor: Colors.secondary }]}
+                        onPress={() => router.push("/(tabs)/community")}
+                      >
+                        <Text style={styles.socialButtonText}>View Premium</Text>
                       </TouchableOpacity>
                     </View>
                   </View>
@@ -1171,160 +952,9 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
   },
   flightLine: {
-    width: 60,
-    height: 2,
-    backgroundColor: "#FFFFFF",
-    marginTop: 8,
-  },
-  
-  // Flight Search styles
-  flightSearchCard: {
-    marginBottom: 16,
-    padding: 20,
-  },
-  flightSearchHeader: {
-    marginBottom: 16,
-  },
-  flightSearchTitleContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  flightSearchTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    marginLeft: 8,
-    flex: 1,
-  },
-  premiumBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#F39C12",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    gap: 4,
-  },
-  premiumBadgeText: {
-    fontSize: 10,
-    fontWeight: "600",
-    color: "#FFFFFF",
-  },
-  flightSearchSubtitle: {
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  searchButton: {
-    marginTop: 8,
-  },
-  flightSearchForm: {
-    gap: 16,
-  },
-  flightInputRow: {
-    flexDirection: "row",
-    gap: 12,
-  },
-  flightInputHalf: {
-    flex: 1,
-  },
-  inputLabel: {
-    fontSize: 14,
-    fontWeight: "500",
-    marginBottom: 8,
-  },
-  flightInput: {
-    marginBottom: 0,
-  },
-  flightSearchButtons: {
-    flexDirection: "row",
-    gap: 12,
-  },
-  searchFlightButton: {
-    flex: 1,
-  },
-  cancelSearchButton: {
-    flex: 1,
-  },
-  
-  // Flight Results styles
-  flightResultsCard: {
-    marginBottom: 16,
-    padding: 20,
-  },
-  flightResultsHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  flightResultsTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-  },
-  clearResults: {
-    fontSize: 14,
-    fontWeight: "500",
-  },
-  flightResultsList: {
-    maxHeight: 400,
-  },
-  flightResultItem: {
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.05)",
-  },
-  flightResultHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  flightAirline: {
     fontSize: 16,
-    fontWeight: "600",
-  },
-  flightPrice: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  flightPriceAmount: {
-    fontSize: 18,
-    fontWeight: "700",
-  },
-  priceChange: {
-    marginLeft: 4,
-  },
-  dealBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 8,
-  },
-  dealText: {
-    fontSize: 10,
-    fontWeight: "600",
     color: "#FFFFFF",
-  },
-  flightDetails: {
-    marginBottom: 8,
-  },
-  flightTime: {
-    fontSize: 14,
-    marginBottom: 2,
-  },
-  flightDuration: {
-    fontSize: 12,
-  },
-  flightRoute: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  flightAirport: {
-    fontSize: 12,
-    fontWeight: "500",
+    fontWeight: "600",
   },
   
   flightStatsCard: {
@@ -1507,11 +1137,6 @@ const styles = StyleSheet.create({
     bottom: 60,
     left: 40,
   },
-  animatedPlane: {
-    position: "absolute",
-    top: 30,
-    zIndex: 1,
-  },
   memoriesHeaderContent: {
     alignItems: "center",
     zIndex: 2,
@@ -1622,16 +1247,21 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "flex-start",
   },
-  memoryMoodBadge: {
+  memoryBadge: {
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
+    gap: 6,
   },
-  memoryMoodText: {
+  memoryBadgeEmoji: {
+    fontSize: 16,
+  },
+  memoryBadgeTitle: {
     fontSize: 12,
     fontWeight: "600",
     color: "#FFFFFF",
-    textTransform: "capitalize",
   },
   memoryStats: {
     flexDirection: "row",

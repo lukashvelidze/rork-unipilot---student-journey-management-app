@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert, Platform } from "react-native";
 import { useRouter } from "expo-router";
-import { Crown, Check, Zap, Target, FileText, Calendar, MessageSquare, Users, BookOpen, Award, Gift, ChevronRight, Star, Plane, Brain, TrendingUp, Shield, Headphones, Video, Globe, DollarSign } from "lucide-react-native";
+import { Crown, Check, Zap, Target, BookOpen, Calendar, Video, Users, Award, Gift, ChevronRight, Star, BarChart3, UserCheck, MessageCircle } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import Colors from "@/constants/colors";
 import Theme from "@/constants/theme";
@@ -22,31 +22,15 @@ export default function PremiumScreen() {
   
   const premiumFeatures = [
     {
-      icon: Zap,
-      title: "AI-Powered Guidance",
-      description: "Get personalized recommendations and instant answers to complex questions",
+      icon: UserCheck,
+      title: "Personal Mentor Access",
+      description: "Get 1-on-1 sessions with university admission experts and successful alumni",
       color: Colors.primary,
       available: true,
-      benefits: ["24/7 AI assistant", "Personalized advice", "Document analysis", "Application review"]
+      benefits: ["Weekly 1-on-1 sessions", "Expert consultations", "Mock interviews", "Application review"]
     },
     {
-      icon: Plane,
-      title: "Smart Flight Search",
-      description: "Find the cheapest flights with our advanced search engine and price alerts",
-      color: Colors.flightPrimary,
-      available: true,
-      benefits: ["Price comparison", "Deal alerts", "Flexible dates", "Direct booking links"]
-    },
-    {
-      icon: Target,
-      title: "Personal Mentor Access",
-      description: "1-on-1 sessions with university admission experts and successful alumni",
-      color: Colors.secondary,
-      available: true,
-      benefits: ["Expert consultations", "Mock interviews", "Application review", "Career guidance"]
-    },
-    {
-      icon: FileText,
+      icon: BookOpen,
       title: "Premium Resources Library",
       description: "Exclusive templates, guides, and application materials from top universities",
       color: Colors.accent,
@@ -54,28 +38,12 @@ export default function PremiumScreen() {
       benefits: ["50+ premium guides", "Application templates", "Essay examples", "Scholarship database"]
     },
     {
-      icon: Brain,
-      title: "AI Document Generator",
-      description: "Generate personalized SOPs, cover letters, and essays using advanced AI",
-      color: Colors.info,
-      available: true,
-      benefits: ["SOP generator", "Cover letter builder", "Essay assistant", "Grammar checker"]
-    },
-    {
-      icon: TrendingUp,
+      icon: BarChart3,
       title: "Advanced Analytics",
       description: "Detailed progress tracking, success predictions, and performance insights",
-      color: Colors.success,
+      color: Colors.info,
       available: true,
       benefits: ["Progress analytics", "Success probability", "Benchmark comparison", "Goal tracking"]
-    },
-    {
-      icon: Shield,
-      title: "Priority Support",
-      description: "24/7 premium support with faster response times and dedicated agents",
-      color: Colors.warning,
-      available: true,
-      benefits: ["24/7 support", "Priority queue", "Dedicated agent", "Phone support"]
     },
     {
       icon: Video,
@@ -86,36 +54,20 @@ export default function PremiumScreen() {
       benefits: ["Weekly webinars", "Expert Q&A", "Networking events", "Recorded sessions"]
     },
     {
-      icon: Users,
-      title: "Premium Community",
-      description: "Access to exclusive networking groups and study circles with top performers",
-      color: Colors.memoryPink,
-      available: true,
-      benefits: ["Elite community", "Study groups", "Networking events", "Mentorship program"]
-    },
-    {
-      icon: Globe,
-      title: "Country-Specific Guidance",
-      description: "Detailed guides and requirements for 50+ countries and 1000+ universities",
-      color: Colors.primary,
-      available: true,
-      benefits: ["Country guides", "Visa assistance", "Cultural preparation", "Local insights"]
-    },
-    {
-      icon: DollarSign,
-      title: "Scholarship Maximizer",
-      description: "AI-powered scholarship matching and application optimization tools",
+      icon: Zap,
+      title: "AI-Powered Guidance",
+      description: "Get personalized recommendations and instant answers to complex questions",
       color: Colors.secondary,
       available: true,
-      benefits: ["Scholarship matching", "Application optimizer", "Funding calculator", "Success tracker"]
+      benefits: ["24/7 AI assistant", "Personalized advice", "Document analysis", "Application review"]
     },
     {
-      icon: Headphones,
-      title: "Personal Success Coach",
-      description: "Dedicated success coach for accountability and motivation throughout your journey",
-      color: Colors.accent,
-      available: false,
-      benefits: ["Personal coach", "Weekly check-ins", "Goal setting", "Motivation support"]
+      icon: Award,
+      title: "Instagram-Style Memories",
+      description: "Create and share your study abroad journey with beautiful milestone badges",
+      color: Colors.memoryPink,
+      available: true,
+      benefits: ["Milestone badges", "Shareable stories", "Progress celebration", "Social features"]
     },
   ];
   
@@ -149,11 +101,12 @@ export default function PremiumScreen() {
           `Congratulations! You now have access to all premium features with code: ${promoCode.toUpperCase()}
 
 ✨ What's unlocked:
-• AI-Powered Guidance
-• Smart Flight Search
-• Premium Resources Library
 • Personal Mentor Access
-• And much more!`,
+• Premium Resources Library
+• Advanced Analytics
+• Exclusive Webinars
+• AI-Powered Guidance
+• Instagram-Style Memories`,
           [
             {
               text: "Explore Features",
@@ -228,12 +181,12 @@ export default function PremiumScreen() {
           </Text>
           <View style={styles.premiumStats}>
             <View style={styles.statBubble}>
-              <Text style={styles.statNumber}>11</Text>
+              <Text style={styles.statNumber}>{premiumFeatures.length}</Text>
               <Text style={styles.statLabel}>Features</Text>
             </View>
             <View style={styles.statBubble}>
               <Text style={styles.statNumber}>∞</Text>
-              <Text style={styles.statLabel}>AI Queries</Text>
+              <Text style={styles.statLabel}>Access</Text>
             </View>
             <View style={styles.statBubble}>
               <Text style={styles.statNumber}>24/7</Text>
@@ -247,7 +200,7 @@ export default function PremiumScreen() {
             style={styles.actionCard}
             onPress={() => router.push("/premium/resources")}
           >
-            <FileText size={24} color={Colors.primary} />
+            <BookOpen size={24} color={Colors.primary} />
             <Text style={styles.actionTitle}>Premium Resources</Text>
             <ChevronRight size={16} color={Colors.lightText} />
           </TouchableOpacity>
@@ -258,6 +211,15 @@ export default function PremiumScreen() {
           >
             <Zap size={24} color={Colors.secondary} />
             <Text style={styles.actionTitle}>AI Assistant</Text>
+            <ChevronRight size={16} color={Colors.lightText} />
+          </TouchableOpacity>
+          
+          <TouchableOpacity
+            style={styles.actionCard}
+            onPress={() => router.push("/mentor")}
+          >
+            <UserCheck size={24} color={Colors.accent} />
+            <Text style={styles.actionTitle}>Personal Mentor</Text>
             <ChevronRight size={16} color={Colors.lightText} />
           </TouchableOpacity>
         </View>
@@ -298,21 +260,21 @@ export default function PremiumScreen() {
         <Card style={styles.successCard} variant="glass">
           <Text style={styles.successTitle}>🎓 Success Stories</Text>
           <Text style={styles.successDescription}>
-            "UniPilot Premium helped me get into Harvard with a full scholarship. The AI guidance and mentor sessions were game-changers!"
+            "UniPilot Premium helped me get into Harvard with a full scholarship. The personal mentor and AI guidance were game-changers!"
           </Text>
           <Text style={styles.successAuthor}>- Sarah M., Harvard University</Text>
           
           <View style={styles.successStats}>
             <View style={styles.successStat}>
-              <Text style={styles.successStatNumber}>95%</Text>
+              <Text style={styles.successStatNumber}>98%</Text>
               <Text style={styles.successStatLabel}>Acceptance Rate</Text>
             </View>
             <View style={styles.successStat}>
-              <Text style={styles.successStatNumber}>$2.5M</Text>
+              <Text style={styles.successStatNumber}>$3.2M</Text>
               <Text style={styles.successStatLabel}>Scholarships Won</Text>
             </View>
             <View style={styles.successStat}>
-              <Text style={styles.successStatNumber}>50K+</Text>
+              <Text style={styles.successStatNumber}>75K+</Text>
               <Text style={styles.successStatLabel}>Students Helped</Text>
             </View>
           </View>
@@ -348,7 +310,7 @@ export default function PremiumScreen() {
         <Crown size={48} color={Colors.white} />
         <Text style={styles.title}>Unlock Premium</Text>
         <Text style={styles.subtitle}>
-          Supercharge your study abroad journey with AI-powered tools
+          Supercharge your study abroad journey with AI-powered tools and personal mentoring
         </Text>
       </LinearGradient>
       
@@ -364,15 +326,15 @@ export default function PremiumScreen() {
         </Text>
         <View style={styles.stats}>
           <View style={styles.statItem}>
-            <Text style={styles.statNumber}>95%</Text>
+            <Text style={styles.statNumber}>98%</Text>
             <Text style={styles.statLabel}>Success Rate</Text>
           </View>
           <View style={styles.statItem}>
-            <Text style={styles.statNumber}>$2.5M</Text>
+            <Text style={styles.statNumber}>$3.2M</Text>
             <Text style={styles.statLabel}>Scholarships Won</Text>
           </View>
           <View style={styles.statItem}>
-            <Text style={styles.statNumber}>50K+</Text>
+            <Text style={styles.statNumber}>75K+</Text>
             <Text style={styles.statLabel}>Students Helped</Text>
           </View>
         </View>
@@ -444,35 +406,44 @@ export default function PremiumScreen() {
           <Text style={styles.subscriptionTitle}>Premium Subscription</Text>
           <View style={styles.comingSoonBadge}>
             <Star size={12} color={Colors.warning} />
-            <Text style={styles.comingSoonText}>Coming Soon</Text>
+            <Text style={styles.comingSoonText}>Limited Offer</Text>
           </View>
         </View>
         
         <View style={styles.priceContainer}>
-          <Text style={styles.price}>$9.99</Text>
+          <View style={styles.priceRow}>
+            <Text style={styles.originalPrice}>$10.99</Text>
+            <View style={styles.discountBadge}>
+              <Text style={styles.discountText}>55% OFF</Text>
+            </View>
+          </View>
+          <Text style={styles.price}>$4.99</Text>
           <Text style={styles.pricePeriod}>/month</Text>
-          <View style={styles.originalPrice}>
-            <Text style={styles.originalPriceText}>$19.99</Text>
-            <Text style={styles.discountText}>50% OFF</Text>
+          <View style={styles.limitedOffer}>
+            <Text style={styles.limitedOfferText}>⏰ Limited Time Offer</Text>
           </View>
         </View>
         
         <Text style={styles.subscriptionDescription}>
-          Full premium access with all features, priority support, personal mentor, and exclusive content.
+          Full premium access with personal mentoring, exclusive resources, and AI-powered guidance.
         </Text>
         
         <View style={styles.subscriptionFeatures}>
           <View style={styles.subscriptionFeature}>
             <Check size={16} color={Colors.success} />
-            <Text style={styles.subscriptionFeatureText}>All premium features</Text>
+            <Text style={styles.subscriptionFeatureText}>Personal mentor access</Text>
           </View>
           <View style={styles.subscriptionFeature}>
             <Check size={16} color={Colors.success} />
-            <Text style={styles.subscriptionFeatureText}>Personal success coach</Text>
+            <Text style={styles.subscriptionFeatureText}>Premium resources library</Text>
           </View>
           <View style={styles.subscriptionFeature}>
             <Check size={16} color={Colors.success} />
-            <Text style={styles.subscriptionFeatureText}>Priority support</Text>
+            <Text style={styles.subscriptionFeatureText}>Advanced analytics</Text>
+          </View>
+          <View style={styles.subscriptionFeature}>
+            <Check size={16} color={Colors.success} />
+            <Text style={styles.subscriptionFeatureText}>Exclusive webinars</Text>
           </View>
         </View>
         
@@ -520,19 +491,19 @@ export default function PremiumScreen() {
         <View style={styles.testimonialsList}>
           <View style={styles.testimonial}>
             <Text style={styles.testimonialText}>
-              "The AI guidance helped me write the perfect SOP. Got into MIT!"
+              "The personal mentor helped me perfect my application. Got into MIT!"
             </Text>
             <Text style={styles.testimonialAuthor}>- Alex K., MIT</Text>
           </View>
           <View style={styles.testimonial}>
             <Text style={styles.testimonialText}>
-              "Flight search saved me $800 on my tickets to Germany!"
+              "Premium resources saved me months of research. Highly recommended!"
             </Text>
             <Text style={styles.testimonialAuthor}>- Maria S., TU Munich</Text>
           </View>
           <View style={styles.testimonial}>
             <Text style={styles.testimonialText}>
-              "Premium resources are worth every penny. Comprehensive and helpful!"
+              "The analytics feature helped me track my progress perfectly!"
             </Text>
             <Text style={styles.testimonialAuthor}>- David L., Oxford</Text>
           </View>
@@ -678,16 +649,6 @@ const styles = StyleSheet.create({
   statItem: {
     alignItems: "center",
   },
-  statNumber: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: Colors.primary,
-    marginBottom: 4,
-  },
-  statLabel: {
-    fontSize: 12,
-    color: Colors.lightText,
-  },
   promoCard: {
     marginHorizontal: 20,
     marginBottom: 24,
@@ -760,9 +721,30 @@ const styles = StyleSheet.create({
     color: Colors.text,
   },
   priceContainer: {
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  priceRow: {
     flexDirection: "row",
-    alignItems: "baseline",
+    alignItems: "center",
     marginBottom: 8,
+  },
+  originalPrice: {
+    fontSize: 18,
+    color: Colors.lightText,
+    textDecorationLine: "line-through",
+    marginRight: 12,
+  },
+  discountBadge: {
+    backgroundColor: Colors.error,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  discountText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: Colors.white,
   },
   price: {
     fontSize: 32,
@@ -772,21 +754,20 @@ const styles = StyleSheet.create({
   pricePeriod: {
     fontSize: 16,
     color: Colors.lightText,
-    marginLeft: 4,
+    marginBottom: 8,
   },
-  originalPrice: {
-    marginLeft: 12,
-    alignItems: "center",
+  limitedOffer: {
+    backgroundColor: Colors.warning + "20",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: Colors.warning + "40",
   },
-  originalPriceText: {
-    fontSize: 14,
-    color: Colors.lightText,
-    textDecorationLine: "line-through",
-  },
-  discountText: {
+  limitedOfferText: {
     fontSize: 12,
-    color: Colors.success,
     fontWeight: "600",
+    color: Colors.warning,
   },
   subscriptionDescription: {
     fontSize: 14,
