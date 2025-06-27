@@ -1,6 +1,6 @@
 import React from "react";
 import { Tabs } from "expo-router";
-import { Home, Map, Users, FileText, User } from "lucide-react-native";
+import { Home, Map, Crown, FileText, User } from "lucide-react-native";
 import { useColors } from "@/hooks/useColors";
 import { useThemeStore } from "@/store/themeStore";
 
@@ -58,8 +58,8 @@ export default function TabLayout() {
       <Tabs.Screen
         name="community"
         options={{
-          title: "Community",
-          tabBarIcon: ({ color }) => <Users size={24} color={color} />,
+          title: "Premium",
+          tabBarIcon: ({ color }) => <Crown size={24} color={color} />,
           headerShown: false,
         }}
       />
