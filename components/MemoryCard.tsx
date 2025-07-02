@@ -1,13 +1,20 @@
 import React from "react";
 import { StyleSheet, View, Text, Image, TouchableOpacity, Dimensions } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { Calendar, Heart, Share2, MapPin } from "lucide-react-native";
+import { Calendar, Heart, Share2, MapPin, MessageCircle, Award } from "lucide-react-native";
 import Colors from "@/constants/colors";
 import { Memory } from "@/types/user";
 import { formatDate } from "@/utils/dateUtils";
 
 interface MemoryCardProps {
-  memory: Memory;
+  memory: Memory & {
+    badge?: string;
+    badgeTitle?: string;
+    badgeColor?: string;
+    milestone?: boolean;
+    likes?: number;
+    comments?: number;
+  };
   onPress?: () => void;
 }
 
@@ -16,6 +23,8 @@ const cardWidth = width - 32; // Account for padding
 
 const MemoryCard: React.FC<MemoryCardProps> = ({ memory, onPress }) => {
   const getMoodColor = () => {
+    if (memory.badgeColor) return memory.badgeColor;
+    
     switch (memory.mood) {
       case "excited":
         return Colors.memoryOrange;
@@ -35,6 +44,10 @@ const MemoryCard: React.FC<MemoryCardProps> = ({ memory, onPress }) => {
   };
 
   const getMoodGradient = (): [string, string] => {
+    if (memory.badgeColor) {
+      return [memory.badgeColor, memory.badgeColor + "80"];
+    }
+    
     switch (memory.mood) {
       case "excited":
         return [Colors.memoryOrange, "#FF6B35"];
@@ -54,6 +67,8 @@ const MemoryCard: React.FC<MemoryCardProps> = ({ memory, onPress }) => {
   };
 
   const getMoodEmoji = () => {
+    if (memory.badge) return memory.badge;
+    
     switch (memory.mood) {
       case "excited":
         return "🤩";
@@ -100,12 +115,33 @@ const MemoryCard: React.FC<MemoryCardProps> = ({ memory, onPress }) => {
             style={styles.imageOverlay}
           />
           
-          {/* Mood badge with emoji */}
+          {/* Enhanced badge with milestone indicator */}
           <View style={[styles.moodBadge, { backgroundColor: getMoodColor() }]}>
             <Text style={styles.moodEmoji}>{getMoodEmoji()}</Text>
             <Text style={styles.moodText}>
-              {memory.mood.charAt(0).toUpperCase() + memory.mood.slice(1)}
+              {memory.badgeTitle || (memory.mood.charAt(0).toUpperCase() + memory.mood.slice(1))}
             </Text>
+            {memory.milestone && (
+              <View style={styles.milestoneIndicator}>
+                <Award size={8} color={Colors.white} />
+              </View>
+            )}
+          </View>
+          
+          {/* Enhanced stats */}
+          <View style={styles.statsContainer}>
+            {memory.likes !== undefined && (
+              <View style={styles.statItem}>
+                <Heart size={14} color={Colors.white} />
+                <Text style={styles.statText}>{memory.likes}</Text>
+              </View>
+            )}
+            {memory.comments !== undefined && (
+              <View style={styles.statItem}>
+                <MessageCircle size={14} color={Colors.white} />
+                <Text style={styles.statText}>{memory.comments}</Text>
+              </View>
+            )}
           </View>
           
           {/* Share button */}
@@ -149,15 +185,17 @@ const MemoryCard: React.FC<MemoryCardProps> = ({ memory, onPress }) => {
           )}
         </View>
         
-        {/* Instagram-style story border */}
-        <LinearGradient
-          colors={["#833AB4", "#FD1D1D", "#FCB045"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.storyBorder}
-        >
-          <View style={styles.innerBorder} />
-        </LinearGradient>
+        {/* Instagram-style story border for milestones */}
+        {memory.milestone && (
+          <LinearGradient
+            colors={["#833AB4", "#FD1D1D", "#FCB045"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.storyBorder}
+          >
+            <View style={styles.innerBorder} />
+          </LinearGradient>
+        )}
       </View>
     </TouchableOpacity>
   );
@@ -325,6 +363,38 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.white,
     borderRadius: 21,
+  },
+  milestoneIndicator: {
+    position: "absolute",
+    top: -4,
+    right: -4,
+    backgroundColor: Colors.warning,
+    borderRadius: 8,
+    width: 16,
+    height: 16,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  statsContainer: {
+    position: "absolute",
+    top: 20,
+    right: 20,
+    flexDirection: "row",
+    gap: 8,
+  },
+  statItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.4)",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 4,
+  },
+  statText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: Colors.white,
   },
 });
 

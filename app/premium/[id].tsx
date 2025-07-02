@@ -62,14 +62,14 @@ const resourcesContent: Record<string, ResourceContent> = {
     heroImage: "https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=800&h=400&fit=crop",
     features: ["Step-by-step guide", "Real examples", "Expert feedback", "Templates included"],
     content: {
-      introduction: "Your personal statement is your opportunity to tell your unique story and convince admissions committees why you're the perfect fit for their program. This comprehensive masterclass will walk you through creating a compelling personal statement that stands out from thousands of applications.",
+      introduction: "Your personal statement is your opportunity to tell your unique story and convince admissions committees why you are the perfect fit for their program. This comprehensive masterclass will walk you through creating a compelling personal statement that stands out from thousands of applications.",
       sections: [
         {
           title: "Understanding the Purpose",
           content: "A personal statement serves multiple critical purposes: it showcases your personality beyond grades, demonstrates your writing skills, explains your motivation for the field, and highlights your unique experiences. Admissions committees read thousands of applications, so your statement needs to be memorable, authentic, and compelling.",
           tips: [
             "Be authentic and genuine in your writing - admissions officers can spot fake stories",
-            "Show, don't just tell your experiences with specific examples",
+            "Show, do not just tell your experiences with specific examples",
             "Connect your past experiences to future goals clearly",
             "Demonstrate growth and self-reflection throughout your journey"
           ]
@@ -93,9 +93,9 @@ const resourcesContent: Record<string, ResourceContent> = {
           content: "Many applicants make similar mistakes that can weaken their personal statements. Being aware of these pitfalls can help you create a stronger, more impactful application that stands out for the right reasons.",
           tips: [
             "Avoid clichés and generic statements like 'I want to help people'",
-            "Don't repeat information from other parts of your application",
+            "Do not repeat information from other parts of your application",
             "Avoid being too modest or too boastful - find the right balance",
-            "Don't exceed the word limit - every word should count",
+            "Do not exceed the word limit - every word should count",
             "Avoid controversial topics unless directly relevant to your field"
           ]
         },
@@ -103,14 +103,14 @@ const resourcesContent: Record<string, ResourceContent> = {
           title: "Advanced Writing Techniques",
           content: "Take your personal statement to the next level with advanced writing techniques that create emotional connection and memorable impact.",
           tips: [
-            "Use the 'show, don't tell' principle with vivid examples",
+            "Use the 'show, do not tell' principle with vivid examples",
             "Create narrative tension and resolution",
             "Use sensory details to make your experiences come alive",
             "Employ the 'so what?' test for every paragraph"
           ]
         }
       ],
-      conclusion: "Remember, your personal statement is your chance to show who you are beyond grades and test scores. Take time to reflect on your experiences, be authentic in your writing, and clearly articulate why you're passionate about your chosen field. With the strategies and templates in this masterclass, you'll create a personal statement that opens doors to your dream university.",
+      conclusion: "Remember, your personal statement is your chance to show who you are beyond grades and test scores. Take time to reflect on your experiences, be authentic in your writing, and clearly articulate why you are passionate about your chosen field. With the strategies and templates in this masterclass, you will create a personal statement that opens doors to your dream university.",
       actionItems: [
         "Brainstorm key experiences and themes using our worksheet",
         "Create an outline with main points and supporting details",
@@ -154,6 +154,58 @@ const resourcesContent: Record<string, ResourceContent> = {
         name: "Brainstorming Worksheet",
         type: "PDF",
         size: "1.2 MB"
+      }
+    ]
+  },
+  "2": {
+    id: "2",
+    title: "University Selection Strategy",
+    description: "Data-driven approach to selecting universities that match your profile and goals",
+    category: "University Selection",
+    type: "guide",
+    estimatedTime: "60 min",
+    difficulty: "Intermediate",
+    author: "Prof. Michael Chen",
+    publishedDate: "2024-01-20",
+    heroImage: "https://images.unsplash.com/photo-1562774053-701939374585?w=800&h=400&fit=crop",
+    features: ["University ranking analysis", "Admission probability calculator", "Cost comparison tool", "Program matching"],
+    content: {
+      introduction: "Choosing the right university is one of the most important decisions in your academic journey. This comprehensive guide provides a data-driven approach to university selection, helping you find institutions that align with your academic goals, financial situation, and career aspirations.",
+      sections: [
+        {
+          title: "Research Methodology",
+          content: "Effective university research goes beyond rankings. You need to consider multiple factors including program quality, faculty expertise, research opportunities, location, cost, and career outcomes. This section teaches you how to systematically evaluate universities using reliable data sources.",
+          tips: [
+            "Use multiple ranking systems, not just one",
+            "Look at employment rates and salary data for graduates",
+            "Consider the university's research output in your field",
+            "Evaluate the diversity and international student support"
+          ]
+        },
+        {
+          title: "Admission Probability Analysis",
+          content: "Understanding your chances of admission helps you create a balanced list of reach, match, and safety schools. Learn how to analyze admission statistics and position yourself as a competitive candidate.",
+          examples: [
+            "Reach schools: 10-30% admission probability",
+            "Match schools: 40-70% admission probability", 
+            "Safety schools: 80%+ admission probability"
+          ]
+        }
+      ],
+      conclusion: "A strategic approach to university selection significantly increases your chances of admission and ensures you find the best fit for your goals.",
+      actionItems: [
+        "Create a comprehensive university research spreadsheet",
+        "Calculate your admission probability for each school",
+        "Visit campuses or attend virtual information sessions",
+        "Connect with current students and alumni"
+      ]
+    },
+    relatedResources: ["1", "3", "analytics"],
+    tools: [
+      {
+        name: "University Comparison Tool",
+        description: "Compare universities side by side",
+        action: "Launch Tool"
       }
     ]
   },

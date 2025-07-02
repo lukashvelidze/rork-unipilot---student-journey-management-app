@@ -53,22 +53,6 @@ export default function PremiumScreen() {
       available: true,
       benefits: ["Weekly webinars", "Expert Q&A", "Networking events", "Recorded sessions"]
     },
-    {
-      icon: Zap,
-      title: "AI-Powered Guidance",
-      description: "Get personalized recommendations and instant answers to complex questions",
-      color: Colors.secondary,
-      available: true,
-      benefits: ["24/7 AI assistant", "Personalized advice", "Document analysis", "Application review"]
-    },
-    {
-      icon: Award,
-      title: "Instagram-Style Memories",
-      description: "Create and share your study abroad journey with beautiful milestone badges",
-      color: Colors.memoryPink,
-      available: true,
-      benefits: ["Milestone badges", "Shareable stories", "Progress celebration", "Social features"]
-    },
   ];
   
   const handlePromoCode = async () => {
@@ -104,9 +88,7 @@ export default function PremiumScreen() {
 • Personal Mentor Access
 • Premium Resources Library
 • Advanced Analytics
-• Exclusive Webinars
-• AI-Powered Guidance
-• Instagram-Style Memories`,
+• Exclusive Webinars`,
           [
             {
               text: "Explore Features",
@@ -404,9 +386,9 @@ export default function PremiumScreen() {
       <Card style={styles.subscriptionCard} variant="outlined">
         <View style={styles.subscriptionHeader}>
           <Text style={styles.subscriptionTitle}>Premium Subscription</Text>
-          <View style={styles.comingSoonBadge}>
+          <View style={styles.limitedOfferBadge}>
             <Star size={12} color={Colors.warning} />
-            <Text style={styles.comingSoonText}>Limited Offer</Text>
+            <Text style={styles.limitedOfferBadgeText}>Limited Offer</Text>
           </View>
         </View>
         
@@ -425,7 +407,7 @@ export default function PremiumScreen() {
         </View>
         
         <Text style={styles.subscriptionDescription}>
-          Full premium access with personal mentoring, exclusive resources, and AI-powered guidance.
+          Full premium access with personal mentoring, exclusive resources, and advanced analytics.
         </Text>
         
         <View style={styles.subscriptionFeatures}>
@@ -719,6 +701,20 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "600",
     color: Colors.text,
+  },
+  limitedOfferBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: Colors.warning,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 4,
+  },
+  limitedOfferBadgeText: {
+    fontSize: 10,
+    fontWeight: "600",
+    color: Colors.white,
   },
   priceContainer: {
     alignItems: "center",

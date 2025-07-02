@@ -41,6 +41,20 @@ const resources: Resource[] = [
     features: ["Step-by-step guide", "Real examples", "Expert feedback", "Templates included"]
   },
   {
+    id: "2",
+    title: "University Selection Strategy",
+    description: "Data-driven approach to selecting universities that match your profile and goals",
+    type: "guide",
+    category: "University Selection",
+    isPremium: true,
+    isPopular: true,
+    estimatedTime: "60 min",
+    difficulty: "Intermediate",
+    rating: 4.8,
+    completions: 3156,
+    features: ["University ranking analysis", "Admission probability calculator", "Cost comparison tool", "Program matching"]
+  },
+  {
     id: "mentor",
     title: "Personal Mentor Access",
     description: "Get 1-on-1 guidance from university admission experts and successful alumni",
@@ -110,6 +124,19 @@ const resources: Resource[] = [
     features: ["Country-specific guides", "Document checklists", "Timeline planner", "Requirements tracker"]
   },
   {
+    id: "6",
+    title: "SOP Writing Workshop",
+    description: "Craft compelling Statements of Purpose with field-specific templates and expert guidance",
+    type: "course",
+    category: "Application Materials",
+    isPremium: true,
+    estimatedTime: "2 hours",
+    difficulty: "Advanced",
+    rating: 4.9,
+    completions: 2145,
+    features: ["Field-specific templates", "Expert review", "Writing techniques", "Sample SOPs"]
+  },
+  {
     id: "7",
     title: "Budget Planning Calculator",
     description: "Comprehensive financial planning tools for studying abroad with cost breakdowns",
@@ -134,6 +161,19 @@ const resources: Resource[] = [
     rating: 4.7,
     completions: 1743,
     features: ["Cultural insights", "Adaptation strategies", "Local customs", "Social integration"]
+  },
+  {
+    id: "9",
+    title: "Resume & CV Builder",
+    description: "Create professional resumes and CVs tailored for international applications",
+    type: "tool",
+    category: "Application Materials",
+    isPremium: true,
+    estimatedTime: "45 min",
+    difficulty: "Beginner",
+    rating: 4.8,
+    completions: 3421,
+    features: ["International templates", "ATS optimization", "Industry-specific formats", "Expert tips"]
   },
   {
     id: "10",
@@ -175,6 +215,45 @@ const resources: Resource[] = [
     completions: 1876,
     features: ["Career mapping", "Industry insights", "Networking guide", "Job search strategies"]
   },
+  {
+    id: "13",
+    title: "LOR Request Templates",
+    description: "Professional templates and strategies for requesting Letters of Recommendation",
+    type: "template",
+    category: "Application Materials",
+    isPremium: true,
+    estimatedTime: "25 min",
+    difficulty: "Beginner",
+    rating: 4.7,
+    completions: 2567,
+    features: ["Email templates", "Follow-up strategies", "Professor outreach", "Timeline planning"]
+  },
+  {
+    id: "14",
+    title: "Application Timeline Planner",
+    description: "Comprehensive timeline management for multiple university applications",
+    type: "tool",
+    category: "Organization",
+    isPremium: true,
+    estimatedTime: "30 min",
+    difficulty: "Intermediate",
+    rating: 4.8,
+    completions: 1987,
+    features: ["Deadline tracking", "Task automation", "Progress monitoring", "Reminder system"]
+  },
+  {
+    id: "15",
+    title: "Networking Masterclass",
+    description: "Build professional networks in your field before and after arrival",
+    type: "course",
+    category: "Career Development",
+    isPremium: true,
+    estimatedTime: "90 min",
+    difficulty: "Advanced",
+    rating: 4.6,
+    completions: 1234,
+    features: ["LinkedIn optimization", "Industry events", "Alumni connections", "Professional etiquette"]
+  },
 ];
 
 const categories = [
@@ -182,6 +261,7 @@ const categories = [
   "Application Materials",
   "Mentoring",
   "Analytics",
+  "University Selection",
   "Funding",
   "Interviews",
   "Visa & Legal",
@@ -190,6 +270,7 @@ const categories = [
   "Community",
   "Test Preparation",
   "Career Development",
+  "Organization",
 ];
 
 export default function PremiumResourcesScreen() {

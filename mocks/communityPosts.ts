@@ -55,3 +55,61 @@ export const getPostsByTopic = (topic: string): CommunityPost[] => {
 export const getPostsByUser = (userId: string): CommunityPost[] => {
   return mockPosts.filter(post => post.author.id === userId);
 };
+
+// Premium features content for the premium features page
+export interface PremiumFeature {
+  id: string;
+  title: string;
+  description: string;
+  icon: string;
+  category: string;
+  benefits: string[];
+  isPopular?: boolean;
+  isNew?: boolean;
+}
+
+export const premiumFeatures: PremiumFeature[] = [
+  {
+    id: "mentor",
+    title: "Personal Mentor Access",
+    description: "Get 1-on-1 guidance from university admission experts and successful alumni",
+    icon: "UserCheck",
+    category: "Mentoring",
+    benefits: ["Weekly 1-on-1 sessions", "Expert consultations", "Mock interviews", "Application review", "Career guidance"],
+    isPopular: true,
+  },
+  {
+    id: "resources",
+    title: "Premium Resource Library",
+    description: "Access exclusive templates, guides, and application materials from top universities",
+    icon: "BookOpen",
+    category: "Resources",
+    benefits: ["50+ premium guides", "Application templates", "Essay examples", "Scholarship database", "Country-specific guides"],
+  },
+  {
+    id: "analytics",
+    title: "Advanced Analytics",
+    description: "Detailed progress tracking, success predictions, and performance insights",
+    icon: "BarChart3",
+    category: "Analytics",
+    benefits: ["Progress analytics", "Success probability", "Benchmark comparison", "Goal tracking", "Performance insights"],
+    isNew: true,
+  },
+  {
+    id: "webinars",
+    title: "Exclusive Webinars",
+    description: "Live sessions with admission experts, successful students, and industry leaders",
+    icon: "Video",
+    category: "Community",
+    benefits: ["Weekly live sessions", "Expert Q&A", "Networking events", "Recorded access", "Industry insights"],
+  },
+];
+
+export const getFeatureById = (id: string): PremiumFeature | undefined => {
+  return premiumFeatures.find(feature => feature.id === id);
+};
+
+export const getFeaturesByCategory = (category: string): PremiumFeature[] => {
+  if (category === "all") return premiumFeatures;
+  return premiumFeatures.filter(feature => feature.category === category);
+};

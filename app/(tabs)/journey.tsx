@@ -188,6 +188,8 @@ export default function JourneyScreen() {
       comments: 8,
       badge: "🏛️",
       badgeTitle: "Campus Explorer",
+      badgeColor: "#FF6B6B",
+      milestone: true,
     },
     {
       id: "2",
@@ -202,11 +204,13 @@ export default function JourneyScreen() {
       comments: 12,
       badge: "🎯",
       badgeTitle: "Test Master",
+      badgeColor: "#4ECDC4",
+      milestone: true,
     },
     {
       id: "3",
       title: "Scholarship Application",
-      description: "Just submitted my scholarship application after weeks of preparation. The essay took forever but I'm happy with the result. Fingers crossed! 🤞",
+      description: "Just submitted my scholarship application after weeks of preparation. The essay took forever but I am happy with the result. Fingers crossed! 🤞",
       date: "2024-03-05",
       stage: "application" as const,
       imageUrl: "https://images.unsplash.com/photo-1513475382585-d06e58bcb0e0?w=400&h=300&fit=crop",
@@ -216,11 +220,13 @@ export default function JourneyScreen() {
       comments: 6,
       badge: "💰",
       badgeTitle: "Scholarship Hunter",
+      badgeColor: "#FFD93D",
+      milestone: false,
     },
     {
       id: "4",
       title: "Acceptance Letter! 🎉",
-      description: "I can't believe it! Finally received my acceptance letter from my dream university. Dreams really do come true with hard work and persistence!",
+      description: "I cannot believe it! Finally received my acceptance letter from my dream university. Dreams really do come true with hard work and persistence!",
       date: "2024-04-12",
       stage: "application" as const,
       imageUrl: "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=400&h=300&fit=crop",
@@ -230,6 +236,8 @@ export default function JourneyScreen() {
       comments: 23,
       badge: "🎓",
       badgeTitle: "Accepted!",
+      badgeColor: "#6BCF7F",
+      milestone: true,
     },
     {
       id: "5",
@@ -244,11 +252,13 @@ export default function JourneyScreen() {
       comments: 15,
       badge: "✈️",
       badgeTitle: "Visa Approved",
+      badgeColor: "#42A5F5",
+      milestone: true,
     },
     {
       id: "6",
       title: "Packing Adventures",
-      description: "Started packing for the big move! It's amazing how much stuff you accumulate over the years. Deciding what to take and what to leave behind is harder than expected.",
+      description: "Started packing for the big move! It is amazing how much stuff you accumulate over the years. Deciding what to take and what to leave behind is harder than expected.",
       date: "2024-07-10",
       stage: "pre_departure" as const,
       imageUrl: "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=400&h=300&fit=crop",
@@ -258,6 +268,40 @@ export default function JourneyScreen() {
       comments: 9,
       badge: "📦",
       badgeTitle: "Packing Pro",
+      badgeColor: "#9C27B0",
+      milestone: false,
+    },
+    {
+      id: "7",
+      title: "First Day Prep",
+      description: "Getting ready for my first day at university! Bought all my textbooks, set up my dorm room, and met some amazing people already. The adventure begins!",
+      date: "2024-08-15",
+      stage: "arrival" as const,
+      imageUrl: "https://images.unsplash.com/photo-1541339907198-e08756dedf3f?w=400&h=300&fit=crop",
+      tags: ["university", "first-day", "dorm", "textbooks"],
+      mood: "excited" as const,
+      likes: 56,
+      comments: 18,
+      badge: "🎒",
+      badgeTitle: "Student Life",
+      badgeColor: "#FF9800",
+      milestone: true,
+    },
+    {
+      id: "8",
+      title: "Study Group Success",
+      description: "Formed an amazing study group with classmates from 5 different countries! We are tackling our first major project together. International collaboration at its finest!",
+      date: "2024-09-10",
+      stage: "studies" as const,
+      imageUrl: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=400&h=300&fit=crop",
+      tags: ["study-group", "international", "collaboration", "project"],
+      mood: "happy" as const,
+      likes: 41,
+      comments: 14,
+      badge: "👥",
+      badgeTitle: "Team Player",
+      badgeColor: "#E91E63",
+      milestone: false,
     },
   ];
 
@@ -540,8 +584,8 @@ export default function JourneyScreen() {
                         <Text style={styles.statLabelMemories}>Memories</Text>
                       </View>
                       <View style={styles.statBubble}>
-                        <Text style={styles.statNumber}>{Math.round(overallProgress)}%</Text>
-                        <Text style={styles.statLabelMemories}>Progress</Text>
+                        <Text style={styles.statNumber}>{memories.filter(m => m.milestone).length}</Text>
+                        <Text style={styles.statLabelMemories}>Milestones</Text>
                       </View>
                       <View style={styles.statBubble}>
                         <Text style={styles.statNumber}>
@@ -555,10 +599,36 @@ export default function JourneyScreen() {
               </ImageBackground>
             </View>
 
+            {/* Milestone Badges Row */}
+            <View style={styles.milestoneBadgesContainer}>
+              <Text style={[styles.badgesTitle, { color: Colors.text }]}>🏆 Achievement Badges</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.badgesScroll}>
+                {memories.filter(m => m.milestone).map((memory, index) => (
+                  <TouchableOpacity
+                    key={memory.id}
+                    style={[styles.milestoneBadge, { backgroundColor: memory.badgeColor + "20", borderColor: memory.badgeColor }]}
+                    onPress={() => router.push(`/memories/${memory.id}`)}
+                  >
+                    <Text style={styles.badgeEmoji}>{memory.badge}</Text>
+                    <Text style={[styles.badgeTitle, { color: memory.badgeColor }]}>{memory.badgeTitle}</Text>
+                    <Text style={[styles.badgeDate, { color: Colors.lightText }]}>
+                      {new Date(memory.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+                
+                {/* Add more badges placeholder */}
+                <TouchableOpacity style={styles.addBadgePlaceholder}>
+                  <Plus size={24} color={Colors.lightText} />
+                  <Text style={[styles.addBadgeText, { color: Colors.lightText }]}>More to come!</Text>
+                </TouchableOpacity>
+              </ScrollView>
+            </View>
+
             {/* Memories Grid */}
             <ScrollView style={styles.memoriesScroll} showsVerticalScrollIndicator={false}>
               <View style={styles.memoriesGridHeader}>
-                <Text style={[styles.gridTitle, { color: Colors.text }]}>Your Story So Far</Text>
+                <Text style={[styles.gridTitle, { color: Colors.text }]}>Your Story Timeline</Text>
                 <TouchableOpacity
                   style={[styles.addMemoryFloatingButton, { backgroundColor: Colors.primary }]}
                   onPress={() => router.push("/memories/new")}
@@ -599,14 +669,23 @@ export default function JourneyScreen() {
                         >
                           <View style={styles.memoryCardContent}>
                             <View style={styles.memoryCardHeader}>
-                              <View style={[styles.memoryBadge, { backgroundColor: Colors.memoryPink }]}>
+                              <View style={[styles.memoryBadge, { backgroundColor: memory.badgeColor || Colors.memoryPink }]}>
                                 <Text style={styles.memoryBadgeEmoji}>{memory.badge}</Text>
                                 <Text style={styles.memoryBadgeTitle}>{memory.badgeTitle}</Text>
+                                {memory.milestone && (
+                                  <View style={styles.milestoneIndicator}>
+                                    <Award size={10} color={Colors.white} />
+                                  </View>
+                                )}
                               </View>
                               <View style={styles.memoryStats}>
                                 <View style={styles.memoryStat}>
                                   <Heart size={12} color={Colors.white} />
                                   <Text style={styles.memoryStatText}>{memory.likes}</Text>
+                                </View>
+                                <View style={styles.memoryStat}>
+                                  <MessageCircle size={12} color={Colors.white} />
+                                  <Text style={styles.memoryStatText}>{memory.comments}</Text>
                                 </View>
                               </View>
                             </View>
@@ -1391,5 +1470,72 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 14,
     fontWeight: "600",
+  },
+  
+  // New milestone badges styles
+  milestoneBadgesContainer: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: Colors.background,
+  },
+  badgesTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    marginBottom: 12,
+  },
+  badgesScroll: {
+    flexDirection: "row",
+  },
+  milestoneBadge: {
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 16,
+    marginRight: 12,
+    borderWidth: 2,
+    minWidth: 80,
+  },
+  badgeEmoji: {
+    fontSize: 24,
+    marginBottom: 4,
+  },
+  badgeTitle: {
+    fontSize: 10,
+    fontWeight: "600",
+    textAlign: "center",
+    marginBottom: 2,
+  },
+  badgeDate: {
+    fontSize: 8,
+    textAlign: "center",
+  },
+  addBadgePlaceholder: {
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: Colors.border,
+    borderStyle: "dashed",
+    minWidth: 80,
+  },
+  addBadgeText: {
+    fontSize: 10,
+    fontWeight: "500",
+    textAlign: "center",
+    marginTop: 4,
+  },
+  
+  // Enhanced memory card styles
+  milestoneIndicator: {
+    position: "absolute",
+    top: -4,
+    right: -4,
+    backgroundColor: Colors.warning,
+    borderRadius: 8,
+    width: 16,
+    height: 16,
+    alignItems: "center",
+    justifyContent: "center",
   },
 });
