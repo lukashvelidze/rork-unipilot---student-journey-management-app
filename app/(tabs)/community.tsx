@@ -4,6 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { Crown, Zap, Target, Users, BookOpen, Award, TrendingUp, Video, Calendar, CheckCircle, Star, ArrowRight, BarChart3, MessageCircle, UserCheck } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
+import * as WebBrowser from "expo-web-browser";
 import { useColors } from "@/hooks/useColors";
 import Card from "@/components/Card";
 import Button from "@/components/Button";
@@ -109,6 +110,14 @@ export default function PremiumFeaturesScreen() {
         break;
       default:
         router.push("/premium");
+    }
+  };
+  
+  const handleSubscribe = async () => {
+    try {
+      await WebBrowser.openBrowserAsync("https://lukashvelidze.github.io/unipilot/");
+    } catch (error) {
+      console.error("Error opening subscription page:", error);
     }
   };
   
@@ -262,8 +271,8 @@ export default function PremiumFeaturesScreen() {
           </View>
           
           <Button
-            title="Start Premium Trial"
-            onPress={() => router.push("/premium")}
+            title="Subscribe Now"
+            onPress={handleSubscribe}
             style={styles.ctaButton}
             icon={<Crown size={20} color={Colors.primary} />}
           />
@@ -388,9 +397,9 @@ export default function PremiumFeaturesScreen() {
               Join 75,000+ students who achieved their dreams with UniPilot Premium
             </Text>
             <Button
-              title="Upgrade to Premium - $4.99/month"
-              onPress={() => router.push("/premium")}
-              style={styles.finalCtaButton}
+              title="Subscribe Now - $4.99/month"
+              onPress={handleSubscribe}
+              style={[styles.finalCtaButton, { backgroundColor: Colors.primary }]}
               icon={<Crown size={20} color={Colors.white} />}
             />
           </View>
