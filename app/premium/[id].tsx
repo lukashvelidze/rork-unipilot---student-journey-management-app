@@ -3,7 +3,6 @@ import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Image, Dimensions
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { ArrowLeft, Clock, BookOpen, Star, Download, Share, Heart, Bookmark, Play, Users, Target, CheckCircle, ExternalLink, Zap, Award, TrendingUp, ChevronRight } from "lucide-react-native";
-import * as WebBrowser from "expo-web-browser";
 import Colors from "@/constants/colors";
 import Theme from "@/constants/theme";
 import Card from "@/components/Card";
@@ -384,19 +383,6 @@ export default function PremiumResourceDetailScreen() {
     );
   }
   
-  const handleSubscribe = async () => {
-    try {
-      await WebBrowser.openBrowserAsync("https://lukashvelidze.github.io/unipilot/");
-    } catch (error) {
-      console.error("Error opening subscription page:", error);
-      Alert.alert(
-        "Error",
-        "Unable to open subscription page. Please try again later.",
-        [{ text: "OK" }]
-      );
-    }
-  };
-  
   if (!isPremium) {
     return (
       <View style={styles.premiumContainer}>
@@ -410,10 +396,10 @@ export default function PremiumResourceDetailScreen() {
             This resource is only available to premium members. Upgrade to access all premium content and accelerate your study abroad journey!
           </Text>
           <Button
-            title="Subscribe Now - $4.99/month"
-            onPress={handleSubscribe}
-            style={[styles.upgradeButton, { backgroundColor: Colors.white }]}
-            icon={<Award size={20} color={Colors.primary} />}
+            title="Upgrade to Premium"
+            onPress={() => router.push("/premium")}
+            style={styles.upgradeButton}
+            icon={<Award size={20} color={Colors.white} />}
           />
         </LinearGradient>
       </View>

@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert } from "react-native";
 import { useRouter } from "expo-router";
 import { BookOpen, Video, Users, Target, Calendar, CheckCircle, Lock, ArrowRight, Clock, Star, BarChart3, TrendingUp, UserCheck, Zap, Award } from "lucide-react-native";
-import * as WebBrowser from "expo-web-browser";
 import Colors from "@/constants/colors";
 import Theme from "@/constants/theme";
 import Card from "@/components/Card";
@@ -353,19 +352,6 @@ export default function PremiumResourcesScreen() {
     router.push(`/premium/${resource.id}`);
   };
   
-  const handleSubscribe = async () => {
-    try {
-      await WebBrowser.openBrowserAsync("https://lukashvelidze.github.io/unipilot/");
-    } catch (error) {
-      console.error("Error opening subscription page:", error);
-      Alert.alert(
-        "Error",
-        "Unable to open subscription page. Please try again later.",
-        [{ text: "OK" }]
-      );
-    }
-  };
-  
   const renderResource = (resource: Resource) => {
     const TypeIcon = getTypeIcon(resource.type);
     const typeColor = getTypeColor(resource.type);
@@ -573,9 +559,9 @@ export default function PremiumResourcesScreen() {
               </View>
               
               <Button
-                title="Subscribe Now - $4.99/month"
-                onPress={handleSubscribe}
-                style={[styles.upgradeButton, { backgroundColor: Colors.primary }]}
+                title="Upgrade to Premium"
+                onPress={() => router.push("/premium")}
+                style={styles.upgradeButton}
                 icon={<Zap size={20} color={Colors.white} />}
               />
             </View>

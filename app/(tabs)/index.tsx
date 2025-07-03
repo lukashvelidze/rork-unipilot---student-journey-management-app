@@ -3,12 +3,10 @@ import { StyleSheet, View, Text, ScrollView, TouchableOpacity } from "react-nati
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { Award, TrendingUp, BookOpen, Users, Crown, Zap, Target, Calendar, UserCheck, BarChart3, Video } from "lucide-react-native";
-import * as WebBrowser from "expo-web-browser";
 import { useColors } from "@/hooks/useColors";
 import Card from "@/components/Card";
 import ProgressBar from "@/components/ProgressBar";
 import QuoteCard from "@/components/QuoteCard";
-import Button from "@/components/Button";
 import { useUserStore } from "@/store/userStore";
 import { useJourneyStore } from "@/store/journeyStore";
 import { calculateOverallProgress } from "@/utils/helpers";
@@ -140,14 +138,6 @@ export default function HomeScreen() {
       onPress: () => router.push("/premium/mentor"),
     },
   ];
-  
-  const handleSubscribe = async () => {
-    try {
-      await WebBrowser.openBrowserAsync("https://lukashvelidze.github.io/unipilot/");
-    } catch (error) {
-      console.error("Error opening subscription page:", error);
-    }
-  };
   
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: Colors.background }]} edges={['top']}>
@@ -300,12 +290,12 @@ export default function HomeScreen() {
                 </Text>
               </View>
             </View>
-            <Button
-              title="Subscribe Now - $4.99/month"
-              onPress={handleSubscribe}
-              style={[styles.upgradeButton, { backgroundColor: Colors.primary }]}
-              icon={<Crown size={20} color={Colors.white} />}
-            />
+            <TouchableOpacity
+              style={[styles.upgradeButton, { backgroundColor: Colors.premium }]}
+              onPress={() => router.push("/premium")}
+            >
+              <Text style={styles.upgradeButtonText}>Upgrade Now - $4.99/month</Text>
+            </TouchableOpacity>
           </Card>
         )}
       </ScrollView>
@@ -553,5 +543,10 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingVertical: 12,
     alignItems: "center",
+  },
+  upgradeButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#FFFFFF",
   },
 });

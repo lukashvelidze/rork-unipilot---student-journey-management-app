@@ -3,7 +3,6 @@ import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert, Platform }
 import { useRouter } from "expo-router";
 import { Crown, Check, Zap, Target, BookOpen, Calendar, Video, Users, Award, Gift, ChevronRight, Star, BarChart3, UserCheck, MessageCircle } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import * as WebBrowser from "expo-web-browser";
 import { useColors } from "@/hooks/useColors";
 import Card from "@/components/Card";
 import Button from "@/components/Button";
@@ -133,17 +132,12 @@ export default function PremiumScreen() {
     }
   };
   
-  const handleSubscribe = async () => {
-    try {
-      await WebBrowser.openBrowserAsync("https://lukashvelidze.github.io/unipilot/");
-    } catch (error) {
-      console.error("Error opening subscription page:", error);
-      Alert.alert(
-        "Error",
-        "Unable to open subscription page. Please try again later.",
-        [{ text: "OK" }]
-      );
-    }
+  const handleComingSoon = () => {
+    Alert.alert(
+      "🚀 Coming Soon!",
+      "Premium subscriptions will be available soon. For now, try using a promo code to unlock premium features and experience the full power of UniPilot!",
+      [{ text: "Got it" }]
+    );
   };
   
   // Debug logging
@@ -388,7 +382,7 @@ export default function PremiumScreen() {
         </View>
       </Card>
       
-      {/* Premium Subscription */}
+      {/* Coming Soon Subscription */}
       <Card style={[styles.subscriptionCard, { backgroundColor: Colors.card, borderColor: Colors.border }]} variant="outlined">
         <View style={styles.subscriptionHeader}>
           <Text style={[styles.subscriptionTitle, { color: Colors.text }]}>Premium Subscription</Text>
@@ -436,11 +430,11 @@ export default function PremiumScreen() {
         </View>
         
         <Button
-          title="Subscribe Now - $4.99/month"
-          onPress={handleSubscribe}
+          title="Notify Me When Available"
+          onPress={handleComingSoon}
+          variant="secondary"
           fullWidth
-          style={[styles.subscribeButton, { backgroundColor: Colors.primary }]}
-          icon={<Crown size={20} color={Colors.white} />}
+          style={[styles.notifyButton, { backgroundColor: Colors.secondary }]}
         />
       </Card>
       
@@ -772,7 +766,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginLeft: 8,
   },
-  subscribeButton: {
+  notifyButton: {
     marginBottom: 0,
   },
   featuresSection: {
