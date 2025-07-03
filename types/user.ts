@@ -56,7 +56,7 @@ export interface Document {
   notes?: string;
 }
 
-export type MemoryMood = "excited" | "nervous" | "happy" | "proud" | "grateful" | "accomplished" | "hopeful" | "determined";
+export type MemoryMood = "excited" | "nervous" | "happy" | "proud" | "grateful" | "accomplished" | "hopeful" | "determined" | "overwhelmed" | "confident";
 
 export interface Memory {
   id: string;
@@ -67,6 +67,17 @@ export interface Memory {
   imageUrl?: string;
   tags?: string[];
   mood?: MemoryMood;
+}
+
+export interface TimelineEvent {
+  id: number;
+  title: string;
+  description: string;
+  date: string;
+  type: string;
+  completed: boolean;
+  icon: any; // LucideIcon type
+  progress?: number;
 }
 
 export interface EducationBackground {
