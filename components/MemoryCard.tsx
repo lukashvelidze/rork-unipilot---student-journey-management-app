@@ -2,7 +2,7 @@ import React from "react";
 import { StyleSheet, View, Text, Image, TouchableOpacity, Dimensions } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Calendar, Heart, Share2, MapPin, MessageCircle, Award } from "lucide-react-native";
-import Colors from "@/constants/colors";
+import { useColors } from "@/hooks/useColors";
 import { Memory } from "@/types/user";
 import { formatDate } from "@/utils/dateUtils";
 
@@ -22,8 +22,12 @@ const { width } = Dimensions.get("window");
 const cardWidth = width - 32; // Account for padding
 
 const MemoryCard: React.FC<MemoryCardProps> = ({ memory, onPress }) => {
+  const Colors = useColors();
+  
   const getMoodColor = () => {
     if (memory.badgeColor) return memory.badgeColor;
+    
+    if (!memory.mood) return Colors.primary;
     
     switch (memory.mood) {
       case "excited":
@@ -34,10 +38,14 @@ const MemoryCard: React.FC<MemoryCardProps> = ({ memory, onPress }) => {
         return Colors.memoryBlue;
       case "proud":
         return Colors.memoryPink;
-      case "overwhelmed":
-        return Colors.memoryPurple;
-      case "confident":
-        return Colors.primary;
+      case "grateful":
+        return Colors.memoryGreen;
+      case "accomplished":
+        return Colors.success;
+      case "hopeful":
+        return Colors.secondary;
+      case "determined":
+        return Colors.accent;
       default:
         return Colors.primary;
     }
@@ -48,6 +56,8 @@ const MemoryCard: React.FC<MemoryCardProps> = ({ memory, onPress }) => {
       return [memory.badgeColor, memory.badgeColor + "80"];
     }
     
+    if (!memory.mood) return [Colors.primary, Colors.secondary];
+    
     switch (memory.mood) {
       case "excited":
         return [Colors.memoryOrange, "#FF6B35"];
@@ -57,10 +67,14 @@ const MemoryCard: React.FC<MemoryCardProps> = ({ memory, onPress }) => {
         return [Colors.memoryBlue, "#3498DB"];
       case "proud":
         return [Colors.memoryPink, "#E74C3C"];
-      case "overwhelmed":
-        return [Colors.memoryPurple, "#8E44AD"];
-      case "confident":
-        return [Colors.primary, Colors.secondary];
+      case "grateful":
+        return [Colors.memoryGreen, "#2ECC71"];
+      case "accomplished":
+        return [Colors.success, "#27AE60"];
+      case "hopeful":
+        return [Colors.secondary, Colors.primary];
+      case "determined":
+        return [Colors.accent, Colors.warning];
       default:
         return [Colors.primary, Colors.secondary];
     }
@@ -68,6 +82,8 @@ const MemoryCard: React.FC<MemoryCardProps> = ({ memory, onPress }) => {
 
   const getMoodEmoji = () => {
     if (memory.badge) return memory.badge;
+    
+    if (!memory.mood) return "😊";
     
     switch (memory.mood) {
       case "excited":
@@ -78,10 +94,14 @@ const MemoryCard: React.FC<MemoryCardProps> = ({ memory, onPress }) => {
         return "😰";
       case "proud":
         return "🥳";
-      case "overwhelmed":
-        return "😵";
-      case "confident":
-        return "😎";
+      case "grateful":
+        return "🙏";
+      case "accomplished":
+        return "🏆";
+      case "hopeful":
+        return "🌟";
+      case "determined":
+        return "💪";
       default:
         return "😊";
     }
@@ -119,10 +139,10 @@ const MemoryCard: React.FC<MemoryCardProps> = ({ memory, onPress }) => {
           <View style={[styles.moodBadge, { backgroundColor: getMoodColor() }]}>
             <Text style={styles.moodEmoji}>{getMoodEmoji()}</Text>
             <Text style={styles.moodText}>
-              {memory.badgeTitle || (memory.mood.charAt(0).toUpperCase() + memory.mood.slice(1))}
+              {memory.badgeTitle || (memory.mood ? (memory.mood.charAt(0).toUpperCase() + memory.mood.slice(1)) : "Memory")}
             </Text>
             {memory.milestone && (
-              <View style={styles.milestoneIndicator}>
+              <View style={[styles.milestoneIndicator, { backgroundColor: Colors.warning }]}>
                 <Award size={8} color={Colors.white} />
               </View>
             )}
@@ -193,7 +213,7 @@ const MemoryCard: React.FC<MemoryCardProps> = ({ memory, onPress }) => {
             end={{ x: 1, y: 1 }}
             style={styles.storyBorder}
           >
-            <View style={styles.innerBorder} />
+            <View style={[styles.innerBorder, { backgroundColor: Colors.white }]} />
           </LinearGradient>
         )}
       </View>
@@ -205,7 +225,7 @@ const styles = StyleSheet.create({
   cardContainer: {
     borderRadius: 24,
     overflow: "hidden",
-    backgroundColor: Colors.white,
+    backgroundColor: "#FFFFFF",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 12 },
     shadowOpacity: 0.2,
@@ -254,7 +274,7 @@ const styles = StyleSheet.create({
     marginRight: 6,
   },
   moodText: {
-    color: Colors.white,
+    color: "#FFFFFF",
     fontSize: 12,
     fontWeight: "700",
   },
@@ -290,7 +310,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 22,
     fontWeight: "800",
-    color: Colors.white,
+    color: "#FFFFFF",
     flex: 1,
     marginRight: 12,
     textShadowColor: "rgba(0, 0, 0, 0.7)",
@@ -306,7 +326,7 @@ const styles = StyleSheet.create({
     borderColor: "rgba(255, 255, 255, 0.3)",
   },
   stageText: {
-    color: Colors.white,
+    color: "#FFFFFF",
     fontSize: 10,
     fontWeight: "600",
     textTransform: "uppercase",
@@ -361,14 +381,12 @@ const styles = StyleSheet.create({
   },
   innerBorder: {
     flex: 1,
-    backgroundColor: Colors.white,
     borderRadius: 21,
   },
   milestoneIndicator: {
     position: "absolute",
     top: -4,
     right: -4,
-    backgroundColor: Colors.warning,
     borderRadius: 8,
     width: 16,
     height: 16,
@@ -394,7 +412,7 @@ const styles = StyleSheet.create({
   statText: {
     fontSize: 12,
     fontWeight: "600",
-    color: Colors.white,
+    color: "#FFFFFF",
   },
 });
 

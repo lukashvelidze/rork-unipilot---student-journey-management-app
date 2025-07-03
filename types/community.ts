@@ -1,73 +1,41 @@
-export type Topic = 
-  | "visa" 
-  | "university" 
-  | "accommodation" 
-  | "finances" 
-  | "culture" 
-  | "academics" 
-  | "career" 
-  | "general";
+export type Topic = "visa" | "university" | "accommodation" | "finances" | "culture" | "academics" | "career" | "general";
+
+export interface Author {
+  id: string;
+  name: string;
+  avatar?: string;
+  country: string;
+  university?: string;
+}
 
 export interface Comment {
   id: string;
-  userId: string;
-  userName: string;
-  userAvatar?: string;
   content: string;
+  author: Author;
   createdAt: string;
   likes: number;
-  isLiked?: boolean;
+  isLiked: boolean;
+  replies?: Comment[];
 }
 
 export interface Post {
   id: string;
-  userId: string;
-  userName: string;
-  userAvatar?: string;
   title: string;
   content: string;
-  topic: Topic;
-  createdAt: string;
-  likes: number;
-  comments: Comment[];
-  isLiked?: boolean;
-  isSaved?: boolean;
-}
-
-export interface CommunityUser {
-  id: string;
-  name: string;
-  avatar?: string;
-  homeCountry: string;
-  destinationCountry: string;
-  university?: string;
-  joinDate: string;
-  posts: number;
-  comments: number;
-  reputation: number;
-}
-
-// Enhanced community post type with additional fields
-export interface CommunityPost {
-  id: string;
-  title: string;
-  content: string;
-  author: {
-    id: string;
-    name: string;
-    avatar?: string;
-    country: string;
-    university?: string;
-  };
+  author: Author;
   topic: Topic;
   likes: number;
   comments: number;
   createdAt: string;
-  updatedAt: string;
   tags: string[];
-  isLiked?: boolean;
   isPinned?: boolean;
+  isLiked: boolean;
+  imageUrl?: string;
 }
 
-// Export CommunityPost for backward compatibility
-export { CommunityPost as default };
+export interface CommunityStats {
+  totalPosts: number;
+  totalMembers: number;
+  activeToday: number;
+  topCountries: string[];
+}

@@ -3,7 +3,7 @@ import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Platform, Animate
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
-import { ChevronRight, Quote, CheckSquare, Calendar, Clock, Star, Heart, Camera, Plus, Globe, Timer, MapPin, Sparkles, Image as ImageIcon, Award } from "lucide-react-native";
+import { ChevronRight, Quote, CheckSquare, Calendar, Clock, Star, Heart, Camera, Plus, Globe, Timer, MapPin, Sparkles, Image as ImageIcon, Award, MessageCircle } from "lucide-react-native";
 import { useColors } from "@/hooks/useColors";
 import Card from "@/components/Card";
 import ProgressBar from "@/components/ProgressBar";
@@ -124,54 +124,73 @@ export default function JourneyScreen() {
     }
   }, [activeTab, planeAnim, sparkleAnim, memoryFloatAnim]);
 
-  // Mock timeline data
-  const timelineEvents = [
-    {
-      id: 1,
-      title: "Started Your Journey",
-      description: "Welcome to your study abroad adventure!",
-      date: "2024-01-15",
-      type: "milestone",
-      completed: true,
-      icon: Star,
-    },
-    {
-      id: 2,
-      title: "Research Phase Complete",
-      description: "Explored universities and programs",
-      date: "2024-02-20",
-      type: "achievement",
-      completed: true,
-      icon: CheckSquare,
-    },
-    {
-      id: 3,
-      title: "Application Submitted",
-      description: "Submitted applications to 5 universities",
-      date: "2024-03-15",
-      type: "milestone",
-      completed: false,
-      icon: Calendar,
-    },
-    {
-      id: 4,
-      title: "Visa Interview",
-      description: "Scheduled visa appointment",
-      date: "2024-04-10",
-      type: "upcoming",
-      completed: false,
-      icon: Clock,
-    },
-    {
-      id: 5,
-      title: "Departure Day",
-      description: "Begin your new adventure!",
-      date: "2024-08-25",
+  // Generate timeline events based on actual journey progress
+  const generateTimelineEvents = () => {
+    const events = [
+      {
+        id: 1,
+        title: "Started Your Journey",
+        description: "Welcome to your study abroad adventure!",
+        date: "2024-01-15",
+        type: "milestone",
+        completed: true,
+        icon: Star,
+      }
+    ];
+
+    // Add events based on journey progress
+    journeyProgress.forEach((stage, index) => {
+      const stageNames = {
+        research: "Research Phase",
+        application: "Application Phase", 
+        visa: "Visa Process",
+        pre_departure: "Pre-Departure",
+        arrival: "Arrival",
+        studies: "Academic Journey",
+        career: "Career Development"
+      };
+
+      const stageDescriptions = {
+        research: "Explored universities and programs",
+        application: "Submitted applications to universities",
+        visa: "Completed visa application process",
+        pre_departure: "Prepared for departure",
+        arrival: "Arrived at destination",
+        studies: "Started academic journey",
+        career: "Building career opportunities"
+      };
+
+      const baseDate = new Date("2024-01-15");
+      baseDate.setMonth(baseDate.getMonth() + index + 1);
+
+      events.push({
+        id: index + 2,
+        title: `${stageNames[stage.stage]} ${stage.completed ? "Complete" : "In Progress"}`,
+        description: stageDescriptions[stage.stage],
+        date: baseDate.toISOString().split('T')[0],
+        type: stage.completed ? "achievement" : (stage.progress > 0 ? "upcoming" : "future"),
+        completed: stage.completed,
+        icon: stage.completed ? CheckSquare : (stage.progress > 0 ? Clock : Calendar),
+        progress: stage.progress
+      });
+    });
+
+    // Add future milestone
+    const futureDate = new Date("2024-08-25");
+    events.push({
+      id: events.length + 1,
+      title: "Graduation Day",
+      description: "Celebrate your achievement!",
+      date: futureDate.toISOString().split('T')[0],
       type: "future",
       completed: false,
       icon: Heart,
-    },
-  ];
+    });
+
+    return events;
+  };
+
+  const timelineEvents = generateTimelineEvents();
 
   // Enhanced memories data with Instagram-style milestone badges
   const memories = [
@@ -450,6 +469,11 @@ export default function JourneyScreen() {
                 <View style={styles.timelineHeaderContent}>
                   <Text style={styles.timelineTitle}>Your Journey Timeline</Text>
                   <Text style={styles.timelineSubtitle}>Track your progress through key milestones</Text>
+                  <View style={styles.timelineStats}>
+                    <Text style={styles.timelineStatsText}>
+                      {timelineEvents.filter(e => e.completed).length} of {timelineEvents.length} milestones completed
+                    </Text>
+                  </View>
                 </View>
               </LinearGradient>
             </View>
@@ -499,6 +523,17 @@ export default function JourneyScreen() {
                       <Text style={[styles.timelineEventDescription, { color: Colors.lightText }]}>
                         {event.description}
                       </Text>
+                      
+                      {/* Show progress for in-progress items */}
+                      {event.progress !== undefined && event.progress > 0 && !event.completed && (
+                        <View style={styles.timelineProgress}>
+                          <ProgressBar progress={event.progress} height={4} animated={true} />
+                          <Text style={[styles.timelineProgressText, { color: Colors.primary }]}>
+                            {event.progress}% complete
+                          </Text>
+                        </View>
+                      )}
+                      
                       {event.completed && (
                         <View style={[styles.completedBadge, { backgroundColor: Colors.lightBackground }]}>
                           <CheckSquare size={12} color={Colors.success} />
@@ -607,7 +642,13 @@ export default function JourneyScreen() {
                   <TouchableOpacity
                     key={memory.id}
                     style={[styles.milestoneBadge, { backgroundColor: memory.badgeColor + "20", borderColor: memory.badgeColor }]}
-                    onPress={() => router.push(`/memories/${memory.id}`)}
+                    onPress={() => {
+                      Alert.alert(
+                        memory.badgeTitle,
+                        memory.description,
+                        [{ text: "Close" }]
+                      );
+                    }}
                   >
                     <Text style={styles.badgeEmoji}>{memory.badge}</Text>
                     <Text style={[styles.badgeTitle, { color: memory.badgeColor }]}>{memory.badgeTitle}</Text>
@@ -618,7 +659,19 @@ export default function JourneyScreen() {
                 ))}
                 
                 {/* Add more badges placeholder */}
-                <TouchableOpacity style={styles.addBadgePlaceholder}>
+                <TouchableOpacity 
+                  style={styles.addBadgePlaceholder}
+                  onPress={() => {
+                    Alert.alert(
+                      "Create Memory",
+                      "Add a new memory to unlock more achievement badges!",
+                      [
+                        { text: "Cancel", style: "cancel" },
+                        { text: "Create", onPress: () => router.push("/memories/new") }
+                      ]
+                    );
+                  }}
+                >
                   <Plus size={24} color={Colors.lightText} />
                   <Text style={[styles.addBadgeText, { color: Colors.lightText }]}>More to come!</Text>
                 </TouchableOpacity>
@@ -631,7 +684,13 @@ export default function JourneyScreen() {
                 <Text style={[styles.gridTitle, { color: Colors.text }]}>Your Story Timeline</Text>
                 <TouchableOpacity
                   style={[styles.addMemoryFloatingButton, { backgroundColor: Colors.primary }]}
-                  onPress={() => router.push("/memories/new")}
+                  onPress={() => {
+                    Alert.alert(
+                      "Create Memory",
+                      "This feature will allow you to create and share your study abroad memories!",
+                      [{ text: "Coming Soon!" }]
+                    );
+                  }}
                 >
                   <Plus size={20} color={Colors.white} />
                 </TouchableOpacity>
@@ -653,63 +712,32 @@ export default function JourneyScreen() {
                       }
                     ]}
                   >
-                    <TouchableOpacity
-                      style={styles.enhancedMemoryCard}
-                      onPress={() => router.push(`/memories/${memory.id}`)}
-                      activeOpacity={0.9}
-                    >
-                      <ImageBackground
-                        source={{ uri: memory.imageUrl }}
-                        style={styles.memoryCardBackground}
-                        imageStyle={styles.memoryCardImage}
-                      >
-                        <LinearGradient
-                          colors={["transparent", "rgba(0,0,0,0.8)"]}
-                          style={styles.memoryCardOverlay}
-                        >
-                          <View style={styles.memoryCardContent}>
-                            <View style={styles.memoryCardHeader}>
-                              <View style={[styles.memoryBadge, { backgroundColor: memory.badgeColor || Colors.memoryPink }]}>
-                                <Text style={styles.memoryBadgeEmoji}>{memory.badge}</Text>
-                                <Text style={styles.memoryBadgeTitle}>{memory.badgeTitle}</Text>
-                                {memory.milestone && (
-                                  <View style={styles.milestoneIndicator}>
-                                    <Award size={10} color={Colors.white} />
-                                  </View>
-                                )}
-                              </View>
-                              <View style={styles.memoryStats}>
-                                <View style={styles.memoryStat}>
-                                  <Heart size={12} color={Colors.white} />
-                                  <Text style={styles.memoryStatText}>{memory.likes}</Text>
-                                </View>
-                                <View style={styles.memoryStat}>
-                                  <MessageCircle size={12} color={Colors.white} />
-                                  <Text style={styles.memoryStatText}>{memory.comments}</Text>
-                                </View>
-                              </View>
-                            </View>
-                            
-                            <View style={styles.memoryCardFooter}>
-                              <Text style={styles.memoryCardTitle}>{memory.title}</Text>
-                              <Text style={styles.memoryCardDate}>
-                                {new Date(memory.date).toLocaleDateString('en-US', { 
-                                  month: 'short', 
-                                  day: 'numeric' 
-                                })}
-                              </Text>
-                            </View>
-                          </View>
-                        </LinearGradient>
-                      </ImageBackground>
-                    </TouchableOpacity>
+                    <MemoryCard
+                      memory={memory}
+                      onPress={() => {
+                        Alert.alert(
+                          memory.title,
+                          memory.description,
+                          [
+                            { text: "Share", onPress: () => Alert.alert("Share", "Sharing functionality coming soon!") },
+                            { text: "Close", style: "cancel" }
+                          ]
+                        );
+                      }}
+                    />
                   </Animated.View>
                 ))}
                 
                 {/* Instagram-style Add Memory Card */}
                 <TouchableOpacity
                   style={styles.addMemoryCard}
-                  onPress={() => router.push("/memories/new")}
+                  onPress={() => {
+                    Alert.alert(
+                      "Create Memory",
+                      "This feature will allow you to create and share your study abroad memories!",
+                      [{ text: "Coming Soon!" }]
+                    );
+                  }}
                 >
                   <LinearGradient
                     colors={["#833AB4", "#FD1D1D", "#FCB045"]}
@@ -749,7 +777,10 @@ export default function JourneyScreen() {
                     </Text>
                     
                     <View style={styles.socialButtons}>
-                      <TouchableOpacity style={[styles.socialButton, { backgroundColor: Colors.primary }]}>
+                      <TouchableOpacity 
+                        style={[styles.socialButton, { backgroundColor: Colors.primary }]}
+                        onPress={() => Alert.alert("Share Story", "Social sharing coming soon!")}
+                      >
                         <Text style={styles.socialButtonText}>Share Story</Text>
                       </TouchableOpacity>
                       <TouchableOpacity 
@@ -1110,6 +1141,18 @@ const styles = StyleSheet.create({
   timelineSubtitle: {
     fontSize: 16,
     color: "rgba(255, 255, 255, 0.9)",
+    marginBottom: 16,
+  },
+  timelineStats: {
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  timelineStatsText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#FFFFFF",
   },
   timelineScroll: {
     flex: 1,
@@ -1165,6 +1208,14 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
     marginBottom: 8,
+  },
+  timelineProgress: {
+    marginVertical: 8,
+  },
+  timelineProgressText: {
+    fontSize: 12,
+    fontWeight: "600",
+    marginTop: 4,
   },
   completedBadge: {
     flexDirection: "row",
@@ -1296,87 +1347,6 @@ const styles = StyleSheet.create({
   memoryWrapper: {
     marginBottom: 20,
   },
-  enhancedMemoryCard: {
-    height: 240,
-    borderRadius: 20,
-    overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.25,
-    shadowRadius: 16,
-    elevation: 10,
-  },
-  memoryCardBackground: {
-    flex: 1,
-  },
-  memoryCardImage: {
-    borderRadius: 20,
-  },
-  memoryCardOverlay: {
-    flex: 1,
-    justifyContent: "space-between",
-    padding: 16,
-  },
-  memoryCardContent: {
-    flex: 1,
-    justifyContent: "space-between",
-  },
-  memoryCardHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-  },
-  memoryBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    gap: 6,
-  },
-  memoryBadgeEmoji: {
-    fontSize: 16,
-  },
-  memoryBadgeTitle: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#FFFFFF",
-  },
-  memoryStats: {
-    flexDirection: "row",
-    gap: 12,
-  },
-  memoryStat: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: "rgba(0,0,0,0.3)",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  memoryStatText: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#FFFFFF",
-  },
-  memoryCardFooter: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-end",
-  },
-  memoryCardTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#FFFFFF",
-    flex: 1,
-    marginRight: 8,
-  },
-  memoryCardDate: {
-    fontSize: 12,
-    color: "rgba(255, 255, 255, 0.8)",
-    fontWeight: "500",
-  },
   addMemoryCard: {
     height: 240,
     borderRadius: 20,
@@ -1476,7 +1446,7 @@ const styles = StyleSheet.create({
   milestoneBadgesContainer: {
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: Colors.background,
+    backgroundColor: "#FAFAFA",
   },
   badgesTitle: {
     fontSize: 16,
@@ -1515,7 +1485,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 16,
     borderWidth: 2,
-    borderColor: Colors.border,
+    borderColor: "#ECF0F1",
     borderStyle: "dashed",
     minWidth: 80,
   },
@@ -1524,18 +1494,5 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     textAlign: "center",
     marginTop: 4,
-  },
-  
-  // Enhanced memory card styles
-  milestoneIndicator: {
-    position: "absolute",
-    top: -4,
-    right: -4,
-    backgroundColor: Colors.warning,
-    borderRadius: 8,
-    width: 16,
-    height: 16,
-    alignItems: "center",
-    justifyContent: "center",
   },
 });
