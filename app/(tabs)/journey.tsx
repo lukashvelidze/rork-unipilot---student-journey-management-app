@@ -146,7 +146,7 @@ export default function JourneyScreen() {
         visa: "Visa Process",
         pre_departure: "Pre-Departure",
         arrival: "Arrival",
-        studies: "Academic Journey",
+        academic: "Academic Journey",
         career: "Career Development"
       };
 
@@ -156,7 +156,7 @@ export default function JourneyScreen() {
         visa: "Completed visa application process",
         pre_departure: "Prepared for departure",
         arrival: "Arrived at destination",
-        studies: "Started academic journey",
+        academic: "Started academic journey",
         career: "Building career opportunities"
       };
 
@@ -311,7 +311,7 @@ export default function JourneyScreen() {
       title: "Study Group Success",
       description: "Formed an amazing study group with classmates from 5 different countries! We are tackling our first major project together. International collaboration at its finest!",
       date: "2024-09-10",
-      stage: "studies" as const,
+      stage: "academic" as const,
       imageUrl: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=400&h=300&fit=crop",
       tags: ["study-group", "international", "collaboration", "project"],
       mood: "happy" as const,

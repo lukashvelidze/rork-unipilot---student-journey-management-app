@@ -1,10 +1,9 @@
 import React from "react";
-import { StyleSheet, View, Text, Image, TouchableOpacity, Dimensions } from "react-native";
+import { StyleSheet, View, Text, TouchableOpacity, ImageBackground } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { Calendar, Heart, Share2, MapPin, MessageCircle, Award } from "lucide-react-native";
+import { Heart, MessageCircle, Share, Calendar, MapPin } from "lucide-react-native";
 import { useColors } from "@/hooks/useColors";
-import { Memory } from "@/types/user";
-import { formatDate } from "@/utils/dateUtils";
+import { Memory, MemoryMood } from "@/types/user";
 
 interface MemoryCardProps {
   memory: Memory & {
@@ -18,402 +17,326 @@ interface MemoryCardProps {
   onPress?: () => void;
 }
 
-const { width } = Dimensions.get("window");
-const cardWidth = width - 32; // Account for padding
+const getMoodColor = (mood: MemoryMood | undefined): string => {
+  switch (mood) {
+    case "excited":
+      return "#FF6B6B";
+    case "nervous":
+      return "#9C27B0";
+    case "happy":
+      return "#4ECDC4";
+    case "proud":
+      return "#42A5F5";
+    case "grateful":
+      return "#66BB6A";
+    case "accomplished":
+      return "#FFA726";
+    case "hopeful":
+      return "#AB47BC";
+    case "determined":
+      return "#EF5350";
+    default:
+      return "#FF6B6B";
+  }
+};
 
-const MemoryCard: React.FC<MemoryCardProps> = ({ memory, onPress }) => {
+const getMoodEmoji = (mood: MemoryMood | undefined): string => {
+  switch (mood) {
+    case "excited":
+      return "🤩";
+    case "nervous":
+      return "😰";
+    case "happy":
+      return "😊";
+    case "proud":
+      return "😤";
+    case "grateful":
+      return "🙏";
+    case "accomplished":
+      return "🏆";
+    case "hopeful":
+      return "🌟";
+    case "determined":
+      return "💪";
+    default:
+      return "😊";
+  }
+};
+
+export default function MemoryCard({ memory, onPress }: MemoryCardProps) {
   const Colors = useColors();
-  
-  const getMoodColor = () => {
-    if (memory.badgeColor) return memory.badgeColor;
-    
-    if (!memory.mood) return Colors.primary;
-    
-    switch (memory.mood) {
-      case "excited":
-        return Colors.memoryOrange;
-      case "happy":
-        return Colors.memoryGreen;
-      case "nervous":
-        return Colors.memoryBlue;
-      case "proud":
-        return Colors.memoryPink;
-      case "grateful":
-        return Colors.memoryGreen;
-      case "accomplished":
-        return Colors.success;
-      case "hopeful":
-        return Colors.secondary;
-      case "determined":
-        return Colors.accent;
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric',
+      year: 'numeric'
+    });
+  };
+
+  const getStageColor = (stage: string) => {
+    switch (stage) {
+      case "research":
+        return "#FF6B6B";
+      case "application":
+        return "#4ECDC4";
+      case "visa":
+        return "#42A5F5";
+      case "pre_departure":
+        return "#9C27B0";
+      case "arrival":
+        return "#FF9800";
+      case "academic":
+        return "#66BB6A";
+      case "career":
+        return "#EF5350";
       default:
         return Colors.primary;
     }
   };
 
-  const getMoodGradient = (): [string, string] => {
-    if (memory.badgeColor) {
-      return [memory.badgeColor, memory.badgeColor + "80"];
-    }
-    
-    if (!memory.mood) return [Colors.primary, Colors.secondary];
-    
-    switch (memory.mood) {
-      case "excited":
-        return [Colors.memoryOrange, "#FF6B35"];
-      case "happy":
-        return [Colors.memoryGreen, "#2ECC71"];
-      case "nervous":
-        return [Colors.memoryBlue, "#3498DB"];
-      case "proud":
-        return [Colors.memoryPink, "#E74C3C"];
-      case "grateful":
-        return [Colors.memoryGreen, "#2ECC71"];
-      case "accomplished":
-        return [Colors.success, "#27AE60"];
-      case "hopeful":
-        return [Colors.secondary, Colors.primary];
-      case "determined":
-        return [Colors.accent, Colors.warning];
-      default:
-        return [Colors.primary, Colors.secondary];
-    }
-  };
-
-  const getMoodEmoji = () => {
-    if (memory.badge) return memory.badge;
-    
-    if (!memory.mood) return "😊";
-    
-    switch (memory.mood) {
-      case "excited":
-        return "🤩";
-      case "happy":
-        return "😊";
-      case "nervous":
-        return "😰";
-      case "proud":
-        return "🥳";
-      case "grateful":
-        return "🙏";
-      case "accomplished":
-        return "🏆";
-      case "hopeful":
-        return "🌟";
-      case "determined":
-        return "💪";
-      default:
-        return "😊";
-    }
-  };
-
   return (
-    <TouchableOpacity onPress={onPress} activeOpacity={0.95}>
-      <View style={styles.cardContainer}>
-        {/* Main Image */}
+    <TouchableOpacity style={styles.container} onPress={onPress} activeOpacity={0.9}>
+      <View style={[styles.card, { backgroundColor: Colors.card }]}>
+        {/* Image Header */}
         <View style={styles.imageContainer}>
-          {memory.imageUrl ? (
-            <Image
-              source={{ uri: memory.imageUrl }}
-              style={styles.image}
-              resizeMode="cover"
-            />
-          ) : (
+          <ImageBackground
+            source={{ uri: memory.imageUrl }}
+            style={styles.image}
+            imageStyle={styles.imageStyle}
+          >
             <LinearGradient
-              colors={getMoodGradient()}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.placeholderGradient}
+              colors={["transparent", "rgba(0, 0, 0, 0.7)"]}
+              style={styles.imageOverlay}
             >
-              <Heart size={48} color={Colors.white} fill={Colors.white} />
+              {/* Milestone Badge */}
+              {memory.milestone && memory.badge && (
+                <View style={[styles.milestoneBadge, { backgroundColor: memory.badgeColor }]}>
+                  <Text style={styles.badgeEmoji}>{memory.badge}</Text>
+                </View>
+              )}
+              
+              {/* Stage Badge */}
+              <View style={[styles.stageBadge, { backgroundColor: getStageColor(memory.stage) }]}>
+                <Text style={styles.stageBadgeText}>{memory.stage.replace('_', ' ').toUpperCase()}</Text>
+              </View>
             </LinearGradient>
-          )}
-          
-          {/* Instagram-style gradient overlay */}
-          <LinearGradient
-            colors={["transparent", "rgba(0,0,0,0.8)"]}
-            style={styles.imageOverlay}
-          />
-          
-          {/* Enhanced badge with milestone indicator */}
-          <View style={[styles.moodBadge, { backgroundColor: getMoodColor() }]}>
-            <Text style={styles.moodEmoji}>{getMoodEmoji()}</Text>
-            <Text style={styles.moodText}>
-              {memory.badgeTitle || (memory.mood ? (memory.mood.charAt(0).toUpperCase() + memory.mood.slice(1)) : "Memory")}
-            </Text>
-            {memory.milestone && (
-              <View style={[styles.milestoneIndicator, { backgroundColor: Colors.warning }]}>
-                <Award size={8} color={Colors.white} />
-              </View>
-            )}
-          </View>
-          
-          {/* Enhanced stats */}
-          <View style={styles.statsContainer}>
-            {memory.likes !== undefined && (
-              <View style={styles.statItem}>
-                <Heart size={14} color={Colors.white} />
-                <Text style={styles.statText}>{memory.likes}</Text>
-              </View>
-            )}
-            {memory.comments !== undefined && (
-              <View style={styles.statItem}>
-                <MessageCircle size={14} color={Colors.white} />
-                <Text style={styles.statText}>{memory.comments}</Text>
-              </View>
-            )}
-          </View>
-          
-          {/* Share button */}
-          <TouchableOpacity style={styles.shareButton}>
-            <Share2 size={16} color={Colors.white} />
-          </TouchableOpacity>
+          </ImageBackground>
         </View>
-        
-        {/* Content overlay */}
-        <View style={styles.contentOverlay}>
-          <View style={styles.titleContainer}>
-            <Text style={styles.title} numberOfLines={2}>
-              {memory.title}
-            </Text>
-            <View style={styles.stageTag}>
-              <Text style={styles.stageText}>{memory.stage}</Text>
+
+        {/* Content */}
+        <View style={styles.content}>
+          {/* Header with mood and date */}
+          <View style={styles.contentHeader}>
+            <View style={styles.moodContainer}>
+              <Text style={styles.moodEmoji}>{getMoodEmoji(memory.mood)}</Text>
+              <View style={[styles.moodDot, { backgroundColor: getMoodColor(memory.mood) }]} />
+            </View>
+            <View style={styles.dateContainer}>
+              <Calendar size={12} color={Colors.lightText} />
+              <Text style={[styles.dateText, { color: Colors.lightText }]}>
+                {formatDate(memory.date)}
+              </Text>
             </View>
           </View>
-          
-          <View style={styles.metaContainer}>
-            <View style={styles.dateContainer}>
-              <Calendar size={14} color="rgba(255, 255, 255, 0.8)" />
-              <Text style={styles.date}>{formatDate(memory.date)}</Text>
+
+          {/* Title */}
+          <Text style={[styles.title, { color: Colors.text }]} numberOfLines={2}>
+            {memory.title}
+          </Text>
+
+          {/* Description */}
+          <Text style={[styles.description, { color: Colors.lightText }]} numberOfLines={3}>
+            {memory.description}
+          </Text>
+
+          {/* Tags */}
+          {memory.tags && memory.tags.length > 0 && (
+            <View style={styles.tagsContainer}>
+              {memory.tags.slice(0, 3).map((tag, index) => (
+                <View key={index} style={[styles.tag, { backgroundColor: Colors.lightBackground }]}>
+                  <Text style={[styles.tagText, { color: Colors.primary }]}>#{tag}</Text>
+                </View>
+              ))}
+              {memory.tags.length > 3 && (
+                <Text style={[styles.moreTagsText, { color: Colors.lightText }]}>
+                  +{memory.tags.length - 3} more
+                </Text>
+              )}
+            </View>
+          )}
+
+          {/* Actions */}
+          <View style={styles.actions}>
+            <View style={styles.leftActions}>
+              <TouchableOpacity style={styles.actionButton}>
+                <Heart size={16} color={Colors.lightText} />
+                <Text style={[styles.actionText, { color: Colors.lightText }]}>
+                  {memory.likes || 0}
+                </Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity style={styles.actionButton}>
+                <MessageCircle size={16} color={Colors.lightText} />
+                <Text style={[styles.actionText, { color: Colors.lightText }]}>
+                  {memory.comments || 0}
+                </Text>
+              </TouchableOpacity>
             </View>
             
-            {memory.tags && memory.tags.length > 0 && (
-              <View style={styles.tagsContainer}>
-                {memory.tags.slice(0, 2).map((tag, index) => (
-                  <View key={index} style={styles.tag}>
-                    <Text style={styles.tagText}>#{tag}</Text>
-                  </View>
-                ))}
-              </View>
-            )}
+            <TouchableOpacity style={styles.shareButton}>
+              <Share size={16} color={Colors.primary} />
+            </TouchableOpacity>
           </View>
-          
-          {memory.description && (
-            <Text style={styles.description} numberOfLines={2}>
-              {memory.description}
-            </Text>
-          )}
         </View>
-        
-        {/* Instagram-style story border for milestones */}
-        {memory.milestone && (
-          <LinearGradient
-            colors={["#833AB4", "#FD1D1D", "#FCB045"]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.storyBorder}
-          >
-            <View style={[styles.innerBorder, { backgroundColor: Colors.white }]} />
-          </LinearGradient>
-        )}
       </View>
     </TouchableOpacity>
   );
-};
+}
 
 const styles = StyleSheet.create({
-  cardContainer: {
-    borderRadius: 24,
+  container: {
+    marginBottom: 16,
+  },
+  card: {
+    borderRadius: 20,
     overflow: "hidden",
-    backgroundColor: "#FFFFFF",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.2,
-    shadowRadius: 20,
-    elevation: 12,
-    position: "relative",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 6,
   },
   imageContainer: {
-    height: 280,
+    height: 200,
     position: "relative",
   },
   image: {
-    width: "100%",
-    height: "100%",
+    flex: 1,
   },
-  placeholderGradient: {
-    width: "100%",
-    height: "100%",
-    justifyContent: "center",
-    alignItems: "center",
+  imageStyle: {
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
   },
   imageOverlay: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: "70%",
+    flex: 1,
+    justifyContent: "space-between",
+    padding: 16,
   },
-  moodBadge: {
+  milestoneBadge: {
     position: "absolute",
-    top: 20,
-    left: 20,
+    top: 16,
+    right: 16,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  badgeEmoji: {
+    fontSize: 20,
+  },
+  stageBadge: {
+    position: "absolute",
+    top: 16,
+    left: 16,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  stageBadgeText: {
+    color: "#FFFFFF",
+    fontSize: 10,
+    fontWeight: "600",
+  },
+  content: {
+    padding: 16,
+  },
+  contentHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  moodContainer: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
   },
   moodEmoji: {
     fontSize: 16,
     marginRight: 6,
   },
-  moodText: {
-    color: "#FFFFFF",
-    fontSize: 12,
-    fontWeight: "700",
-  },
-  shareButton: {
-    position: "absolute",
-    top: 20,
-    right: 20,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "rgba(0, 0, 0, 0.4)",
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  contentOverlay: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    padding: 24,
-  },
-  titleContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: 12,
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: "800",
-    color: "#FFFFFF",
-    flex: 1,
-    marginRight: 12,
-    textShadowColor: "rgba(0, 0, 0, 0.7)",
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 4,
-  },
-  stageTag: {
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.3)",
-  },
-  stageText: {
-    color: "#FFFFFF",
-    fontSize: 10,
-    fontWeight: "600",
-    textTransform: "uppercase",
-  },
-  metaContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 8,
+  moodDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
   },
   dateContainer: {
     flexDirection: "row",
     alignItems: "center",
   },
-  date: {
-    fontSize: 14,
-    color: "rgba(255, 255, 255, 0.9)",
-    marginLeft: 6,
-    fontWeight: "600",
-  },
-  tagsContainer: {
-    flexDirection: "row",
-  },
-  tag: {
-    backgroundColor: "rgba(255, 255, 255, 0.15)",
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 8,
+  dateText: {
+    fontSize: 12,
     marginLeft: 4,
-  },
-  tagText: {
-    color: "rgba(255, 255, 255, 0.8)",
-    fontSize: 10,
     fontWeight: "500",
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: "700",
+    marginBottom: 8,
+    lineHeight: 24,
   },
   description: {
     fontSize: 14,
-    color: "rgba(255, 255, 255, 0.95)",
     lineHeight: 20,
-    textShadowColor: "rgba(0, 0, 0, 0.5)",
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
+    marginBottom: 12,
   },
-  storyBorder: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    padding: 3,
-    borderRadius: 24,
-  },
-  innerBorder: {
-    flex: 1,
-    borderRadius: 21,
-  },
-  milestoneIndicator: {
-    position: "absolute",
-    top: -4,
-    right: -4,
-    borderRadius: 8,
-    width: 16,
-    height: 16,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  statsContainer: {
-    position: "absolute",
-    top: 20,
-    right: 20,
+  tagsContainer: {
     flexDirection: "row",
-    gap: 8,
-  },
-  statItem: {
-    flexDirection: "row",
+    flexWrap: "wrap",
     alignItems: "center",
-    backgroundColor: "rgba(0,0,0,0.4)",
+    marginBottom: 16,
+  },
+  tag: {
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
-    gap: 4,
+    marginRight: 6,
+    marginBottom: 4,
   },
-  statText: {
+  tagText: {
     fontSize: 12,
-    fontWeight: "600",
-    color: "#FFFFFF",
+    fontWeight: "500",
+  },
+  moreTagsText: {
+    fontSize: 12,
+    fontStyle: "italic",
+  },
+  actions: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  leftActions: {
+    flexDirection: "row",
+  },
+  actionButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginRight: 16,
+  },
+  actionText: {
+    fontSize: 12,
+    marginLeft: 4,
+    fontWeight: "500",
+  },
+  shareButton: {
+    padding: 8,
   },
 });
-
-export default MemoryCard;
