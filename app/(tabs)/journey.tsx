@@ -136,6 +136,7 @@ export default function JourneyScreen() {
         type: "milestone",
         completed: true,
         icon: Star,
+        progress: 100,
       }
     ];
 
@@ -186,6 +187,7 @@ export default function JourneyScreen() {
       type: "future",
       completed: false,
       icon: Heart,
+      progress: 0,
     });
 
     return events;
@@ -419,7 +421,7 @@ export default function JourneyScreen() {
       case "memories":
         return (
           <View style={styles.memoriesContainer}>
-            {/* Instagram-style Header */}
+            {/* Compact Header */}
             <View style={styles.memoriesHeader}>
               <ImageBackground
                 source={{ uri: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&h=400&fit=crop" }}
@@ -449,7 +451,7 @@ export default function JourneyScreen() {
                       }]
                     }
                   ]}>
-                    <Sparkles size={16} color="rgba(255, 255, 255, 0.8)" />
+                    <Sparkles size={12} color="rgba(255, 255, 255, 0.8)" />
                   </Animated.View>
                   
                   <Animated.View style={[
@@ -462,7 +464,7 @@ export default function JourneyScreen() {
                       }),
                     }
                   ]}>
-                    <Sparkles size={12} color="rgba(255, 255, 255, 0.6)" />
+                    <Sparkles size={10} color="rgba(255, 255, 255, 0.6)" />
                   </Animated.View>
                   
                   <Animated.View style={[
@@ -475,7 +477,7 @@ export default function JourneyScreen() {
                       }),
                     }
                   ]}>
-                    <Sparkles size={20} color="rgba(255, 255, 255, 0.7)" />
+                    <Sparkles size={14} color="rgba(255, 255, 255, 0.7)" />
                   </Animated.View>
 
                   <View style={styles.memoriesHeaderContent}>
@@ -503,9 +505,8 @@ export default function JourneyScreen() {
               </ImageBackground>
             </View>
 
-            {/* Milestone Badges Row */}
+            {/* Compact Milestone Badges Row */}
             <View style={styles.milestoneBadgesContainer}>
-              <Text style={[styles.badgesTitle, { color: Colors.text }]}>🏆 Achievement Badges</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.badgesScroll}>
                 {memories.filter(m => m.milestone).map((memory, index) => (
                   <TouchableOpacity
@@ -521,9 +522,6 @@ export default function JourneyScreen() {
                   >
                     <Text style={styles.badgeEmoji}>{memory.badge}</Text>
                     <Text style={[styles.badgeTitle, { color: memory.badgeColor }]}>{memory.badgeTitle}</Text>
-                    <Text style={[styles.badgeDate, { color: Colors.lightText }]}>
-                      {new Date(memory.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                    </Text>
                   </TouchableOpacity>
                 ))}
                 
@@ -541,13 +539,13 @@ export default function JourneyScreen() {
                     );
                   }}
                 >
-                  <Plus size={24} color={Colors.lightText} />
-                  <Text style={[styles.addBadgeText, { color: Colors.lightText }]}>More to come!</Text>
+                  <Plus size={16} color={Colors.lightText} />
+                  <Text style={[styles.addBadgeText, { color: Colors.lightText }]}>More!</Text>
                 </TouchableOpacity>
               </ScrollView>
             </View>
 
-            {/* Memories Grid */}
+            {/* Memories Grid - Now takes most of the space */}
             <ScrollView style={styles.memoriesScroll} showsVerticalScrollIndicator={false}>
               <View style={styles.memoriesGridHeader}>
                 <Text style={[styles.gridTitle, { color: Colors.text }]}>Your Story Timeline</Text>
@@ -561,7 +559,7 @@ export default function JourneyScreen() {
                     );
                   }}
                 >
-                  <Plus size={20} color={Colors.white} />
+                  <Plus size={16} color={Colors.white} />
                 </TouchableOpacity>
               </View>
 
@@ -575,7 +573,7 @@ export default function JourneyScreen() {
                         transform: [{
                           translateY: memoryFloatAnim.interpolate({
                             inputRange: [0, 1],
-                            outputRange: [0, index % 2 === 0 ? -5 : 5],
+                            outputRange: [0, index % 2 === 0 ? -3 : 3],
                           })
                         }]
                       }
@@ -616,20 +614,16 @@ export default function JourneyScreen() {
                   >
                     <View style={styles.addMemoryContent}>
                       <View style={styles.addMemoryIconContainer}>
-                        <Camera size={32} color={Colors.white} />
+                        <Camera size={24} color={Colors.white} />
                       </View>
                       <Text style={styles.addMemoryCardText}>Create Memory</Text>
                       <Text style={styles.addMemoryCardSubtext}>Share your moment</Text>
-                      <View style={styles.addMemoryBadge}>
-                        <ImageIcon size={12} color={Colors.white} />
-                        <Text style={styles.addMemoryBadgeText}>Story Ready</Text>
-                      </View>
                     </View>
                   </LinearGradient>
                 </TouchableOpacity>
               </View>
 
-              {/* Enhanced Footer with Social Features */}
+              {/* Compact Footer */}
               <View style={styles.memoriesFooter}>
                 <LinearGradient
                   colors={[Colors.memoryPink + "20", Colors.memoryPurple + "20"]}
@@ -642,7 +636,7 @@ export default function JourneyScreen() {
                       📸 Ready to Share?
                     </Text>
                     <Text style={[styles.memoriesFooterText, { color: Colors.lightText }]}>
-                      Your memories are perfect for Instagram stories & social sharing. Connect with other students on their journey!
+                      Connect with other students on their journey!
                     </Text>
                     
                     <View style={styles.socialButtons}>
@@ -651,12 +645,6 @@ export default function JourneyScreen() {
                         onPress={() => Alert.alert("Share Story", "Social sharing coming soon!")}
                       >
                         <Text style={styles.socialButtonText}>Share Story</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity 
-                        style={[styles.socialButton, { backgroundColor: Colors.secondary }]}
-                        onPress={() => router.push("/(tabs)/community")}
-                      >
-                        <Text style={styles.socialButtonText}>View Premium</Text>
                       </TouchableOpacity>
                     </View>
                   </View>
@@ -1232,12 +1220,12 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   
-  // Enhanced Memories styles
+  // Compact Memories styles
   memoriesContainer: {
     flex: 1,
   },
   memoriesHeader: {
-    height: 280,
+    height: 160, // Reduced from 280
     position: "relative",
   },
   memoriesHeaderBackground: {
@@ -1257,36 +1245,36 @@ const styles = StyleSheet.create({
     position: "absolute",
   },
   sparkle1: {
-    top: 40,
-    left: 60,
+    top: 20, // Adjusted for smaller header
+    left: 40,
   },
   sparkle2: {
-    top: 80,
-    right: 80,
+    top: 40,
+    right: 50,
   },
   sparkle3: {
-    bottom: 60,
-    left: 40,
+    bottom: 30,
+    left: 30,
   },
   memoriesHeaderContent: {
     alignItems: "center",
     zIndex: 2,
   },
   memoriesTitle: {
-    fontSize: 28,
+    fontSize: 22, // Reduced from 28
     fontWeight: "800",
     color: "#FFFFFF",
-    marginBottom: 8,
+    marginBottom: 4, // Reduced from 8
     textAlign: "center",
     textShadowColor: "rgba(0, 0, 0, 0.3)",
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 4,
   },
   memoriesSubtitle: {
-    fontSize: 16,
+    fontSize: 14, // Reduced from 16
     color: "rgba(255, 255, 255, 0.95)",
     textAlign: "center",
-    marginBottom: 24,
+    marginBottom: 16, // Reduced from 24
     fontWeight: "500",
   },
   memoriesStats: {
@@ -1297,21 +1285,21 @@ const styles = StyleSheet.create({
   },
   statBubble: {
     backgroundColor: "rgba(255, 255, 255, 0.2)",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 20,
+    paddingHorizontal: 12, // Reduced from 16
+    paddingVertical: 8, // Reduced from 12
+    borderRadius: 16, // Reduced from 20
     alignItems: "center",
-    minWidth: 70,
+    minWidth: 60, // Reduced from 70
     borderWidth: 1,
     borderColor: "rgba(255, 255, 255, 0.3)",
   },
   statNumber: {
-    fontSize: 18,
+    fontSize: 16, // Reduced from 18
     fontWeight: "700",
     color: "#FFFFFF",
   },
   statLabelMemories: {
-    fontSize: 12,
+    fontSize: 10, // Reduced from 12
     color: "rgba(255, 255, 255, 0.9)",
     fontWeight: "500",
   },
@@ -1323,16 +1311,16 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: 20,
-    paddingVertical: 20,
+    paddingVertical: 12, // Reduced from 20
   },
   gridTitle: {
-    fontSize: 20,
+    fontSize: 18, // Reduced from 20
     fontWeight: "700",
   },
   addMemoryFloatingButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 36, // Reduced from 44
+    height: 36, // Reduced from 44
+    borderRadius: 18, // Reduced from 22
     justifyContent: "center",
     alignItems: "center",
     shadowColor: "#000",
@@ -1346,13 +1334,13 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   memoryWrapper: {
-    marginBottom: 20,
+    marginBottom: 16, // Reduced from 20
   },
   addMemoryCard: {
-    height: 240,
+    height: 200, // Reduced from 240
     borderRadius: 20,
     overflow: "hidden",
-    marginBottom: 20,
+    marginBottom: 16, // Reduced from 20
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.25,
@@ -1369,131 +1357,104 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   addMemoryIconContainer: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 48, // Reduced from 64
+    height: 48, // Reduced from 64
+    borderRadius: 24, // Reduced from 32
     backgroundColor: "rgba(255, 255, 255, 0.2)",
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 16,
+    marginBottom: 12, // Reduced from 16
     borderWidth: 2,
     borderColor: "rgba(255, 255, 255, 0.3)",
   },
   addMemoryCardText: {
     color: "#FFFFFF",
-    fontSize: 20,
+    fontSize: 18, // Reduced from 20
     fontWeight: "700",
     marginBottom: 4,
   },
   addMemoryCardSubtext: {
     color: "rgba(255, 255, 255, 0.9)",
-    fontSize: 14,
-    marginBottom: 16,
-  },
-  addMemoryBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.3)",
-  },
-  addMemoryBadgeText: {
-    color: "#FFFFFF",
-    fontSize: 12,
-    fontWeight: "600",
-    marginLeft: 4,
+    fontSize: 12, // Reduced from 14
   },
   memoriesFooter: {
     margin: 16,
-    borderRadius: 20,
+    borderRadius: 16, // Reduced from 20
     overflow: "hidden",
   },
   memoriesFooterGradient: {
-    padding: 24,
+    padding: 16, // Reduced from 24
   },
   memoriesFooterContent: {
     alignItems: "center",
   },
   memoriesFooterTitle: {
-    fontSize: 18,
+    fontSize: 16, // Reduced from 18
     fontWeight: "700",
-    marginBottom: 8,
+    marginBottom: 6, // Reduced from 8
   },
   memoriesFooterText: {
-    fontSize: 14,
+    fontSize: 13, // Reduced from 14
     textAlign: "center",
-    lineHeight: 20,
-    marginBottom: 16,
+    lineHeight: 18, // Reduced from 20
+    marginBottom: 12, // Reduced from 16
   },
   socialButtons: {
     flexDirection: "row",
     gap: 12,
   },
   socialButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 20,
+    paddingHorizontal: 16, // Reduced from 20
+    paddingVertical: 10, // Reduced from 12
+    borderRadius: 16, // Reduced from 20
   },
   socialButtonText: {
     color: "#FFFFFF",
-    fontSize: 14,
+    fontSize: 13, // Reduced from 14
     fontWeight: "600",
   },
   
-  // New milestone badges styles
+  // Compact milestone badges styles
   milestoneBadgesContainer: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingHorizontal: 16, // Reduced from 20
+    paddingVertical: 8, // Reduced from 16
     backgroundColor: "#FAFAFA",
-  },
-  badgesTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    marginBottom: 12,
   },
   badgesScroll: {
     flexDirection: "row",
   },
   milestoneBadge: {
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 16,
-    marginRight: 12,
+    paddingHorizontal: 12, // Reduced from 16
+    paddingVertical: 8, // Reduced from 12
+    borderRadius: 12, // Reduced from 16
+    marginRight: 8, // Reduced from 12
     borderWidth: 2,
-    minWidth: 80,
+    minWidth: 60, // Reduced from 80
   },
   badgeEmoji: {
-    fontSize: 24,
-    marginBottom: 4,
+    fontSize: 18, // Reduced from 24
+    marginBottom: 2, // Reduced from 4
   },
   badgeTitle: {
-    fontSize: 10,
+    fontSize: 9, // Reduced from 10
     fontWeight: "600",
-    textAlign: "center",
-    marginBottom: 2,
-  },
-  badgeDate: {
-    fontSize: 8,
     textAlign: "center",
   },
   addBadgePlaceholder: {
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 16,
+    paddingHorizontal: 12, // Reduced from 16
+    paddingVertical: 8, // Reduced from 12
+    borderRadius: 12, // Reduced from 16
     borderWidth: 2,
     borderColor: "#ECF0F1",
     borderStyle: "dashed",
-    minWidth: 80,
+    minWidth: 60, // Reduced from 80
   },
   addBadgeText: {
-    fontSize: 10,
+    fontSize: 9, // Reduced from 10
     fontWeight: "500",
     textAlign: "center",
-    marginTop: 4,
+    marginTop: 2, // Reduced from 4
   },
 });
