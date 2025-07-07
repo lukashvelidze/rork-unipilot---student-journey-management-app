@@ -116,7 +116,7 @@ export default function MemoryCard({ memory, onPress }: MemoryCardProps) {
         {/* Image Header */}
         <View style={styles.imageContainer}>
           <ImageBackground
-            source={{ uri: memory.imageUrl }}
+            source={{ uri: memory.imageUrl || "https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=400&h=300&fit=crop" }}
             style={styles.image}
             imageStyle={styles.imageStyle}
           >

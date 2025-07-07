@@ -95,6 +95,7 @@ export default function NewMemoryScreen() {
 
       addMemory(memory);
       
+      // Show success message and navigate
       Alert.alert(
         "Memory Created! 🎉",
         "Your memory has been added to your journey timeline.",
@@ -102,8 +103,7 @@ export default function NewMemoryScreen() {
           {
             text: "View Memories",
             onPress: () => {
-              router.back();
-              // Navigate to memories tab - this would need to be implemented
+              router.replace("/(tabs)/journey?tab=memories");
             }
           },
           {
@@ -120,6 +120,7 @@ export default function NewMemoryScreen() {
         ]
       );
     } catch (error) {
+      console.error("Error creating memory:", error);
       Alert.alert("Error", "Failed to create memory. Please try again.");
     } finally {
       setIsSubmitting(false);

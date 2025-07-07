@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Platform, Animated, Dimensions, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { ChevronRight, Quote, CheckSquare, Calendar, Clock, Star, Heart, Camera, Plus, Globe, Timer, MapPin, Sparkles, Filter, Grid, List } from "lucide-react-native";
 import { useColors } from "@/hooks/useColors";
@@ -24,6 +24,7 @@ const { width, height } = Dimensions.get("window");
 
 export default function JourneyScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams();
   const Colors = useColors();
   const { user, isPremium } = useUserStore();
   const { 
@@ -35,7 +36,7 @@ export default function JourneyScreen() {
     getMemoriesByStage,
     getMemoriesByMood,
   } = useJourneyStore();
-  const [activeTab, setActiveTab] = useState<"roadmap" | "map" | "timeline" | "memories">("roadmap");
+  const [activeTab, setActiveTab] = useState<"roadmap" | "map" | "timeline" | "memories">(params.tab === "memories" ? "memories" : "roadmap");
   const [showCelebration, setShowCelebration] = useState(false);
   const [dailyQuote, setDailyQuote] = useState(() => getRandomQuote(generalQuotes));
   const [fadeAnim] = useState(new Animated.Value(0));
@@ -55,6 +56,13 @@ export default function JourneyScreen() {
       setJourneyProgress(initialJourneyProgress);
     }
   }, [user, journeyProgress.length, setJourneyProgress]);
+  
+  // Handle tab parameter from navigation
+  useEffect(() => {
+    if (params.tab === "memories") {
+      setActiveTab("memories");
+    }
+  }, [params.tab]);
   
   const overallProgress = calculateOverallProgress(journeyProgress);
   
@@ -222,6 +230,13 @@ export default function JourneyScreen() {
   };
 
   const filteredMemories = getFilteredMemories();
+  
+  // Debug logging
+  useEffect(() => {
+    console.log("Memories count:", memories.length);
+    console.log("Filtered memories count:", filteredMemories.length);
+    console.log("Active tab:", activeTab);
+  }, [memories.length, filteredMemories.length, activeTab]);
 
   // Get stage options for filter
   const stageOptions: { value: JourneyStage | "all"; label: string }[] = [
@@ -536,7 +551,7 @@ export default function JourneyScreen() {
 
             {/* Memories Content */}
             <ScrollView style={styles.memoriesScroll} showsVerticalScrollIndicator={false}>
-              {filteredMemories.length === 0 ? (
+              {memories.length === 0 ? (
                 <View style={styles.emptyState}>
                   <View style={[styles.emptyStateIcon, { backgroundColor: Colors.lightBackground }]}>
                     <Camera size={48} color={Colors.lightText} />
@@ -551,6 +566,25 @@ export default function JourneyScreen() {
                   >
                     <Plus size={20} color={Colors.white} />
                     <Text style={styles.addFirstMemoryText}>Add Your First Memory</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : filteredMemories.length === 0 ? (
+                <View style={styles.emptyState}>
+                  <View style={[styles.emptyStateIcon, { backgroundColor: Colors.lightBackground }]}>
+                    <Filter size={48} color={Colors.lightText} />
+                  </View>
+                  <Text style={[styles.emptyStateTitle, { color: Colors.text }]}>No Memories Match Your Filters</Text>
+                  <Text style={[styles.emptyStateDescription, { color: Colors.lightText }]}>
+                    Try adjusting your filters or add a new memory for this stage and mood.
+                  </Text>
+                  <TouchableOpacity
+                    style={[styles.addFirstMemoryButton, { backgroundColor: Colors.primary }]}
+                    onPress={() => {
+                      setSelectedStageFilter("all");
+                      setSelectedMoodFilter("all");
+                    }}
+                  >
+                    <Text style={styles.addFirstMemoryText}>Clear Filters</Text>
                   </TouchableOpacity>
                 </View>
               ) : (
