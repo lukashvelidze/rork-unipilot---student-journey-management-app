@@ -773,7 +773,7 @@ export default function JourneyScreen() {
       title: "First Day Prep",
       description: "Getting ready for my first day at university! Bought all my textbooks, set up my dorm room, and met some amazing people already. The adventure begins!",
       date: "2024-08-15",
-      stage: "arrival" as const,
+      stage: "academic" as const,
       imageUrl: "https://images.unsplash.com/photo-1541339907198-e08756dedf3f?w=400&h=300&fit=crop",
       tags: ["university", "first-day", "dorm", "textbooks"],
       mood: "excited" as const,

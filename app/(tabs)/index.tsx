@@ -2,7 +2,7 @@ import React, { useEffect } from "react";
 import { StyleSheet, View, Text, ScrollView, TouchableOpacity } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { Award, TrendingUp, BookOpen, Users, Crown, Zap, Target, Calendar, UserCheck, BarChart3, Video } from "lucide-react-native";
+import { Award, TrendingUp, BookOpen, Users, Crown, Zap, Target, Calendar, UserCheck, BarChart3, Video, CheckSquare } from "lucide-react-native";
 import { useColors } from "@/hooks/useColors";
 import Card from "@/components/Card";
 import ProgressBar from "@/components/ProgressBar";
@@ -62,18 +62,18 @@ export default function HomeScreen() {
   
   const quickActions = [
     {
+      title: "Application Checklist",
+      description: "Complete guide to applications",
+      icon: CheckSquare,
+      color: Colors.primary,
+      onPress: () => router.push("/application-checklist"),
+    },
+    {
       title: "Continue Journey",
       description: `${currentStage?.stage.replace('_', ' ').toUpperCase()} stage`,
       icon: TrendingUp,
-      color: Colors.primary,
-      onPress: () => router.push("/(tabs)/journey"),
-    },
-    {
-      title: "View Documents",
-      description: "Manage your documents",
-      icon: BookOpen,
       color: Colors.secondary,
-      onPress: () => router.push("/(tabs)/documents"),
+      onPress: () => router.push("/(tabs)/journey"),
     },
     {
       title: "Premium Features",

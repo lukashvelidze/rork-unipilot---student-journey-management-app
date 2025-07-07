@@ -1,354 +1,545 @@
 import React, { useState, useEffect } from "react";
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert } from "react-native";
-import { useLocalSearchParams, useRouter, useFocusEffect } from "expo-router";
-import { CheckCircle, Circle, Calendar, Award, RefreshCw } from "lucide-react-native";
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert, Platform } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useRouter, useLocalSearchParams, Stack } from "expo-router";
+import { LinearGradient } from "expo-linear-gradient";
+import { CheckSquare, Square, ChevronLeft, Award, Clock, Calendar, Star, Trophy, Sparkles, Target, BookOpen, Plane, GraduationCap, Briefcase } from "lucide-react-native";
 import { useColors } from "@/hooks/useColors";
 import Card from "@/components/Card";
 import ProgressBar from "@/components/ProgressBar";
-import TaskItem from "@/components/TaskItem";
+import Button from "@/components/Button";
 import { useJourneyStore } from "@/store/journeyStore";
 import { useUserStore } from "@/store/userStore";
-import { JourneyStage } from "@/types/user";
+import { JourneyStage, Task } from "@/types/user";
+
+const stageInfo = {
+  research: {
+    title: "Research Phase",
+    description: "Discover your perfect university and program",
+    icon: BookOpen,
+    color: "#FF6B6B",
+    gradient: ["#FF6B6B", "#FF8E8E"],
+  },
+  application: {
+    title: "Application Phase", 
+    description: "Submit compelling applications to your chosen universities",
+    icon: Target,
+    color: "#4ECDC4",
+    gradient: ["#4ECDC4", "#6ED5D0"],
+  },
+  visa: {
+    title: "Visa Process",
+    description: "Secure your student visa for studying abroad",
+    icon: Plane,
+    color: "#45B7D1",
+    gradient: ["#45B7D1", "#6BC5D8"],
+  },
+  pre_departure: {
+    title: "Pre-Departure",
+    description: "Prepare for your journey to a new country",
+    icon: Calendar,
+    color: "#96CEB4",
+    gradient: ["#96CEB4", "#A8D5C1"],
+  },
+  arrival: {
+    title: "Arrival",
+    description: "Settle into your new home and university",
+    icon: Star,
+    color: "#FFEAA7",
+    gradient: ["#FFEAA7", "#FFECB3"],
+  },
+  academic: {
+    title: "Academic Journey",
+    description: "Excel in your studies and university life",
+    icon: GraduationCap,
+    color: "#DDA0DD",
+    gradient: ["#DDA0DD", "#E6B3E6"],
+  },
+  career: {
+    title: "Career Development",
+    description: "Build your professional future",
+    icon: Briefcase,
+    color: "#98D8C8",
+    gradient: ["#98D8C8", "#A8DDD1"],
+  },
+};
 
 export default function StageDetailScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const { id } = useLocalSearchParams();
   const Colors = useColors();
-  const { journeyProgress, updateTaskCompletion, addRecentMilestone, lastUpdated, refreshJourney } = useJourneyStore();
-  const { user } = useUserStore();
-  
+  const { isPremium } = useUserStore();
+  const { 
+    journeyProgress, 
+    updateTaskCompletion, 
+    markAcceptance,
+    addRecentMilestone 
+  } = useJourneyStore();
+
   const stageId = id as JourneyStage;
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  
-  // Get the current stage data
   const stage = journeyProgress.find(s => s.stage === stageId);
-  
-  // Refresh data when screen comes into focus
-  useFocusEffect(
-    React.useCallback(() => {
-      console.log("Stage detail screen focused, refreshing data");
-      refreshJourney();
-    }, [refreshJourney])
-  );
-  
-  // Listen for changes in journey progress
-  useEffect(() => {
-    console.log("Journey progress updated, lastUpdated:", lastUpdated);
-  }, [lastUpdated, journeyProgress]);
-  
-  const handleRefresh = async () => {
-    setIsRefreshing(true);
-    try {
-      // Force refresh the journey data
-      refreshJourney();
-      console.log("Manual refresh completed");
-    } catch (error) {
-      console.error("Error refreshing:", error);
-    } finally {
-      setIsRefreshing(false);
-    }
-  };
-  
-  if (!stage) {
+  const info = stageInfo[stageId];
+
+  const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
+
+  if (!stage || !info) {
     return (
-      <View style={[styles.errorContainer, { backgroundColor: Colors.background }]}>
-        <Text style={[styles.errorText, { color: Colors.lightText }]}>Stage not found</Text>
-        <TouchableOpacity 
-          style={[styles.refreshButton, { backgroundColor: Colors.primary }]}
-          onPress={handleRefresh}
-        >
-          <RefreshCw size={16} color={Colors.white} />
-          <Text style={[styles.refreshButtonText, { color: Colors.white }]}>Refresh</Text>
-        </TouchableOpacity>
-      </View>
+      <SafeAreaView style={[styles.container, { backgroundColor: Colors.background }]} edges={['top']}>
+        <Text style={[styles.errorText, { color: Colors.text }]}>Stage not found</Text>
+      </SafeAreaView>
     );
   }
-  
-  const getStageTitle = (stageId: string): string => {
-    const titles: Record<string, string> = {
-      research: "University Research",
-      application: "Application Process", 
-      visa: "Visa Application",
-      pre_departure: "Pre-Departure",
-      arrival: "Arrival & Orientation",
-      academic: "Academic Program",
-      career: "Career Development",
-    };
-    
-    return titles[stageId] || stageId.replace("_", " ");
-  };
 
-  const getStageColor = (stageId: string): string => {
-    const colors: Record<string, string> = {
-      research: "#4A90E2",
-      application: "#9C27B0", 
-      visa: "#4CAF50",
-      pre_departure: "#FF9800",
-      arrival: "#E91E63",
-      academic: "#3F51B5",
-      career: "#009688",
-    };
-    
-    return colors[stageId] || Colors.primary;
-  };
+  const handleTaskToggle = (taskId: string, currentCompleted: boolean) => {
+    const task = stage.tasks.find(t => t.id === taskId);
+    if (!task) return;
 
-  const handleTaskToggle = (taskId: string, completed: boolean) => {
-    updateTaskCompletion(stageId, taskId, completed);
-    
-    // Check if this completion triggers a milestone
-    const updatedStage = journeyProgress.find(s => s.stage === stageId);
-    if (updatedStage) {
-      const completedTasks = updatedStage.tasks.filter(task => task.completed).length;
-      const totalTasks = updatedStage.tasks.length;
-      const newProgress = Math.round((completedTasks / totalTasks) * 100);
-      
-      // Trigger celebration for significant milestones
-      if (completed && (newProgress === 100 || newProgress % 25 === 0)) {
-        addRecentMilestone({
-          type: newProgress === 100 ? "stage_complete" : "progress_milestone",
-          stage: stageId,
-          progress: newProgress,
-          timestamp: Date.now(),
-        });
-        
-        if (newProgress === 100) {
-          Alert.alert(
-            "🎉 Stage Complete!",
-            `Congratulations! You have completed the ${getStageTitle(stageId)} stage.`,
-            [{ text: "Continue", onPress: () => router.back() }]
-          );
-        }
-      }
+    // Check if this is an acceptance task
+    if (task.title.includes("🎉 Receive acceptance letter")) {
+      Alert.alert(
+        "🎉 Congratulations!",
+        "You've been accepted! This will unlock additional tasks in your journey.",
+        [
+          { text: "Cancel", style: "cancel" },
+          { 
+            text: "Mark as Complete", 
+            onPress: () => {
+              updateTaskCompletion(stageId, taskId, !currentCompleted);
+              markAcceptance(stageId);
+              
+              // Add celebration milestone
+              addRecentMilestone({
+                type: "stage_complete",
+                stage: stageId,
+                timestamp: Date.now()
+              });
+            }
+          }
+        ]
+      );
+      return;
     }
+
+    updateTaskCompletion(stageId, taskId, !currentCompleted);
+  };
+
+  const toggleTaskExpansion = (taskId: string) => {
+    const newExpanded = new Set(expandedTasks);
+    if (newExpanded.has(taskId)) {
+      newExpanded.delete(taskId);
+    } else {
+      newExpanded.add(taskId);
+    }
+    setExpandedTasks(newExpanded);
+  };
+
+  const getTaskAdvice = (task: Task): string => {
+    const title = task.title.toLowerCase();
+    
+    if (title.includes("research universities")) {
+      return "Use university ranking websites, read student reviews, and check program curricula. Consider factors like location, cost, and career outcomes.";
+    }
+    if (title.includes("personal statement")) {
+      return "Tell your unique story. Explain your motivations, experiences, and goals. Be authentic and specific about why you chose this program.";
+    }
+    if (title.includes("recommendation letters")) {
+      return "Ask professors, employers, or mentors who know you well. Give them at least 4-6 weeks notice and provide your resume and draft personal statement.";
+    }
+    if (title.includes("standardized tests")) {
+      return "Book your test 2-3 months in advance. Use official prep materials and consider taking practice tests. You can retake if needed.";
+    }
+    if (title.includes("transcripts")) {
+      return "Request official transcripts from all institutions you've attended. This can take 2-4 weeks, so plan ahead.";
+    }
+    if (title.includes("visa")) {
+      return "Start the visa process immediately after receiving your acceptance letter. Gather all required documents and book your appointment early.";
+    }
+    if (title.includes("accommodation")) {
+      return "Apply for university housing early as it fills up quickly. Consider location, cost, and amenities. Off-campus options may be cheaper.";
+    }
+    if (title.includes("flight")) {
+      return "Book flights 2-3 months in advance for better prices. Consider arriving a few days before orientation to settle in.";
+    }
+    
+    return "Complete this task to move forward in your journey. Check the requirements carefully and don't hesitate to contact the university if you have questions.";
   };
 
   const completedTasks = stage.tasks.filter(task => task.completed).length;
   const totalTasks = stage.tasks.length;
-  const stageColor = getStageColor(stageId);
-  
+  const hasAcceptance = stage.hasAcceptance || stage.tasks.some(t => t.title.includes("🎉 Receive acceptance letter") && t.completed);
+
+  // Filter tasks based on acceptance status for application stage
+  const visibleTasks = stageId === "application" 
+    ? stage.tasks.filter(task => {
+        // Show acceptance-related tasks only if user has marked acceptance or if it's the acceptance task itself
+        if (task.title.includes("Compare offers") || 
+            task.title.includes("Accept offer") || 
+            task.title.includes("Decline other offers") ||
+            task.title.includes("Request official enrollment") ||
+            task.title.includes("Register for orientation") ||
+            task.title.includes("Apply for on-campus housing") ||
+            task.title.includes("Submit final transcripts")) {
+          return hasAcceptance;
+        }
+        return true;
+      })
+    : stage.tasks;
+
   return (
-    <ScrollView style={[styles.container, { backgroundColor: Colors.background }]} contentContainerStyle={styles.content}>
-      <Card style={[styles.headerCard, { backgroundColor: Colors.card }]}>
-        <View style={styles.stageHeader}>
-          <View style={[styles.stageIndicator, { backgroundColor: stageColor }]} />
-          <View style={styles.stageInfo}>
-            <Text style={[styles.stageTitle, { color: Colors.text }]}>{getStageTitle(stageId)}</Text>
-            <Text style={[styles.stageSubtitle, { color: Colors.lightText }]}>
-              {completedTasks} of {totalTasks} tasks completed
-            </Text>
-            {user?.destinationCountry && (
-              <Text style={[styles.countryInfo, { color: Colors.lightText }]}>
-                Customized for {user.destinationCountry.flag} {user.destinationCountry.name}
-              </Text>
+    <SafeAreaView style={[styles.container, { backgroundColor: Colors.background }]} edges={['top']}>
+      <Stack.Screen 
+        options={{ 
+          title: info.title,
+          headerStyle: { backgroundColor: Colors.card },
+          headerTintColor: Colors.text,
+          headerTitleStyle: { fontWeight: '600' },
+        }} 
+      />
+      
+      {/* Header */}
+      <View style={styles.header}>
+        <LinearGradient
+          colors={info.gradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.headerGradient}
+        >
+          <View style={styles.headerContent}>
+            <View style={styles.headerIcon}>
+              <info.icon size={32} color="#FFFFFF" />
+            </View>
+            <Text style={styles.headerTitle}>{info.title}</Text>
+            <Text style={styles.headerDescription}>{info.description}</Text>
+            
+            <View style={styles.progressSection}>
+              <ProgressBar progress={stage.progress} height={8} animated={true} />
+              <View style={styles.progressStats}>
+                <Text style={styles.progressText}>
+                  {completedTasks} of {totalTasks} tasks completed
+                </Text>
+                <Text style={styles.progressPercentage}>{stage.progress}%</Text>
+              </View>
+            </View>
+            
+            {stage.completed && (
+              <View style={styles.completedBadge}>
+                <Trophy size={16} color="#FFFFFF" />
+                <Text style={styles.completedText}>Stage Complete!</Text>
+              </View>
             )}
           </View>
-          {stage.completed && (
-            <View style={[styles.completedBadge, { backgroundColor: Colors.successBackground }]}>
-              <CheckCircle size={20} color={Colors.success} />
-              <Text style={[styles.completedText, { color: Colors.success }]}>Completed</Text>
+        </LinearGradient>
+      </View>
+
+      {/* Tasks List */}
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {hasAcceptance && stageId === "application" && (
+          <Card style={[styles.acceptanceCard, { backgroundColor: Colors.lightBackground, borderColor: Colors.success }]}>
+            <View style={styles.acceptanceContent}>
+              <Sparkles size={24} color={Colors.success} />
+              <View style={styles.acceptanceText}>
+                <Text style={[styles.acceptanceTitle, { color: Colors.success }]}>
+                  🎉 Congratulations on your acceptance!
+                </Text>
+                <Text style={[styles.acceptanceDescription, { color: Colors.text }]}>
+                  New tasks have been unlocked to help you prepare for enrollment.
+                </Text>
+              </View>
             </View>
-          )}
-        </View>
-        
-        <View style={styles.progressSection}>
-          <ProgressBar
-            progress={stage.progress}
-            progressColor={stageColor}
-            height={8}
-            backgroundColor={`${stageColor}20`}
-            animated={true}
-          />
-          <View style={styles.progressTextRow}>
-            <Text style={[styles.progressLabel, { color: Colors.lightText }]}>Progress</Text>
-            <Text style={[styles.progressPercent, { color: stageColor }]}>
-              {stage.progress}%
-            </Text>
-          </View>
-        </View>
-        
-        <TouchableOpacity 
-          style={[styles.refreshButton, { backgroundColor: Colors.lightBackground }]}
-          onPress={handleRefresh}
-          disabled={isRefreshing}
-        >
-          <RefreshCw size={16} color={Colors.primary} />
-          <Text style={[styles.refreshButtonText, { color: Colors.primary }]}>
-            {isRefreshing ? "Refreshing..." : "Refresh Tasks"}
-          </Text>
-        </TouchableOpacity>
-      </Card>
-      
-      <Card style={[styles.tasksCard, { backgroundColor: Colors.card }]}>
-        <View style={styles.tasksHeader}>
-          <Text style={[styles.tasksTitle, { color: Colors.text }]}>Tasks</Text>
-          <View style={[styles.tasksStats, { backgroundColor: Colors.lightBackground }]}>
-            <Text style={[styles.tasksStatsText, { color: Colors.primary }]}>
-              {completedTasks}/{totalTasks}
-            </Text>
-          </View>
-        </View>
-        
-        <View style={styles.tasksList}>
-          {stage.tasks.map((task) => (
-            <TaskItem
-              key={task.id}
-              id={task.id}
-              title={task.title}
-              completed={task.completed}
-              dueDate={task.dueDate}
-              onToggle={handleTaskToggle}
-              accentColor={stageColor}
-            />
+          </Card>
+        )}
+
+        <View style={styles.tasksContainer}>
+          {visibleTasks.map((task, index) => (
+            <Card key={task.id} style={[styles.taskCard, { backgroundColor: Colors.card }]}>
+              <TouchableOpacity
+                style={styles.taskHeader}
+                onPress={() => handleTaskToggle(task.id, task.completed)}
+                activeOpacity={0.7}
+              >
+                <View style={styles.taskLeft}>
+                  <View style={[styles.taskCheckbox, { borderColor: task.completed ? Colors.success : Colors.border }]}>
+                    {task.completed ? (
+                      <CheckSquare size={20} color={Colors.success} />
+                    ) : (
+                      <Square size={20} color={Colors.lightText} />
+                    )}
+                  </View>
+                  <View style={styles.taskContent}>
+                    <Text style={[
+                      styles.taskTitle, 
+                      { color: task.completed ? Colors.lightText : Colors.text },
+                      task.completed && styles.taskTitleCompleted
+                    ]}>
+                      {task.title}
+                    </Text>
+                    {task.completed && task.completedDate && (
+                      <Text style={[styles.taskCompletedDate, { color: Colors.success }]}>
+                        Completed on {new Date(task.completedDate).toLocaleDateString()}
+                      </Text>
+                    )}
+                  </View>
+                </View>
+                <TouchableOpacity
+                  onPress={() => toggleTaskExpansion(task.id)}
+                  style={styles.expandButton}
+                >
+                  <Text style={[styles.expandButtonText, { color: Colors.primary }]}>
+                    {expandedTasks.has(task.id) ? "Less" : "Help"}
+                  </Text>
+                </TouchableOpacity>
+              </TouchableOpacity>
+              
+              {expandedTasks.has(task.id) && (
+                <View style={[styles.taskAdvice, { backgroundColor: Colors.lightBackground }]}>
+                  <Text style={[styles.taskAdviceText, { color: Colors.text }]}>
+                    💡 {getTaskAdvice(task)}
+                  </Text>
+                  {!isPremium && (
+                    <TouchableOpacity
+                      style={[styles.premiumButton, { backgroundColor: Colors.primary }]}
+                      onPress={() => router.push("/(tabs)/community")}
+                    >
+                      <Text style={styles.premiumButtonText}>Get Premium Tips</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              )}
+            </Card>
           ))}
         </View>
-      </Card>
-      
-      {stage.completed && (
-        <Card style={[styles.congratsCard, { backgroundColor: Colors.successBackground, borderColor: Colors.success }]}>
-          <View style={styles.congratsContent}>
-            <Award size={32} color={Colors.success} />
-            <Text style={[styles.congratsTitle, { color: Colors.success }]}>Stage Completed!</Text>
-            <Text style={[styles.congratsText, { color: Colors.text }]}>
-              Great job completing the {getStageTitle(stageId)} stage. You are one step closer to your study abroad goals!
-            </Text>
-          </View>
+
+        {/* Stage Tips */}
+        <Card style={[styles.tipsCard, { backgroundColor: Colors.card }]}>
+          <Text style={[styles.tipsTitle, { color: Colors.text }]}>💡 Stage Tips</Text>
+          <Text style={[styles.tipsText, { color: Colors.lightText }]}>
+            {getStageSpecificTips(stageId)}
+          </Text>
+          
+          {!isPremium && (
+            <Button
+              title="Unlock Premium Resources"
+              onPress={() => router.push("/(tabs)/community")}
+              style={[styles.premiumCTA, { backgroundColor: Colors.primary }]}
+            />
+          )}
         </Card>
-      )}
-    </ScrollView>
+
+        <View style={styles.bottomPadding} />
+      </ScrollView>
+    </SafeAreaView>
   );
+}
+
+function getStageSpecificTips(stage: JourneyStage): string {
+  switch (stage) {
+    case "research":
+      return "Start early and cast a wide net. Research at least 8-12 universities to have good options. Consider factors beyond rankings like location, culture, and career services.";
+    case "application":
+      return "Quality over quantity - focus on creating strong applications for universities that truly fit your goals. Start applications 3-4 months before deadlines.";
+    case "visa":
+      return "Begin visa process immediately after acceptance. Gather all documents in advance and practice for your interview. Show strong ties to your home country.";
+    case "pre_departure":
+      return "Create a comprehensive checklist and start preparations 2-3 months early. Research your destination's culture, weather, and local customs.";
+    case "arrival":
+      return "Attend all orientation sessions and be open to making new friends. Join clubs and activities early to build your social network.";
+    case "academic":
+      return "Develop good study habits early and don't hesitate to use university resources like tutoring centers and office hours with professors.";
+    case "career":
+      return "Start career planning early in your studies. Build relationships with professors, join professional organizations, and gain relevant experience through internships.";
+    default:
+      return "Stay organized and don't hesitate to ask for help when needed. Every step brings you closer to your goals!";
+  }
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  content: {
-    padding: 16,
-    paddingBottom: 32,
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 20,
-  },
   errorText: {
     fontSize: 16,
+    textAlign: "center",
+    marginTop: 50,
+  },
+  header: {
     marginBottom: 16,
+  },
+  headerGradient: {
+    padding: 24,
+    paddingTop: 32,
+  },
+  headerContent: {
+    alignItems: "center",
+  },
+  headerIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: "700",
+    color: "#FFFFFF",
+    marginBottom: 8,
     textAlign: "center",
   },
-  refreshButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-    marginTop: 12,
+  headerDescription: {
+    fontSize: 16,
+    color: "rgba(255, 255, 255, 0.9)",
+    textAlign: "center",
+    marginBottom: 24,
   },
-  refreshButtonText: {
-    fontSize: 14,
-    fontWeight: "500",
-    marginLeft: 8,
-  },
-  headerCard: {
+  progressSection: {
+    width: "100%",
     marginBottom: 16,
   },
-  stageHeader: {
+  progressStats: {
     flexDirection: "row",
+    justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 20,
+    marginTop: 8,
   },
-  stageIndicator: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    marginRight: 12,
-  },
-  stageInfo: {
-    flex: 1,
-  },
-  stageTitle: {
-    fontSize: 20,
-    fontWeight: "700",
-    marginBottom: 4,
-  },
-  stageSubtitle: {
+  progressText: {
     fontSize: 14,
-    marginBottom: 2,
+    color: "rgba(255, 255, 255, 0.9)",
   },
-  countryInfo: {
-    fontSize: 12,
-    fontStyle: "italic",
+  progressPercentage: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#FFFFFF",
   },
   completedBadge: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
   },
   completedText: {
-    fontSize: 12,
-    fontWeight: "600",
-    marginLeft: 4,
-  },
-  progressSection: {
-    marginTop: 8,
-  },
-  progressTextRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginTop: 8,
-  },
-  progressLabel: {
     fontSize: 14,
-  },
-  progressPercent: {
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  tasksCard: {
-    marginBottom: 16,
-  },
-  tasksHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  tasksTitle: {
-    fontSize: 18,
     fontWeight: "600",
+    color: "#FFFFFF",
+    marginLeft: 8,
   },
-  tasksStats: {
+  content: {
+    flex: 1,
+    paddingHorizontal: 16,
+  },
+  acceptanceCard: {
+    marginBottom: 16,
+    borderWidth: 2,
+    borderLeftWidth: 6,
+  },
+  acceptanceContent: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  acceptanceText: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  acceptanceTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    marginBottom: 4,
+  },
+  acceptanceDescription: {
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  tasksContainer: {
+    marginBottom: 24,
+  },
+  taskCard: {
+    marginBottom: 12,
+    borderRadius: 12,
+  },
+  taskHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: 16,
+  },
+  taskLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+  },
+  taskCheckbox: {
+    marginRight: 12,
+    borderWidth: 2,
+    borderRadius: 4,
+  },
+  taskContent: {
+    flex: 1,
+  },
+  taskTitle: {
+    fontSize: 16,
+    fontWeight: "500",
+    lineHeight: 22,
+  },
+  taskTitleCompleted: {
+    textDecorationLine: "line-through",
+  },
+  taskCompletedDate: {
+    fontSize: 12,
+    marginTop: 4,
+    fontWeight: "500",
+  },
+  expandButton: {
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 12,
+    backgroundColor: "rgba(255, 107, 107, 0.1)",
   },
-  tasksStatsText: {
-    fontSize: 14,
+  expandButtonText: {
+    fontSize: 12,
     fontWeight: "600",
   },
-  tasksList: {
-    gap: 8,
+  taskAdvice: {
+    marginHorizontal: 16,
+    marginBottom: 16,
+    padding: 16,
+    borderRadius: 8,
   },
-  congratsCard: {
-    borderWidth: 1,
-  },
-  congratsContent: {
-    alignItems: "center",
-    padding: 8,
-  },
-  congratsTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    marginTop: 12,
-    marginBottom: 8,
-  },
-  congratsText: {
+  taskAdviceText: {
     fontSize: 14,
-    textAlign: "center",
     lineHeight: 20,
+    marginBottom: 12,
+  },
+  premiumButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 16,
+    alignSelf: "flex-start",
+  },
+  premiumButtonText: {
+    color: "#FFFFFF",
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  tipsCard: {
+    marginBottom: 24,
+  },
+  tipsTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    marginBottom: 12,
+  },
+  tipsText: {
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 16,
+  },
+  premiumCTA: {
+    marginTop: 8,
+  },
+  bottomPadding: {
+    height: 32,
   },
 });

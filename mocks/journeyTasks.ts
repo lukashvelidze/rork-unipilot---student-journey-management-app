@@ -31,34 +31,122 @@ const baseResearchTasks = [
 ];
 
 const baseApplicationTasks = [
+  // Pre-Application Phase
   {
     id: generateId(),
-    title: "Prepare application documents",
+    title: "Research university admission requirements",
     completed: false,
   },
   {
     id: generateId(),
-    title: "Write personal statement/essay",
+    title: "Take required standardized tests (IELTS/TOEFL/GRE/GMAT)",
     completed: false,
   },
   {
     id: generateId(),
-    title: "Request recommendation letters",
+    title: "Request official transcripts from all institutions",
     completed: false,
   },
   {
     id: generateId(),
-    title: "Submit applications",
+    title: "Prepare academic CV/Resume",
     completed: false,
   },
   {
     id: generateId(),
-    title: "Pay application fees",
+    title: "Write compelling personal statement/statement of purpose",
     completed: false,
   },
   {
     id: generateId(),
-    title: "Track application status",
+    title: "Request 2-3 strong recommendation letters",
+    completed: false,
+  },
+  {
+    id: generateId(),
+    title: "Prepare portfolio/work samples (if required)",
+    completed: false,
+  },
+  {
+    id: generateId(),
+    title: "Research and apply for scholarships",
+    completed: false,
+  },
+  {
+    id: generateId(),
+    title: "Complete online application forms",
+    completed: false,
+  },
+  {
+    id: generateId(),
+    title: "Pay application fees ($50-$200 per university)",
+    completed: false,
+  },
+  {
+    id: generateId(),
+    title: "Submit applications before deadlines",
+    completed: false,
+  },
+  {
+    id: generateId(),
+    title: "Track application status regularly",
+    completed: false,
+  },
+  // Post-Application Phase
+  {
+    id: generateId(),
+    title: "Prepare for interviews (if required)",
+    completed: false,
+  },
+  {
+    id: generateId(),
+    title: "Submit additional documents if requested",
+    completed: false,
+  },
+  {
+    id: generateId(),
+    title: "Wait for admission decisions (2-6 months)",
+    completed: false,
+  },
+  // Acceptance Phase - These unlock after marking acceptance
+  {
+    id: generateId(),
+    title: "🎉 Receive acceptance letter(s)",
+    completed: false,
+  },
+  {
+    id: generateId(),
+    title: "Compare offers and financial aid packages",
+    completed: false,
+  },
+  {
+    id: generateId(),
+    title: "Accept offer and pay enrollment deposit",
+    completed: false,
+  },
+  {
+    id: generateId(),
+    title: "Decline other offers politely",
+    completed: false,
+  },
+  {
+    id: generateId(),
+    title: "Request official enrollment documents (I-20, CAS, etc.)",
+    completed: false,
+  },
+  {
+    id: generateId(),
+    title: "Register for orientation programs",
+    completed: false,
+  },
+  {
+    id: generateId(),
+    title: "Apply for on-campus housing",
+    completed: false,
+  },
+  {
+    id: generateId(),
+    title: "Submit final transcripts and graduation certificates",
     completed: false,
   },
 ];

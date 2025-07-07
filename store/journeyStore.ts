@@ -50,6 +50,7 @@ interface JourneyState {
   flightSearchParams: FlightSearchParams | null;
   setJourneyProgress: (progress: JourneyProgress[]) => void;
   updateTaskCompletion: (stageId: JourneyStage, taskId: string, completed: boolean) => void;
+  markAcceptance: (stageId: JourneyStage) => void;
   addRecentMilestone: (milestone: Milestone) => void;
   clearRecentMilestone: () => void;
   getOverallProgress: () => number;
@@ -83,9 +84,24 @@ export const useJourneyStore = create<JourneyState>()(
         set((state) => {
           const updatedProgress = state.journeyProgress.map((stage) => {
             if (stage.stage === stageId) {
-              const updatedTasks = stage.tasks.map((task) =>
-                task.id === taskId ? { ...task, completed } : task
-              );
+              const updatedTasks = stage.tasks.map((task) => {
+                if (task.id === taskId) {
+                  const updatedTask = { 
+                    ...task, 
+                    completed,
+                    completedDate: completed ? new Date().toISOString() : undefined
+                  };
+                  
+                  // Check if this is the acceptance task
+                  if (completed && task.title.includes("🎉 Receive acceptance letter")) {
+                    // Mark stage as having acceptance
+                    stage.hasAcceptance = true;
+                  }
+                  
+                  return updatedTask;
+                }
+                return task;
+              });
               
               const completedTasks = updatedTasks.filter((task) => task.completed).length;
               const totalTasks = updatedTasks.length;
@@ -105,6 +121,33 @@ export const useJourneyStore = create<JourneyState>()(
           
           return { 
             journeyProgress: updatedProgress,
+            lastUpdated: Date.now()
+          };
+        });
+      },
+      
+      markAcceptance: (stageId) => {
+        set((state) => {
+          const updatedProgress = state.journeyProgress.map((stage) => {
+            if (stage.stage === stageId) {
+              return {
+                ...stage,
+                hasAcceptance: true,
+              };
+            }
+            return stage;
+          });
+          
+          // Add celebration milestone
+          const milestone: Milestone = {
+            type: "stage_complete",
+            stage: stageId,
+            timestamp: Date.now()
+          };
+          
+          return { 
+            journeyProgress: updatedProgress,
+            recentMilestone: milestone,
             lastUpdated: Date.now()
           };
         });

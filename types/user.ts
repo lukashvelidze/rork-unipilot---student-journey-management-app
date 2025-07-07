@@ -16,6 +16,8 @@ export interface Task {
   completedDate?: string;
   notes?: string;
   dueDate?: string;
+  isAcceptanceTask?: boolean; // Marks tasks that unlock after acceptance
+  requiresAcceptance?: boolean; // Tasks that need acceptance to be unlocked
 }
 
 export interface JourneyProgress {
@@ -24,6 +26,7 @@ export interface JourneyProgress {
   completed: boolean;
   completedDate?: string;
   tasks: Task[];
+  hasAcceptance?: boolean; // Tracks if user has been accepted
 }
 
 export interface TestScore {
