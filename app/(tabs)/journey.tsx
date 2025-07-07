@@ -3,7 +3,7 @@ import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Platform, Animate
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
-import { ChevronRight, Quote, CheckSquare, Calendar, Clock, Star, Heart, Camera, Plus, Globe, Timer, MapPin, Sparkles, Filter, Grid, List } from "lucide-react-native";
+import { ChevronRight, Quote, CheckSquare, Calendar, Clock, Star, Heart, Camera, Plus, Globe, Timer, MapPin, Sparkles, Filter, Grid, List, MessageCircle } from "lucide-react-native";
 import { useColors } from "@/hooks/useColors";
 import Card from "@/components/Card";
 import ProgressBar from "@/components/ProgressBar";
@@ -44,10 +44,10 @@ export default function JourneyScreen() {
   const [sparkleAnim] = useState(new Animated.Value(0));
   const [memoryFloatAnim] = useState(new Animated.Value(0));
   
-  // Memory filters
+  // Memory filters - simplified
   const [selectedStageFilter, setSelectedStageFilter] = useState<JourneyStage | "all">("all");
   const [selectedMoodFilter, setSelectedMoodFilter] = useState<MemoryMood | "all">("all");
-  const [memoryViewMode, setMemoryViewMode] = useState<"grid" | "list">("grid");
+  const [showFilters, setShowFilters] = useState(false);
   
   // Initialize journey progress if not already set
   useEffect(() => {
@@ -239,20 +239,20 @@ export default function JourneyScreen() {
   }, [memories.length, filteredMemories.length, activeTab]);
 
   // Get stage options for filter
-  const stageOptions: { value: JourneyStage | "all"; label: string }[] = [
-    { value: "all", label: "All Stages" },
-    { value: "research", label: "Research" },
-    { value: "application", label: "Application" },
-    { value: "visa", label: "Visa" },
-    { value: "pre_departure", label: "Pre-Departure" },
-    { value: "arrival", label: "Arrival" },
-    { value: "academic", label: "Academic" },
-    { value: "career", label: "Career" },
+  const stageOptions: { value: JourneyStage | "all"; label: string; emoji: string }[] = [
+    { value: "all", label: "All", emoji: "🌟" },
+    { value: "research", label: "Research", emoji: "🔍" },
+    { value: "application", label: "Application", emoji: "📝" },
+    { value: "visa", label: "Visa", emoji: "📋" },
+    { value: "pre_departure", label: "Pre-Departure", emoji: "🎒" },
+    { value: "arrival", label: "Arrival", emoji: "✈️" },
+    { value: "academic", label: "Academic", emoji: "🎓" },
+    { value: "career", label: "Career", emoji: "💼" },
   ];
 
   // Get mood options for filter
   const moodOptions: { value: MemoryMood | "all"; label: string; emoji: string }[] = [
-    { value: "all", label: "All Moods", emoji: "😊" },
+    { value: "all", label: "All", emoji: "😊" },
     { value: "excited", label: "Excited", emoji: "🤩" },
     { value: "happy", label: "Happy", emoji: "😊" },
     { value: "proud", label: "Proud", emoji: "😤" },
@@ -471,22 +471,34 @@ export default function JourneyScreen() {
       case "memories":
         return (
           <View style={styles.memoriesContainer}>
-            {/* Filter Header */}
-            <View style={[styles.memoriesFilterHeader, { backgroundColor: Colors.card, borderBottomColor: Colors.border }]}>
-              <View style={styles.filterRow}>
-                <View style={styles.filterSection}>
-                  <Text style={[styles.filterLabel, { color: Colors.text }]}>Stage</Text>
+            {/* Simplified Filter Header - Instagram Style */}
+            <View style={[styles.memoriesHeader, { backgroundColor: Colors.card, borderBottomColor: Colors.border }]}>
+              <View style={styles.memoriesHeaderTop}>
+                <Text style={[styles.memoriesTitle, { color: Colors.text }]}>Memories</Text>
+                <TouchableOpacity
+                  style={[styles.filterButton, { backgroundColor: showFilters ? Colors.primary : Colors.lightBackground }]}
+                  onPress={() => setShowFilters(!showFilters)}
+                >
+                  <Filter size={16} color={showFilters ? Colors.white : Colors.text} />
+                </TouchableOpacity>
+              </View>
+              
+              {showFilters && (
+                <View style={styles.filtersContainer}>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}>
                     {stageOptions.map((option) => (
                       <TouchableOpacity
                         key={option.value}
                         style={[
                           styles.filterChip,
-                          { backgroundColor: selectedStageFilter === option.value ? Colors.primary : Colors.lightBackground },
-                          { borderColor: selectedStageFilter === option.value ? Colors.primary : Colors.border }
+                          { 
+                            backgroundColor: selectedStageFilter === option.value ? Colors.primary : Colors.lightBackground,
+                            borderColor: selectedStageFilter === option.value ? Colors.primary : Colors.border 
+                          }
                         ]}
                         onPress={() => setSelectedStageFilter(option.value)}
                       >
+                        <Text style={styles.filterEmoji}>{option.emoji}</Text>
                         <Text style={[
                           styles.filterChipText,
                           { color: selectedStageFilter === option.value ? Colors.white : Colors.text }
@@ -496,20 +508,17 @@ export default function JourneyScreen() {
                       </TouchableOpacity>
                     ))}
                   </ScrollView>
-                </View>
-              </View>
-
-              <View style={styles.filterRow}>
-                <View style={styles.filterSection}>
-                  <Text style={[styles.filterLabel, { color: Colors.text }]}>Mood</Text>
+                  
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}>
                     {moodOptions.map((option) => (
                       <TouchableOpacity
                         key={option.value}
                         style={[
                           styles.filterChip,
-                          { backgroundColor: selectedMoodFilter === option.value ? Colors.primary : Colors.lightBackground },
-                          { borderColor: selectedMoodFilter === option.value ? Colors.primary : Colors.border }
+                          { 
+                            backgroundColor: selectedMoodFilter === option.value ? Colors.primary : Colors.lightBackground,
+                            borderColor: selectedMoodFilter === option.value ? Colors.primary : Colors.border 
+                          }
                         ]}
                         onPress={() => setSelectedMoodFilter(option.value)}
                       >
@@ -524,29 +533,7 @@ export default function JourneyScreen() {
                     ))}
                   </ScrollView>
                 </View>
-              </View>
-
-              <View style={styles.filterActions}>
-                <View style={styles.filterLeft}>
-                  <Text style={[styles.resultsCount, { color: Colors.lightText }]}>
-                    {filteredMemories.length} {filteredMemories.length === 1 ? 'memory' : 'memories'}
-                  </Text>
-                </View>
-                <View style={styles.filterRight}>
-                  <TouchableOpacity
-                    style={[styles.viewModeButton, { backgroundColor: memoryViewMode === 'grid' ? Colors.primary : Colors.lightBackground }]}
-                    onPress={() => setMemoryViewMode('grid')}
-                  >
-                    <Grid size={16} color={memoryViewMode === 'grid' ? Colors.white : Colors.text} />
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.viewModeButton, { backgroundColor: memoryViewMode === 'list' ? Colors.primary : Colors.lightBackground }]}
-                    onPress={() => setMemoryViewMode('list')}
-                  >
-                    <List size={16} color={memoryViewMode === 'list' ? Colors.white : Colors.text} />
-                  </TouchableOpacity>
-                </View>
-              </View>
+              )}
             </View>
 
             {/* Memories Content */}
@@ -1088,27 +1075,38 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   
-  // Memories styles
+  // Memories styles - Simplified and Instagram-like
   memoriesContainer: {
     flex: 1,
   },
-  memoriesFilterHeader: {
-    padding: 16,
+  memoriesHeader: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     borderBottomWidth: 1,
   },
-  filterRow: {
-    marginBottom: 12,
-  },
-  filterSection: {
-    flex: 1,
-  },
-  filterLabel: {
-    fontSize: 14,
-    fontWeight: "600",
+  memoriesHeaderTop: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 8,
+  },
+  memoriesTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+  },
+  filterButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  filtersContainer: {
+    marginTop: 8,
   },
   filterScroll: {
     flexDirection: "row",
+    marginBottom: 8,
   },
   filterChip: {
     flexDirection: "row",
@@ -1126,30 +1124,6 @@ const styles = StyleSheet.create({
   filterChipText: {
     fontSize: 12,
     fontWeight: "500",
-  },
-  filterActions: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginTop: 8,
-  },
-  filterLeft: {
-    flex: 1,
-  },
-  resultsCount: {
-    fontSize: 12,
-    fontWeight: "500",
-  },
-  filterRight: {
-    flexDirection: "row",
-    gap: 8,
-  },
-  viewModeButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    justifyContent: "center",
-    alignItems: "center",
   },
   memoriesScroll: {
     flex: 1,

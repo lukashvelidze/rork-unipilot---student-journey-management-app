@@ -95,7 +95,7 @@ export default function NewMemoryScreen() {
 
       addMemory(memory);
       
-      // Show success message and navigate
+      // Show success message and navigate to memories page
       Alert.alert(
         "Memory Created! 🎉",
         "Your memory has been added to your journey timeline.",
@@ -104,17 +104,6 @@ export default function NewMemoryScreen() {
             text: "View Memories",
             onPress: () => {
               router.replace("/(tabs)/journey?tab=memories");
-            }
-          },
-          {
-            text: "Add Another",
-            onPress: () => {
-              setTitle("");
-              setDescription("");
-              setTags([]);
-              setImageUrl("");
-              setSelectedStage("research");
-              setSelectedMood("happy");
             }
           }
         ]
