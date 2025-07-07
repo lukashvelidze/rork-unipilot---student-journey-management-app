@@ -3,7 +3,7 @@ import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert, Platform }
 import { useRouter } from "expo-router";
 import { Crown, Check, Zap, Target, BookOpen, Calendar, Video, Users, Award, Gift, ChevronRight, Star, BarChart3, UserCheck, MessageCircle } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import * as WebBrowser from "expo-web-browser";
+
 import { useColors } from "@/hooks/useColors";
 import Card from "@/components/Card";
 import Button from "@/components/Button";
@@ -133,17 +133,14 @@ export default function PremiumScreen() {
     }
   };
   
-  const handleSubscribe = async () => {
-    try {
-      await WebBrowser.openBrowserAsync('https://lukashvelidze.github.io/unipilot/');
-    } catch (error) {
-      console.error('Error opening browser:', error);
-      Alert.alert(
-        "Error",
-        "Unable to open the subscription page. Please try again later.",
-        [{ text: "OK" }]
-      );
-    }
+  const handleSubscribe = () => {
+    router.push({
+      pathname: '/webview',
+      params: {
+        url: 'https://lukashvelidze.github.io/unipilot/',
+        title: 'Subscribe to UniPilot'
+      }
+    });
   };
   
   // Debug logging
