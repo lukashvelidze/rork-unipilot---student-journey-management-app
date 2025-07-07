@@ -6,14 +6,7 @@ import { useColors } from "@/hooks/useColors";
 import { Memory, MemoryMood } from "@/types/user";
 
 interface MemoryCardProps {
-  memory: Memory & {
-    badge?: string;
-    badgeTitle?: string;
-    badgeColor?: string;
-    milestone?: boolean;
-    likes?: number;
-    comments?: number;
-  };
+  memory: Memory;
   onPress?: () => void;
 }
 
@@ -96,6 +89,27 @@ export default function MemoryCard({ memory, onPress }: MemoryCardProps) {
     }
   };
 
+  const getStageLabel = (stage: string) => {
+    switch (stage) {
+      case "research":
+        return "RESEARCH";
+      case "application":
+        return "APPLICATION";
+      case "visa":
+        return "VISA";
+      case "pre_departure":
+        return "PRE-DEPARTURE";
+      case "arrival":
+        return "ARRIVAL";
+      case "academic":
+        return "ACADEMIC";
+      case "career":
+        return "CAREER";
+      default:
+        return stage.toUpperCase();
+    }
+  };
+
   return (
     <TouchableOpacity style={styles.container} onPress={onPress} activeOpacity={0.9}>
       <View style={[styles.card, { backgroundColor: Colors.card }]}>
@@ -110,16 +124,9 @@ export default function MemoryCard({ memory, onPress }: MemoryCardProps) {
               colors={["transparent", "rgba(0, 0, 0, 0.7)"]}
               style={styles.imageOverlay}
             >
-              {/* Milestone Badge */}
-              {memory.milestone && memory.badge && (
-                <View style={[styles.milestoneBadge, { backgroundColor: memory.badgeColor }]}>
-                  <Text style={styles.badgeEmoji}>{memory.badge}</Text>
-                </View>
-              )}
-              
               {/* Stage Badge */}
               <View style={[styles.stageBadge, { backgroundColor: getStageColor(memory.stage) }]}>
-                <Text style={styles.stageBadgeText}>{memory.stage.replace('_', ' ').toUpperCase()}</Text>
+                <Text style={styles.stageBadgeText}>{getStageLabel(memory.stage)}</Text>
               </View>
             </LinearGradient>
           </ImageBackground>
@@ -173,14 +180,14 @@ export default function MemoryCard({ memory, onPress }: MemoryCardProps) {
               <TouchableOpacity style={styles.actionButton}>
                 <Heart size={16} color={Colors.lightText} />
                 <Text style={[styles.actionText, { color: Colors.lightText }]}>
-                  {memory.likes || 0}
+                  {Math.floor(Math.random() * 50) + 1}
                 </Text>
               </TouchableOpacity>
               
               <TouchableOpacity style={styles.actionButton}>
                 <MessageCircle size={16} color={Colors.lightText} />
                 <Text style={[styles.actionText, { color: Colors.lightText }]}>
-                  {memory.comments || 0}
+                  {Math.floor(Math.random() * 20)}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -223,24 +230,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "space-between",
     padding: 16,
-  },
-  milestoneBadge: {
-    position: "absolute",
-    top: 16,
-    right: 16,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  badgeEmoji: {
-    fontSize: 20,
   },
   stageBadge: {
     position: "absolute",

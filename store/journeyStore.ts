@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { JourneyProgress, JourneyStage } from "@/types/user";
+import { JourneyProgress, JourneyStage, Memory, MemoryMood } from "@/types/user";
 
 interface Milestone {
   type: "stage_complete" | "progress_milestone" | "confetti";
@@ -48,6 +48,7 @@ interface JourneyState {
   flightSearchResults: FlightSearchResult[];
   flightSearchLoading: boolean;
   flightSearchParams: FlightSearchParams | null;
+  memories: Memory[];
   setJourneyProgress: (progress: JourneyProgress[]) => void;
   updateTaskCompletion: (stageId: JourneyStage, taskId: string, completed: boolean) => void;
   markAcceptance: (stageId: JourneyStage) => void;
@@ -60,6 +61,11 @@ interface JourneyState {
   getStageById: (stageId: JourneyStage) => JourneyProgress | undefined;
   searchFlights: (params: FlightSearchParams) => Promise<void>;
   clearFlightResults: () => void;
+  addMemory: (memory: Omit<Memory, 'id'>) => void;
+  updateMemory: (id: string, memory: Partial<Memory>) => void;
+  deleteMemory: (id: string) => void;
+  getMemoriesByStage: (stage?: JourneyStage) => Memory[];
+  getMemoriesByMood: (mood?: MemoryMood) => Memory[];
 }
 
 export const useJourneyStore = create<JourneyState>()(
@@ -71,6 +77,7 @@ export const useJourneyStore = create<JourneyState>()(
       flightSearchResults: [],
       flightSearchLoading: false,
       flightSearchParams: null,
+      memories: [],
       
       setJourneyProgress: (progress) => {
         console.log("Setting new journey progress with", progress.length, "stages");
@@ -283,6 +290,48 @@ export const useJourneyStore = create<JourneyState>()(
           flightSearchResults: [],
           flightSearchParams: null 
         });
+      },
+
+      addMemory: (memory) => {
+        const newMemory: Memory = {
+          ...memory,
+          id: Date.now().toString() + Math.random().toString(36).substring(2),
+        };
+        
+        set((state) => ({
+          memories: [newMemory, ...state.memories].sort((a, b) => 
+            new Date(b.date).getTime() - new Date(a.date).getTime()
+          ),
+          lastUpdated: Date.now()
+        }));
+      },
+
+      updateMemory: (id, updatedMemory) => {
+        set((state) => ({
+          memories: state.memories.map((memory) =>
+            memory.id === id ? { ...memory, ...updatedMemory } : memory
+          ),
+          lastUpdated: Date.now()
+        }));
+      },
+
+      deleteMemory: (id) => {
+        set((state) => ({
+          memories: state.memories.filter((memory) => memory.id !== id),
+          lastUpdated: Date.now()
+        }));
+      },
+
+      getMemoriesByStage: (stage) => {
+        const state = get();
+        if (!stage) return state.memories;
+        return state.memories.filter((memory) => memory.stage === stage);
+      },
+
+      getMemoriesByMood: (mood) => {
+        const state = get();
+        if (!mood) return state.memories;
+        return state.memories.filter((memory) => memory.mood === mood);
       },
     }),
     {

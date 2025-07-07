@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Platform, Animated, Dimensions, ImageBackground, Alert } from "react-native";
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Platform, Animated, Dimensions, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
-import { ChevronRight, Quote, CheckSquare, Calendar, Clock, Star, Heart, Camera, Plus, Globe, Timer, MapPin, Sparkles, Image as ImageIcon, Award, MessageCircle } from "lucide-react-native";
+import { ChevronRight, Quote, CheckSquare, Calendar, Clock, Star, Heart, Camera, Plus, Globe, Timer, MapPin, Sparkles, Filter, Grid, List } from "lucide-react-native";
 import { useColors } from "@/hooks/useColors";
 import Card from "@/components/Card";
 import ProgressBar from "@/components/ProgressBar";
@@ -18,6 +18,7 @@ import { calculateOverallProgress } from "@/utils/helpers";
 import { getRandomQuote, generalQuotes } from "@/mocks/quotes";
 import { initialJourneyProgress } from "@/mocks/journeyTasks";
 import { TimelineEvent } from "@/types/user";
+import { JourneyStage, MemoryMood } from "@/types/user";
 
 const { width, height } = Dimensions.get("window");
 
@@ -30,6 +31,9 @@ export default function JourneyScreen() {
     recentMilestone, 
     clearRecentMilestone, 
     setJourneyProgress,
+    memories,
+    getMemoriesByStage,
+    getMemoriesByMood,
   } = useJourneyStore();
   const [activeTab, setActiveTab] = useState<"roadmap" | "map" | "timeline" | "memories">("roadmap");
   const [showCelebration, setShowCelebration] = useState(false);
@@ -38,6 +42,11 @@ export default function JourneyScreen() {
   const [planeAnim] = useState(new Animated.Value(0));
   const [sparkleAnim] = useState(new Animated.Value(0));
   const [memoryFloatAnim] = useState(new Animated.Value(0));
+  
+  // Memory filters
+  const [selectedStageFilter, setSelectedStageFilter] = useState<JourneyStage | "all">("all");
+  const [selectedMoodFilter, setSelectedMoodFilter] = useState<MemoryMood | "all">("all");
+  const [memoryViewMode, setMemoryViewMode] = useState<"grid" | "list">("grid");
   
   // Initialize journey progress if not already set
   useEffect(() => {
@@ -75,22 +84,6 @@ export default function JourneyScreen() {
   // Continuous animations for memories page
   useEffect(() => {
     if (activeTab === "memories") {
-      // Plane animation
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(planeAnim, {
-            toValue: 1,
-            duration: 12000,
-            useNativeDriver: true,
-          }),
-          Animated.timing(planeAnim, {
-            toValue: 0,
-            duration: 0,
-            useNativeDriver: true,
-          }),
-        ])
-      ).start();
-
       // Sparkle animation
       Animated.loop(
         Animated.sequence([
@@ -123,7 +116,7 @@ export default function JourneyScreen() {
         ])
       ).start();
     }
-  }, [activeTab, planeAnim, sparkleAnim, memoryFloatAnim]);
+  }, [activeTab, sparkleAnim, memoryFloatAnim]);
 
   // Generate timeline events based on actual journey progress
   const generateTimelineEvents = (): TimelineEvent[] => {
@@ -212,6 +205,48 @@ export default function JourneyScreen() {
       "Check visa requirements for transit countries"
     ]
   };
+
+  // Filter memories based on selected filters
+  const getFilteredMemories = () => {
+    let filtered = memories;
+    
+    if (selectedStageFilter !== "all") {
+      filtered = getMemoriesByStage(selectedStageFilter);
+    }
+    
+    if (selectedMoodFilter !== "all") {
+      filtered = filtered.filter(memory => memory.mood === selectedMoodFilter);
+    }
+    
+    return filtered;
+  };
+
+  const filteredMemories = getFilteredMemories();
+
+  // Get stage options for filter
+  const stageOptions: { value: JourneyStage | "all"; label: string }[] = [
+    { value: "all", label: "All Stages" },
+    { value: "research", label: "Research" },
+    { value: "application", label: "Application" },
+    { value: "visa", label: "Visa" },
+    { value: "pre_departure", label: "Pre-Departure" },
+    { value: "arrival", label: "Arrival" },
+    { value: "academic", label: "Academic" },
+    { value: "career", label: "Career" },
+  ];
+
+  // Get mood options for filter
+  const moodOptions: { value: MemoryMood | "all"; label: string; emoji: string }[] = [
+    { value: "all", label: "All Moods", emoji: "😊" },
+    { value: "excited", label: "Excited", emoji: "🤩" },
+    { value: "happy", label: "Happy", emoji: "😊" },
+    { value: "proud", label: "Proud", emoji: "😤" },
+    { value: "nervous", label: "Nervous", emoji: "😰" },
+    { value: "grateful", label: "Grateful", emoji: "🙏" },
+    { value: "accomplished", label: "Accomplished", emoji: "🏆" },
+    { value: "hopeful", label: "Hopeful", emoji: "🌟" },
+    { value: "determined", label: "Determined", emoji: "💪" },
+  ];
   
   const renderTabContent = () => {
     switch (activeTab) {
@@ -421,374 +456,173 @@ export default function JourneyScreen() {
       case "memories":
         return (
           <View style={styles.memoriesContainer}>
-            {/* Compact Header */}
-            <View style={styles.memoriesHeader}>
-              <ImageBackground
-                source={{ uri: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&h=400&fit=crop" }}
-                style={styles.memoriesHeaderBackground}
-                imageStyle={styles.memoriesHeaderImage}
-              >
-                <LinearGradient
-                  colors={["rgba(255, 107, 107, 0.9)", "rgba(78, 205, 196, 0.9)"]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.memoriesHeaderOverlay}
-                >
-                  {/* Animated sparkles */}
-                  <Animated.View style={[
-                    styles.sparkle,
-                    styles.sparkle1,
-                    {
-                      opacity: sparkleAnim.interpolate({
-                        inputRange: [0, 0.5, 1],
-                        outputRange: [0.3, 1, 0.3],
-                      }),
-                      transform: [{
-                        scale: sparkleAnim.interpolate({
-                          inputRange: [0, 0.5, 1],
-                          outputRange: [0.8, 1.2, 0.8],
-                        })
-                      }]
-                    }
-                  ]}>
-                    <Sparkles size={12} color="rgba(255, 255, 255, 0.8)" />
-                  </Animated.View>
-                  
-                  <Animated.View style={[
-                    styles.sparkle,
-                    styles.sparkle2,
-                    {
-                      opacity: sparkleAnim.interpolate({
-                        inputRange: [0, 0.5, 1],
-                        outputRange: [1, 0.3, 1],
-                      }),
-                    }
-                  ]}>
-                    <Sparkles size={10} color="rgba(255, 255, 255, 0.6)" />
-                  </Animated.View>
-                  
-                  <Animated.View style={[
-                    styles.sparkle,
-                    styles.sparkle3,
-                    {
-                      opacity: sparkleAnim.interpolate({
-                        inputRange: [0, 0.5, 1],
-                        outputRange: [0.5, 1, 0.5],
-                      }),
-                    }
-                  ]}>
-                    <Sparkles size={14} color="rgba(255, 255, 255, 0.7)" />
-                  </Animated.View>
-
-                  <View style={styles.memoriesHeaderContent}>
-                    <Text style={styles.memoriesTitle}>Journey Memories</Text>
-                    <Text style={styles.memoriesSubtitle}>Capture & share your story ✨</Text>
-                    
-                    <View style={styles.memoriesStats}>
-                      <View style={styles.statBubble}>
-                        <Text style={styles.statNumber}>{memories.length}</Text>
-                        <Text style={styles.statLabelMemories}>Memories</Text>
-                      </View>
-                      <View style={styles.statBubble}>
-                        <Text style={styles.statNumber}>{memories.filter(m => m.milestone).length}</Text>
-                        <Text style={styles.statLabelMemories}>Milestones</Text>
-                      </View>
-                      <View style={styles.statBubble}>
-                        <Text style={styles.statNumber}>
-                          {memories.reduce((sum, memory) => sum + memory.likes, 0)}
-                        </Text>
-                        <Text style={styles.statLabelMemories}>Likes</Text>
-                      </View>
-                    </View>
-                  </View>
-                </LinearGradient>
-              </ImageBackground>
-            </View>
-
-            {/* Compact Milestone Badges Row */}
-            <View style={styles.milestoneBadgesContainer}>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.badgesScroll}>
-                {memories.filter(m => m.milestone).map((memory, index) => (
-                  <TouchableOpacity
-                    key={memory.id}
-                    style={[styles.milestoneBadge, { backgroundColor: memory.badgeColor + "20", borderColor: memory.badgeColor }]}
-                    onPress={() => {
-                      Alert.alert(
-                        memory.badgeTitle,
-                        memory.description,
-                        [{ text: "Close" }]
-                      );
-                    }}
-                  >
-                    <Text style={styles.badgeEmoji}>{memory.badge}</Text>
-                    <Text style={[styles.badgeTitle, { color: memory.badgeColor }]}>{memory.badgeTitle}</Text>
-                  </TouchableOpacity>
-                ))}
-                
-                {/* Add more badges placeholder */}
-                <TouchableOpacity 
-                  style={styles.addBadgePlaceholder}
-                  onPress={() => {
-                    Alert.alert(
-                      "Create Memory",
-                      "Add a new memory to unlock more achievement badges!",
-                      [
-                        { text: "Cancel", style: "cancel" },
-                        { text: "Create", onPress: () => router.push("/memories/new") }
-                      ]
-                    );
-                  }}
-                >
-                  <Plus size={16} color={Colors.lightText} />
-                  <Text style={[styles.addBadgeText, { color: Colors.lightText }]}>More!</Text>
-                </TouchableOpacity>
-              </ScrollView>
-            </View>
-
-            {/* Memories Grid - Now takes most of the space */}
-            <ScrollView style={styles.memoriesScroll} showsVerticalScrollIndicator={false}>
-              <View style={styles.memoriesGridHeader}>
-                <Text style={[styles.gridTitle, { color: Colors.text }]}>Your Story Timeline</Text>
-                <TouchableOpacity
-                  style={[styles.addMemoryFloatingButton, { backgroundColor: Colors.primary }]}
-                  onPress={() => {
-                    Alert.alert(
-                      "Create Memory",
-                      "This feature will allow you to create and share your study abroad memories!",
-                      [{ text: "Coming Soon!" }]
-                    );
-                  }}
-                >
-                  <Plus size={16} color={Colors.white} />
-                </TouchableOpacity>
-              </View>
-
-              <View style={styles.memoriesGrid}>
-                {memories.map((memory, index) => (
-                  <Animated.View 
-                    key={memory.id} 
-                    style={[
-                      styles.memoryWrapper,
-                      {
-                        transform: [{
-                          translateY: memoryFloatAnim.interpolate({
-                            inputRange: [0, 1],
-                            outputRange: [0, index % 2 === 0 ? -3 : 3],
-                          })
-                        }]
-                      }
-                    ]}
-                  >
-                    <MemoryCard
-                      memory={memory}
-                      onPress={() => {
-                        Alert.alert(
-                          memory.title,
-                          memory.description,
-                          [
-                            { text: "Share", onPress: () => Alert.alert("Share", "Sharing functionality coming soon!") },
-                            { text: "Close", style: "cancel" }
-                          ]
-                        );
-                      }}
-                    />
-                  </Animated.View>
-                ))}
-                
-                {/* Instagram-style Add Memory Card */}
-                <TouchableOpacity
-                  style={styles.addMemoryCard}
-                  onPress={() => {
-                    Alert.alert(
-                      "Create Memory",
-                      "This feature will allow you to create and share your study abroad memories!",
-                      [{ text: "Coming Soon!" }]
-                    );
-                  }}
-                >
-                  <LinearGradient
-                    colors={["#833AB4", "#FD1D1D", "#FCB045"]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={styles.addMemoryGradient}
-                  >
-                    <View style={styles.addMemoryContent}>
-                      <View style={styles.addMemoryIconContainer}>
-                        <Camera size={24} color={Colors.white} />
-                      </View>
-                      <Text style={styles.addMemoryCardText}>Create Memory</Text>
-                      <Text style={styles.addMemoryCardSubtext}>Share your moment</Text>
-                    </View>
-                  </LinearGradient>
-                </TouchableOpacity>
-              </View>
-
-              {/* Compact Footer */}
-              <View style={styles.memoriesFooter}>
-                <LinearGradient
-                  colors={[Colors.memoryPink + "20", Colors.memoryPurple + "20"]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.memoriesFooterGradient}
-                >
-                  <View style={styles.memoriesFooterContent}>
-                    <Text style={[styles.memoriesFooterTitle, { color: Colors.text }]}>
-                      📸 Ready to Share?
-                    </Text>
-                    <Text style={[styles.memoriesFooterText, { color: Colors.lightText }]}>
-                      Connect with other students on their journey!
-                    </Text>
-                    
-                    <View style={styles.socialButtons}>
-                      <TouchableOpacity 
-                        style={[styles.socialButton, { backgroundColor: Colors.primary }]}
-                        onPress={() => Alert.alert("Share Story", "Social sharing coming soon!")}
+            {/* Filter Header */}
+            <View style={[styles.memoriesFilterHeader, { backgroundColor: Colors.card, borderBottomColor: Colors.border }]}>
+              <View style={styles.filterRow}>
+                <View style={styles.filterSection}>
+                  <Text style={[styles.filterLabel, { color: Colors.text }]}>Stage</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}>
+                    {stageOptions.map((option) => (
+                      <TouchableOpacity
+                        key={option.value}
+                        style={[
+                          styles.filterChip,
+                          { backgroundColor: selectedStageFilter === option.value ? Colors.primary : Colors.lightBackground },
+                          { borderColor: selectedStageFilter === option.value ? Colors.primary : Colors.border }
+                        ]}
+                        onPress={() => setSelectedStageFilter(option.value)}
                       >
-                        <Text style={styles.socialButtonText}>Share Story</Text>
+                        <Text style={[
+                          styles.filterChipText,
+                          { color: selectedStageFilter === option.value ? Colors.white : Colors.text }
+                        ]}>
+                          {option.label}
+                        </Text>
                       </TouchableOpacity>
-                    </View>
-                  </View>
-                </LinearGradient>
+                    ))}
+                  </ScrollView>
+                </View>
               </View>
+
+              <View style={styles.filterRow}>
+                <View style={styles.filterSection}>
+                  <Text style={[styles.filterLabel, { color: Colors.text }]}>Mood</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}>
+                    {moodOptions.map((option) => (
+                      <TouchableOpacity
+                        key={option.value}
+                        style={[
+                          styles.filterChip,
+                          { backgroundColor: selectedMoodFilter === option.value ? Colors.primary : Colors.lightBackground },
+                          { borderColor: selectedMoodFilter === option.value ? Colors.primary : Colors.border }
+                        ]}
+                        onPress={() => setSelectedMoodFilter(option.value)}
+                      >
+                        <Text style={styles.filterEmoji}>{option.emoji}</Text>
+                        <Text style={[
+                          styles.filterChipText,
+                          { color: selectedMoodFilter === option.value ? Colors.white : Colors.text }
+                        ]}>
+                          {option.label}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
+              </View>
+
+              <View style={styles.filterActions}>
+                <View style={styles.filterLeft}>
+                  <Text style={[styles.resultsCount, { color: Colors.lightText }]}>
+                    {filteredMemories.length} {filteredMemories.length === 1 ? 'memory' : 'memories'}
+                  </Text>
+                </View>
+                <View style={styles.filterRight}>
+                  <TouchableOpacity
+                    style={[styles.viewModeButton, { backgroundColor: memoryViewMode === 'grid' ? Colors.primary : Colors.lightBackground }]}
+                    onPress={() => setMemoryViewMode('grid')}
+                  >
+                    <Grid size={16} color={memoryViewMode === 'grid' ? Colors.white : Colors.text} />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.viewModeButton, { backgroundColor: memoryViewMode === 'list' ? Colors.primary : Colors.lightBackground }]}
+                    onPress={() => setMemoryViewMode('list')}
+                  >
+                    <List size={16} color={memoryViewMode === 'list' ? Colors.white : Colors.text} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+
+            {/* Memories Content */}
+            <ScrollView style={styles.memoriesScroll} showsVerticalScrollIndicator={false}>
+              {filteredMemories.length === 0 ? (
+                <View style={styles.emptyState}>
+                  <View style={[styles.emptyStateIcon, { backgroundColor: Colors.lightBackground }]}>
+                    <Camera size={48} color={Colors.lightText} />
+                  </View>
+                  <Text style={[styles.emptyStateTitle, { color: Colors.text }]}>No Memories Yet</Text>
+                  <Text style={[styles.emptyStateDescription, { color: Colors.lightText }]}>
+                    Start capturing your study abroad journey! Add your first memory to begin building your story.
+                  </Text>
+                  <TouchableOpacity
+                    style={[styles.addFirstMemoryButton, { backgroundColor: Colors.primary }]}
+                    onPress={() => router.push("/memories/new")}
+                  >
+                    <Plus size={20} color={Colors.white} />
+                    <Text style={styles.addFirstMemoryText}>Add Your First Memory</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <View style={styles.memoriesGrid}>
+                  {filteredMemories.map((memory, index) => (
+                    <Animated.View 
+                      key={memory.id} 
+                      style={[
+                        styles.memoryWrapper,
+                        {
+                          transform: [{
+                            translateY: memoryFloatAnim.interpolate({
+                              inputRange: [0, 1],
+                              outputRange: [0, index % 2 === 0 ? -3 : 3],
+                            })
+                          }]
+                        }
+                      ]}
+                    >
+                      <MemoryCard
+                        memory={memory}
+                        onPress={() => {
+                          Alert.alert(
+                            memory.title,
+                            memory.description,
+                            [
+                              { text: "Share", onPress: () => Alert.alert("Share", "Sharing functionality coming soon!") },
+                              { text: "Close", style: "cancel" }
+                            ]
+                          );
+                        }}
+                      />
+                    </Animated.View>
+                  ))}
+                  
+                  {/* Add Memory Card */}
+                  <TouchableOpacity
+                    style={styles.addMemoryCard}
+                    onPress={() => router.push("/memories/new")}
+                  >
+                    <LinearGradient
+                      colors={["#833AB4", "#FD1D1D", "#FCB045"]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={styles.addMemoryGradient}
+                    >
+                      <View style={styles.addMemoryContent}>
+                        <View style={styles.addMemoryIconContainer}>
+                          <Camera size={24} color={Colors.white} />
+                        </View>
+                        <Text style={styles.addMemoryCardText}>Create Memory</Text>
+                        <Text style={styles.addMemoryCardSubtext}>Share your moment</Text>
+                      </View>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                </View>
+              )}
             </ScrollView>
+
+            {/* Floating Add Button */}
+            <TouchableOpacity
+              style={[styles.floatingAddButton, { backgroundColor: Colors.primary }]}
+              onPress={() => router.push("/memories/new")}
+            >
+              <Plus size={24} color={Colors.white} />
+            </TouchableOpacity>
           </View>
         );
       default:
         return null;
     }
   };
-
-  // Enhanced memories data with Instagram-style milestone badges
-  const memories = [
-    {
-      id: "1",
-      title: "First University Visit",
-      description: "Visited my dream university campus for the first time. The architecture was breathtaking and I could already imagine myself studying here!",
-      date: "2024-02-14",
-      stage: "research" as const,
-      imageUrl: "https://images.unsplash.com/photo-1562774053-701939374585?w=400&h=300&fit=crop",
-      tags: ["university", "campus", "visit"],
-      mood: "excited" as const,
-      likes: 24,
-      comments: 8,
-      badge: "🏛️",
-      badgeTitle: "Campus Explorer",
-      badgeColor: "#FF6B6B",
-      milestone: true,
-    },
-    {
-      id: "2",
-      title: "IELTS Results Day",
-      description: "Got my IELTS results - scored 8.0! All that preparation and late-night study sessions finally paid off. Feeling so proud!",
-      date: "2024-01-28",
-      stage: "research" as const,
-      imageUrl: "https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=400&h=300&fit=crop",
-      tags: ["ielts", "test", "results", "achievement"],
-      mood: "proud" as const,
-      likes: 45,
-      comments: 12,
-      badge: "🎯",
-      badgeTitle: "Test Master",
-      badgeColor: "#4ECDC4",
-      milestone: true,
-    },
-    {
-      id: "3",
-      title: "Scholarship Application",
-      description: "Just submitted my scholarship application after weeks of preparation. The essay took forever but I am happy with the result. Fingers crossed! 🤞",
-      date: "2024-03-05",
-      stage: "application" as const,
-      imageUrl: "https://images.unsplash.com/photo-1513475382585-d06e58bcb0e0?w=400&h=300&fit=crop",
-      tags: ["scholarship", "application", "essay"],
-      mood: "nervous" as const,
-      likes: 18,
-      comments: 6,
-      badge: "💰",
-      badgeTitle: "Scholarship Hunter",
-      badgeColor: "#FFD93D",
-      milestone: false,
-    },
-    {
-      id: "4",
-      title: "Acceptance Letter! 🎉",
-      description: "I cannot believe it! Finally received my acceptance letter from my dream university. Dreams really do come true with hard work and persistence!",
-      date: "2024-04-12",
-      stage: "application" as const,
-      imageUrl: "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=400&h=300&fit=crop",
-      tags: ["acceptance", "university", "dreams"],
-      mood: "excited" as const,
-      likes: 89,
-      comments: 23,
-      badge: "🎓",
-      badgeTitle: "Accepted!",
-      badgeColor: "#6BCF7F",
-      milestone: true,
-    },
-    {
-      id: "5",
-      title: "Visa Approved! ✈️",
-      description: "Student visa approved! One step closer to my dreams. The interview went better than expected and now I can finally start planning my departure.",
-      date: "2024-05-20",
-      stage: "visa" as const,
-      imageUrl: "https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=400&h=300&fit=crop",
-      tags: ["visa", "approved", "travel"],
-      mood: "happy" as const,
-      likes: 67,
-      comments: 15,
-      badge: "✈️",
-      badgeTitle: "Visa Approved",
-      badgeColor: "#42A5F5",
-      milestone: true,
-    },
-    {
-      id: "6",
-      title: "Packing Adventures",
-      description: "Started packing for the big move! It is amazing how much stuff you accumulate over the years. Deciding what to take and what to leave behind is harder than expected.",
-      date: "2024-07-10",
-      stage: "pre_departure" as const,
-      imageUrl: "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=400&h=300&fit=crop",
-      tags: ["packing", "moving", "preparation"],
-      mood: "excited" as const,
-      likes: 32,
-      comments: 9,
-      badge: "📦",
-      badgeTitle: "Packing Pro",
-      badgeColor: "#9C27B0",
-      milestone: false,
-    },
-    {
-      id: "7",
-      title: "First Day Prep",
-      description: "Getting ready for my first day at university! Bought all my textbooks, set up my dorm room, and met some amazing people already. The adventure begins!",
-      date: "2024-08-15",
-      stage: "academic" as const,
-      imageUrl: "https://images.unsplash.com/photo-1541339907198-e08756dedf3f?w=400&h=300&fit=crop",
-      tags: ["university", "first-day", "dorm", "textbooks"],
-      mood: "excited" as const,
-      likes: 56,
-      comments: 18,
-      badge: "🎒",
-      badgeTitle: "Student Life",
-      badgeColor: "#FF9800",
-      milestone: true,
-    },
-    {
-      id: "8",
-      title: "Study Group Success",
-      description: "Formed an amazing study group with classmates from 5 different countries! We are tackling our first major project together. International collaboration at its finest!",
-      date: "2024-09-10",
-      stage: "academic" as const,
-      imageUrl: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=400&h=300&fit=crop",
-      tags: ["study-group", "international", "collaboration", "project"],
-      mood: "happy" as const,
-      likes: 41,
-      comments: 14,
-      badge: "👥",
-      badgeTitle: "Team Player",
-      badgeColor: "#E91E63",
-      milestone: false,
-    },
-  ];
   
   if (!user) {
     return (
@@ -1220,127 +1054,124 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   
-  // Compact Memories styles
+  // Memories styles
   memoriesContainer: {
     flex: 1,
   },
-  memoriesHeader: {
-    height: 160, // Reduced from 280
-    position: "relative",
+  memoriesFilterHeader: {
+    padding: 16,
+    borderBottomWidth: 1,
   },
-  memoriesHeaderBackground: {
+  filterRow: {
+    marginBottom: 12,
+  },
+  filterSection: {
     flex: 1,
   },
-  memoriesHeaderImage: {
-    borderBottomLeftRadius: 0,
-    borderBottomRightRadius: 0,
+  filterLabel: {
+    fontSize: 14,
+    fontWeight: "600",
+    marginBottom: 8,
   },
-  memoriesHeaderOverlay: {
+  filterScroll: {
+    flexDirection: "row",
+  },
+  filterChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+    marginRight: 8,
+  },
+  filterEmoji: {
+    fontSize: 14,
+    marginRight: 4,
+  },
+  filterChipText: {
+    fontSize: 12,
+    fontWeight: "500",
+  },
+  filterActions: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 8,
+  },
+  filterLeft: {
     flex: 1,
+  },
+  resultsCount: {
+    fontSize: 12,
+    fontWeight: "500",
+  },
+  filterRight: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  viewModeButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
     justifyContent: "center",
     alignItems: "center",
-    position: "relative",
-  },
-  sparkle: {
-    position: "absolute",
-  },
-  sparkle1: {
-    top: 20, // Adjusted for smaller header
-    left: 40,
-  },
-  sparkle2: {
-    top: 40,
-    right: 50,
-  },
-  sparkle3: {
-    bottom: 30,
-    left: 30,
-  },
-  memoriesHeaderContent: {
-    alignItems: "center",
-    zIndex: 2,
-  },
-  memoriesTitle: {
-    fontSize: 22, // Reduced from 28
-    fontWeight: "800",
-    color: "#FFFFFF",
-    marginBottom: 4, // Reduced from 8
-    textAlign: "center",
-    textShadowColor: "rgba(0, 0, 0, 0.3)",
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 4,
-  },
-  memoriesSubtitle: {
-    fontSize: 14, // Reduced from 16
-    color: "rgba(255, 255, 255, 0.95)",
-    textAlign: "center",
-    marginBottom: 16, // Reduced from 24
-    fontWeight: "500",
-  },
-  memoriesStats: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    width: "100%",
-    paddingHorizontal: 20,
-  },
-  statBubble: {
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
-    paddingHorizontal: 12, // Reduced from 16
-    paddingVertical: 8, // Reduced from 12
-    borderRadius: 16, // Reduced from 20
-    alignItems: "center",
-    minWidth: 60, // Reduced from 70
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.3)",
-  },
-  statNumber: {
-    fontSize: 16, // Reduced from 18
-    fontWeight: "700",
-    color: "#FFFFFF",
-  },
-  statLabelMemories: {
-    fontSize: 10, // Reduced from 12
-    color: "rgba(255, 255, 255, 0.9)",
-    fontWeight: "500",
   },
   memoriesScroll: {
     flex: 1,
   },
-  memoriesGridHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    paddingVertical: 12, // Reduced from 20
-  },
-  gridTitle: {
-    fontSize: 18, // Reduced from 20
-    fontWeight: "700",
-  },
-  addMemoryFloatingButton: {
-    width: 36, // Reduced from 44
-    height: 36, // Reduced from 44
-    borderRadius: 18, // Reduced from 22
+  emptyState: {
+    flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
+    paddingHorizontal: 32,
+    paddingVertical: 64,
+  },
+  emptyStateIcon: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 24,
+  },
+  emptyStateTitle: {
+    fontSize: 24,
+    fontWeight: "700",
+    marginBottom: 8,
+    textAlign: "center",
+  },
+  emptyStateDescription: {
+    fontSize: 16,
+    lineHeight: 24,
+    textAlign: "center",
+    marginBottom: 32,
+  },
+  addFirstMemoryButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 24,
+  },
+  addFirstMemoryText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "600",
+    marginLeft: 8,
   },
   memoriesGrid: {
-    paddingHorizontal: 16,
-    paddingBottom: 20,
+    padding: 16,
+    paddingBottom: 100,
   },
   memoryWrapper: {
-    marginBottom: 16, // Reduced from 20
+    marginBottom: 16,
   },
   addMemoryCard: {
-    height: 200, // Reduced from 240
+    height: 200,
     borderRadius: 20,
     overflow: "hidden",
-    marginBottom: 16, // Reduced from 20
+    marginBottom: 16,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.25,
@@ -1357,104 +1188,39 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   addMemoryIconContainer: {
-    width: 48, // Reduced from 64
-    height: 48, // Reduced from 64
-    borderRadius: 24, // Reduced from 32
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: "rgba(255, 255, 255, 0.2)",
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 12, // Reduced from 16
+    marginBottom: 12,
     borderWidth: 2,
     borderColor: "rgba(255, 255, 255, 0.3)",
   },
   addMemoryCardText: {
     color: "#FFFFFF",
-    fontSize: 18, // Reduced from 20
+    fontSize: 18,
     fontWeight: "700",
     marginBottom: 4,
   },
   addMemoryCardSubtext: {
     color: "rgba(255, 255, 255, 0.9)",
-    fontSize: 12, // Reduced from 14
+    fontSize: 12,
   },
-  memoriesFooter: {
-    margin: 16,
-    borderRadius: 16, // Reduced from 20
-    overflow: "hidden",
-  },
-  memoriesFooterGradient: {
-    padding: 16, // Reduced from 24
-  },
-  memoriesFooterContent: {
+  floatingAddButton: {
+    position: "absolute",
+    bottom: 24,
+    right: 24,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: "center",
     alignItems: "center",
-  },
-  memoriesFooterTitle: {
-    fontSize: 16, // Reduced from 18
-    fontWeight: "700",
-    marginBottom: 6, // Reduced from 8
-  },
-  memoriesFooterText: {
-    fontSize: 13, // Reduced from 14
-    textAlign: "center",
-    lineHeight: 18, // Reduced from 20
-    marginBottom: 12, // Reduced from 16
-  },
-  socialButtons: {
-    flexDirection: "row",
-    gap: 12,
-  },
-  socialButton: {
-    paddingHorizontal: 16, // Reduced from 20
-    paddingVertical: 10, // Reduced from 12
-    borderRadius: 16, // Reduced from 20
-  },
-  socialButtonText: {
-    color: "#FFFFFF",
-    fontSize: 13, // Reduced from 14
-    fontWeight: "600",
-  },
-  
-  // Compact milestone badges styles
-  milestoneBadgesContainer: {
-    paddingHorizontal: 16, // Reduced from 20
-    paddingVertical: 8, // Reduced from 16
-    backgroundColor: "#FAFAFA",
-  },
-  badgesScroll: {
-    flexDirection: "row",
-  },
-  milestoneBadge: {
-    alignItems: "center",
-    paddingHorizontal: 12, // Reduced from 16
-    paddingVertical: 8, // Reduced from 12
-    borderRadius: 12, // Reduced from 16
-    marginRight: 8, // Reduced from 12
-    borderWidth: 2,
-    minWidth: 60, // Reduced from 80
-  },
-  badgeEmoji: {
-    fontSize: 18, // Reduced from 24
-    marginBottom: 2, // Reduced from 4
-  },
-  badgeTitle: {
-    fontSize: 9, // Reduced from 10
-    fontWeight: "600",
-    textAlign: "center",
-  },
-  addBadgePlaceholder: {
-    alignItems: "center",
-    paddingHorizontal: 12, // Reduced from 16
-    paddingVertical: 8, // Reduced from 12
-    borderRadius: 12, // Reduced from 16
-    borderWidth: 2,
-    borderColor: "#ECF0F1",
-    borderStyle: "dashed",
-    minWidth: 60, // Reduced from 80
-  },
-  addBadgeText: {
-    fontSize: 9, // Reduced from 10
-    fontWeight: "500",
-    textAlign: "center",
-    marginTop: 2, // Reduced from 4
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
 });

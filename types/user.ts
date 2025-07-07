@@ -59,7 +59,7 @@ export interface Document {
   notes?: string;
 }
 
-export type MemoryMood = "excited" | "nervous" | "happy" | "proud" | "grateful" | "accomplished" | "hopeful" | "determined" | "overwhelmed" | "confident";
+export type MemoryMood = "excited" | "nervous" | "happy" | "proud" | "grateful" | "accomplished" | "hopeful" | "determined";
 
 export interface Memory {
   id: string;
