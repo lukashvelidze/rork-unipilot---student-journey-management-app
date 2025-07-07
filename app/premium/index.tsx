@@ -3,6 +3,7 @@ import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert, Platform }
 import { useRouter } from "expo-router";
 import { Crown, Check, Zap, Target, BookOpen, Calendar, Video, Users, Award, Gift, ChevronRight, Star, BarChart3, UserCheck, MessageCircle } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
+import * as WebBrowser from "expo-web-browser";
 import { useColors } from "@/hooks/useColors";
 import Card from "@/components/Card";
 import Button from "@/components/Button";
@@ -132,12 +133,17 @@ export default function PremiumScreen() {
     }
   };
   
-  const handleComingSoon = () => {
-    Alert.alert(
-      "🚀 Coming Soon!",
-      "Premium subscriptions will be available soon. For now, try using a promo code to unlock premium features and experience the full power of UniPilot!",
-      [{ text: "Got it" }]
-    );
+  const handleSubscribe = async () => {
+    try {
+      await WebBrowser.openBrowserAsync('https://lukashvelidze.github.io/unipilot/');
+    } catch (error) {
+      console.error('Error opening browser:', error);
+      Alert.alert(
+        "Error",
+        "Unable to open the subscription page. Please try again later.",
+        [{ text: "OK" }]
+      );
+    }
   };
   
   // Debug logging
@@ -430,11 +436,10 @@ export default function PremiumScreen() {
         </View>
         
         <Button
-          title="Notify Me When Available"
-          onPress={handleComingSoon}
-          variant="secondary"
+          title="Subscribe"
+          onPress={handleSubscribe}
           fullWidth
-          style={[styles.notifyButton, { backgroundColor: Colors.secondary }]}
+          style={[styles.subscribeButton, { backgroundColor: '#FF4444' }]}
         />
       </Card>
       
@@ -766,7 +771,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginLeft: 8,
   },
-  notifyButton: {
+  subscribeButton: {
     marginBottom: 0,
   },
   featuresSection: {
