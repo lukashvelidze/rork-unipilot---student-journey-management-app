@@ -180,7 +180,7 @@ export default function SubscriptionScreen() {
       <Card style={[styles.detailsCard, { backgroundColor: Colors.card }]} variant="elevated">
         <Text style={[styles.cardTitle, { color: Colors.text }]}>Subscription Details</Text>
         
-        {subscriptionData && (
+        {subscriptionData ? (
           <>
             <View style={styles.detailRow}>
               <Text style={[styles.detailLabel, { color: Colors.lightText }]}>Plan</Text>
@@ -211,6 +211,8 @@ export default function SubscriptionScreen() {
               </Text>
             </View>
           </>
+        ) : (
+          <Text style={[styles.detailValue, { color: Colors.lightText }]}>Loading subscription details...</Text>
         )}
       </Card>
 
@@ -224,13 +226,13 @@ export default function SubscriptionScreen() {
         <View style={[styles.paymentMethodContainer, { backgroundColor: Colors.surface }]}>
           <View style={styles.cardInfo}>
             <Text style={[styles.cardBrand, { color: Colors.text }]}>
-              {subscriptionData.paymentMethod.brand.toUpperCase()}
+              {subscriptionData?.paymentMethod?.brand?.toUpperCase() || 'CARD'}
             </Text>
             <Text style={[styles.cardNumber, { color: Colors.lightText }]}>
-              •••• •••• •••• {subscriptionData.paymentMethod.last4}
+              •••• •••• •••• {subscriptionData?.paymentMethod?.last4 || '****'}
             </Text>
             <Text style={[styles.cardExpiry, { color: Colors.lightText }]}>
-              Expires {subscriptionData.paymentMethod.expiryMonth}/{subscriptionData.paymentMethod.expiryYear}
+              Expires {subscriptionData?.paymentMethod?.expiryMonth || '**'}/{subscriptionData?.paymentMethod?.expiryYear || '****'}
             </Text>
           </View>
           <TouchableOpacity

@@ -15,10 +15,12 @@ export const initializePaddleService = async (): Promise<Paddle | null> => {
       return paddleInstance;
     }
 
-    paddleInstance = await initializePaddle({
+    const paddle = await initializePaddle({
       environment: 'sandbox', // Use 'production' for live environment
       token: 'test_c25cc3df5ddfcd6b3b2a8420700',
     });
+    
+    paddleInstance = paddle || null;
 
     return paddleInstance;
   } catch (error) {
