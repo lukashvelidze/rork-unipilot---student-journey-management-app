@@ -1,10 +1,11 @@
 import React, { useState } from "react";
 import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert, Platform } from "react-native";
 import { useRouter } from "expo-router";
-import { Crown, Check, Zap, Target, BookOpen, Calendar, Video, Users, Award, Gift, ChevronRight, Star, BarChart3, UserCheck, MessageCircle } from "lucide-react-native";
+import { Crown, Check, Zap, Target, BookOpen, Calendar, Video, Users, Award, Gift, ChevronRight, Star, BarChart3, UserCheck, MessageCircle, CreditCard } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 
 import { useColors } from "@/hooks/useColors";
+import { usePaddle } from "@/hooks/usePaddle";
 import Card from "@/components/Card";
 import Button from "@/components/Button";
 import Input from "@/components/Input";
@@ -14,6 +15,7 @@ export default function PremiumScreen() {
   const router = useRouter();
   const Colors = useColors();
   const { user, isPremium, setPremium } = useUserStore();
+  const { paddle, isLoading: paddleLoading, isInitialized, openCheckout } = usePaddle();
   const [promoCode, setPromoCode] = useState("");
   const [isProcessingPromo, setIsProcessingPromo] = useState(false);
   const [showPromoInput, setShowPromoInput] = useState(false);
@@ -133,14 +135,20 @@ export default function PremiumScreen() {
     }
   };
   
-  const handleSubscribe = () => {
-    router.push({
-      pathname: '/webview',
-      params: {
-        url: 'https://lukashvelidze.github.io/unipilot/',
-        title: 'Subscribe to UniPilot'
-      }
-    });
+  const handleSubscribe = async () => {
+    try {
+      await openCheckout('pri_01jyk3h7eec66x5m7h31p66r8w');
+    } catch (error) {
+      console.error('Subscription error:', error);
+      // Fallback to webview if Paddle fails
+      router.push({
+        pathname: '/webview',
+        params: {
+          url: 'https://lukashvelidze.github.io/unipilot/',
+          title: 'Subscribe to UniPilot'
+        }
+      });
+    }
   };
   
   // Debug logging
@@ -201,10 +209,10 @@ export default function PremiumScreen() {
           
           <TouchableOpacity
             style={[styles.actionCard, { backgroundColor: Colors.card }]}
-            onPress={() => Alert.alert("Personal Mentor", "Connect with your dedicated mentor for personalized guidance!")}
+            onPress={() => router.push("/premium/subscription")}
           >
-            <UserCheck size={24} color={Colors.accent} />
-            <Text style={[styles.actionTitle, { color: Colors.text }]}>Personal Mentor</Text>
+            <CreditCard size={24} color={Colors.accent} />
+            <Text style={[styles.actionTitle, { color: Colors.text }]}>Manage Subscription</Text>
             <ChevronRight size={16} color={Colors.lightText} />
           </TouchableOpacity>
         </View>
@@ -433,11 +441,20 @@ export default function PremiumScreen() {
         </View>
         
         <Button
-          title="Subscribe"
+          title={paddleLoading ? "Processing..." : "Subscribe"}
           onPress={handleSubscribe}
+          loading={paddleLoading}
+          disabled={paddleLoading || !isInitialized}
           fullWidth
           style={[styles.subscribeButton, { backgroundColor: '#FF4444' }]}
+          icon={<CreditCard size={20} color="#FFFFFF" />}
         />
+        
+        {Platform.OS !== 'web' && !isInitialized && (
+          <Text style={[styles.initializingText, { color: Colors.lightText }]}>
+            Initializing payment system...
+          </Text>
+        )}
       </Card>
       
       {/* Features Grid */}
@@ -918,5 +935,11 @@ const styles = StyleSheet.create({
   },
   debugButton: {
     marginTop: 8,
+  },
+  initializingText: {
+    fontSize: 12,
+    textAlign: 'center',
+    marginTop: 8,
+    fontStyle: 'italic',
   },
 });
