@@ -68,7 +68,7 @@ const Card: React.FC<CardProps> = ({
       getPaddingStyle(), 
       getBorderRadiusStyle(),
       style
-    ]}>
+    ] as ViewStyle[]}>
       {children}
     </View>
   );

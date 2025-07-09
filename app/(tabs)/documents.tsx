@@ -6,25 +6,25 @@ import { Plus } from "lucide-react-native";
 import { useColors } from "@/hooks/useColors";
 import DocumentCard from "@/components/DocumentCard";
 import { useDocumentStore } from "@/store/documentStore";
-import { Document } from "@/types/user";
+import { Document, DocumentType } from "@/types/user";
 
 export default function DocumentsScreen() {
   const router = useRouter();
   const Colors = useColors();
   const { documents } = useDocumentStore();
-  const [selectedFilter, setSelectedFilter] = useState<Document["type"] | "all">("all");
+  const [selectedFilter, setSelectedFilter] = useState<DocumentType | "all">("all");
   
-  const documentTypes: { id: Document["type"] | "all"; label: string }[] = [
-    { id: "all", label: "All" },
-    { id: "passport", label: "Passport" },
-    { id: "visa", label: "Visa" },
-    { id: "i20", label: "I-20" },
-    { id: "admission_letter", label: "Admission" },
-    { id: "financial_documents", label: "Financial" },
-    { id: "transcripts", label: "Transcripts" },
-    { id: "test_scores", label: "Test Scores" },
-    { id: "health_insurance", label: "Insurance" },
-    { id: "other", label: "Other" },
+  const documentTypes: (DocumentType | "all")[] = [
+    "all",
+    "passport",
+    "visa", 
+    "transcript",
+    "diploma",
+    "letter_of_recommendation",
+    "financial_statement",
+    "health_certificate",
+    "insurance",
+    "other",
   ];
   
   const filteredDocuments = selectedFilter === "all"
@@ -47,24 +47,24 @@ export default function DocumentsScreen() {
         <FlatList
           horizontal
           data={documentTypes}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item) => item}
           renderItem={({ item }) => (
             <TouchableOpacity
               style={[
                 styles.filterItem,
                 { backgroundColor: Colors.lightBackground },
-                selectedFilter === item.id && { backgroundColor: Colors.primary },
+                selectedFilter === item && { backgroundColor: Colors.primary },
               ]}
-              onPress={() => setSelectedFilter(item.id)}
+              onPress={() => setSelectedFilter(item)}
             >
               <Text
                 style={[
                   styles.filterText,
                   { color: Colors.lightText },
-                  selectedFilter === item.id && { color: Colors.white },
+                  selectedFilter === item && { color: Colors.white },
                 ]}
               >
-                {item.label}
+                {item === "all" ? "All" : item.replace("_", " ")}
               </Text>
             </TouchableOpacity>
           )}

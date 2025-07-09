@@ -5,6 +5,8 @@ export interface Country {
   isPopularDestination?: boolean;
 }
 
+export type DocumentType = "passport" | "visa" | "transcript" | "diploma" | "letter_of_recommendation" | "statement_of_purpose" | "financial_statement" | "health_certificate" | "insurance" | "other";
+
 export type EducationLevel = "high_school" | "bachelors" | "masters" | "phd" | "other";
 
 export type JourneyStage = "research" | "application" | "visa" | "pre_departure" | "arrival" | "academic" | "career";
@@ -51,10 +53,12 @@ export interface University {
 
 export interface Document {
   id: string;
-  type: string;
+  type: DocumentType;
   name: string;
+  title?: string;
   status: "valid" | "expiring_soon" | "expired" | "pending";
   expiryDate?: string;
+  reminderDate?: string;
   uploadDate: string;
   notes?: string;
 }

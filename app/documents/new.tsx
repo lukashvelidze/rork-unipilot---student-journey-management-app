@@ -26,12 +26,13 @@ export default function NewDocumentScreen() {
   const documentTypes: { value: DocumentType; label: string }[] = [
     { value: "passport", label: "Passport" },
     { value: "visa", label: "Visa" },
-    { value: "i20", label: "I-20" },
-    { value: "admission_letter", label: "Admission Letter" },
-    { value: "financial_documents", label: "Financial Documents" },
-    { value: "transcripts", label: "Transcripts" },
-    { value: "test_scores", label: "Test Scores" },
-    { value: "health_insurance", label: "Health Insurance" },
+    { value: "transcript", label: "Transcript" },
+    { value: "diploma", label: "Diploma" },
+    { value: "letter_of_recommendation", label: "Letter of Recommendation" },
+    { value: "statement_of_purpose", label: "Statement of Purpose" },
+    { value: "financial_statement", label: "Financial Statement" },
+    { value: "health_certificate", label: "Health Certificate" },
+    { value: "insurance", label: "Insurance" },
     { value: "other", label: "Other" },
   ];
   
@@ -90,6 +91,7 @@ export default function NewDocumentScreen() {
         name,
         expiryDate: expiryDate || undefined,
         reminderDate: reminderDate || undefined,
+        uploadDate: new Date().toISOString(),
         status,
       };
       
