@@ -1,6 +1,6 @@
 import React, { useRef, useEffect } from "react";
 import { StyleSheet, View, Text, TouchableOpacity, Platform, Animated } from "react-native";
-import { ChevronRight, CheckCircle } from "lucide-react-native";
+import { ChevronRight, CheckCircle, Lock } from "lucide-react-native";
 import Colors from "@/constants/colors";
 import ProgressBar from "./ProgressBar";
 import { JourneyProgress } from "@/types/user";
@@ -8,9 +8,10 @@ import { JourneyProgress } from "@/types/user";
 interface StageProgressProps {
   stage: JourneyProgress;
   onPress?: () => void;
+  isLocked?: boolean;
 }
 
-const StageProgress: React.FC<StageProgressProps> = ({ stage, onPress }) => {
+const StageProgress: React.FC<StageProgressProps> = ({ stage, onPress, isLocked = false }) => {
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const opacityAnim = useRef(new Animated.Value(0.9)).current;
   
@@ -92,6 +93,14 @@ const StageProgress: React.FC<StageProgressProps> = ({ stage, onPress }) => {
   
   // Determine card style based on completion status
   const getCardStyle = () => {
+    if (isLocked) {
+      return [
+        styles.container,
+        styles.lockedContainer,
+        { borderLeftColor: Colors.lightText }
+      ];
+    }
+    
     if (stage.completed) {
       return [
         styles.container, 
@@ -133,12 +142,19 @@ const StageProgress: React.FC<StageProgressProps> = ({ stage, onPress }) => {
             <View
               style={[
                 styles.indicator,
-                { backgroundColor: stageColor },
+                { backgroundColor: isLocked ? Colors.lightText : stageColor },
               ]}
             />
-            <Text style={styles.title}>{getStageTitle(stage.stage)}</Text>
+            <Text style={[styles.title, isLocked && { color: Colors.lightText }]}>
+              {isLocked ? "🔒 " : ""}{getStageTitle(stage.stage)}
+            </Text>
             
-            {stage.completed && (
+            {isLocked ? (
+              <View style={[styles.completedBadge, { backgroundColor: Colors.lightBackground }]}>
+                <Lock size={14} color={Colors.lightText} />
+                <Text style={[styles.completedText, { color: Colors.lightText }]}>Premium</Text>
+              </View>
+            ) : stage.completed && (
               <View style={styles.completedBadge}>
                 <CheckCircle size={14} color={Colors.success} fill={Colors.success} />
                 <Text style={styles.completedText}>Completed</Text>
@@ -150,17 +166,17 @@ const StageProgress: React.FC<StageProgressProps> = ({ stage, onPress }) => {
         
         <View style={styles.progressContainer}>
           <ProgressBar
-            progress={stage.progress}
-            progressColor={stageColor}
+            progress={isLocked ? 0 : stage.progress}
+            progressColor={isLocked ? Colors.lightText : stageColor}
             height={6}
-            backgroundColor={`${stageColor}20`}
+            backgroundColor={`${isLocked ? Colors.lightText : stageColor}20`}
           />
           <View style={styles.progressTextRow}>
             <Text style={styles.progressText}>
-              {completedTasks}/{totalTasks} tasks
+              {isLocked ? "Premium required" : `${completedTasks}/${totalTasks} tasks`}
             </Text>
-            <Text style={[styles.progressPercent, { color: stageColor }]}>
-              {stage.progress}%
+            <Text style={[styles.progressPercent, { color: isLocked ? Colors.lightText : stageColor }]}>
+              {isLocked ? "🔒" : `${stage.progress}%`}
             </Text>
           </View>
         </View>
@@ -192,6 +208,10 @@ const styles = StyleSheet.create({
   completedContainer: {
     borderWidth: 1,
     borderStyle: "dashed",
+  },
+  lockedContainer: {
+    borderLeftWidth: 4,
+    opacity: 0.7,
   },
   touchable: {
     padding: 12,

@@ -98,7 +98,7 @@ export default function StageDetailScreen() {
     if (task.title.includes("🎉 Receive acceptance letter")) {
       Alert.alert(
         "🎉 Congratulations!",
-        "You've been accepted! This will unlock additional tasks in your journey.",
+        "You've been accepted! This will unlock additional premium tasks in your journey. Upgrade to Premium to access post-acceptance guidance.",
         [
           { text: "Cancel", style: "cancel" },
           { 
@@ -113,6 +113,23 @@ export default function StageDetailScreen() {
                 stage: stageId,
                 timestamp: Date.now()
               });
+              
+              // Show premium upgrade prompt after a short delay
+              setTimeout(() => {
+                if (!isPremium) {
+                  Alert.alert(
+                    "🎓 Unlock Your Next Steps",
+                    "Congratulations on your acceptance! Upgrade to Premium to access exclusive post-acceptance guidance including visa applications, housing, and pre-departure checklists.",
+                    [
+                      { text: "Maybe Later", style: "cancel" },
+                      { 
+                        text: "Upgrade to Premium", 
+                        onPress: () => router.push('/premium/subscription')
+                      }
+                    ]
+                  );
+                }
+              }, 1000);
             }
           }
         ]
@@ -168,22 +185,34 @@ export default function StageDetailScreen() {
   const totalTasks = stage.tasks.length;
   const hasAcceptance = stage.hasAcceptance || stage.tasks.some(t => t.title.includes("🎉 Receive acceptance letter") && t.completed);
 
-  // Filter tasks based on acceptance status for application stage
-  const visibleTasks = stageId === "application" 
-    ? stage.tasks.filter(task => {
-        // Show acceptance-related tasks only if user has marked acceptance or if it's the acceptance task itself
-        if (task.title.includes("Compare offers") || 
-            task.title.includes("Accept offer") || 
-            task.title.includes("Decline other offers") ||
-            task.title.includes("Request official enrollment") ||
-            task.title.includes("Register for orientation") ||
-            task.title.includes("Apply for on-campus housing") ||
-            task.title.includes("Submit final transcripts")) {
-          return hasAcceptance;
-        }
-        return true;
-      })
-    : stage.tasks;
+  // Filter tasks based on acceptance status and premium status
+  const visibleTasks = stage.tasks.filter(task => {
+    // For application stage, check acceptance-related tasks
+    if (stageId === "application") {
+      const isPostAcceptanceTask = task.title.includes("Compare offers") || 
+          task.title.includes("Accept offer") || 
+          task.title.includes("Decline other offers") ||
+          task.title.includes("Request official enrollment") ||
+          task.title.includes("Register for orientation") ||
+          task.title.includes("Apply for on-campus housing") ||
+          task.title.includes("Submit final transcripts");
+      
+      if (isPostAcceptanceTask) {
+        // Only show if user has acceptance AND premium (except for the acceptance task itself)
+        return hasAcceptance && (isPremium || task.title.includes("🎉 Receive acceptance letter"));
+      }
+    }
+    
+    // For other stages, check if they require premium after acceptance
+    if (stageId === "visa" || stageId === "pre_departure" || stageId === "arrival" || stageId === "academic" || stageId === "career") {
+      // These stages require premium if user has marked acceptance
+      if (hasAcceptance && !isPremium) {
+        return false;
+      }
+    }
+    
+    return true;
+  });
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: Colors.background }]} edges={['top']}>
@@ -249,14 +278,48 @@ export default function StageDetailScreen() {
           </Card>
         )}
 
+        {/* Premium Notice for Locked Stages */}
+        {(stageId === "visa" || stageId === "pre_departure" || stageId === "arrival" || stageId === "academic" || stageId === "career") && hasAcceptance && !isPremium && (
+          <Card style={[styles.premiumNoticeCard, { backgroundColor: Colors.lightBackground, borderColor: Colors.primary }]}>
+            <View style={styles.premiumNoticeContent}>
+              <Crown size={24} color={Colors.primary} />
+              <View style={styles.premiumNoticeText}>
+                <Text style={[styles.premiumNoticeTitle, { color: Colors.primary }]}>
+                  🎓 Premium Stage Unlocked!
+                </Text>
+                <Text style={[styles.premiumNoticeDescription, { color: Colors.text }]}>
+                  This stage is now available with Premium. Upgrade to access detailed guidance for your next steps.
+                </Text>
+                <TouchableOpacity
+                  style={[styles.upgradeButton, { backgroundColor: Colors.primary }]}
+                  onPress={() => router.push('/premium/subscription')}
+                >
+                  <Text style={styles.upgradeButtonText}>Upgrade to Premium</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </Card>
+        )}
+
         <View style={styles.tasksContainer}>
-          {visibleTasks.map((task, index) => (
-            <Card key={task.id} style={[styles.taskCard, { backgroundColor: Colors.card }]}>
-              <TouchableOpacity
-                style={styles.taskHeader}
-                onPress={() => handleTaskToggle(task.id, task.completed)}
-                activeOpacity={0.7}
-              >
+          {visibleTasks.length === 0 && (stageId === "visa" || stageId === "pre_departure" || stageId === "arrival" || stageId === "academic" || stageId === "career") && hasAcceptance && !isPremium ? (
+            <Card style={[styles.emptyStateCard, { backgroundColor: Colors.card }]}>
+              <View style={styles.emptyStateContent}>
+                <Crown size={48} color={Colors.lightText} />
+                <Text style={[styles.emptyStateTitle, { color: Colors.text }]}>Premium Required</Text>
+                <Text style={[styles.emptyStateDescription, { color: Colors.lightText }]}>
+                  This stage contains premium content. Upgrade to access detailed tasks and guidance.
+                </Text>
+              </View>
+            </Card>
+          ) : (
+            visibleTasks.map((task, index) => (
+              <Card key={task.id} style={[styles.taskCard, { backgroundColor: Colors.card }]}>
+                <TouchableOpacity
+                  style={styles.taskHeader}
+                  onPress={() => handleTaskToggle(task.id, task.completed)}
+                  activeOpacity={0.7}
+                >
                 <View style={styles.taskLeft}>
                   <View style={[styles.taskCheckbox, { borderColor: task.completed ? Colors.success : Colors.border }]}>
                     {task.completed ? (
@@ -305,8 +368,9 @@ export default function StageDetailScreen() {
                   )}
                 </View>
               )}
-            </Card>
-          ))}
+              </Card>
+            ))
+          )}
         </View>
 
         {/* Stage Tips */}
@@ -365,8 +429,8 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   headerGradient: {
-    padding: 24,
-    paddingTop: 32,
+    padding: 20,
+    paddingTop: 24,
   },
   headerContent: {
     alignItems: "center",
@@ -541,5 +605,58 @@ const styles = StyleSheet.create({
   },
   bottomPadding: {
     height: 32,
+  },
+  premiumNoticeCard: {
+    marginBottom: 16,
+    borderWidth: 2,
+    borderLeftWidth: 6,
+  },
+  premiumNoticeContent: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+  },
+  premiumNoticeText: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  premiumNoticeTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    marginBottom: 4,
+  },
+  premiumNoticeDescription: {
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 12,
+  },
+  upgradeButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 16,
+    alignSelf: "flex-start",
+  },
+  upgradeButtonText: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  emptyStateCard: {
+    padding: 32,
+    alignItems: "center",
+  },
+  emptyStateContent: {
+    alignItems: "center",
+  },
+  emptyStateTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    marginTop: 16,
+    marginBottom: 8,
+    textAlign: "center",
+  },
+  emptyStateDescription: {
+    fontSize: 14,
+    textAlign: "center",
+    lineHeight: 20,
   },
 });

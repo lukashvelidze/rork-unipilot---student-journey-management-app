@@ -289,13 +289,42 @@ export default function JourneyScreen() {
             </Card>
             
             <View style={styles.stagesContainer}>
-              {journeyProgress.map((stage) => (
-                <StageProgress
-                  key={stage.stage}
-                  stage={stage}
-                  onPress={() => router.push(`/journey/${stage.stage}`)}
-                />
-              ))}
+              {journeyProgress.map((stage) => {
+                // Check if stage should be locked for non-premium users
+                const hasAcceptance = journeyProgress.some(s => 
+                  s.stage === "application" && 
+                  s.tasks.some(t => t.title.includes("🎉 Receive acceptance letter") && t.completed)
+                );
+                
+                const isLockedStage = (stage.stage === "visa" || stage.stage === "pre_departure" || 
+                                     stage.stage === "arrival" || stage.stage === "academic" || 
+                                     stage.stage === "career") && hasAcceptance && !isPremium;
+                
+                return (
+                  <StageProgress
+                    key={stage.stage}
+                    stage={stage}
+                    onPress={() => {
+                      if (isLockedStage) {
+                        Alert.alert(
+                          "🎓 Premium Required",
+                          `The ${stage.stage} stage is now available with Premium. Upgrade to access detailed guidance for your next steps.`,
+                          [
+                            { text: "Maybe Later", style: "cancel" },
+                            { 
+                              text: "Upgrade to Premium", 
+                              onPress: () => router.push('/premium/subscription')
+                            }
+                          ]
+                        );
+                      } else {
+                        router.push(`/journey/${stage.stage}`);
+                      }
+                    }}
+                    isLocked={isLockedStage}
+                  />
+                );
+              })}
             </View>
           </ScrollView>
         );
@@ -768,7 +797,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   header: {
-    padding: 16,
+    padding: 12,
     borderBottomWidth: 1,
     ...Platform.select({
       ios: {

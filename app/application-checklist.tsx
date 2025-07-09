@@ -32,13 +32,26 @@ export default function ApplicationChecklistScreen() {
     ? universityApplicationChecklist 
     : getTasksByCategory(selectedCategory as ApplicationTask['category']);
 
-  const visibleTasks = filteredTasks.filter(task => 
+  const visibleTasks = accessibleTasks.filter(task => 
     !task.requiresAcceptance || hasAcceptance || task.id === "receive-acceptance"
   );
 
   // Check if user should see premium overlay for post-acceptance tasks
   const shouldShowPremiumOverlay = hasAcceptance && !isPremium && 
     (selectedCategory === "acceptance" || selectedCategory === "all");
+
+  // Filter tasks based on premium status - only show post-acceptance tasks if premium
+  const getAccessibleTasks = () => {
+    return filteredTasks.filter(task => {
+      // If task requires acceptance and user has acceptance but no premium, hide it (except the acceptance task itself)
+      if (task.requiresAcceptance && hasAcceptance && !isPremium && task.id !== "receive-acceptance") {
+        return false;
+      }
+      return true;
+    });
+  };
+
+  const accessibleTasks = getAccessibleTasks();
 
   const handlePremiumUpgrade = () => {
     setShowPremiumModal(false);
@@ -221,7 +234,10 @@ export default function ApplicationChecklistScreen() {
               <TouchableOpacity
                 style={[styles.taskHeader, shouldBlurTask && styles.blurredTask]}
                 onPress={() => {
-                  if (shouldBlurTask) {
+                  // Check if this is a post-acceptance task that requires premium
+                  if (task.requiresAcceptance && hasAcceptance && !isPremium && task.id !== "receive-acceptance") {
+                    setShowPremiumModal(true);
+                  } else if (shouldBlurTask) {
                     setShowPremiumModal(true);
                   } else {
                     handleTaskToggle(task.id);

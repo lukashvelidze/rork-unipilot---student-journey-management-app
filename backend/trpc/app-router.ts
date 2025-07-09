@@ -1,5 +1,5 @@
 import { router } from "./create-context";
-import { hiProcedure } from "./routes/example/hi/route";
+import hiProcedure from "./routes/example/hi/route";
 import { getPostsProcedure } from "./routes/community/get-posts/route";
 import { getPostProcedure } from "./routes/community/get-post/route";
 import { createPostProcedure } from "./routes/community/create-post/route";

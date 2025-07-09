@@ -10,4 +10,4 @@ const hiProcedure = publicProcedure
     };
   });
 
-export { hiProcedure };
+export default hiProcedure;
