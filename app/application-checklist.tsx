@@ -1,9 +1,9 @@
 import React, { useState } from "react";
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert } from "react-native";
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert, Modal } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, Stack } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
-import { CheckSquare, Square, Clock, AlertCircle, Star, Trophy, ChevronDown, ChevronUp, Filter, Target } from "lucide-react-native";
+import { CheckSquare, Square, Clock, AlertCircle, Star, Trophy, ChevronDown, ChevronUp, Filter, Target, Crown, X } from "lucide-react-native";
 import { useColors } from "@/hooks/useColors";
 import Card from "@/components/Card";
 import Button from "@/components/Button";
@@ -18,6 +18,7 @@ export default function ApplicationChecklistScreen() {
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [hasAcceptance, setHasAcceptance] = useState(false);
+  const [showPremiumModal, setShowPremiumModal] = useState(false);
 
   const categories = [
     { key: "all", title: "All Tasks", count: universityApplicationChecklist.length },
@@ -34,6 +35,15 @@ export default function ApplicationChecklistScreen() {
   const visibleTasks = filteredTasks.filter(task => 
     !task.requiresAcceptance || hasAcceptance || task.id === "receive-acceptance"
   );
+
+  // Check if user should see premium overlay for post-acceptance tasks
+  const shouldShowPremiumOverlay = hasAcceptance && !isPremium && 
+    (selectedCategory === "acceptance" || selectedCategory === "all");
+
+  const handlePremiumUpgrade = () => {
+    setShowPremiumModal(false);
+    router.push('/premium');
+  };
 
   const handleTaskToggle = (taskId: string) => {
     const task = universityApplicationChecklist.find(t => t.id === taskId);
@@ -198,11 +208,21 @@ export default function ApplicationChecklistScreen() {
       {/* Tasks List */}
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.tasksContainer}>
-          {visibleTasks.map((task, index) => (
+          {visibleTasks.map((task, index) => {
+            const isPostAcceptanceTask = task.requiresAcceptance && hasAcceptance;
+            const shouldBlurTask = isPostAcceptanceTask && !isPremium;
+            
+            return (
             <Card key={task.id} style={[styles.taskCard, { backgroundColor: Colors.card }]}>
               <TouchableOpacity
-                style={styles.taskHeader}
-                onPress={() => handleTaskToggle(task.id)}
+                style={[styles.taskHeader, shouldBlurTask && styles.blurredTask]}
+                onPress={() => {
+                  if (shouldBlurTask) {
+                    setShowPremiumModal(true);
+                  } else {
+                    handleTaskToggle(task.id);
+                  }
+                }}
                 activeOpacity={0.7}
               >
                 <View style={styles.taskLeft}>
@@ -253,7 +273,14 @@ export default function ApplicationChecklistScreen() {
                 </TouchableOpacity>
               </TouchableOpacity>
               
-              {expandedTasks.has(task.id) && (
+              {shouldBlurTask && (
+                <View style={styles.premiumOverlay}>
+                  <Crown size={24} color={Colors.primary} />
+                  <Text style={[styles.premiumOverlayText, { color: Colors.primary }]}>Premium Required</Text>
+                </View>
+              )}
+              
+              {expandedTasks.has(task.id) && !shouldBlurTask && (
                 <View style={[styles.taskDetails, { backgroundColor: Colors.lightBackground }]}>
                   {/* Tips */}
                   <View style={styles.tipsSection}>
@@ -291,7 +318,8 @@ export default function ApplicationChecklistScreen() {
                 </View>
               )}
             </Card>
-          ))}
+            );
+          })}
         </View>
 
         {/* Bottom CTA */}
@@ -310,6 +338,78 @@ export default function ApplicationChecklistScreen() {
 
         <View style={styles.bottomPadding} />
       </ScrollView>
+
+      {/* Premium Overlay Modal */}
+      <Modal
+        visible={showPremiumModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowPremiumModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.premiumModal, { backgroundColor: Colors.card }]}>
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={() => setShowPremiumModal(false)}
+            >
+              <X size={24} color={Colors.lightText} />
+            </TouchableOpacity>
+            
+            <LinearGradient
+              colors={[Colors.primary, Colors.secondary]}
+              style={styles.premiumModalHeader}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
+              <Crown size={48} color={Colors.white} />
+              <Text style={styles.premiumModalTitle}>Unlock Post-Acceptance Tasks</Text>
+              <Text style={styles.premiumModalSubtitle}>
+                Congratulations on your acceptance! Upgrade to Premium to access exclusive post-acceptance guidance.
+              </Text>
+            </LinearGradient>
+            
+            <View style={styles.premiumModalContent}>
+              <Text style={[styles.premiumModalDescription, { color: Colors.text }]}>
+                Premium unlocks essential tasks for your next steps:
+              </Text>
+              
+              <View style={styles.premiumFeaturesList}>
+                <View style={styles.premiumFeature}>
+                  <Star size={16} color={Colors.primary} />
+                  <Text style={[styles.premiumFeatureText, { color: Colors.text }]}>Visa application guidance</Text>
+                </View>
+                <View style={styles.premiumFeature}>
+                  <Star size={16} color={Colors.primary} />
+                  <Text style={[styles.premiumFeatureText, { color: Colors.text }]}>Housing and accommodation tips</Text>
+                </View>
+                <View style={styles.premiumFeature}>
+                  <Star size={16} color={Colors.primary} />
+                  <Text style={[styles.premiumFeatureText, { color: Colors.text }]}>Financial planning resources</Text>
+                </View>
+                <View style={styles.premiumFeature}>
+                  <Star size={16} color={Colors.primary} />
+                  <Text style={[styles.premiumFeatureText, { color: Colors.text }]}>Pre-departure checklists</Text>
+                </View>
+              </View>
+              
+              <Button
+                title="Upgrade to Premium"
+                onPress={handlePremiumUpgrade}
+                style={[styles.premiumUpgradeButton, { backgroundColor: Colors.primary }]}
+                icon={<Crown size={20} color={Colors.white} />}
+                fullWidth
+              />
+              
+              <TouchableOpacity
+                onPress={() => setShowPremiumModal(false)}
+                style={styles.premiumModalClose}
+              >
+                <Text style={[styles.premiumModalCloseText, { color: Colors.lightText }]}>Maybe Later</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -322,29 +422,29 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   headerGradient: {
-    padding: 24,
-    paddingTop: 32,
+    padding: 16,
+    paddingTop: 20,
   },
   headerContent: {
     alignItems: "center",
   },
   headerTitle: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: "700",
     color: "#FFFFFF",
-    marginTop: 12,
-    marginBottom: 8,
+    marginTop: 8,
+    marginBottom: 4,
     textAlign: "center",
   },
   headerSubtitle: {
-    fontSize: 16,
+    fontSize: 14,
     color: "rgba(255, 255, 255, 0.9)",
     textAlign: "center",
-    marginBottom: 24,
+    marginBottom: 16,
   },
   progressSection: {
     width: "100%",
-    marginBottom: 16,
+    marginBottom: 12,
   },
   progressBar: {
     height: 8,
@@ -444,11 +544,15 @@ const styles = StyleSheet.create({
   taskCard: {
     marginBottom: 12,
     borderRadius: 12,
+    position: "relative",
   },
   taskHeader: {
     flexDirection: "row",
     alignItems: "flex-start",
     padding: 16,
+  },
+  blurredTask: {
+    opacity: 0.6,
   },
   taskLeft: {
     flexDirection: "row",
@@ -595,5 +699,100 @@ const styles = StyleSheet.create({
   },
   bottomPadding: {
     height: 32,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.7)",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 20,
+  },
+  premiumModal: {
+    width: "100%",
+    maxWidth: 400,
+    borderRadius: 20,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  closeButton: {
+    position: "absolute",
+    top: 16,
+    right: 16,
+    zIndex: 10,
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    borderRadius: 20,
+    padding: 8,
+  },
+  premiumModalHeader: {
+    alignItems: "center",
+    paddingVertical: 32,
+    paddingHorizontal: 24,
+  },
+  premiumModalTitle: {
+    fontSize: 24,
+    fontWeight: "700",
+    color: "#FFFFFF",
+    marginTop: 16,
+    marginBottom: 8,
+    textAlign: "center",
+  },
+  premiumModalSubtitle: {
+    fontSize: 16,
+    color: "rgba(255, 255, 255, 0.9)",
+    textAlign: "center",
+    lineHeight: 22,
+  },
+  premiumModalContent: {
+    padding: 24,
+  },
+  premiumModalDescription: {
+    fontSize: 16,
+    marginBottom: 20,
+    textAlign: "center",
+    lineHeight: 22,
+  },
+  premiumFeaturesList: {
+    marginBottom: 24,
+    gap: 12,
+  },
+  premiumFeature: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  premiumFeatureText: {
+    fontSize: 14,
+    flex: 1,
+  },
+  premiumUpgradeButton: {
+    marginBottom: 16,
+  },
+  premiumModalClose: {
+    alignItems: "center",
+    paddingVertical: 8,
+  },
+  premiumModalCloseText: {
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  premiumOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(255, 255, 255, 0.9)",
+    justifyContent: "center",
+    alignItems: "center",
+    borderRadius: 12,
+    gap: 8,
+  },
+  premiumOverlayText: {
+    fontSize: 14,
+    fontWeight: "600",
   },
 });

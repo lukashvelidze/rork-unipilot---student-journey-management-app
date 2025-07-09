@@ -51,7 +51,7 @@ export default function PaymentSuccessScreen() {
         }}
       />
       
-      <CelebrationAnimation visible={true} />
+      <CelebrationAnimation visible={true} onAnimationFinish={() => {}} />
       
       <LinearGradient
         colors={[Colors.primary, Colors.secondary]}

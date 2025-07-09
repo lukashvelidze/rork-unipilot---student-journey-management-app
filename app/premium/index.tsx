@@ -446,8 +446,9 @@ export default function PremiumScreen() {
           loading={paddleLoading}
           disabled={paddleLoading || !isInitialized}
           fullWidth
-          style={[styles.subscribeButton, { backgroundColor: '#FF4444' }]}
-          icon={<CreditCard size={20} color="#FFFFFF" />}
+          style={[styles.subscribeButton, { backgroundColor: Colors.error }]}
+          textStyle={{ color: Colors.white }}
+          icon={<CreditCard size={20} color={Colors.white} />}
         />
         
         {Platform.OS !== 'web' && !isInitialized && (
