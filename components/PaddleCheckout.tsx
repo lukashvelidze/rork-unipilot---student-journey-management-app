@@ -1,9 +1,13 @@
-import React, { useState, useRef } from "react";
-import { View, Modal, TouchableOpacity, Text, StyleSheet, Platform, Alert } from "react-native";
+import React, { useState, useRef, useEffect } from "react";
+import { View, Modal, TouchableOpacity, Text, StyleSheet, Platform, Alert, Dimensions } from "react-native";
 import { WebView } from "react-native-webview";
-import { X } from "lucide-react-native";
+import { X, Shield, Zap, Crown } from "lucide-react-native";
 import Colors from "@/constants/colors";
 import { usePaddle } from "@/hooks/usePaddle";
+import { createCheckoutUrl } from "@/lib/paddle";
+import { useUserStore } from "@/store/userStore";
+
+const { width, height } = Dimensions.get('window');
 
 interface PaddleCheckoutProps {
   visible: boolean;
@@ -12,6 +16,7 @@ interface PaddleCheckoutProps {
   onCancel: () => void;
   customerEmail?: string;
   userId?: string;
+  priceId?: string;
 }
 
 export default function PaddleCheckout({
@@ -19,238 +24,45 @@ export default function PaddleCheckout({
   onClose,
   onSuccess,
   onCancel,
-  customerEmail = "user@example.com",
+  customerEmail = "",
   userId = "anonymous",
+  priceId = "pri_01jyk3h7eec66x5m7h31p66r8w",
 }: PaddleCheckoutProps) {
-  const { openCheckout, isReady } = usePaddle();
+  const { openCheckout, isReady, isLoading } = usePaddle();
   const webViewRef = useRef<WebView>(null);
+  const [checkoutStarted, setCheckoutStarted] = useState(false);
+  const [paymentProcessing, setPaymentProcessing] = useState(false);
+  const { user } = useUserStore();
 
-  // Web implementation using Paddle.js
-  const handleWebCheckout = () => {
+  // For web platform, use direct Paddle integration
+  const handleWebCheckout = async () => {
     if (!isReady) {
       Alert.alert("Error", "Payment system is not ready. Please try again.");
       return;
     }
 
-    openCheckout({
-      customer: {
-        email: customerEmail,
-      },
-      customData: {
-        userId: userId,
-      },
-      settings: {
-        displayMode: "overlay",
-        theme: "light",
-        successUrl: "https://unipilot.app/success",
-      },
-    });
+    setCheckoutStarted(true);
+    setPaymentProcessing(true);
 
-    // Listen for Paddle events
-    if (typeof window !== 'undefined') {
-      const handlePaddleEvent = (event: any) => {
-        if (event.name === 'checkout.completed') {
-          onSuccess();
-          onClose();
-        } else if (event.name === 'checkout.closed') {
-          onCancel();
-          onClose();
-        }
-      };
-
-      // Add event listener (this is pseudo-code, actual implementation may vary)
-      // paddle.on('checkout.completed', handlePaddleEvent);
-      // paddle.on('checkout.closed', handlePaddleEvent);
+    try {
+      await openCheckout({
+        priceId,
+        customer: { email: customerEmail || user?.email || '' },
+        customData: { userId: userId || user?.id || 'anonymous' },
+      });
+    } catch (error) {
+      console.error('Web checkout error:', error);
+      setPaymentProcessing(false);
+      setCheckoutStarted(false);
     }
   };
 
-  // Mobile implementation using WebView with embedded Paddle.js
-  const paddleHtml = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="utf-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1">
-      <title>UniPilot Premium Checkout</title>
-      <script src="https://cdn.paddle.com/paddle/v2/paddle.js"></script>
-      <style>
-        body {
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-          margin: 0;
-          padding: 20px;
-          background-color: #f8f9fa;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          min-height: 100vh;
-        }
-        .container {
-          background: white;
-          border-radius: 12px;
-          padding: 32px;
-          box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-          text-align: center;
-          max-width: 400px;
-          width: 100%;
-        }
-        .logo {
-          font-size: 24px;
-          font-weight: bold;
-          color: #6366f1;
-          margin-bottom: 8px;
-        }
-        .title {
-          font-size: 20px;
-          font-weight: 600;
-          color: #1f2937;
-          margin-bottom: 8px;
-        }
-        .subtitle {
-          color: #6b7280;
-          margin-bottom: 24px;
-        }
-        .price {
-          font-size: 32px;
-          font-weight: bold;
-          color: #1f2937;
-          margin-bottom: 24px;
-        }
-        .checkout-btn {
-          background: #6366f1;
-          color: white;
-          border: none;
-          padding: 16px 32px;
-          border-radius: 8px;
-          font-size: 16px;
-          font-weight: 600;
-          cursor: pointer;
-          width: 100%;
-          margin-bottom: 16px;
-        }
-        .checkout-btn:hover {
-          background: #5856eb;
-        }
-        .checkout-btn:disabled {
-          background: #d1d5db;
-          cursor: not-allowed;
-        }
-        .cancel-btn {
-          background: transparent;
-          color: #6b7280;
-          border: 1px solid #d1d5db;
-          padding: 12px 24px;
-          border-radius: 8px;
-          font-size: 14px;
-          cursor: pointer;
-          width: 100%;
-        }
-        .loading {
-          color: #6b7280;
-          font-style: italic;
-        }
-      </style>
-    </head>
-    <body>
-      <div class="container">
-        <div class="logo">👑 UniPilot</div>
-        <div class="title">Premium Subscription</div>
-        <div class="subtitle">Unlock all premium features</div>
-        <div class="price">$4.99/month</div>
-        
-        <button id="checkout-btn" class="checkout-btn" onclick="startCheckout()">
-          Subscribe Now
-        </button>
-        
-        <button class="cancel-btn" onclick="cancelCheckout()">
-          Cancel
-        </button>
-        
-        <div id="status" class="loading" style="display: none;">
-          Initializing payment system...
-        </div>
-      </div>
-
-      <script>
-        let paddle;
-        let isReady = false;
-
-        // Initialize Paddle
-        Paddle.Setup({
-          environment: 'sandbox',
-          token: 'test_e8c70f35e280794bf86dfec199c'
-        });
-
-        Paddle.Initialize({
-          environment: 'sandbox',
-          token: 'test_e8c70f35e280794bf86dfec199c'
-        }).then((p) => {
-          console.log('✅ Paddle initialized');
-          paddle = p;
-          isReady = true;
-          document.getElementById('status').style.display = 'none';
-        }).catch((error) => {
-          console.error('❌ Paddle initialization failed:', error);
-          document.getElementById('status').textContent = 'Payment system unavailable';
-          document.getElementById('checkout-btn').disabled = true;
-        });
-
-        function startCheckout() {
-          if (!isReady || !paddle) {
-            alert('❌ Payment system not ready yet');
-            return;
-          }
-
-          document.getElementById('checkout-btn').disabled = true;
-          document.getElementById('checkout-btn').textContent = 'Processing...';
-
-          paddle.Checkout.open({
-            items: [{ 
-              priceId: 'pri_01jyk3h7eec66x5m7h31p66r8w', 
-              quantity: 1 
-            }],
-            customer: {
-              email: '${customerEmail}'
-            },
-            customData: {
-              userId: '${userId}'
-            },
-            settings: {
-              displayMode: 'overlay',
-              theme: 'light',
-              successUrl: 'https://unipilot.app/success'
-            }
-          });
-
-          // Listen for checkout events
-          paddle.Checkout.onComplete((data) => {
-            console.log('✅ Checkout completed:', data);
-            window.ReactNativeWebView?.postMessage(JSON.stringify({
-              type: 'checkout_success',
-              data: data
-            }));
-          });
-
-          paddle.Checkout.onClose(() => {
-            console.log('❌ Checkout closed');
-            window.ReactNativeWebView?.postMessage(JSON.stringify({
-              type: 'checkout_cancelled'
-            }));
-          });
-        }
-
-        function cancelCheckout() {
-          window.ReactNativeWebView?.postMessage(JSON.stringify({
-            type: 'checkout_cancelled'
-          }));
-        }
-
-        // Show loading initially
-        document.getElementById('status').style.display = 'block';
-      </script>
-    </body>
-    </html>
-  `;
+  // Generate checkout URL for mobile WebView
+  const checkoutUrl = createCheckoutUrl({
+    priceId,
+    customerEmail: customerEmail || user?.email || '',
+    userId: userId || user?.id || 'anonymous',
+  });
 
   const handleWebViewMessage = (event: any) => {
     try {
@@ -259,13 +71,26 @@ export default function PaddleCheckout({
       switch (message.type) {
         case 'checkout_success':
           console.log('✅ Checkout successful:', message.data);
+          setPaymentProcessing(false);
           onSuccess();
           onClose();
           break;
+        case 'checkout_closed':
         case 'checkout_cancelled':
           console.log('❌ Checkout cancelled');
+          setPaymentProcessing(false);
+          setCheckoutStarted(false);
           onCancel();
-          onClose();
+          break;
+        case 'checkout_error':
+          console.error('❌ Checkout error:', message.error);
+          setPaymentProcessing(false);
+          setCheckoutStarted(false);
+          Alert.alert(
+            'Payment Error',
+            'There was an issue processing your payment. Please try again.',
+            [{ text: 'OK' }]
+          );
           break;
         default:
           console.log('Unknown message:', message);
@@ -275,18 +100,89 @@ export default function PaddleCheckout({
     }
   };
 
-  if (Platform.OS === 'web') {
-    // On web, trigger Paddle.js directly
-    React.useEffect(() => {
-      if (visible && isReady) {
-        handleWebCheckout();
-      }
-    }, [visible, isReady]);
+  // Reset state when modal is closed
+  useEffect(() => {
+    if (!visible) {
+      setCheckoutStarted(false);
+      setPaymentProcessing(false);
+    }
+  }, [visible]);
 
-    return null; // Paddle overlay handles the UI on web
+  if (Platform.OS === 'web') {
+    // Web implementation with native Paddle checkout
+    return (
+      <Modal
+        visible={visible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={onClose}
+      >
+        <View style={styles.webOverlay}>
+          <View style={styles.webContainer}>
+            <View style={styles.webHeader}>
+              <Text style={styles.webTitle}>UniPilot Premium</Text>
+              <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+                <X size={24} color={Colors.text} />
+              </TouchableOpacity>
+            </View>
+            
+            {!checkoutStarted ? (
+              <View style={styles.webContent}>
+                <View style={styles.premiumBadge}>
+                  <Crown size={32} color={Colors.premium} />
+                </View>
+                
+                <Text style={styles.webSubtitle}>
+                  Unlock premium features and accelerate your study abroad journey
+                </Text>
+                
+                <View style={styles.featuresList}>
+                  <View style={styles.feature}>
+                    <Zap size={16} color={Colors.success} />
+                    <Text style={styles.featureText}>Unlimited AI assistance</Text>
+                  </View>
+                  <View style={styles.feature}>
+                    <Shield size={16} color={Colors.success} />
+                    <Text style={styles.featureText}>Priority support</Text>
+                  </View>
+                  <View style={styles.feature}>
+                    <Zap size={16} color={Colors.success} />
+                    <Text style={styles.featureText}>Advanced analytics</Text>
+                  </View>
+                </View>
+                
+                <View style={styles.priceContainer}>
+                  <Text style={styles.price}>$4.99</Text>
+                  <Text style={styles.period}>/month</Text>
+                </View>
+                
+                <TouchableOpacity
+                  style={[styles.checkoutButton, { opacity: isReady ? 1 : 0.5 }]}
+                  onPress={handleWebCheckout}
+                  disabled={!isReady || isLoading}
+                >
+                  <Text style={styles.checkoutButtonText}>
+                    {isLoading ? 'Loading...' : 'Start Premium Subscription'}
+                  </Text>
+                </TouchableOpacity>
+                
+                <Text style={styles.secureText}>🔒 Secure payment powered by Paddle</Text>
+              </View>
+            ) : (
+              <View style={styles.processingContainer}>
+                <View style={styles.spinner} />
+                <Text style={styles.processingText}>
+                  {paymentProcessing ? 'Processing payment...' : 'Loading checkout...'}
+                </Text>
+              </View>
+            )}
+          </View>
+        </View>
+      </Modal>
+    );
   }
 
-  // Mobile implementation with WebView
+  // Mobile implementation with enhanced WebView
   return (
     <Modal
       visible={visible}
@@ -296,7 +192,7 @@ export default function PaddleCheckout({
     >
       <View style={styles.container}>
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Complete Your Subscription</Text>
+          <Text style={styles.headerTitle}>Premium Subscription</Text>
           <TouchableOpacity style={styles.closeButton} onPress={onClose}>
             <X size={24} color={Colors.text} />
           </TouchableOpacity>
@@ -304,7 +200,7 @@ export default function PaddleCheckout({
         
         <WebView
           ref={webViewRef}
-          source={{ html: paddleHtml }}
+          source={{ uri: checkoutUrl }}
           style={styles.webview}
           onMessage={handleWebViewMessage}
           javaScriptEnabled={true}
@@ -314,6 +210,16 @@ export default function PaddleCheckout({
           mixedContentMode="compatibility"
           allowsInlineMediaPlayback={true}
           mediaPlaybackRequiresUserAction={false}
+          onLoadStart={() => console.log('WebView loading started')}
+          onLoadEnd={() => console.log('WebView loading ended')}
+          onError={(error) => {
+            console.error('WebView error:', error);
+            Alert.alert(
+              'Loading Error',
+              'Failed to load payment form. Please try again.',
+              [{ text: 'OK', onPress: onClose }]
+            );
+          }}
         />
       </View>
     </Modal>
@@ -341,8 +247,142 @@ const styles = StyleSheet.create({
   },
   closeButton: {
     padding: 8,
+    borderRadius: 20,
+    backgroundColor: Colors.lightBackground,
   },
   webview: {
     flex: 1,
+  },
+  // Web-specific styles
+  webOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  webContainer: {
+    backgroundColor: Colors.background,
+    borderRadius: 20,
+    maxWidth: 480,
+    width: '100%',
+    maxHeight: '90%',
+    overflow: 'hidden',
+    ...Platform.select({
+      web: {
+        boxShadow: '0 20px 40px rgba(0, 0, 0, 0.3)',
+      },
+    }),
+  },
+  webHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  webTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: Colors.text,
+  },
+  webContent: {
+    padding: 30,
+    alignItems: 'center',
+  },
+  premiumBadge: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: Colors.premiumBackground,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  webSubtitle: {
+    fontSize: 16,
+    color: Colors.lightText,
+    textAlign: 'center',
+    lineHeight: 24,
+    marginBottom: 30,
+  },
+  featuresList: {
+    alignSelf: 'stretch',
+    marginBottom: 30,
+  },
+  feature: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  featureText: {
+    fontSize: 14,
+    color: Colors.text,
+    marginLeft: 10,
+  },
+  priceContainer: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    marginBottom: 30,
+  },
+  price: {
+    fontSize: 48,
+    fontWeight: '800',
+    color: Colors.primary,
+  },
+  period: {
+    fontSize: 18,
+    color: Colors.lightText,
+    marginLeft: 4,
+  },
+  checkoutButton: {
+    backgroundColor: Colors.primary,
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+    borderRadius: 12,
+    alignSelf: 'stretch',
+    marginBottom: 15,
+    ...Platform.select({
+      web: {
+        cursor: 'pointer',
+      },
+    }),
+  },
+  checkoutButtonText: {
+    color: Colors.white,
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  secureText: {
+    fontSize: 12,
+    color: Colors.mutedText,
+    textAlign: 'center',
+  },
+  processingContainer: {
+    padding: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 200,
+  },
+  spinner: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 4,
+    borderColor: Colors.lightBackground,
+    borderTopColor: Colors.primary,
+    marginBottom: 20,
+    ...Platform.select({
+      web: {
+        animation: 'spin 1s linear infinite',
+      },
+    }),
+  },
+  processingText: {
+    fontSize: 16,
+    color: Colors.lightText,
+    textAlign: 'center',
   },
 });

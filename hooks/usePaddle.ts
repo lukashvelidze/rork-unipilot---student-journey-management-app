@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Platform, Alert } from 'react-native';
 import { Paddle } from '@paddle/paddle-js';
 import { useRouter } from 'expo-router';
-import { initializePaddleService, openPaddleCheckout } from '@/lib/paddle';
+import { initializePaddleService, openEmbeddedCheckout } from '@/lib/paddle';
 import { useUserStore } from '@/store/userStore';
 
 export const usePaddle = () => {
@@ -14,16 +14,12 @@ export const usePaddle = () => {
 
   useEffect(() => {
     const initPaddle = async () => {
-      if (Platform.OS === 'web') {
-        setIsInitialized(true);
-        return;
-      }
-
       try {
         setIsLoading(true);
         const paddleInstance = await initializePaddleService();
         setPaddle(paddleInstance);
         setIsInitialized(true);
+        console.log('✅ Paddle hook initialized for', Platform.OS);
       } catch (error) {
         console.error('Failed to initialize Paddle:', error);
       } finally {
@@ -38,22 +34,30 @@ export const usePaddle = () => {
     try {
       setIsLoading(true);
       
-      if (Platform.OS === 'web') {
-        // On web, open external checkout
-        const checkoutUrl = 'https://lukashvelidze.github.io/unipilot/';
-        window.open(checkoutUrl, '_blank');
-        return;
-      }
+      // Use embedded checkout for both web and mobile
+      const result = await openEmbeddedCheckout('paddle-checkout', {
+        priceId: typeof options === 'string' ? options : options?.priceId,
+        customerEmail: options?.customer?.email || '',
+        userId: options?.customData?.userId || 'anonymous',
+        onSuccess: (data) => {
+          console.log('✅ Payment successful:', data);
+          setPremium(true);
+          router.push('/payment-success');
+        },
+        onError: (error) => {
+          console.error('❌ Payment error:', error);
+          Alert.alert(
+            'Payment Error',
+            'There was an issue processing your payment. Please try again.',
+            [{ text: 'OK' }]
+          );
+        },
+        onClose: () => {
+          console.log('❌ Checkout closed by user');
+        }
+      });
 
-      // For mobile, use the options if provided, otherwise use default priceId
-      const priceId = typeof options === 'string' ? options : options?.priceId;
-      await openPaddleCheckout(priceId);
-      
-      // For demo purposes, simulate successful payment after checkout opens
-      // In a real app, you'd handle this through webhooks or checkout events
-      setTimeout(() => {
-        router.push('/payment-success');
-      }, 3000);
+      return result;
       
     } catch (error) {
       console.error('Checkout error:', error);
