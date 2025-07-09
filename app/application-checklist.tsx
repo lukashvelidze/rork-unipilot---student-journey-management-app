@@ -42,7 +42,7 @@ export default function ApplicationChecklistScreen() {
 
   const handlePremiumUpgrade = () => {
     setShowPremiumModal(false);
-    router.push('/premium');
+    router.push('/premium/subscription');
   };
 
   const handleTaskToggle = (taskId: string) => {
@@ -62,7 +62,11 @@ export default function ApplicationChecklistScreen() {
               newCompleted.add(taskId);
               setCompletedTasks(newCompleted);
               setHasAcceptance(true);
-              Alert.alert("Success!", "Acceptance tasks have been unlocked!");
+              
+              // Show premium subscription prompt after acceptance
+              setTimeout(() => {
+                setShowPremiumModal(true);
+              }, 500);
             }
           }
         ]
@@ -419,39 +423,39 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    marginBottom: 16,
+    marginBottom: 12,
   },
   headerGradient: {
-    padding: 16,
-    paddingTop: 20,
+    padding: 12,
+    paddingTop: 16,
   },
   headerContent: {
     alignItems: "center",
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: "700",
     color: "#FFFFFF",
-    marginTop: 8,
-    marginBottom: 4,
+    marginTop: 6,
+    marginBottom: 3,
     textAlign: "center",
   },
   headerSubtitle: {
-    fontSize: 14,
+    fontSize: 13,
     color: "rgba(255, 255, 255, 0.9)",
     textAlign: "center",
-    marginBottom: 16,
+    marginBottom: 12,
   },
   progressSection: {
     width: "100%",
-    marginBottom: 12,
+    marginBottom: 8,
   },
   progressBar: {
-    height: 8,
+    height: 6,
     backgroundColor: "rgba(255, 255, 255, 0.3)",
-    borderRadius: 4,
+    borderRadius: 3,
     overflow: "hidden",
-    marginBottom: 8,
+    marginBottom: 6,
   },
   progressFill: {
     height: "100%",
@@ -463,11 +467,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   progressText: {
-    fontSize: 14,
+    fontSize: 13,
     color: "rgba(255, 255, 255, 0.9)",
   },
   progressPercentage: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "700",
     color: "#FFFFFF",
   },
@@ -475,15 +479,15 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "rgba(255, 255, 255, 0.2)",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
   },
   completedText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "600",
     color: "#FFFFFF",
-    marginLeft: 8,
+    marginLeft: 6,
   },
   categoryFilter: {
     paddingVertical: 12,

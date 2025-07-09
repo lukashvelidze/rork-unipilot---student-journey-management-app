@@ -768,7 +768,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   header: {
-    padding: 20,
+    padding: 16,
     borderBottomWidth: 1,
     ...Platform.select({
       ios: {
@@ -783,24 +783,24 @@ const styles = StyleSheet.create({
     }),
   },
   title: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: "700",
-    marginBottom: 16,
+    marginBottom: 12,
   },
   progressContainer: {
-    marginTop: 8,
+    marginTop: 6,
   },
   progressTextContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginTop: 8,
+    marginTop: 6,
   },
   progressLabel: {
-    fontSize: 14,
+    fontSize: 13,
   },
   progressText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "700",
   },
   tabs: {

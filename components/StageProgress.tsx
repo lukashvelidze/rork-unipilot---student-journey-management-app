@@ -172,17 +172,17 @@ const StageProgress: React.FC<StageProgressProps> = ({ stage, onPress }) => {
 const styles = StyleSheet.create({
   container: {
     backgroundColor: Colors.white,
-    borderRadius: 16,
-    marginBottom: 16,
+    borderRadius: 12,
+    marginBottom: 12,
     ...Platform.select({
       ios: {
         shadowColor: "#000",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 6,
       },
       android: {
-        elevation: 3,
+        elevation: 2,
       },
     }),
   },
@@ -194,13 +194,13 @@ const styles = StyleSheet.create({
     borderStyle: "dashed",
   },
   touchable: {
-    padding: 16,
+    padding: 12,
   },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 12,
+    marginBottom: 8,
   },
   titleContainer: {
     flexDirection: "row",
@@ -214,7 +214,7 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   title: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "600",
     color: Colors.text,
     flex: 1,
@@ -235,20 +235,20 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   progressContainer: {
-    marginTop: 8,
+    marginTop: 6,
   },
   progressTextRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginTop: 8,
+    marginTop: 6,
   },
   progressText: {
-    fontSize: 14,
+    fontSize: 13,
     color: Colors.lightText,
   },
   progressPercent: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "700",
   },
 });
