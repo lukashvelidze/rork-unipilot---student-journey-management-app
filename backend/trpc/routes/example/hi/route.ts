@@ -11,4 +11,3 @@ const hiProcedure = publicProcedure
   });
 
 export { hiProcedure };
-  });
