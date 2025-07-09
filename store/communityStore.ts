@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { Post, Topic } from "@/types/community";
+import { Post, Topic, Comment } from "@/types/community";
 
 interface CommunityState {
   posts: Post[];
@@ -14,7 +14,7 @@ interface CommunityState {
   deletePost: (postId: string) => void;
   likePost: (postId: string) => void;
   unlikePost: (postId: string) => void;
-  addComment: (postId: string, comment: any) => void;
+  addComment: (postId: string, comment: Comment) => void;
   likeComment: (postId: string, commentId: string) => void;
   unlikeComment: (postId: string, commentId: string) => void;
   filterByTopic: (topic: Topic | null) => void;
@@ -88,48 +88,48 @@ export const useCommunityStore = create<CommunityState>()((set, get) => ({
     state.setPosts(updatedPosts);
   },
   
-  addComment: (postId, comment) => {
-    const state = get();
-    const updatedPosts = state.posts.map((post) => 
-      post.id === postId 
-        ? { ...post, comments: [...post.comments, comment] } 
+  addComment: (postId: string, comment: Comment) => {
+    const { posts, setPosts } = get();
+    const updatedPosts = posts.map((post) =>
+      post.id === postId
+        ? { ...post, comments: [...(Array.isArray(post.comments) ? post.comments : []), comment] }
         : post
     );
-    state.setPosts(updatedPosts);
+    setPosts(updatedPosts);
   },
   
-  likeComment: (postId, commentId) => {
-    const state = get();
-    const updatedPosts = state.posts.map((post) => 
-      post.id === postId 
+  likeComment: (postId: string, commentId: string) => {
+    const { posts, setPosts } = get();
+    const updatedPosts = posts.map((post) =>
+      post.id === postId
         ? {
             ...post,
-            comments: post.comments.map((comment) => 
-              comment.id === commentId 
-                ? { ...comment, likes: comment.likes + 1, isLiked: true } 
+            comments: Array.isArray(post.comments) ? post.comments.map((comment) =>
+              comment.id === commentId
+                ? { ...comment, isLiked: !comment.isLiked, likes: comment.isLiked ? comment.likes - 1 : comment.likes + 1 }
                 : comment
-            ),
-          } 
+            ) : [],
+          }
         : post
     );
-    state.setPosts(updatedPosts);
+    setPosts(updatedPosts);
   },
   
-  unlikeComment: (postId, commentId) => {
-    const state = get();
-    const updatedPosts = state.posts.map((post) => 
-      post.id === postId 
+  unlikeComment: (postId: string, commentId: string) => {
+    const { posts, setPosts } = get();
+    const updatedPosts = posts.map((post) =>
+      post.id === postId
         ? {
             ...post,
-            comments: post.comments.map((comment) => 
-              comment.id === commentId 
-                ? { ...comment, likes: Math.max(0, comment.likes - 1), isLiked: false } 
+            comments: Array.isArray(post.comments) ? post.comments.map((comment) =>
+              comment.id === commentId
+                ? { ...comment, isLiked: false, likes: Math.max(0, comment.likes - 1) }
                 : comment
-            ),
-          } 
+            ) : [],
+          }
         : post
     );
-    state.setPosts(updatedPosts);
+    setPosts(updatedPosts);
   },
   
   filterByTopic: (topic) => {

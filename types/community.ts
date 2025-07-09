@@ -25,12 +25,17 @@ export interface Post {
   author: Author;
   topic: Topic;
   likes: number;
-  comments: number;
+  comments: Comment[];
   createdAt: string;
   tags: string[];
   isPinned?: boolean;
   isLiked: boolean;
   imageUrl?: string;
+  // Additional properties used in the app
+  userId?: string;
+  userName?: string;
+  userAvatar?: string;
+  isPremium?: boolean;
 }
 
 export interface CommunityStats {

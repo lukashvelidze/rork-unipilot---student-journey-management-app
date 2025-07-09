@@ -34,7 +34,7 @@ export const usePaddle = () => {
     initPaddle();
   }, []);
 
-  const openCheckout = async (priceId?: string) => {
+  const openCheckout = async (options?: any) => {
     try {
       setIsLoading(true);
       
@@ -45,6 +45,8 @@ export const usePaddle = () => {
         return;
       }
 
+      // For mobile, use the options if provided, otherwise use default priceId
+      const priceId = typeof options === 'string' ? options : options?.priceId;
       await openPaddleCheckout(priceId);
       
       // For demo purposes, simulate successful payment after checkout opens
@@ -69,6 +71,7 @@ export const usePaddle = () => {
     paddle,
     isLoading,
     isInitialized,
+    isReady: isInitialized,
     openCheckout,
   };
 };

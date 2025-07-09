@@ -166,7 +166,7 @@ const Button: React.FC<ButtonProps> = ({
         getSizeStyle(),
         fullWidth && styles.fullWidth,
         style,
-      ]}
+      ] as ViewStyle[]}
       activeOpacity={0.7}
       // Ensure button is touchable and above other elements
       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
