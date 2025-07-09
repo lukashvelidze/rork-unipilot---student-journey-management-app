@@ -32,14 +32,6 @@ export default function ApplicationChecklistScreen() {
     ? universityApplicationChecklist 
     : getTasksByCategory(selectedCategory as ApplicationTask['category']);
 
-  const visibleTasks = accessibleTasks.filter(task => 
-    !task.requiresAcceptance || hasAcceptance || task.id === "receive-acceptance"
-  );
-
-  // Check if user should see premium overlay for post-acceptance tasks
-  const shouldShowPremiumOverlay = hasAcceptance && !isPremium && 
-    (selectedCategory === "acceptance" || selectedCategory === "all");
-
   // Filter tasks based on premium status - only show post-acceptance tasks if premium
   const getAccessibleTasks = () => {
     return filteredTasks.filter(task => {
@@ -52,6 +44,14 @@ export default function ApplicationChecklistScreen() {
   };
 
   const accessibleTasks = getAccessibleTasks();
+  
+  const visibleTasks = accessibleTasks.filter(task => 
+    !task.requiresAcceptance || hasAcceptance || task.id === "receive-acceptance"
+  );
+
+  // Check if user should see premium overlay for post-acceptance tasks
+  const shouldShowPremiumOverlay = hasAcceptance && !isPremium && 
+    (selectedCategory === "acceptance" || selectedCategory === "all");
 
   const handlePremiumUpgrade = () => {
     setShowPremiumModal(false);
