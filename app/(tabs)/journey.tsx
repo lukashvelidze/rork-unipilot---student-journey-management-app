@@ -1110,17 +1110,17 @@ const styles = StyleSheet.create({
   },
   memoriesHeader: {
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 8,
     borderBottomWidth: 1,
   },
   memoriesHeaderTop: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 8,
+    marginBottom: 4,
   },
   memoriesTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: "700",
   },
   filterButton: {

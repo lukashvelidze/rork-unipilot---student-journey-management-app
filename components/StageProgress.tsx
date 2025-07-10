@@ -189,7 +189,7 @@ const styles = StyleSheet.create({
   container: {
     backgroundColor: Colors.white,
     borderRadius: 12,
-    marginBottom: 12,
+    marginBottom: 8,
     ...Platform.select({
       ios: {
         shadowColor: "#000",
@@ -214,7 +214,7 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   touchable: {
-    padding: 12,
+    padding: 10,
   },
   header: {
     flexDirection: "row",

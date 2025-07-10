@@ -33,17 +33,13 @@ export default function ApplicationChecklistScreen() {
     : getTasksByCategory(selectedCategory as ApplicationTask['category']);
 
   // Filter tasks based on premium status - only show post-acceptance tasks if premium
-  const getAccessibleTasks = () => {
-    return filteredTasks.filter(task => {
-      // If task requires acceptance and user has acceptance but no premium, hide it (except the acceptance task itself)
-      if (task.requiresAcceptance && hasAcceptance && !isPremium && task.id !== "receive-acceptance") {
-        return false;
-      }
-      return true;
-    });
-  };
-
-  const accessibleTasks = getAccessibleTasks();
+  const accessibleTasks = filteredTasks.filter(task => {
+    // If task requires acceptance and user has acceptance but no premium, hide it (except the acceptance task itself)
+    if (task.requiresAcceptance && hasAcceptance && !isPremium && task.id !== "receive-acceptance") {
+      return false;
+    }
+    return true;
+  });
   
   const visibleTasks = accessibleTasks.filter(task => 
     !task.requiresAcceptance || hasAcceptance || task.id === "receive-acceptance"
@@ -138,7 +134,7 @@ export default function ApplicationChecklistScreen() {
           style={styles.headerGradient}
         >
           <View style={styles.headerContent}>
-            <Target size={32} color="#FFFFFF" />
+            <Target size={24} color="#FFFFFF" />
             <Text style={styles.headerTitle}>University Application Checklist</Text>
             <Text style={styles.headerSubtitle}>
               Complete guide to university applications
@@ -442,8 +438,8 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   headerGradient: {
-    padding: 12,
-    paddingTop: 16,
+    padding: 16,
+    paddingTop: 20,
   },
   headerContent: {
     alignItems: "center",
@@ -464,7 +460,7 @@ const styles = StyleSheet.create({
   },
   progressSection: {
     width: "100%",
-    marginBottom: 8,
+    marginBottom: 12,
   },
   progressBar: {
     height: 6,

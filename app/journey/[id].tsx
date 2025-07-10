@@ -235,7 +235,7 @@ export default function StageDetailScreen() {
         >
           <View style={styles.headerContent}>
             <View style={styles.headerIcon}>
-              <info.icon size={32} color="#FFFFFF" />
+              <info.icon size={24} color="#FFFFFF" />
             </View>
             <Text style={styles.headerTitle}>{info.title}</Text>
             <Text style={styles.headerDescription}>{info.description}</Text>
@@ -429,37 +429,37 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   headerGradient: {
-    padding: 20,
-    paddingTop: 24,
+    padding: 16,
+    paddingTop: 20,
   },
   headerContent: {
     alignItems: "center",
   },
   headerIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: "rgba(255, 255, 255, 0.2)",
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 16,
+    marginBottom: 12,
   },
   headerTitle: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: "700",
     color: "#FFFFFF",
-    marginBottom: 8,
+    marginBottom: 6,
     textAlign: "center",
   },
   headerDescription: {
-    fontSize: 16,
+    fontSize: 14,
     color: "rgba(255, 255, 255, 0.9)",
     textAlign: "center",
-    marginBottom: 24,
+    marginBottom: 16,
   },
   progressSection: {
     width: "100%",
-    marginBottom: 16,
+    marginBottom: 12,
   },
   progressStats: {
     flexDirection: "row",
