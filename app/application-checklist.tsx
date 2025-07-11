@@ -51,7 +51,7 @@ export default function ApplicationChecklistScreen() {
 
   const handlePremiumUpgrade = () => {
     setShowPremiumModal(false);
-    router.push('/premium/subscription');
+    router.push('/premium');
   };
 
   const handleTaskToggle = (taskId: string) => {
@@ -325,7 +325,7 @@ export default function ApplicationChecklistScreen() {
                   {!isPremium && (
                     <TouchableOpacity
                       style={[styles.premiumButton, { backgroundColor: Colors.primary }]}
-                      onPress={() => router.push("/(tabs)/community")}
+                      onPress={() => router.push("/premium")}
                     >
                       <Star size={16} color={Colors.white} />
                       <Text style={styles.premiumButtonText}>Get Premium Templates & Guides</Text>
@@ -346,7 +346,7 @@ export default function ApplicationChecklistScreen() {
           </Text>
           <Button
             title="Upgrade to Premium"
-            onPress={() => router.push("/(tabs)/community")}
+            onPress={() => router.push("/premium")}
             style={[styles.ctaButton, { backgroundColor: Colors.primary }]}
             icon={<Star size={20} color={Colors.white} />}
           />
@@ -435,39 +435,39 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    marginBottom: 12,
+    marginBottom: 8,
   },
   headerGradient: {
-    padding: 16,
-    paddingTop: 20,
+    padding: 12,
+    paddingTop: 16,
   },
   headerContent: {
     alignItems: "center",
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: "700",
     color: "#FFFFFF",
-    marginTop: 6,
-    marginBottom: 3,
+    marginTop: 4,
+    marginBottom: 2,
     textAlign: "center",
   },
   headerSubtitle: {
-    fontSize: 13,
+    fontSize: 12,
     color: "rgba(255, 255, 255, 0.9)",
     textAlign: "center",
-    marginBottom: 12,
+    marginBottom: 8,
   },
   progressSection: {
     width: "100%",
-    marginBottom: 12,
+    marginBottom: 8,
   },
   progressBar: {
-    height: 6,
+    height: 4,
     backgroundColor: "rgba(255, 255, 255, 0.3)",
-    borderRadius: 3,
+    borderRadius: 2,
     overflow: "hidden",
-    marginBottom: 6,
+    marginBottom: 4,
   },
   progressFill: {
     height: "100%",

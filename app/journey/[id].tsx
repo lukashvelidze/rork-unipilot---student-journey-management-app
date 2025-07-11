@@ -124,7 +124,7 @@ export default function StageDetailScreen() {
                       { text: "Maybe Later", style: "cancel" },
                       { 
                         text: "Upgrade to Premium", 
-                        onPress: () => router.push('/premium/subscription')
+                        onPress: () => router.push('/premium')
                       }
                     ]
                   );
@@ -292,7 +292,7 @@ export default function StageDetailScreen() {
                 </Text>
                 <TouchableOpacity
                   style={[styles.upgradeButton, { backgroundColor: Colors.primary }]}
-                  onPress={() => router.push('/premium/subscription')}
+                  onPress={() => router.push('/premium')
                 >
                   <Text style={styles.upgradeButtonText}>Upgrade to Premium</Text>
                 </TouchableOpacity>
@@ -361,7 +361,7 @@ export default function StageDetailScreen() {
                   {!isPremium && (
                     <TouchableOpacity
                       style={[styles.premiumButton, { backgroundColor: Colors.primary }]}
-                      onPress={() => router.push("/(tabs)/community")}
+                      onPress={() => router.push("/premium")}
                     >
                       <Text style={styles.premiumButtonText}>Get Premium Tips</Text>
                     </TouchableOpacity>
@@ -383,7 +383,7 @@ export default function StageDetailScreen() {
           {!isPremium && (
             <Button
               title="Unlock Premium Resources"
-              onPress={() => router.push("/(tabs)/community")}
+              onPress={() => router.push("/premium")}
               style={[styles.premiumCTA, { backgroundColor: Colors.primary }]}
             />
           )}
@@ -426,11 +426,11 @@ const styles = StyleSheet.create({
     marginTop: 50,
   },
   header: {
-    marginBottom: 16,
+    marginBottom: 8,
   },
   headerGradient: {
-    padding: 16,
-    paddingTop: 20,
+    padding: 12,
+    paddingTop: 16,
   },
   headerContent: {
     alignItems: "center",
@@ -445,21 +445,21 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: "700",
     color: "#FFFFFF",
-    marginBottom: 6,
+    marginBottom: 4,
     textAlign: "center",
   },
   headerDescription: {
-    fontSize: 14,
+    fontSize: 12,
     color: "rgba(255, 255, 255, 0.9)",
     textAlign: "center",
-    marginBottom: 16,
+    marginBottom: 12,
   },
   progressSection: {
     width: "100%",
-    marginBottom: 12,
+    marginBottom: 8,
   },
   progressStats: {
     flexDirection: "row",

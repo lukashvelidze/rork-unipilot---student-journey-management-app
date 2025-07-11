@@ -313,7 +313,7 @@ export default function JourneyScreen() {
                             { text: "Maybe Later", style: "cancel" },
                             { 
                               text: "Upgrade to Premium", 
-                              onPress: () => router.push('/premium/subscription')
+                              onPress: () => router.push('/premium')
                             }
                           ]
                         );

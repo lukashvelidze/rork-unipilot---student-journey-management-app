@@ -15,7 +15,7 @@ export const initializePaddleService = async (): Promise<Paddle | null> => {
       token: 'test_c25cc3df5ddfcd6b3b2a8420700',
     });
     
-    paddleInstance = paddle ?? null;
+    paddleInstance = paddle || null;
     console.log('✅ Paddle initialized successfully for', Platform.OS);
 
     return paddleInstance;
