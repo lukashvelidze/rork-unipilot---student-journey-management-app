@@ -7,6 +7,25 @@ import { usePaddle } from "@/hooks/usePaddle";
 import { createCheckoutUrl } from "@/lib/paddle";
 import { useUserStore } from "@/store/userStore";
 
+// Add CSS for web spinner animation
+if (Platform.OS === 'web' && typeof document !== 'undefined') {
+  const existingStyle = document.getElementById('paddle-spinner-styles');
+  if (!existingStyle) {
+    const style = document.createElement('style');
+    style.id = 'paddle-spinner-styles';
+    style.textContent = `
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+      .spinner-animation {
+        animation: spin 1s linear infinite;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+}
+
 const { width, height } = Dimensions.get('window');
 
 interface PaddleCheckoutProps {
@@ -170,7 +189,10 @@ export default function PaddleCheckout({
               </View>
             ) : (
               <View style={styles.processingContainer}>
-                <View style={styles.spinner} />
+                <View 
+                  style={styles.spinner} 
+                  {...(Platform.OS === 'web' && { className: 'spinner-animation' })}
+                />
                 <Text style={styles.processingText}>
                   {paymentProcessing ? 'Processing payment...' : 'Loading checkout...'}
                 </Text>
@@ -376,7 +398,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     ...Platform.select({
       web: {
-        animation: 'spin 1s linear infinite',
+        // CSS animation handled via CSS class
       },
     }),
   },
