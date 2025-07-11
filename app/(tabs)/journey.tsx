@@ -296,9 +296,8 @@ export default function JourneyScreen() {
                   s.tasks.some(t => t.title.includes("🎉 Receive acceptance letter") && t.completed)
                 );
                 
-                const isLockedStage = (stage.stage === "visa" || stage.stage === "pre_departure" || 
-                                     stage.stage === "arrival" || stage.stage === "academic" || 
-                                     stage.stage === "career") && hasAcceptance && !isPremium;
+                // Lock all stages except research and application for non-premium users after acceptance
+                const isLockedStage = (stage.stage !== "research" && stage.stage !== "application") && !isPremium;
                 
                 return (
                   <StageProgress
@@ -308,7 +307,7 @@ export default function JourneyScreen() {
                       if (isLockedStage) {
                         Alert.alert(
                           "🎓 Premium Required",
-                          `The ${stage.stage} stage is now available with Premium. Upgrade to access detailed guidance for your next steps.`,
+                          `Upgrade to Premium to access the ${stage.stage.replace('_', ' ')} stage with detailed guidance and checklists.`,
                           [
                             { text: "Maybe Later", style: "cancel" },
                             { 

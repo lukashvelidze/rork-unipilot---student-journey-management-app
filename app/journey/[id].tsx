@@ -185,7 +185,7 @@ export default function StageDetailScreen() {
   const totalTasks = stage.tasks.length;
   const hasAcceptance = stage.hasAcceptance || stage.tasks.some(t => t.title.includes("🎉 Receive acceptance letter") && t.completed);
 
-  // Filter tasks based on acceptance status and premium status
+  // Filter tasks based on premium status - only show research and application stages for free users
   const visibleTasks = stage.tasks.filter(task => {
     // For application stage, check acceptance-related tasks
     if (stageId === "application") {
@@ -203,12 +203,9 @@ export default function StageDetailScreen() {
       }
     }
     
-    // For other stages, check if they require premium after acceptance
-    if (stageId === "visa" || stageId === "pre_departure" || stageId === "arrival" || stageId === "academic" || stageId === "career") {
-      // These stages require premium if user has marked acceptance
-      if (hasAcceptance && !isPremium) {
-        return false;
-      }
+    // For other stages (visa, pre_departure, arrival, academic, career), require premium
+    if (stageId !== "research" && stageId !== "application") {
+      return isPremium;
     }
     
     return true;
@@ -279,16 +276,16 @@ export default function StageDetailScreen() {
         )}
 
         {/* Premium Notice for Locked Stages */}
-        {(stageId === "visa" || stageId === "pre_departure" || stageId === "arrival" || stageId === "academic" || stageId === "career") && hasAcceptance && !isPremium && (
+        {(stageId !== "research" && stageId !== "application") && !isPremium && (
           <Card style={[styles.premiumNoticeCard, { backgroundColor: Colors.lightBackground, borderColor: Colors.primary }]}>
             <View style={styles.premiumNoticeContent}>
               <Crown size={24} color={Colors.primary} />
               <View style={styles.premiumNoticeText}>
                 <Text style={[styles.premiumNoticeTitle, { color: Colors.primary }]}>
-                  🎓 Premium Stage Unlocked!
+                  🎓 Premium Stage Required
                 </Text>
                 <Text style={[styles.premiumNoticeDescription, { color: Colors.text }]}>
-                  This stage is now available with Premium. Upgrade to access detailed guidance for your next steps.
+                  This stage requires Premium access. Upgrade to unlock detailed guidance and checklists for your {stageId.replace('_', ' ')} journey.
                 </Text>
                 <TouchableOpacity
                   style={[styles.upgradeButton, { backgroundColor: Colors.primary }]}
@@ -302,13 +299,13 @@ export default function StageDetailScreen() {
         )}
 
         <View style={styles.tasksContainer}>
-          {visibleTasks.length === 0 && (stageId === "visa" || stageId === "pre_departure" || stageId === "arrival" || stageId === "academic" || stageId === "career") && hasAcceptance && !isPremium ? (
+          {visibleTasks.length === 0 && (stageId !== "research" && stageId !== "application") && !isPremium ? (
             <Card style={[styles.emptyStateCard, { backgroundColor: Colors.card }]}>
               <View style={styles.emptyStateContent}>
                 <Crown size={48} color={Colors.lightText} />
                 <Text style={[styles.emptyStateTitle, { color: Colors.text }]}>Premium Required</Text>
                 <Text style={[styles.emptyStateDescription, { color: Colors.lightText }]}>
-                  This stage contains premium content. Upgrade to access detailed tasks and guidance.
+                  This stage contains premium content. Upgrade to access detailed tasks and guidance for your {stageId.replace('_', ' ')} journey.
                 </Text>
               </View>
             </Card>
