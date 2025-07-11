@@ -292,7 +292,7 @@ export default function StageDetailScreen() {
                 </Text>
                 <TouchableOpacity
                   style={[styles.upgradeButton, { backgroundColor: Colors.primary }]}
-                  onPress={() => router.push('/premium')
+                  onPress={() => router.push('/premium')}
                 >
                   <Text style={styles.upgradeButtonText}>Upgrade to Premium</Text>
                 </TouchableOpacity>
