@@ -36,7 +36,8 @@
         {
           "origin": "https://rork.com/"
         }
-      ]
+      ],
+      "expo-font"
     ],
     "experiments": {
       "typedRoutes": true
