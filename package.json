@@ -29,6 +29,7 @@
     "expo": "^53.0.19",
     "expo-blur": "~14.1.5",
     "expo-constants": "~17.1.7",
+    "expo-dev-client": "~5.2.4",
     "expo-font": "~13.3.2",
     "expo-haptics": "~14.1.4",
     "expo-image": "~2.3.2",
@@ -62,6 +63,7 @@
   "devDependencies": {
     "@babel/core": "^7.25.2",
     "@expo/ngrok": "^4.1.0",
+    "@react-native-community/cli": "^19.1.0",
     "@types/react": "~19.0.10",
     "typescript": "~5.8.3"
   },
