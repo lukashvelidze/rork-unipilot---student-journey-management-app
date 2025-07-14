@@ -77,14 +77,20 @@ export const useUserStore = create<UserState>()(
         })),
       
       initializeUser: () => {
-        // This function is called to initialize the user state
-        // The actual user data is loaded from AsyncStorage via the persist middleware
-        const state = get();
-        if (state.user) {
-          console.log("User initialized:", state.user.name);
-          set({ isPremium: state.user.isPremium || state.isPremium });
-        } else {
-          console.log("No user found in storage");
+        try {
+          // This function is called to initialize the user state
+          // The actual user data is loaded from AsyncStorage via the persist middleware
+          const state = get();
+          if (state.user) {
+            console.log("User initialized:", state.user.name);
+            set({ isPremium: state.user.isPremium || state.isPremium });
+          } else {
+            console.log("No user found in storage");
+          }
+        } catch (error) {
+          console.error("Error in initializeUser:", error);
+          // Don't crash the app if user initialization fails
+          set({ error: "Failed to initialize user" });
         }
       },
       

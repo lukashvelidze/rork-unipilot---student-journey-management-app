@@ -26,6 +26,8 @@ export default function RootLayout() {
   useEffect(() => {
     if (error) {
       console.error("Font loading error:", error);
+      // Don't block app startup due to font errors
+      SplashScreen.hideAsync();
     }
   }, [error]);
 
@@ -49,13 +51,17 @@ function RootLayoutNav() {
   
   useEffect(() => {
     // Initialize user when app starts
-    if (initializeUser) {
+    const initUser = async () => {
       try {
-        initializeUser();
+        if (initializeUser) {
+          await initializeUser();
+        }
       } catch (error) {
         console.error("Error initializing user:", error);
       }
-    }
+    };
+    
+    initUser();
   }, [initializeUser]);
 
   return (
