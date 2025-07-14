@@ -4,6 +4,32 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { UserProfile, Country, EducationLevel } from "@/types/user";
 import { getJourneyProgressForCountry } from "@/mocks/journeyTasks";
 
+// Error-safe AsyncStorage wrapper
+const safeAsyncStorage = {
+  getItem: async (key: string): Promise<string | null> => {
+    try {
+      return await AsyncStorage.getItem(key);
+    } catch (error) {
+      console.error(`AsyncStorage getItem error for key "${key}":`, error);
+      return null;
+    }
+  },
+  setItem: async (key: string, value: string): Promise<void> => {
+    try {
+      await AsyncStorage.setItem(key, value);
+    } catch (error) {
+      console.error(`AsyncStorage setItem error for key "${key}":`, error);
+    }
+  },
+  removeItem: async (key: string): Promise<void> => {
+    try {
+      await AsyncStorage.removeItem(key);
+    } catch (error) {
+      console.error(`AsyncStorage removeItem error for key "${key}":`, error);
+    }
+  },
+};
+
 interface UserState {
   user: UserProfile | null;
   isLoading: boolean;
@@ -173,7 +199,7 @@ export const useUserStore = create<UserState>()(
     }),
     {
       name: "user-storage",
-      storage: createJSONStorage(() => AsyncStorage),
+      storage: createJSONStorage(() => safeAsyncStorage),
     }
   )
 );
