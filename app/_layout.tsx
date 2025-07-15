@@ -11,6 +11,7 @@ import { useThemeStore } from "@/store/themeStore";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { trpc, trpcClient } from "@/lib/trpc";
 import { useUserStore } from "@/store/userStore";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 // Create a client
 const queryClient = new QueryClient();
@@ -65,14 +66,15 @@ function RootLayoutNav() {
   }, [initializeUser]);
 
   return (
-    <SafeAreaProvider>
-      <StatusBar 
-        style={isDarkMode ? "light" : "dark"} 
-        backgroundColor={Colors.background}
-      />
-      <trpc.Provider client={trpcClient} queryClient={queryClient}>
-        <QueryClientProvider client={queryClient}>
-          <Stack
+    <ErrorBoundary>
+      <SafeAreaProvider>
+        <StatusBar 
+          style={isDarkMode ? "light" : "dark"} 
+          backgroundColor={Colors.background}
+        />
+        <trpc.Provider client={trpcClient} queryClient={queryClient}>
+          <QueryClientProvider client={queryClient}>
+            <Stack
             screenOptions={{
               headerStyle: {
                 backgroundColor: Colors.background,
@@ -112,9 +114,10 @@ function RootLayoutNav() {
             <Stack.Screen name="premium/resources" options={{ title: "Premium Resources" }} />
             <Stack.Screen name="premium/[id]" options={{ title: "Resource" }} />
             <Stack.Screen name="unipilot-ai" options={{ title: "AI Assistant" }} />
-          </Stack>
-        </QueryClientProvider>
-      </trpc.Provider>
-    </SafeAreaProvider>
+            </Stack>
+          </QueryClientProvider>
+        </trpc.Provider>
+      </SafeAreaProvider>
+    </ErrorBoundary>
   );
 }
