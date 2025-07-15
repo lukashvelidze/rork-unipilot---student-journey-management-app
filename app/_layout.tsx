@@ -13,6 +13,8 @@ import { trpc, trpcClient } from "@/lib/trpc";
 import { useUserStore } from "@/store/userStore";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { BridgeErrorHandler } from "@/utils/bridgeErrorHandler";
+import { CrashProtectionBoundary } from "@/components/CrashProtectionBoundary";
+import { memoryProtection, safeAsyncOperation } from "@/utils/memoryProtection";
 
 // Create a client
 const queryClient = new QueryClient();
@@ -53,29 +55,41 @@ function RootLayoutNav() {
   const [isAppReady, setIsAppReady] = useState(false);
   
   useEffect(() => {
-    // Sequential app initialization to prevent race conditions
+    // Initialize memory protection
+    memoryProtection.performMemoryCheck();
+    
+    // Sequential app initialization with memory protection
     const initializeApp = async () => {
       try {
-        console.log('Starting app initialization...');
+        console.log('Starting app initialization with crash protection...');
         
-        // Step 1: Initialize user store with bridge safety
+        // Step 1: Initialize user store with bridge safety and memory protection
         if (initializeUser) {
-          await BridgeErrorHandler.withTimeout(
-            () => Promise.resolve(initializeUser()),
-            3000,
-            'user-initialization'
+          await safeAsyncOperation(
+            async () => {
+              await BridgeErrorHandler.withTimeout(
+                () => Promise.resolve(initializeUser()),
+                3000,
+                'user-initialization'
+              );
+            },
+            'user-store-initialization',
+            5000
           );
         }
         
-        // Step 2: Small delay to ensure bridge stability
+        // Step 2: Memory check and small delay to ensure bridge stability
+        memoryProtection.performMemoryCheck();
         await new Promise(resolve => setTimeout(resolve, 200));
         
         // Step 3: Set app as ready
         setIsAppReady(true);
-        console.log('App initialization complete');
+        console.log('App initialization complete with crash protection');
         
       } catch (error) {
         console.error('App initialization error:', error);
+        // Trigger memory cleanup before continuing
+        memoryProtection.performMemoryCheck();
         // Continue anyway - don't block app startup
         setIsAppReady(true);
       }
@@ -107,15 +121,16 @@ function RootLayoutNav() {
   }
 
   return (
-    <ErrorBoundary>
-      <SafeAreaProvider>
-        <StatusBar 
-          style={isDarkMode ? "light" : "dark"} 
-          backgroundColor={Colors.background}
-        />
-        <trpc.Provider client={trpcClient} queryClient={queryClient}>
-          <QueryClientProvider client={queryClient}>
-            <Stack
+    <CrashProtectionBoundary>
+      <ErrorBoundary>
+        <SafeAreaProvider>
+          <StatusBar 
+            style={isDarkMode ? "light" : "dark"} 
+            backgroundColor={Colors.background}
+          />
+          <trpc.Provider client={trpcClient} queryClient={queryClient}>
+            <QueryClientProvider client={queryClient}>
+              <Stack
             screenOptions={{
               headerStyle: {
                 backgroundColor: Colors.background,
@@ -155,10 +170,11 @@ function RootLayoutNav() {
             <Stack.Screen name="premium/resources" options={{ title: "Premium Resources" }} />
             <Stack.Screen name="premium/[id]" options={{ title: "Resource" }} />
             <Stack.Screen name="unipilot-ai" options={{ title: "AI Assistant" }} />
-            </Stack>
-          </QueryClientProvider>
-        </trpc.Provider>
-      </SafeAreaProvider>
-    </ErrorBoundary>
+              </Stack>
+            </QueryClientProvider>
+          </trpc.Provider>
+        </SafeAreaProvider>
+      </ErrorBoundary>
+    </CrashProtectionBoundary>
   );
 }
