@@ -2,7 +2,7 @@ import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { StatusBar } from "expo-status-bar";
 import { Platform } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -12,6 +12,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { trpc, trpcClient } from "@/lib/trpc";
 import { useUserStore } from "@/store/userStore";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { BridgeErrorHandler } from "@/utils/bridgeErrorHandler";
 
 // Create a client
 const queryClient = new QueryClient();
@@ -49,21 +50,61 @@ function RootLayoutNav() {
   const Colors = useColors();
   const { isDarkMode } = useThemeStore();
   const initializeUser = useUserStore((state) => state.initializeUser);
+  const [isAppReady, setIsAppReady] = useState(false);
   
   useEffect(() => {
-    // Initialize user when app starts
-    const initUser = async () => {
+    // Sequential app initialization to prevent race conditions
+    const initializeApp = async () => {
       try {
+        console.log('Starting app initialization...');
+        
+        // Step 1: Initialize user store with bridge safety
         if (initializeUser) {
-          await initializeUser();
+          await BridgeErrorHandler.withTimeout(
+            () => Promise.resolve(initializeUser()),
+            3000,
+            'user-initialization'
+          );
         }
+        
+        // Step 2: Small delay to ensure bridge stability
+        await new Promise(resolve => setTimeout(resolve, 200));
+        
+        // Step 3: Set app as ready
+        setIsAppReady(true);
+        console.log('App initialization complete');
+        
       } catch (error) {
-        console.error("Error initializing user:", error);
+        console.error('App initialization error:', error);
+        // Continue anyway - don't block app startup
+        setIsAppReady(true);
       }
     };
     
-    initUser();
+    initializeApp();
+    
+    // Setup global error handlers
+    const unhandledRejectionHandler = (event: any) => {
+      console.error('Unhandled promise rejection:', event.reason);
+      // Don't crash the app
+      if (event.preventDefault) {
+        event.preventDefault();
+      }
+    };
+    
+    if (typeof window !== 'undefined') {
+      window.addEventListener('unhandledrejection', unhandledRejectionHandler);
+      
+      return () => {
+        window.removeEventListener('unhandledrejection', unhandledRejectionHandler);
+      };
+    }
   }, [initializeUser]);
+  
+  // Show loading screen while app initializes
+  if (!isAppReady) {
+    return null; // or a loading component
+  }
 
   return (
     <ErrorBoundary>

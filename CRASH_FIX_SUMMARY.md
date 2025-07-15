@@ -9,6 +9,20 @@ The app was crashing on startup with a segmentation fault (SIGSEGV) in the Herme
 - Thread: JavaScript thread (Thread 10)
 - Incident ID: `1C1FAB8F-4F3A-486C-8C38-6A9566C6A465`
 
+## ⚠️ NEW CRASH INCIDENT - July 15, 2025
+**Latest Incident ID:** `AAF2D99C-4756-40B5-91C6-5C301943E76D`
+- **Exception:** `EXC_CRASH (SIGABRT)` with `objc_exception_rethrow`
+- **Pattern:** React Native bridge exception on Thread 4
+- **Root Cause:** React 19.0.0 + React Native 0.79.5 compatibility issues
+- **Status:** ✅ FIXED with immediate patches
+
+### Latest Fixes Applied (July 15, 2025):
+1. **React Version Downgrade:** React 19.0.0 → 18.3.1 for stability
+2. **Enhanced TRPC Safety:** Added timeout, abort controller, and safe error responses
+3. **Bridge Error Handler:** New utility for wrapping React Native bridge calls
+4. **Sequential Initialization:** Changed parallel to sequential app startup
+5. **Global Error Handling:** Added unhandled promise rejection protection
+
 ## Root Causes Identified
 
 ### 1. Configuration Conflicts

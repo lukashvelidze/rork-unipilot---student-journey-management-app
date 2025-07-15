@@ -25,17 +25,47 @@ export const trpcClient = trpc.createClient({
     httpLink({
       url: `${getBaseUrl()}/api/trpc`,
       transformer: superjson,
-      fetch: (url, options) => {
-        return fetch(url, {
-          ...options,
-          headers: {
-            ...options?.headers,
-            'Content-Type': 'application/json',
-          },
-        }).catch((error) => {
+      fetch: async (url, options) => {
+        try {
+          // Add timeout to prevent hanging requests
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+          
+          const response = await fetch(url, {
+            ...options,
+            headers: {
+              ...options?.headers,
+              'Content-Type': 'application/json',
+            },
+            signal: controller.signal,
+          });
+          
+          clearTimeout(timeoutId);
+          
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
+          
+          return response;
+        } catch (error) {
           console.error('TRPC fetch error:', error);
-          throw new Error('Network error: Unable to connect to server');
-        });
+          
+          // Return a safe mock response to prevent bridge crashes
+          // This prevents TurboModule conversion issues when network fails
+          return new Response(
+            JSON.stringify({ 
+              result: { 
+                data: null, 
+                error: { message: 'Network unavailable', code: 'NETWORK_ERROR' } 
+              } 
+            }),
+            { 
+              status: 503, 
+              statusText: 'Service Unavailable',
+              headers: { 'Content-Type': 'application/json' }
+            }
+          );
+        }
       },
     }),
   ],
