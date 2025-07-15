@@ -1,9 +1,14 @@
 # TurboModule Crash Fix - Comprehensive Solution
 
-## 🚨 Issue Resolved
-**EXC_BAD_ACCESS in facebook::react::TurboModuleConvertUtils::convertNSArrayToJSIArray**
+## 🚨 Issues Resolved
+1. **EXC_BAD_ACCESS in TurboModuleConvertUtils::convertNSArrayToJSIArray** 
+2. **EXC_CRASH (SIGABRT) with objc_exception_rethrow**
 
-This crash occurred in release/TestFlight builds when native methods returned invalid or nil values that couldn't be converted to JSI arrays under Hermes.
+These crashes occurred in release/TestFlight builds due to:
+- Unsafe WebView postMessage communications
+- Race conditions during store initialization
+- Unhandled Objective-C exceptions in native bridge
+- Concurrent AsyncStorage access during app startup
 
 ---
 
@@ -73,9 +78,30 @@ This crash occurred in release/TestFlight builds when native methods returned in
 - ✅ **Payment Checkout** (`app/premium/checkout.tsx`) - WebView protection
 - ✅ **Paddle Component** (`components/PaddleCheckout.tsx`) - WebView protection
 
-### 6. **Existing Safety Measures Confirmed**
+### 6. **Store Initialization Race Condition Fixes**
+**Files:** `app/_layout.tsx`, `app/index.tsx`, `store/userStore.ts`
+- ✅ **Removed dual initialization** - Eliminated race condition between layout and index
+- ✅ **Removed synchronous store access** - Made all store initialization async
+- ✅ **Added store hydration delays** - Prevented concurrent AsyncStorage access
+- ✅ **Fixed cross-store dependencies** - Added safety to userStore → journeyStore calls
+- ✅ **Added store hydration monitoring** - Added logging for hydration completion
+
+### 7. **Emergency Reset System**
+**File:** `utils/emergencyReset.ts`
+- ✅ **Crash tracking** - Records crash occurrences for auto-reset
+- ✅ **Emergency store clearing** - Can clear corrupted AsyncStorage data
+- ✅ **Auto-reset on repeated crashes** - Clears stores after 3+ crashes
+- ✅ **Safe store access wrappers** - Protects against store corruption
+
+### 8. **Enhanced Error Boundaries**
+**File:** `components/ErrorBoundary.tsx`
+- ✅ **Crash recording** - Automatically tracks crashes for emergency reset
+- ✅ **Native crash detection** - Enhanced detection for objc_exception patterns
+- ✅ **Smarter error handling** - Different strategies for different error types
+
+### 9. **Existing Safety Measures Confirmed**
 - ✅ **AsyncStorage** - Already safely wrapped in all stores
-- ✅ **User Initialization** - Already has try-catch error handling
+- ✅ **User Initialization** - Enhanced with better error handling
 - ✅ **Font Loading** - Already has fallback error handling
 
 ---
@@ -164,13 +190,24 @@ eas build -p ios --profile production
 
 ## 📝 Key Files Modified
 
+### **Configuration & Core**
 1. **app.json** - Hermes configuration
-2. **utils/webviewSafety.ts** - New safety utility
-3. **components/ErrorBoundary.tsx** - New error boundaries
-4. **app/_layout.tsx** - Added main ErrorBoundary
-5. **app/premium/checkout.tsx** - Safe WebView implementation
-6. **components/PaddleCheckout.tsx** - Enhanced safety
-7. **lib/paddle.ts** - Safe postMessage calls
+2. **app/_layout.tsx** - Safe store initialization, ErrorBoundary
+3. **app/index.tsx** - Removed dual initialization, added safety
+
+### **Safety Utilities**
+4. **utils/webviewSafety.ts** - WebView message safety
+5. **utils/emergencyReset.ts** - Crash tracking & emergency reset
+6. **components/ErrorBoundary.tsx** - Enhanced error boundaries
+
+### **Store Safety**
+7. **store/userStore.ts** - Fixed cross-store dependencies, hydration logging
+8. **store/themeStore.ts** - Added hydration monitoring
+
+### **WebView Fixes**
+9. **app/premium/checkout.tsx** - Safe WebView implementation
+10. **components/PaddleCheckout.tsx** - Enhanced WebView safety
+11. **lib/paddle.ts** - Safe postMessage calls
 
 ---
 

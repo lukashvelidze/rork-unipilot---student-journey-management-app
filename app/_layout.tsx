@@ -2,7 +2,7 @@ import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { StatusBar } from "expo-status-bar";
 import { Platform } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -12,6 +12,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { trpc, trpcClient } from "@/lib/trpc";
 import { useUserStore } from "@/store/userStore";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { checkAndResetIfNeeded } from "@/utils/emergencyReset";
 
 // Create a client
 const queryClient = new QueryClient();
@@ -46,24 +47,52 @@ export default function RootLayout() {
 }
 
 function RootLayoutNav() {
-  const Colors = useColors();
-  const { isDarkMode } = useThemeStore();
-  const initializeUser = useUserStore((state) => state.initializeUser);
+  const [isStoreReady, setIsStoreReady] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(false);
   
   useEffect(() => {
-    // Initialize user when app starts
-    const initUser = async () => {
+    // Safely initialize stores with proper error handling and timing
+    const initializeStores = async () => {
       try {
-        if (initializeUser) {
-          await initializeUser();
+        // Check if we need to perform emergency reset due to repeated crashes
+        const wasReset = await checkAndResetIfNeeded();
+        if (wasReset) {
+          console.log('Emergency reset performed, continuing with fresh state');
         }
+        
+        // Small delay to let stores hydrate from AsyncStorage
+        await new Promise(resolve => setTimeout(resolve, wasReset ? 500 : 200));
+        
+        // Safely access theme store
+        const themeStore = useThemeStore.getState();
+        if (themeStore) {
+          setIsDarkMode(themeStore.isDarkMode);
+        }
+        
+        // Safely initialize user store
+        const userStore = useUserStore.getState();
+        if (userStore && userStore.initializeUser) {
+          await userStore.initializeUser();
+        }
+        
+        setIsStoreReady(true);
       } catch (error) {
-        console.error("Error initializing user:", error);
+        console.error("Error initializing stores:", error);
+        // Set ready anyway to prevent infinite loading
+        setIsStoreReady(true);
       }
     };
     
-    initUser();
-  }, [initializeUser]);
+    initializeStores();
+  }, []);
+  
+  // Use default colors until stores are ready
+  const defaultColors = {
+    background: isDarkMode ? '#000000' : '#FFFFFF',
+    text: isDarkMode ? '#FFFFFF' : '#000000',
+  };
+  
+  const Colors = isStoreReady ? useColors() : defaultColors;
 
   return (
     <ErrorBoundary>

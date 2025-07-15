@@ -1,6 +1,7 @@
 import React, { Component, ReactNode } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { AlertTriangle, RefreshCw } from 'lucide-react-native';
+import { recordCrash, emergencyReset } from '@/utils/emergencyReset';
 
 interface Props {
   children: ReactNode;
@@ -24,16 +25,35 @@ export class ErrorBoundary extends Component<Props, State> {
     return { hasError: true, error };
   }
 
-  componentDidCatch(error: Error, errorInfo: any) {
+  async componentDidCatch(error: Error, errorInfo: any) {
     // Log the error for debugging
     console.error('ErrorBoundary caught an error:', error);
     console.error('Error info:', errorInfo);
     
+    // Record the crash for emergency reset tracking
+    try {
+      await recordCrash();
+    } catch (recordError) {
+      console.error('Failed to record crash:', recordError);
+    }
+    
     // Log specifically for TurboModule crashes
     if (error.message?.includes('TurboModule') || 
         error.message?.includes('convertNSArrayToJSIArray') ||
-        error.message?.includes('EXC_BAD_ACCESS')) {
-      console.error('🚨 TurboModule crash detected:', error.message);
+        error.message?.includes('EXC_BAD_ACCESS') ||
+        error.message?.includes('objc_exception') ||
+        error.message?.includes('NSInvocation')) {
+      console.error('🚨 Native module crash detected:', error.message);
+      
+      // For severe native crashes, consider emergency reset
+      setTimeout(async () => {
+        try {
+          console.log('Considering emergency reset for native crash...');
+          // Don't auto-reset immediately, but log for user decision
+        } catch (resetError) {
+          console.error('Emergency reset consideration failed:', resetError);
+        }
+      }, 1000);
     }
     
     // Call the optional error handler

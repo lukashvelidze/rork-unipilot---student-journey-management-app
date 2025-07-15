@@ -48,6 +48,10 @@ export const useThemeStore = create<ThemeState>()(
     {
       name: "theme-storage",
       storage: createJSONStorage(() => safeAsyncStorage),
+      partialize: (state) => ({ isDarkMode: state.isDarkMode }),
+      onRehydrateStorage: () => (state) => {
+        console.log('Theme store hydration completed:', state?.isDarkMode);
+      },
     }
   )
 );

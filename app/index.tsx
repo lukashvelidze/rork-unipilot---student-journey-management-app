@@ -6,15 +6,15 @@ import Colors from "@/constants/colors";
 
 export default function IndexScreen() {
   const router = useRouter();
-  const { user, initializeUser } = useUserStore();
+  const { user } = useUserStore();
 
   useEffect(() => {
     const checkUserAndRedirect = async () => {
-      // Initialize user store
-      initializeUser();
-      
-      // Small delay to ensure store is properly initialized
-      setTimeout(() => {
+      try {
+        // Wait for user store to be properly initialized (handled in _layout.tsx)
+        // Small delay to ensure store hydration is complete
+        await new Promise(resolve => setTimeout(resolve, 800));
+        
         if (!user || !user.onboardingCompleted) {
           console.log("Redirecting to onboarding - user:", user);
           router.replace("/onboarding");
@@ -22,11 +22,15 @@ export default function IndexScreen() {
           console.log("Redirecting to tabs - user:", user.name);
           router.replace("/(tabs)");
         }
-      }, 500);
+      } catch (error) {
+        console.error("Error during initialization redirect:", error);
+        // Fallback to onboarding if there's any error
+        router.replace("/onboarding");
+      }
     };
 
     checkUserAndRedirect();
-  }, [user, router, initializeUser]);
+  }, [user, router]);
 
   return (
     <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: Colors.background }}>

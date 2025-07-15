@@ -173,14 +173,21 @@ export const useUserStore = create<UserState>()(
             journeyProgress: newJourneyProgress,
           };
           
-          // Update the journey store immediately
+          // Update the journey store safely (avoid circular dependencies during init)
           setTimeout(() => {
-            const { useJourneyStore } = require("@/store/journeyStore");
-            const journeyStore = useJourneyStore.getState();
-            console.log("Updating journey store with new progress");
-            journeyStore.setJourneyProgress(newJourneyProgress);
-            journeyStore.refreshJourney();
-          }, 0);
+            try {
+              const { useJourneyStore } = require("@/store/journeyStore");
+              const journeyStore = useJourneyStore.getState();
+              if (journeyStore && journeyStore.setJourneyProgress) {
+                console.log("Updating journey store with new progress");
+                journeyStore.setJourneyProgress(newJourneyProgress);
+                journeyStore.refreshJourney();
+              }
+            } catch (error) {
+              console.error("Error updating journey store:", error);
+              // Don't crash if journey store update fails
+            }
+          }, 100);
           
           return {
             user: updatedUser,
@@ -200,6 +207,13 @@ export const useUserStore = create<UserState>()(
     {
       name: "user-storage",
       storage: createJSONStorage(() => safeAsyncStorage),
+      partialize: (state) => ({ 
+        user: state.user, 
+        isPremium: state.isPremium 
+      }),
+      onRehydrateStorage: () => (state) => {
+        console.log('User store hydration completed:', state?.user?.name || 'No user');
+      },
     }
   )
 );
