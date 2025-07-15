@@ -407,10 +407,15 @@ export const createCheckoutUrl = (options: {
               console.log('✅ Checkout completed:', data);
               showSuccess('Payment successful! Redirecting...');
               setTimeout(() => {
-                window.ReactNativeWebView?.postMessage(JSON.stringify({
-                  type: 'checkout_success',
-                  data: data
-                }));
+                // Use safe message sending to prevent TurboModule crashes
+                if (window.safeSendMessage) {
+                  window.safeSendMessage({
+                    type: 'checkout_success',
+                    transactionId: data?.transactionId || null,
+                    subscriptionId: data?.subscriptionId || null,
+                    status: 'completed'
+                  });
+                }
               }, 1500);
             });
 
@@ -418,9 +423,11 @@ export const createCheckoutUrl = (options: {
               console.log('❌ Checkout closed');
               btn.disabled = false;
               btnText.textContent = 'Subscribe Now';
-              window.ReactNativeWebView?.postMessage(JSON.stringify({
-                type: 'checkout_closed'
-              }));
+              if (window.safeSendMessage) {
+                window.safeSendMessage({
+                  type: 'checkout_closed'
+                });
+              }
             });
 
             checkoutInstance.onError((error) => {
@@ -428,10 +435,13 @@ export const createCheckoutUrl = (options: {
               btn.disabled = false;
               btnText.textContent = 'Subscribe Now';
               showError('Payment failed. Please try again.');
-              window.ReactNativeWebView?.postMessage(JSON.stringify({
-                type: 'checkout_error',
-                error: error
-              }));
+              if (window.safeSendMessage) {
+                window.safeSendMessage({
+                  type: 'checkout_error',
+                  message: error?.message || 'Unknown error',
+                  code: error?.code || 'UNKNOWN'
+                });
+              }
             });
 
           } catch (error) {
@@ -446,9 +456,11 @@ export const createCheckoutUrl = (options: {
           if (checkoutInstance) {
             checkoutInstance.close();
           }
-          window.ReactNativeWebView?.postMessage(JSON.stringify({
-            type: 'checkout_cancelled'
-          }));
+                    if (window.safeSendMessage) {
+            window.safeSendMessage({
+              type: 'checkout_cancelled'
+            });
+          }
         }
 
         // Show loading initially

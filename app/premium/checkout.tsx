@@ -5,6 +5,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { ActivityIndicator } from "react-native";
 import Colors from "@/constants/colors";
 import { useUserStore } from "@/store/userStore";
+import { WebViewErrorBoundary } from "@/components/ErrorBoundary";
 
 export default function PaddleCheckoutScreen() {
   const { email } = useLocalSearchParams();
@@ -32,16 +33,30 @@ export default function PaddleCheckoutScreen() {
 
   const handleMessage = (event: any) => {
     try {
-      const data = JSON.parse(event.nativeEvent.data);
+      const data = JSON.parse(event.nativeEvent.data || '{}');
       
-      if (data.type === 'checkout_complete') {
-        setPremium(true);
-        router.replace('/premium');
-      } else if (data.type === 'checkout_cancel') {
-        router.back();
+      // Validate message structure to prevent crashes
+      if (!data || typeof data !== 'object' || !data.type) {
+        console.warn('Invalid WebView message format');
+        return;
+      }
+      
+      switch (data.type) {
+        case 'checkout_complete':
+        case 'checkout_success':
+          setPremium(true);
+          router.replace('/premium');
+          break;
+        case 'checkout_cancel':
+        case 'checkout_cancelled':
+        case 'checkout_closed':
+          router.back();
+          break;
+        default:
+          console.log('Unknown WebView message type:', data.type);
       }
     } catch (error) {
-      console.log('WebView message parsing error:', error);
+      console.error('WebView message parsing error:', error);
     }
   };
 
@@ -56,8 +71,9 @@ export default function PaddleCheckoutScreen() {
   }
 
   return (
-    <View style={styles.container}>
-      <WebView
+    <WebViewErrorBoundary>
+      <View style={styles.container}>
+        <WebView
         source={{ uri: checkoutUrl }}
         javaScriptEnabled={true}
         domStorageEnabled={true}
@@ -76,6 +92,22 @@ export default function PaddleCheckoutScreen() {
         }}
         // Inject JavaScript to communicate with the parent app
         injectedJavaScript={`
+          // Safe message sender wrapper
+          window.safeSendMessage = function(data) {
+            try {
+              if (!data || !data.type) {
+                console.error('Message must have a type field');
+                return;
+              }
+              
+              if (window.ReactNativeWebView) {
+                window.ReactNativeWebView.postMessage(JSON.stringify(data));
+              }
+            } catch (error) {
+              console.error('Failed to send safe message:', error);
+            }
+          };
+          
           // Listen for Paddle checkout events
           if (window.Paddle) {
             window.Paddle.Setup({
@@ -94,21 +126,22 @@ export default function PaddleCheckoutScreen() {
             if (window.location.href !== lastUrl) {
               lastUrl = window.location.href;
               if (lastUrl.includes('success') || lastUrl.includes('complete')) {
-                window.ReactNativeWebView.postMessage(JSON.stringify({
+                window.safeSendMessage({
                   type: 'checkout_complete'
-                }));
+                });
               } else if (lastUrl.includes('cancel') || lastUrl.includes('close')) {
-                window.ReactNativeWebView.postMessage(JSON.stringify({
+                window.safeSendMessage({
                   type: 'checkout_cancel'
-                }));
+                });
               }
             }
           }, 1000);
           
           true;
         `}
-      />
-    </View>
+        />
+      </View>
+    </WebViewErrorBoundary>
   );
 }
 

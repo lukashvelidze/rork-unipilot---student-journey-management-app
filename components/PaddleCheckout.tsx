@@ -85,11 +85,23 @@ export default function PaddleCheckout({
 
   const handleWebViewMessage = (event: any) => {
     try {
-      const message = JSON.parse(event.nativeEvent.data);
+      const rawData = event.nativeEvent.data;
+      if (!rawData || typeof rawData !== 'string') {
+        console.warn('Invalid WebView message data');
+        return;
+      }
+      
+      const message = JSON.parse(rawData);
+      
+      // Validate message structure to prevent crashes
+      if (!message || typeof message !== 'object' || !message.type) {
+        console.warn('Invalid WebView message format');
+        return;
+      }
       
       switch (message.type) {
         case 'checkout_success':
-          console.log('✅ Checkout successful:', message.data);
+          console.log('✅ Checkout successful');
           setPaymentProcessing(false);
           onSuccess();
           onClose();
@@ -102,7 +114,7 @@ export default function PaddleCheckout({
           onCancel();
           break;
         case 'checkout_error':
-          console.error('❌ Checkout error:', message.error);
+          console.error('❌ Checkout error:', message.message || 'Unknown error');
           setPaymentProcessing(false);
           setCheckoutStarted(false);
           Alert.alert(
@@ -112,10 +124,12 @@ export default function PaddleCheckout({
           );
           break;
         default:
-          console.log('Unknown message:', message);
+          console.log('Unknown message type:', message.type);
       }
     } catch (error) {
       console.error('Error parsing WebView message:', error);
+      setPaymentProcessing(false);
+      setCheckoutStarted(false);
     }
   };
 
@@ -212,15 +226,16 @@ export default function PaddleCheckout({
       presentationStyle="pageSheet"
       onRequestClose={onClose}
     >
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Premium Subscription</Text>
-          <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-            <X size={24} color={Colors.text} />
-          </TouchableOpacity>
-        </View>
-        
-        <WebView
+      <WebViewErrorBoundary>
+        <View style={styles.container}>
+          <View style={styles.header}>
+            <Text style={styles.headerTitle}>Premium Subscription</Text>
+            <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+              <X size={24} color={Colors.text} />
+            </TouchableOpacity>
+          </View>
+          
+          <WebView
           ref={webViewRef}
           source={{ uri: checkoutUrl }}
           style={styles.webview}
@@ -242,8 +257,9 @@ export default function PaddleCheckout({
               [{ text: 'OK', onPress: onClose }]
             );
           }}
-        />
-      </View>
+          />
+        </View>
+      </WebViewErrorBoundary>
     </Modal>
   );
 }
