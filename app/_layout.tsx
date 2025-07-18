@@ -4,7 +4,7 @@ import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect, useState } from "react";
 import { StatusBar } from "expo-status-bar";
-import { Platform } from "react-native";
+import { Platform, ErrorUtils } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useThemeStore } from "@/store/themeStore";
@@ -15,12 +15,88 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { BridgeErrorHandler } from "@/utils/bridgeErrorHandler";
 import { CrashProtectionBoundary } from "@/components/CrashProtectionBoundary";
 import { memoryProtection, safeAsyncOperation } from "@/utils/memoryProtection";
+import { IOSCrashPrevention } from "@/utils/iosCrashPrevention";
+
+// Initialize iOS crash prevention immediately
+IOSCrashPrevention.initialize();
 
 // Create a client
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: (failureCount, error) => {
+        // Don't retry on bridge errors
+        if (error?.message?.includes('bridge') || error?.message?.includes('TurboModule')) {
+          return false;
+        }
+        return failureCount < 3;
+      },
+      staleTime: 5 * 60 * 1000, // 5 minutes
+      cacheTime: 10 * 60 * 1000, // 10 minutes
+    },
+  },
+});
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
+
+// Set up global error handling immediately
+const setupGlobalErrorHandling = () => {
+  // Store original handler
+  const originalHandler = ErrorUtils.getGlobalHandler();
+  
+  ErrorUtils.setGlobalHandler((error, isFatal) => {
+    console.error('🚨 Global error caught:', error);
+    console.error('🚨 Is fatal:', isFatal);
+    
+    // Check for specific crash patterns from the crash report
+    const errorString = String(error);
+    const stackTrace = error?.stack || '';
+    
+    // Detect bridge-related errors
+    if (errorString.includes('RCTExceptionsManager') || 
+        errorString.includes('facebook::react::invokeInner') ||
+        errorString.includes('TurboModule') ||
+        stackTrace.includes('RCTNativeModule')) {
+      console.error('🚨 Bridge error detected - preventing crash');
+      
+      // Don't let bridge errors crash the app
+      if (isFatal) {
+        console.error('🚨 Fatal bridge error converted to non-fatal');
+        // Call original handler with non-fatal flag
+        if (originalHandler) {
+          originalHandler(error, false);
+        }
+        return;
+      }
+    }
+    
+    // Handle memory/alignment errors
+    if (errorString.includes('alignment') || 
+        errorString.includes('EXC_BAD_ACCESS') ||
+        errorString.includes('SIGABRT')) {
+      console.error('🚨 Memory/alignment error detected');
+      memoryProtection.performMemoryCheck();
+      
+      // Don't crash on memory errors
+      if (isFatal) {
+        console.error('🚨 Fatal memory error converted to non-fatal');
+        if (originalHandler) {
+          originalHandler(error, false);
+        }
+        return;
+      }
+    }
+    
+    // For all other errors, use original handler
+    if (originalHandler) {
+      originalHandler(error, isFatal);
+    }
+  });
+};
+
+// Set up global error handling immediately
+setupGlobalErrorHandling();
 
 export default function RootLayout() {
   const [loaded, error] = useFonts({
@@ -63,9 +139,9 @@ function RootLayoutNav() {
       try {
         console.log('Starting app initialization with crash protection...');
         
-        // Step 1: Initialize user store with bridge safety and memory protection
+        // Step 1: Initialize user store with iOS crash prevention
         if (initializeUser) {
-          await safeAsyncOperation(
+          await IOSCrashPrevention.safeExecute(
             async () => {
               await BridgeErrorHandler.withTimeout(
                 () => Promise.resolve(initializeUser()),
@@ -74,7 +150,7 @@ function RootLayoutNav() {
               );
             },
             'user-store-initialization',
-            5000
+            undefined
           );
         }
         

@@ -3,12 +3,15 @@ import { persist, createJSONStorage } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { UserProfile, Country, EducationLevel } from "@/types/user";
 import { getJourneyProgressForCountry } from "@/mocks/journeyTasks";
+import { SafeAsyncStorage } from "@/utils/safeNativeModules";
 
-// Error-safe AsyncStorage wrapper
+// Enhanced error-safe AsyncStorage wrapper with iOS crash prevention
 const safeAsyncStorage = {
   getItem: async (key: string): Promise<string | null> => {
     try {
-      return await AsyncStorage.getItem(key);
+      // Use SafeAsyncStorage for iOS crash prevention
+      const result = await SafeAsyncStorage.getItem(key);
+      return result;
     } catch (error) {
       console.error(`AsyncStorage getItem error for key "${key}":`, error);
       return null;
@@ -16,14 +19,16 @@ const safeAsyncStorage = {
   },
   setItem: async (key: string, value: string): Promise<void> => {
     try {
-      await AsyncStorage.setItem(key, value);
+      // Use SafeAsyncStorage for iOS crash prevention
+      await SafeAsyncStorage.setItem(key, value);
     } catch (error) {
       console.error(`AsyncStorage setItem error for key "${key}":`, error);
     }
   },
   removeItem: async (key: string): Promise<void> => {
     try {
-      await AsyncStorage.removeItem(key);
+      // Use SafeAsyncStorage for iOS crash prevention
+      await SafeAsyncStorage.removeItem(key);
     } catch (error) {
       console.error(`AsyncStorage removeItem error for key "${key}":`, error);
     }
