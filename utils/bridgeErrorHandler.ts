@@ -98,27 +98,44 @@ export class BridgeErrorHandler {
     const errorString = error.toString().toLowerCase();
     const stackString = error.stack?.toLowerCase() || '';
     
-    const bridgeKeywords = [
+    // Enhanced detection for specific crash patterns from the crash report
+    const bridgePatterns = [
+      'rctexceptionsmanager',
+      'facebook::react::invokeinne',
+      'rctmodulemethd',
+      'rctbridge',
+      'rctnativemodule',
       'turbomodule',
-      'jsi',
-      'rct',
-      'objc_exception',
-      'nsinvocation',
       'convertnsarraytojsiarray',
-      'rnbridge',
-      'react native',
-      'rn',
-      'facebook::react',
-      'hermes::vm'
+      'exc_bad_access',
+      'sigabrt',
+      'objc_exception_throw',
+      'rctfatal',
+      'bridge',
+      'native module',
+      'jsi',
+      'hermes',
+      'rct',
+      // iOS-specific patterns from the crash report
+      'pthread_kill',
+      'abort',
+      '__abort_message',
+      'demangling_terminate_handler',
+      '_objc_terminate',
+      'objc_exception_rethrow',
+      // Memory alignment patterns
+      'alignment',
+      'pc alignment',
+      'esr: 0x56000080'
     ];
     
-    return bridgeKeywords.some(keyword => 
-      errorString.includes(keyword) || stackString.includes(keyword)
+    return bridgePatterns.some(pattern => 
+      errorString.includes(pattern) || stackString.includes(pattern)
     );
   }
 
   /**
-   * Checks if an error is likely related to PC alignment or memory issues
+   * Enhanced alignment error detection for iOS crashes
    */
   private static isAlignmentRelatedError(error: any): boolean {
     if (!error) return false;
@@ -126,43 +143,29 @@ export class BridgeErrorHandler {
     const errorString = error.toString().toLowerCase();
     const stackString = error.stack?.toLowerCase() || '';
     
-    const alignmentKeywords = [
+    // Specific patterns from iOS crash reports
+    const alignmentPatterns = [
       'alignment',
       'pc alignment',
-      'sigsegv',
-      'sigabrt',
+      'esr: 0x56000080',
       'exc_bad_access',
-      'exc_crash',
+      'sigabrt',
+      'pthread_kill',
+      'abort',
+      '__abort_message',
       'memory',
       'stack overflow',
-      'buffer overflow',
-      'heap',
-      'malloc',
-      'free',
-      'corrupted',
-      'invalid pointer',
-      'segmentation fault',
-      'bus error',
-      'unaligned',
-      'misaligned'
+      'heap corruption',
+      // iOS-specific memory errors
+      'mach_msg',
+      'objc_exception',
+      'libc++abi',
+      'std::terminate'
     ];
     
-    // Check for specific ESR codes that indicate alignment errors
-    const esrAlignmentCodes = [
-      '0x56000080', // PC alignment
-      '0x92000046', // Data abort
-      '0x96000010'  // SP alignment
-    ];
-    
-    const hasAlignmentKeyword = alignmentKeywords.some(keyword => 
-      errorString.includes(keyword) || stackString.includes(keyword)
+    return alignmentPatterns.some(pattern => 
+      errorString.includes(pattern) || stackString.includes(pattern)
     );
-    
-    const hasESRCode = esrAlignmentCodes.some(code => 
-      errorString.includes(code) || stackString.includes(code)
-    );
-    
-    return hasAlignmentKeyword || hasESRCode;
   }
 
   /**
