@@ -53,16 +53,19 @@ const setupGlobalErrorHandling = () => {
     const errorString = String(error);
     const stackTrace = error?.stack || '';
     
-    // Detect bridge-related errors
+    // Detect bridge-related errors including native module crashes
     if (errorString.includes('RCTExceptionsManager') || 
         errorString.includes('facebook::react::invokeInner') ||
         errorString.includes('TurboModule') ||
-        stackTrace.includes('RCTNativeModule')) {
-      console.error('🚨 Bridge error detected - preventing crash');
+        errorString.includes('RCTNativeModule') ||
+        errorString.includes('SIGABRT') ||
+        stackTrace.includes('RCTNativeModule') ||
+        stackTrace.includes('invokeInner')) {
+      console.error('🚨 Bridge or Native Module error detected - preventing crash');
       
-      // Don't let bridge errors crash the app
+      // Don't let bridge or native module errors crash the app
       if (isFatal) {
-        console.error('🚨 Fatal bridge error converted to non-fatal');
+        console.error('🚨 Fatal bridge/native module error converted to non-fatal');
         // Call original handler with non-fatal flag
         if (originalHandler) {
           originalHandler(error, false);
