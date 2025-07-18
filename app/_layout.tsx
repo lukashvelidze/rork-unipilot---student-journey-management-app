@@ -1,3 +1,10 @@
+// CRITICAL: Import emergency error handler FIRST - before any other imports
+import { EmergencyErrorHandler } from "@/utils/emergencyErrorHandler";
+// CRITICAL: Import native module interceptor SECOND - to catch bridge calls
+import { NativeModuleInterceptor } from "@/utils/nativeModuleInterceptor";
+// CRITICAL: Import RCTExceptionsManager override THIRD - to block fatal reports
+import { RCTExceptionsManagerOverride } from "@/utils/rctExceptionsManagerOverride";
+
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
@@ -17,7 +24,8 @@ import { CrashProtectionBoundary } from "@/components/CrashProtectionBoundary";
 import { memoryProtection, safeAsyncOperation } from "@/utils/memoryProtection";
 import { IOSCrashPrevention } from "@/utils/iosCrashPrevention";
 
-// Initialize iOS crash prevention immediately
+// Initialize emergency error handler first (already done via import)
+// Initialize iOS crash prevention
 IOSCrashPrevention.initialize();
 
 // Create a client
