@@ -33,17 +33,13 @@ export default function ApplicationChecklistScreen() {
     : getTasksByCategory(selectedCategory as ApplicationTask['category']);
 
   // Filter tasks based on premium status - only show post-acceptance tasks if premium
-  const accessibleTasks = filteredTasks.filter(task => {
+  const visibleTasks = filteredTasks.filter(task => {
     // If task requires acceptance and user has acceptance but no premium, hide it (except the acceptance task itself)
     if (task.requiresAcceptance && hasAcceptance && !isPremium && task.id !== "receive-acceptance") {
       return false;
     }
-    return true;
+    return !task.requiresAcceptance || hasAcceptance || task.id === "receive-acceptance";
   });
-  
-  const visibleTasks = accessibleTasks.filter(task => 
-    !task.requiresAcceptance || hasAcceptance || task.id === "receive-acceptance"
-  );
 
   // Check if user should see premium overlay for post-acceptance tasks
   const shouldShowPremiumOverlay = hasAcceptance && !isPremium && 
