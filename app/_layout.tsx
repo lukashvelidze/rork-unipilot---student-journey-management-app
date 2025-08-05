@@ -96,7 +96,8 @@ const setupGlobalErrorHandling = () => {
 };
 
 // Set up global error handling immediately
-setupGlobalErrorHandling();
+// Note: Temporarily disabled due to potential issues with ErrorUtils in Expo
+// setupGlobalErrorHandling();
 
 export default function RootLayout() {
   const [loaded, error] = useFonts({

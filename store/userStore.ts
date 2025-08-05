@@ -178,14 +178,8 @@ export const useUserStore = create<UserState>()(
             journeyProgress: newJourneyProgress,
           };
           
-          // Update the journey store immediately
-          setTimeout(() => {
-            const { useJourneyStore } = require("@/store/journeyStore");
-            const journeyStore = useJourneyStore.getState();
-            console.log("Updating journey store with new progress");
-            journeyStore.setJourneyProgress(newJourneyProgress);
-            journeyStore.refreshJourney();
-          }, 0);
+          // Note: Journey store update should be handled by the component
+          // that calls this action, not here, to avoid side effects in render path
           
           return {
             user: updatedUser,
