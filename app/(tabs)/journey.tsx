@@ -291,14 +291,9 @@ export default function JourneyScreen() {
             <View style={styles.stagesContainer}>
               {journeyProgress.map((stage) => {
                 // Check if stage should be locked for non-premium users
-                const hasAcceptance = journeyProgress.some(s => 
-                  s.stage === "application" && 
-                  s.tasks.some(t => t.title.includes("🎉 Receive acceptance letter") && t.completed)
-                );
-                
                 const isLockedStage = (stage.stage === "visa" || stage.stage === "pre_departure" || 
                                      stage.stage === "arrival" || stage.stage === "academic" || 
-                                     stage.stage === "career") && hasAcceptance && !isPremium;
+                                     stage.stage === "career") && !isPremium;
                 
                 return (
                   <StageProgress
