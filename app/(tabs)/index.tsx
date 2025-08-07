@@ -254,7 +254,7 @@ export default function HomeScreen() {
                 </Text>
                 {task.completed && (
                   <View style={[styles.taskCompleted, { backgroundColor: Colors.success }]}>
-                    <Text style={styles.taskCompletedText}>✓</Text>
+                    <Text style={styles.taskCompletedText}>Done</Text>
                   </View>
                 )}
               </TouchableOpacity>
