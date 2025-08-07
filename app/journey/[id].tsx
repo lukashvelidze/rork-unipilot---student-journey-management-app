@@ -81,6 +81,7 @@ export default function StageDetailScreen() {
   const info = stageInfo[stageId];
 
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
+  const [acceptanceLetterChecked, setAcceptanceLetterChecked] = useState<boolean>(false);
 
   if (!stage || !info) {
     return (
@@ -106,6 +107,7 @@ export default function StageDetailScreen() {
             onPress: () => {
               updateTaskCompletion(stageId, taskId, !currentCompleted);
               markAcceptance(stageId);
+              setAcceptanceLetterChecked(true);
               
               // Add celebration milestone
               addRecentMilestone({
@@ -206,7 +208,7 @@ export default function StageDetailScreen() {
     // For other stages, check if they require premium after acceptance
     if (stageId === "visa" || stageId === "pre_departure" || stageId === "arrival" || stageId === "academic" || stageId === "career") {
       // These stages require premium if user has marked acceptance
-      if (hasAcceptance && !isPremium) {
+      if (acceptanceLetterChecked && !isPremium) {
         return false;
       }
     }
@@ -279,7 +281,7 @@ export default function StageDetailScreen() {
         )}
 
         {/* Premium Notice for Locked Stages */}
-        {(stageId === "visa" || stageId === "pre_departure" || stageId === "arrival" || stageId === "academic" || stageId === "career") && hasAcceptance && !isPremium && (
+        {(stageId === "visa" || stageId === "pre_departure" || stageId === "arrival" || stageId === "academic" || stageId === "career") && acceptanceLetterChecked && !isPremium && (
           <Card style={[styles.premiumNoticeCard, { backgroundColor: Colors.lightBackground, borderColor: Colors.primary }]}>
             <View style={styles.premiumNoticeContent}>
               <Crown size={24} color={Colors.primary} />
@@ -302,7 +304,7 @@ export default function StageDetailScreen() {
         )}
 
         <View style={styles.tasksContainer}>
-          {visibleTasks.length === 0 && (stageId === "visa" || stageId === "pre_departure" || stageId === "arrival" || stageId === "academic" || stageId === "career") && hasAcceptance && !isPremium ? (
+          {visibleTasks.length === 0 && (stageId === "visa" || stageId === "pre_departure" || stageId === "arrival" || stageId === "academic" || stageId === "career") && acceptanceLetterChecked && !isPremium ? (
             <Card style={[styles.emptyStateCard, { backgroundColor: Colors.card }]}>
               <View style={styles.emptyStateContent}>
                 <Crown size={48} color={Colors.lightText} />
