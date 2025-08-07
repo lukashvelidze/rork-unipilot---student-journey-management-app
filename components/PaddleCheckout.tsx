@@ -6,6 +6,7 @@ import Colors from "@/constants/colors";
 import { usePaddle } from "@/hooks/usePaddle";
 import { createCheckoutUrl } from "@/lib/paddle";
 import { useUserStore } from "@/store/userStore";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 // Add CSS for web spinner animation
 if (Platform.OS === 'web' && typeof document !== 'undefined') {
@@ -226,7 +227,7 @@ export default function PaddleCheckout({
       presentationStyle="pageSheet"
       onRequestClose={onClose}
     >
-      <WebViewErrorBoundary>
+      <ErrorBoundary>
         <View style={styles.container}>
           <View style={styles.header}>
             <Text style={styles.headerTitle}>Premium Subscription</Text>
@@ -236,30 +237,30 @@ export default function PaddleCheckout({
           </View>
           
           <WebView
-          ref={webViewRef}
-          source={{ uri: checkoutUrl }}
-          style={styles.webview}
-          onMessage={handleWebViewMessage}
-          javaScriptEnabled={true}
-          domStorageEnabled={true}
-          startInLoadingState={true}
-          scalesPageToFit={true}
-          mixedContentMode="compatibility"
-          allowsInlineMediaPlayback={true}
-          mediaPlaybackRequiresUserAction={false}
-          onLoadStart={() => console.log('WebView loading started')}
-          onLoadEnd={() => console.log('WebView loading ended')}
-          onError={(error) => {
-            console.error('WebView error:', error);
-            Alert.alert(
-              'Loading Error',
-              'Failed to load payment form. Please try again.',
-              [{ text: 'OK', onPress: onClose }]
-            );
-          }}
+            ref={webViewRef}
+            source={{ uri: checkoutUrl }}
+            style={styles.webview}
+            onMessage={handleWebViewMessage}
+            javaScriptEnabled={true}
+            domStorageEnabled={true}
+            startInLoadingState={true}
+            scalesPageToFit={true}
+            mixedContentMode="compatibility"
+            allowsInlineMediaPlayback={true}
+            mediaPlaybackRequiresUserAction={false}
+            onLoadStart={() => console.log('WebView loading started')}
+            onLoadEnd={() => console.log('WebView loading ended')}
+            onError={(error) => {
+              console.error('WebView error:', error);
+              Alert.alert(
+                'Loading Error',
+                'Failed to load payment form. Please try again.',
+                [{ text: 'OK', onPress: onClose }]
+              );
+            }}
           />
         </View>
-      </WebViewErrorBoundary>
+      </ErrorBoundary>
     </Modal>
   );
 }

@@ -208,51 +208,51 @@ function RootLayoutNav() {
           <trpc.Provider client={trpcClient} queryClient={queryClient}>
             <QueryClientProvider client={queryClient}>
               <Stack
-            screenOptions={{
-              headerStyle: {
-                backgroundColor: Colors.background,
-              },
-              headerTintColor: Colors.text,
-              headerTitleStyle: {
-                fontWeight: "600",
-                color: Colors.text,
-              },
-              contentStyle: {
-                backgroundColor: Colors.background,
-              },
-              headerShadowVisible: false,
-            }}
-          >
-            <Stack.Screen name="index" options={{ headerShown: false }} />
-            <Stack.Screen name="onboarding/index" options={{ headerShown: false }} />
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen name="application-checklist" options={{ title: 'Application Checklist' }} />
-            <Stack.Screen name="community/index" options={{ title: 'Community' }} />
-            <Stack.Screen name="community/[id]" options={{ title: 'Post Details' }} />
-            <Stack.Screen name="community/new" options={{ title: 'New Post' }} />
-            <Stack.Screen name="documents/new" options={{ title: 'New Document' }} />
-            <Stack.Screen name="documents/[id]" options={{ title: 'Document Details' }} />
-            <Stack.Screen name="journey/[id]" options={{ title: 'Journey Stage' }} />
-            <Stack.Screen name="memories/new" options={{ title: 'New Memory' }} />
-            <Stack.Screen name="memories/[id]" options={{ title: 'Memory Details' }} />
-            <Stack.Screen name="premium/index" options={{ title: 'Premium' }} />
-            <Stack.Screen name="premium/[id]" options={{ title: 'Premium Content' }} />
-            <Stack.Screen name="premium/checkout" options={{ title: 'Checkout' }} />
-            <Stack.Screen name="premium/payment" options={{ title: 'Payment' }} />
-            <Stack.Screen name="premium/resources" options={{ title: 'Premium Resources' }} />
-            <Stack.Screen name="premium/subscription" options={{ title: 'Subscription' }} />
-            <Stack.Screen name="profile/personal" options={{ title: 'Personal Info' }} />
-            <Stack.Screen name="profile/education" options={{ title: 'Education' }} />
-            <Stack.Screen name="profile/countries" options={{ title: 'Countries' }} />
-            <Stack.Screen name="profile/budget" options={{ title: 'Budget' }} />
-            <Stack.Screen name="profile/timeline" options={{ title: 'Timeline' }} />
-            <Stack.Screen name="profile/goals" options={{ title: 'Goals' }} />
-            <Stack.Screen name="profile/edit" options={{ title: 'Edit Profile' }} />
-            <Stack.Screen name="settings/index" options={{ title: 'Settings' }} />
-            <Stack.Screen name="unipilot-ai/index" options={{ title: 'UniPilot AI' }} />
-            <Stack.Screen name="payment-success" options={{ title: 'Payment Success' }} />
-            <Stack.Screen name="webview" options={{ title: 'WebView' }} />
-            <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+                screenOptions={{
+                  headerStyle: {
+                    backgroundColor: Colors.background,
+                  },
+                  headerTintColor: Colors.text,
+                  headerTitleStyle: {
+                    fontWeight: "600",
+                    color: Colors.text,
+                  },
+                  contentStyle: {
+                    backgroundColor: Colors.background,
+                  },
+                  headerShadowVisible: false,
+                }}
+              >
+                <Stack.Screen name="index" options={{ headerShown: false }} />
+                <Stack.Screen name="onboarding/index" options={{ headerShown: false }} />
+                <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                <Stack.Screen name="application-checklist" options={{ title: 'Application Checklist' }} />
+                <Stack.Screen name="community/index" options={{ title: 'Community' }} />
+                <Stack.Screen name="community/[id]" options={{ title: 'Post Details' }} />
+                <Stack.Screen name="community/new" options={{ title: 'New Post' }} />
+                <Stack.Screen name="documents/new" options={{ title: 'New Document' }} />
+                <Stack.Screen name="documents/[id]" options={{ title: 'Document Details' }} />
+                <Stack.Screen name="journey/[id]" options={{ title: 'Journey Stage' }} />
+                <Stack.Screen name="memories/new" options={{ title: 'New Memory' }} />
+                <Stack.Screen name="memories/[id]" options={{ title: 'Memory Details' }} />
+                <Stack.Screen name="premium/index" options={{ title: 'Premium' }} />
+                <Stack.Screen name="premium/[id]" options={{ title: 'Premium Content' }} />
+                <Stack.Screen name="premium/checkout" options={{ title: 'Checkout' }} />
+                <Stack.Screen name="premium/payment" options={{ title: 'Payment' }} />
+                <Stack.Screen name="premium/resources" options={{ title: 'Premium Resources' }} />
+                <Stack.Screen name="premium/subscription" options={{ title: 'Subscription' }} />
+                <Stack.Screen name="profile/personal" options={{ title: 'Personal Info' }} />
+                <Stack.Screen name="profile/education" options={{ title: 'Education' }} />
+                <Stack.Screen name="profile/countries" options={{ title: 'Countries' }} />
+                <Stack.Screen name="profile/budget" options={{ title: 'Budget' }} />
+                <Stack.Screen name="profile/timeline" options={{ title: 'Timeline' }} />
+                <Stack.Screen name="profile/goals" options={{ title: 'Goals' }} />
+                <Stack.Screen name="profile/edit" options={{ title: 'Edit Profile' }} />
+                <Stack.Screen name="settings/index" options={{ title: 'Settings' }} />
+                <Stack.Screen name="unipilot-ai/index" options={{ title: 'UniPilot AI' }} />
+                <Stack.Screen name="payment-success" options={{ title: 'Payment Success' }} />
+                <Stack.Screen name="webview" options={{ title: 'WebView' }} />
+                <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
               </Stack>
             </QueryClientProvider>
           </trpc.Provider>

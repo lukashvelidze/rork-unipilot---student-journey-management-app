@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { View, StyleSheet, Platform } from "react-native";
 import { WebView } from "react-native-webview";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -60,13 +60,15 @@ export default function PaddleCheckoutScreen() {
     }
   };
 
-  if (Platform.OS === 'web') {
-    // For web, redirect to external checkout
-    React.useEffect(() => {
+  useEffect(() => {
+    if (Platform.OS === 'web') {
+      // For web, redirect to external checkout
       window.open(checkoutUrl, '_blank');
       router.back();
-    }, []);
-    
+    }
+  }, [checkoutUrl, router]);
+
+  if (Platform.OS === 'web') {
     return null;
   }
 
@@ -74,71 +76,71 @@ export default function PaddleCheckoutScreen() {
     <WebViewErrorBoundary>
       <View style={styles.container}>
         <WebView
-        source={{ uri: checkoutUrl }}
-        javaScriptEnabled={true}
-        domStorageEnabled={true}
-        startInLoadingState={true}
-        onNavigationStateChange={handleNavigationStateChange}
-        onMessage={handleMessage}
-        renderLoading={() => (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={Colors.primary} />
-          </View>
-        )}
-        style={styles.webview}
-        // Allow the WebView to handle redirects
-        onShouldStartLoadWithRequest={(request) => {
-          return true;
-        }}
-        // Inject JavaScript to communicate with the parent app
-        injectedJavaScript={`
-          // Safe message sender wrapper
-          window.safeSendMessage = function(data) {
-            try {
-              if (!data || !data.type) {
-                console.error('Message must have a type field');
-                return;
+          source={{ uri: checkoutUrl }}
+          javaScriptEnabled={true}
+          domStorageEnabled={true}
+          startInLoadingState={true}
+          onNavigationStateChange={handleNavigationStateChange}
+          onMessage={handleMessage}
+          renderLoading={() => (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color={Colors.primary} />
+            </View>
+          )}
+          style={styles.webview}
+          // Allow the WebView to handle redirects
+          onShouldStartLoadWithRequest={(request) => {
+            return true;
+          }}
+          // Inject JavaScript to communicate with the parent app
+          injectedJavaScript={`
+            // Safe message sender wrapper
+            window.safeSendMessage = function(data) {
+              try {
+                if (!data || !data.type) {
+                  console.error('Message must have a type field');
+                  return;
+                }
+                
+                if (window.ReactNativeWebView) {
+                  window.ReactNativeWebView.postMessage(JSON.stringify(data));
+                }
+              } catch (error) {
+                console.error('Failed to send safe message:', error);
               }
-              
-              if (window.ReactNativeWebView) {
-                window.ReactNativeWebView.postMessage(JSON.stringify(data));
-              }
-            } catch (error) {
-              console.error('Failed to send safe message:', error);
+            };
+            
+            // Listen for Paddle checkout events
+            if (window.Paddle) {
+              window.Paddle.Setup({
+                checkout: {
+                  settings: {
+                    successUrl: 'about:blank?success=true',
+                    closeUrl: 'about:blank?cancel=true'
+                  }
+                }
+              });
             }
-          };
-          
-          // Listen for Paddle checkout events
-          if (window.Paddle) {
-            window.Paddle.Setup({
-              checkout: {
-                settings: {
-                  successUrl: 'about:blank?success=true',
-                  closeUrl: 'about:blank?cancel=true'
+            
+            // Listen for URL changes that indicate completion
+            let lastUrl = window.location.href;
+            setInterval(() => {
+              if (window.location.href !== lastUrl) {
+                lastUrl = window.location.href;
+                if (lastUrl.includes('success') || lastUrl.includes('complete')) {
+                  window.safeSendMessage({
+                    type: 'checkout_complete'
+                  });
+                } else if (lastUrl.includes('cancel') || lastUrl.includes('close')) {
+                  window.safeSendMessage({
+                    type: 'checkout_cancel'
+                  });
                 }
               }
-            });
-          }
-          
-          // Listen for URL changes that indicate completion
-          let lastUrl = window.location.href;
-          setInterval(() => {
-            if (window.location.href !== lastUrl) {
-              lastUrl = window.location.href;
-              if (lastUrl.includes('success') || lastUrl.includes('complete')) {
-                window.safeSendMessage({
-                  type: 'checkout_complete'
-                });
-              } else if (lastUrl.includes('cancel') || lastUrl.includes('close')) {
-                window.safeSendMessage({
-                  type: 'checkout_cancel'
-                });
-              }
-            }
-          }, 1000);
-          
-          true;
-        `}
+            }, 1000);
+            
+            true;
+          `}
         />
       </View>
     </WebViewErrorBoundary>
