@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { StyleSheet, View, Platform } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -15,15 +15,13 @@ export default function WebViewScreen() {
   const webViewUrl = url || 'https://lukashvelidze.github.io/unipilot/';
   const screenTitle = title || 'UniPilot';
 
-  useEffect(() => {
-    if (Platform.OS === 'web') {
-      // On web, open in a new tab/window
+  if (Platform.OS === 'web') {
+    // On web, open in a new tab/window
+    React.useEffect(() => {
       window.open(webViewUrl, '_blank');
       router.back();
-    }
-  }, [webViewUrl, router]);
+    }, [webViewUrl]);
 
-  if (Platform.OS === 'web') {
     return (
       <View style={[styles.container, { backgroundColor: Colors.background }]}>
         <Stack.Screen

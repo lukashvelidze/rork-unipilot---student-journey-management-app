@@ -124,7 +124,7 @@ export default function StageDetailScreen() {
                       { text: "Maybe Later", style: "cancel" },
                       { 
                         text: "Upgrade to Premium", 
-                        onPress: () => router.push('/premium')
+                        onPress: () => router.push('/premium/subscription')
                       }
                     ]
                   );
@@ -185,7 +185,7 @@ export default function StageDetailScreen() {
   const totalTasks = stage.tasks.length;
   const hasAcceptance = stage.hasAcceptance || stage.tasks.some(t => t.title.includes("🎉 Receive acceptance letter") && t.completed);
 
-  // Filter tasks based on premium status - only show research and application stages for free users
+  // Filter tasks based on acceptance status and premium status
   const visibleTasks = stage.tasks.filter(task => {
     // For application stage, check acceptance-related tasks
     if (stageId === "application") {
@@ -203,9 +203,12 @@ export default function StageDetailScreen() {
       }
     }
     
-    // For other stages (visa, pre_departure, arrival, academic, career), require premium
-    if (stageId !== "research" && stageId !== "application") {
-      return isPremium;
+    // For other stages, check if they require premium after acceptance
+    if (stageId === "visa" || stageId === "pre_departure" || stageId === "arrival" || stageId === "academic" || stageId === "career") {
+      // These stages require premium if user has marked acceptance
+      if (hasAcceptance && !isPremium) {
+        return false;
+      }
     }
     
     return true;
@@ -276,20 +279,20 @@ export default function StageDetailScreen() {
         )}
 
         {/* Premium Notice for Locked Stages */}
-        {(stageId !== "research" && stageId !== "application") && !isPremium && (
+        {(stageId === "visa" || stageId === "pre_departure" || stageId === "arrival" || stageId === "academic" || stageId === "career") && hasAcceptance && !isPremium && (
           <Card style={[styles.premiumNoticeCard, { backgroundColor: Colors.lightBackground, borderColor: Colors.primary }]}>
             <View style={styles.premiumNoticeContent}>
               <Crown size={24} color={Colors.primary} />
               <View style={styles.premiumNoticeText}>
                 <Text style={[styles.premiumNoticeTitle, { color: Colors.primary }]}>
-                  🎓 Premium Stage Required
+                  🎓 Premium Stage Unlocked!
                 </Text>
                 <Text style={[styles.premiumNoticeDescription, { color: Colors.text }]}>
-                  This stage requires Premium access. Upgrade to unlock detailed guidance and checklists for your {stageId.replace('_', ' ')} journey.
+                  This stage is now available with Premium. Upgrade to access detailed guidance for your next steps.
                 </Text>
                 <TouchableOpacity
                   style={[styles.upgradeButton, { backgroundColor: Colors.primary }]}
-                  onPress={() => router.push('/premium')}
+                  onPress={() => router.push('/premium/subscription')}
                 >
                   <Text style={styles.upgradeButtonText}>Upgrade to Premium</Text>
                 </TouchableOpacity>
@@ -299,13 +302,13 @@ export default function StageDetailScreen() {
         )}
 
         <View style={styles.tasksContainer}>
-          {visibleTasks.length === 0 && (stageId !== "research" && stageId !== "application") && !isPremium ? (
+          {visibleTasks.length === 0 && (stageId === "visa" || stageId === "pre_departure" || stageId === "arrival" || stageId === "academic" || stageId === "career") && hasAcceptance && !isPremium ? (
             <Card style={[styles.emptyStateCard, { backgroundColor: Colors.card }]}>
               <View style={styles.emptyStateContent}>
                 <Crown size={48} color={Colors.lightText} />
                 <Text style={[styles.emptyStateTitle, { color: Colors.text }]}>Premium Required</Text>
                 <Text style={[styles.emptyStateDescription, { color: Colors.lightText }]}>
-                  This stage contains premium content. Upgrade to access detailed tasks and guidance for your {stageId.replace('_', ' ')} journey.
+                  This stage contains premium content. Upgrade to access detailed tasks and guidance.
                 </Text>
               </View>
             </Card>
@@ -358,7 +361,7 @@ export default function StageDetailScreen() {
                   {!isPremium && (
                     <TouchableOpacity
                       style={[styles.premiumButton, { backgroundColor: Colors.primary }]}
-                      onPress={() => router.push("/premium")}
+                      onPress={() => router.push("/(tabs)/community")}
                     >
                       <Text style={styles.premiumButtonText}>Get Premium Tips</Text>
                     </TouchableOpacity>
@@ -380,7 +383,7 @@ export default function StageDetailScreen() {
           {!isPremium && (
             <Button
               title="Unlock Premium Resources"
-              onPress={() => router.push("/premium")}
+              onPress={() => router.push("/(tabs)/community")}
               style={[styles.premiumCTA, { backgroundColor: Colors.primary }]}
             />
           )}
@@ -423,11 +426,11 @@ const styles = StyleSheet.create({
     marginTop: 50,
   },
   header: {
-    marginBottom: 8,
+    marginBottom: 16,
   },
   headerGradient: {
-    padding: 12,
-    paddingTop: 16,
+    padding: 16,
+    paddingTop: 20,
   },
   headerContent: {
     alignItems: "center",
@@ -442,21 +445,21 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: "700",
     color: "#FFFFFF",
-    marginBottom: 4,
+    marginBottom: 6,
     textAlign: "center",
   },
   headerDescription: {
-    fontSize: 12,
+    fontSize: 14,
     color: "rgba(255, 255, 255, 0.9)",
     textAlign: "center",
-    marginBottom: 12,
+    marginBottom: 16,
   },
   progressSection: {
     width: "100%",
-    marginBottom: 8,
+    marginBottom: 12,
   },
   progressStats: {
     flexDirection: "row",

@@ -33,13 +33,17 @@ export default function ApplicationChecklistScreen() {
     : getTasksByCategory(selectedCategory as ApplicationTask['category']);
 
   // Filter tasks based on premium status - only show post-acceptance tasks if premium
-  const visibleTasks = filteredTasks.filter(task => {
+  const accessibleTasks = filteredTasks.filter(task => {
     // If task requires acceptance and user has acceptance but no premium, hide it (except the acceptance task itself)
     if (task.requiresAcceptance && hasAcceptance && !isPremium && task.id !== "receive-acceptance") {
       return false;
     }
-    return !task.requiresAcceptance || hasAcceptance || task.id === "receive-acceptance";
+    return true;
   });
+  
+  const visibleTasks = accessibleTasks.filter(task => 
+    !task.requiresAcceptance || hasAcceptance || task.id === "receive-acceptance"
+  );
 
   // Check if user should see premium overlay for post-acceptance tasks
   const shouldShowPremiumOverlay = hasAcceptance && !isPremium && 
@@ -47,7 +51,7 @@ export default function ApplicationChecklistScreen() {
 
   const handlePremiumUpgrade = () => {
     setShowPremiumModal(false);
-    router.push('/premium');
+    router.push('/premium/subscription');
   };
 
   const handleTaskToggle = (taskId: string) => {
@@ -321,7 +325,7 @@ export default function ApplicationChecklistScreen() {
                   {!isPremium && (
                     <TouchableOpacity
                       style={[styles.premiumButton, { backgroundColor: Colors.primary }]}
-                      onPress={() => router.push("/premium")}
+                      onPress={() => router.push("/(tabs)/community")}
                     >
                       <Star size={16} color={Colors.white} />
                       <Text style={styles.premiumButtonText}>Get Premium Templates & Guides</Text>
@@ -342,7 +346,7 @@ export default function ApplicationChecklistScreen() {
           </Text>
           <Button
             title="Upgrade to Premium"
-            onPress={() => router.push("/premium")}
+            onPress={() => router.push("/(tabs)/community")}
             style={[styles.ctaButton, { backgroundColor: Colors.primary }]}
             icon={<Star size={20} color={Colors.white} />}
           />
@@ -431,39 +435,39 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    marginBottom: 8,
+    marginBottom: 12,
   },
   headerGradient: {
-    padding: 12,
-    paddingTop: 16,
+    padding: 16,
+    paddingTop: 20,
   },
   headerContent: {
     alignItems: "center",
   },
   headerTitle: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: "700",
     color: "#FFFFFF",
-    marginTop: 4,
-    marginBottom: 2,
+    marginTop: 6,
+    marginBottom: 3,
     textAlign: "center",
   },
   headerSubtitle: {
-    fontSize: 12,
+    fontSize: 13,
     color: "rgba(255, 255, 255, 0.9)",
     textAlign: "center",
-    marginBottom: 8,
+    marginBottom: 12,
   },
   progressSection: {
     width: "100%",
-    marginBottom: 8,
+    marginBottom: 12,
   },
   progressBar: {
-    height: 4,
+    height: 6,
     backgroundColor: "rgba(255, 255, 255, 0.3)",
-    borderRadius: 2,
+    borderRadius: 3,
     overflow: "hidden",
-    marginBottom: 4,
+    marginBottom: 6,
   },
   progressFill: {
     height: "100%",

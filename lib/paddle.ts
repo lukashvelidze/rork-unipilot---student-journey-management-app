@@ -15,7 +15,7 @@ export const initializePaddleService = async (): Promise<Paddle | null> => {
       token: 'test_c25cc3df5ddfcd6b3b2a8420700',
     });
     
-    paddleInstance = paddle || null;
+    paddleInstance = paddle ?? null;
     console.log('✅ Paddle initialized successfully for', Platform.OS);
 
     return paddleInstance;
@@ -407,15 +407,10 @@ export const createCheckoutUrl = (options: {
               console.log('✅ Checkout completed:', data);
               showSuccess('Payment successful! Redirecting...');
               setTimeout(() => {
-                // Use safe message sending to prevent TurboModule crashes
-                if (window.safeSendMessage) {
-                  window.safeSendMessage({
-                    type: 'checkout_success',
-                    transactionId: data?.transactionId || null,
-                    subscriptionId: data?.subscriptionId || null,
-                    status: 'completed'
-                  });
-                }
+                window.ReactNativeWebView?.postMessage(JSON.stringify({
+                  type: 'checkout_success',
+                  data: data
+                }));
               }, 1500);
             });
 
@@ -423,11 +418,9 @@ export const createCheckoutUrl = (options: {
               console.log('❌ Checkout closed');
               btn.disabled = false;
               btnText.textContent = 'Subscribe Now';
-              if (window.safeSendMessage) {
-                window.safeSendMessage({
-                  type: 'checkout_closed'
-                });
-              }
+              window.ReactNativeWebView?.postMessage(JSON.stringify({
+                type: 'checkout_closed'
+              }));
             });
 
             checkoutInstance.onError((error) => {
@@ -435,13 +428,10 @@ export const createCheckoutUrl = (options: {
               btn.disabled = false;
               btnText.textContent = 'Subscribe Now';
               showError('Payment failed. Please try again.');
-              if (window.safeSendMessage) {
-                window.safeSendMessage({
-                  type: 'checkout_error',
-                  message: error?.message || 'Unknown error',
-                  code: error?.code || 'UNKNOWN'
-                });
-              }
+              window.ReactNativeWebView?.postMessage(JSON.stringify({
+                type: 'checkout_error',
+                error: error
+              }));
             });
 
           } catch (error) {
@@ -456,11 +446,9 @@ export const createCheckoutUrl = (options: {
           if (checkoutInstance) {
             checkoutInstance.close();
           }
-                    if (window.safeSendMessage) {
-            window.safeSendMessage({
-              type: 'checkout_cancelled'
-            });
-          }
+          window.ReactNativeWebView?.postMessage(JSON.stringify({
+            type: 'checkout_cancelled'
+          }));
         }
 
         // Show loading initially

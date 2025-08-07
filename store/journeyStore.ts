@@ -3,32 +3,6 @@ import { persist, createJSONStorage } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { JourneyProgress, JourneyStage, Memory, MemoryMood } from "@/types/user";
 
-// Error-safe AsyncStorage wrapper
-const safeAsyncStorage = {
-  getItem: async (key: string): Promise<string | null> => {
-    try {
-      return await AsyncStorage.getItem(key);
-    } catch (error) {
-      console.error(`AsyncStorage getItem error for key "${key}":`, error);
-      return null;
-    }
-  },
-  setItem: async (key: string, value: string): Promise<void> => {
-    try {
-      await AsyncStorage.setItem(key, value);
-    } catch (error) {
-      console.error(`AsyncStorage setItem error for key "${key}":`, error);
-    }
-  },
-  removeItem: async (key: string): Promise<void> => {
-    try {
-      await AsyncStorage.removeItem(key);
-    } catch (error) {
-      console.error(`AsyncStorage removeItem error for key "${key}":`, error);
-    }
-  },
-};
-
 interface Milestone {
   type: "stage_complete" | "progress_milestone" | "confetti";
   stage?: JourneyStage;
@@ -362,7 +336,7 @@ export const useJourneyStore = create<JourneyState>()(
     }),
     {
       name: "journey-storage",
-      storage: createJSONStorage(() => safeAsyncStorage),
+      storage: createJSONStorage(() => AsyncStorage),
     }
   )
 );

@@ -1,2 +1,2 @@
-# UniPilot - Student Jurney Management App 
-Created by Luka Shvelidze
+# rork-unipilot---student-journey-management-app
+Created by Rork

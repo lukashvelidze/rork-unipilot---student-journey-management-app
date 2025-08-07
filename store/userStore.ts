@@ -3,37 +3,6 @@ import { persist, createJSONStorage } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { UserProfile, Country, EducationLevel } from "@/types/user";
 import { getJourneyProgressForCountry } from "@/mocks/journeyTasks";
-import { SafeAsyncStorage } from "@/utils/safeNativeModules";
-
-// Enhanced error-safe AsyncStorage wrapper with iOS crash prevention
-const safeAsyncStorage = {
-  getItem: async (key: string): Promise<string | null> => {
-    try {
-      // Use SafeAsyncStorage for iOS crash prevention
-      const result = await SafeAsyncStorage.getItem(key);
-      return result;
-    } catch (error) {
-      console.error(`AsyncStorage getItem error for key "${key}":`, error);
-      return null;
-    }
-  },
-  setItem: async (key: string, value: string): Promise<void> => {
-    try {
-      // Use SafeAsyncStorage for iOS crash prevention
-      await SafeAsyncStorage.setItem(key, value);
-    } catch (error) {
-      console.error(`AsyncStorage setItem error for key "${key}":`, error);
-    }
-  },
-  removeItem: async (key: string): Promise<void> => {
-    try {
-      // Use SafeAsyncStorage for iOS crash prevention
-      await SafeAsyncStorage.removeItem(key);
-    } catch (error) {
-      console.error(`AsyncStorage removeItem error for key "${key}":`, error);
-    }
-  },
-};
 
 interface UserState {
   user: UserProfile | null;
@@ -108,20 +77,14 @@ export const useUserStore = create<UserState>()(
         })),
       
       initializeUser: () => {
-        try {
-          // This function is called to initialize the user state
-          // The actual user data is loaded from AsyncStorage via the persist middleware
-          const state = get();
-          if (state.user) {
-            console.log("User initialized:", state.user.name);
-            set({ isPremium: state.user.isPremium || state.isPremium });
-          } else {
-            console.log("No user found in storage");
-          }
-        } catch (error) {
-          console.error("Error in initializeUser:", error);
-          // Don't crash the app if user initialization fails
-          set({ error: "Failed to initialize user" });
+        // This function is called to initialize the user state
+        // The actual user data is loaded from AsyncStorage via the persist middleware
+        const state = get();
+        if (state.user) {
+          console.log("User initialized:", state.user.name);
+          set({ isPremium: state.user.isPremium || state.isPremium });
+        } else {
+          console.log("No user found in storage");
         }
       },
       
@@ -178,8 +141,14 @@ export const useUserStore = create<UserState>()(
             journeyProgress: newJourneyProgress,
           };
           
-          // Note: Journey store update should be handled by the component
-          // that calls this action, not here, to avoid side effects in render path
+          // Update the journey store immediately
+          setTimeout(() => {
+            const { useJourneyStore } = require("@/store/journeyStore");
+            const journeyStore = useJourneyStore.getState();
+            console.log("Updating journey store with new progress");
+            journeyStore.setJourneyProgress(newJourneyProgress);
+            journeyStore.refreshJourney();
+          }, 0);
           
           return {
             user: updatedUser,
@@ -198,7 +167,7 @@ export const useUserStore = create<UserState>()(
     }),
     {
       name: "user-storage",
-      storage: createJSONStorage(() => safeAsyncStorage),
+      storage: createJSONStorage(() => AsyncStorage),
     }
   )
 );

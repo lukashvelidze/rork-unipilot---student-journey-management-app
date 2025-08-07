@@ -6,7 +6,6 @@ import Colors from "@/constants/colors";
 import { usePaddle } from "@/hooks/usePaddle";
 import { createCheckoutUrl } from "@/lib/paddle";
 import { useUserStore } from "@/store/userStore";
-import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 // Add CSS for web spinner animation
 if (Platform.OS === 'web' && typeof document !== 'undefined') {
@@ -86,23 +85,11 @@ export default function PaddleCheckout({
 
   const handleWebViewMessage = (event: any) => {
     try {
-      const rawData = event.nativeEvent.data;
-      if (!rawData || typeof rawData !== 'string') {
-        console.warn('Invalid WebView message data');
-        return;
-      }
-      
-      const message = JSON.parse(rawData);
-      
-      // Validate message structure to prevent crashes
-      if (!message || typeof message !== 'object' || !message.type) {
-        console.warn('Invalid WebView message format');
-        return;
-      }
+      const message = JSON.parse(event.nativeEvent.data);
       
       switch (message.type) {
         case 'checkout_success':
-          console.log('✅ Checkout successful');
+          console.log('✅ Checkout successful:', message.data);
           setPaymentProcessing(false);
           onSuccess();
           onClose();
@@ -115,7 +102,7 @@ export default function PaddleCheckout({
           onCancel();
           break;
         case 'checkout_error':
-          console.error('❌ Checkout error:', message.message || 'Unknown error');
+          console.error('❌ Checkout error:', message.error);
           setPaymentProcessing(false);
           setCheckoutStarted(false);
           Alert.alert(
@@ -125,12 +112,10 @@ export default function PaddleCheckout({
           );
           break;
         default:
-          console.log('Unknown message type:', message.type);
+          console.log('Unknown message:', message);
       }
     } catch (error) {
       console.error('Error parsing WebView message:', error);
-      setPaymentProcessing(false);
-      setCheckoutStarted(false);
     }
   };
 
@@ -227,40 +212,38 @@ export default function PaddleCheckout({
       presentationStyle="pageSheet"
       onRequestClose={onClose}
     >
-      <ErrorBoundary>
-        <View style={styles.container}>
-          <View style={styles.header}>
-            <Text style={styles.headerTitle}>Premium Subscription</Text>
-            <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-              <X size={24} color={Colors.text} />
-            </TouchableOpacity>
-          </View>
-          
-          <WebView
-            ref={webViewRef}
-            source={{ uri: checkoutUrl }}
-            style={styles.webview}
-            onMessage={handleWebViewMessage}
-            javaScriptEnabled={true}
-            domStorageEnabled={true}
-            startInLoadingState={true}
-            scalesPageToFit={true}
-            mixedContentMode="compatibility"
-            allowsInlineMediaPlayback={true}
-            mediaPlaybackRequiresUserAction={false}
-            onLoadStart={() => console.log('WebView loading started')}
-            onLoadEnd={() => console.log('WebView loading ended')}
-            onError={(error) => {
-              console.error('WebView error:', error);
-              Alert.alert(
-                'Loading Error',
-                'Failed to load payment form. Please try again.',
-                [{ text: 'OK', onPress: onClose }]
-              );
-            }}
-          />
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Premium Subscription</Text>
+          <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+            <X size={24} color={Colors.text} />
+          </TouchableOpacity>
         </View>
-      </ErrorBoundary>
+        
+        <WebView
+          ref={webViewRef}
+          source={{ uri: checkoutUrl }}
+          style={styles.webview}
+          onMessage={handleWebViewMessage}
+          javaScriptEnabled={true}
+          domStorageEnabled={true}
+          startInLoadingState={true}
+          scalesPageToFit={true}
+          mixedContentMode="compatibility"
+          allowsInlineMediaPlayback={true}
+          mediaPlaybackRequiresUserAction={false}
+          onLoadStart={() => console.log('WebView loading started')}
+          onLoadEnd={() => console.log('WebView loading ended')}
+          onError={(error) => {
+            console.error('WebView error:', error);
+            Alert.alert(
+              'Loading Error',
+              'Failed to load payment form. Please try again.',
+              [{ text: 'OK', onPress: onClose }]
+            );
+          }}
+        />
+      </View>
     </Modal>
   );
 }

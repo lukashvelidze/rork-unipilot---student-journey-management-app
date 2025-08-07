@@ -1,11 +1,10 @@
-import React, { useEffect } from "react";
+import React from "react";
 import { View, StyleSheet, Platform } from "react-native";
 import { WebView } from "react-native-webview";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { ActivityIndicator } from "react-native";
 import Colors from "@/constants/colors";
 import { useUserStore } from "@/store/userStore";
-import { WebViewErrorBoundary } from "@/components/ErrorBoundary";
 
 export default function PaddleCheckoutScreen() {
   const { email } = useLocalSearchParams();
@@ -33,117 +32,83 @@ export default function PaddleCheckoutScreen() {
 
   const handleMessage = (event: any) => {
     try {
-      const data = JSON.parse(event.nativeEvent.data || '{}');
+      const data = JSON.parse(event.nativeEvent.data);
       
-      // Validate message structure to prevent crashes
-      if (!data || typeof data !== 'object' || !data.type) {
-        console.warn('Invalid WebView message format');
-        return;
-      }
-      
-      switch (data.type) {
-        case 'checkout_complete':
-        case 'checkout_success':
-          setPremium(true);
-          router.replace('/premium');
-          break;
-        case 'checkout_cancel':
-        case 'checkout_cancelled':
-        case 'checkout_closed':
-          router.back();
-          break;
-        default:
-          console.log('Unknown WebView message type:', data.type);
+      if (data.type === 'checkout_complete') {
+        setPremium(true);
+        router.replace('/premium');
+      } else if (data.type === 'checkout_cancel') {
+        router.back();
       }
     } catch (error) {
-      console.error('WebView message parsing error:', error);
+      console.log('WebView message parsing error:', error);
     }
   };
 
-  useEffect(() => {
-    if (Platform.OS === 'web') {
-      // For web, redirect to external checkout
+  if (Platform.OS === 'web') {
+    // For web, redirect to external checkout
+    React.useEffect(() => {
       window.open(checkoutUrl, '_blank');
       router.back();
-    }
-  }, [checkoutUrl, router]);
-
-  if (Platform.OS === 'web') {
+    }, []);
+    
     return null;
   }
 
   return (
-    <WebViewErrorBoundary>
-      <View style={styles.container}>
-        <WebView
-          source={{ uri: checkoutUrl }}
-          javaScriptEnabled={true}
-          domStorageEnabled={true}
-          startInLoadingState={true}
-          onNavigationStateChange={handleNavigationStateChange}
-          onMessage={handleMessage}
-          renderLoading={() => (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color={Colors.primary} />
-            </View>
-          )}
-          style={styles.webview}
-          // Allow the WebView to handle redirects
-          onShouldStartLoadWithRequest={(request) => {
-            return true;
-          }}
-          // Inject JavaScript to communicate with the parent app
-          injectedJavaScript={`
-            // Safe message sender wrapper
-            window.safeSendMessage = function(data) {
-              try {
-                if (!data || !data.type) {
-                  console.error('Message must have a type field');
-                  return;
+    <View style={styles.container}>
+      <WebView
+        source={{ uri: checkoutUrl }}
+        javaScriptEnabled={true}
+        domStorageEnabled={true}
+        startInLoadingState={true}
+        onNavigationStateChange={handleNavigationStateChange}
+        onMessage={handleMessage}
+        renderLoading={() => (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={Colors.primary} />
+          </View>
+        )}
+        style={styles.webview}
+        // Allow the WebView to handle redirects
+        onShouldStartLoadWithRequest={(request) => {
+          return true;
+        }}
+        // Inject JavaScript to communicate with the parent app
+        injectedJavaScript={`
+          // Listen for Paddle checkout events
+          if (window.Paddle) {
+            window.Paddle.Setup({
+              checkout: {
+                settings: {
+                  successUrl: 'about:blank?success=true',
+                  closeUrl: 'about:blank?cancel=true'
                 }
-                
-                if (window.ReactNativeWebView) {
-                  window.ReactNativeWebView.postMessage(JSON.stringify(data));
-                }
-              } catch (error) {
-                console.error('Failed to send safe message:', error);
               }
-            };
-            
-            // Listen for Paddle checkout events
-            if (window.Paddle) {
-              window.Paddle.Setup({
-                checkout: {
-                  settings: {
-                    successUrl: 'about:blank?success=true',
-                    closeUrl: 'about:blank?cancel=true'
-                  }
-                }
-              });
+            });
+          }
+          
+          // Listen for URL changes that indicate completion
+          let lastUrl = window.location.href;
+          setInterval(() => {
+            if (window.location.href !== lastUrl) {
+              lastUrl = window.location.href;
+              if (lastUrl.includes('success') || lastUrl.includes('complete')) {
+                window.ReactNativeWebView.postMessage(JSON.stringify({
+                  type: 'checkout_complete'
+                }));
+              } else if (lastUrl.includes('cancel') || lastUrl.includes('close')) {
+                window.ReactNativeWebView.postMessage(JSON.stringify({
+                  type: 'checkout_cancel'
+                }));
+              }
             }
-            
-            // Listen for URL changes that indicate completion
-            let lastUrl = window.location.href;
-            setInterval(() => {
-              if (window.location.href !== lastUrl) {
-                lastUrl = window.location.href;
-                if (lastUrl.includes('success') || lastUrl.includes('complete')) {
-                  window.safeSendMessage({
-                    type: 'checkout_complete'
-                  });
-                } else if (lastUrl.includes('cancel') || lastUrl.includes('close')) {
-                  window.safeSendMessage({
-                    type: 'checkout_cancel'
-                  });
-                }
-              }
-            }, 1000);
-            
-            true;
-          `}
-        />
-      </View>
-    </WebViewErrorBoundary>
+          }, 1000);
+          
+          true;
+        `}
+      />
+    </View>
   );
 }
 
