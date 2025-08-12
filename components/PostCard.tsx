@@ -31,7 +31,7 @@ const PostCard: React.FC<PostCardProps> = ({
         <View style={styles.header}>
           <View style={styles.userContainer}>
             <Avatar
-              source={post.userAvatar}
+              imageUrl={post.userAvatar}
               name={post.userName}
               size="small"
             />

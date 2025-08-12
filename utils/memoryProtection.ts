@@ -160,7 +160,7 @@ class MemoryProtection {
   /**
    * Trigger memory cleanup
    */
-  private triggerMemoryCleanup(): void {
+  triggerMemoryCleanup(): void {
     console.log('Triggering memory cleanup...');
     
     // Force garbage collection if available
