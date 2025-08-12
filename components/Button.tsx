@@ -7,6 +7,7 @@ import {
   ViewStyle,
   TextStyle,
   View,
+  StyleProp,
 } from "react-native";
 import Colors from "@/constants/colors";
 
@@ -19,8 +20,8 @@ interface ButtonProps {
   loading?: boolean;
   icon?: React.ReactNode;
   iconPosition?: "left" | "right";
-  style?: ViewStyle;
-  textStyle?: TextStyle;
+  style?: StyleProp<ViewStyle>;
+  textStyle?: StyleProp<TextStyle>;
   fullWidth?: boolean;
 }
 
@@ -166,7 +167,7 @@ const Button: React.FC<ButtonProps> = ({
         getSizeStyle(),
         fullWidth && styles.fullWidth,
         style,
-      ] as ViewStyle[]}
+      ]}
       activeOpacity={0.7}
       // Ensure button is touchable and above other elements
       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}

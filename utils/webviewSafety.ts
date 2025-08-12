@@ -8,6 +8,12 @@ interface SafeMessageData {
   [key: string]: any;
 }
 
+declare global {
+  interface Window {
+    ReactNativeWebView?: { postMessage: (data: string) => void };
+  }
+}
+
 /**
  * Safely sanitizes data to prevent TurboModule array conversion issues
  */

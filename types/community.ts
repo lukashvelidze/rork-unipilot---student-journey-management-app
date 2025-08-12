@@ -22,12 +22,12 @@ export interface Post {
   id: string;
   title: string;
   content: string;
-  author: Author;
+  author?: Author;
   topic: Topic;
   likes: number;
   comments: Comment[];
   createdAt: string;
-  tags: string[];
+  tags?: string[];
   isPinned?: boolean;
   isLiked: boolean;
   imageUrl?: string;
