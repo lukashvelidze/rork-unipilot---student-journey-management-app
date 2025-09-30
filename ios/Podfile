@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Resolve react_native_pods.rb with node to allow for hoistingggg
 require Pod::Executable.execute_command('node', ['-p',
   'require.resolve(
@@ -8,6 +9,20 @@ require Pod::Executable.execute_command('node', ['-p',
 platform :ios, min_ios_version_supported
 prepare_react_native_project!
 
+=======
+# Set minimum iOS version
+platform :ios, '14.0'
+
+# Resolve react_native_pods.rb with node to allow for hoisting
+require Pod::Executable.execute_command('node', ['-p',
+  'require.resolve("react-native/scripts/react_native_pods.rb", {paths: [process.argv[1]]})',
+  __dir__]).strip
+
+# Prepare the React Native project
+prepare_react_native_project!
+
+# Check if frameworks are linked
+>>>>>>> e28363b (fixed final version)
 linkage = ENV['USE_FRAMEWORKS']
 if linkage != nil
   Pod::UI.puts "Configuring Pod with #{linkage}ally linked Frameworks".green
@@ -19,17 +34,38 @@ target 'UniPilot' do
 
   use_react_native!(
     :path => config[:reactNativePath],
+<<<<<<< HEAD
     # An absolute path to your application root.
+=======
+    :hermes_enabled => false,  # 👈 explicitly enable or set to false if testing
+>>>>>>> e28363b (fixed final version)
     :app_path => "#{Pod::Config.instance.installation_root}/.."
   )
 
   post_install do |installer|
+<<<<<<< HEAD
     # https://github.com/facebook/react-native/blob/main/packages/react-native/scripts/react_native_pods.rb#L197-L202
+=======
+>>>>>>> e28363b (fixed final version)
     react_native_post_install(
       installer,
       config[:reactNativePath],
       :mac_catalyst_enabled => false,
+<<<<<<< HEAD
       # :ccache_enabled => true
     )
   end
 end
+=======
+    )
+
+    installer.pods_project.targets.each do |target|
+      if target.name == 'React-Core'
+        target.build_configurations.each do |config|
+          config.build_settings['SWIFT_VERSION'] = '5.0'
+        end
+      end
+    end
+  end
+end
+>>>>>>> e28363b (fixed final version)
