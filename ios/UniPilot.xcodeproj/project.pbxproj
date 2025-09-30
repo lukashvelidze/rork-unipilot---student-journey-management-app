@@ -11,6 +11,10 @@
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
 		761780ED2CA45674006654EE /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 761780EC2CA45674006654EE /* AppDelegate.swift */; };
 		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
+<<<<<<< HEAD
+=======
+		F9E3FEAF7BC159ADF27D5ECE /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */; };
+>>>>>>> e28363b (fixed final version)
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -23,6 +27,10 @@
 		5DCACB8F33CDC322A6C60F78 /* libPods-UniPilot.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-UniPilot.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		761780EC2CA45674006654EE /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = UniPilot/AppDelegate.swift; sourceTree = "<group>"; };
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = UniPilot/LaunchScreen.storyboard; sourceTree = "<group>"; };
+<<<<<<< HEAD
+=======
+		CBDAFC6B2E8C0396000CC7CD /* main.jsbundle */ = {isa = PBXFileReference; lastKnownFileType = text; path = main.jsbundle; sourceTree = "<group>"; };
+>>>>>>> e28363b (fixed final version)
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
@@ -69,6 +77,10 @@
 		83CBB9F61A601CBA00E9B192 = {
 			isa = PBXGroup;
 			children = (
+<<<<<<< HEAD
+=======
+				CBDAFC6B2E8C0396000CC7CD /* main.jsbundle */,
+>>>>>>> e28363b (fixed final version)
 				13B07FAE1A68108700A75B9A /* UniPilot */,
 				832341AE1AAA6A7D00B99B32 /* Libraries */,
 				83CBBA001A601CBA00E9B192 /* Products */,
@@ -108,9 +120,14 @@
 				13B07F871A680F5B00A75B9A /* Sources */,
 				13B07F8C1A680F5B00A75B9A /* Frameworks */,
 				13B07F8E1A680F5B00A75B9A /* Resources */,
+<<<<<<< HEAD
 				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
 				00EEFC60759A1932668264C0 /* [CP] Embed Pods Frameworks */,
 				E235C05ADACE081382539298 /* [CP] Copy Pods Resources */,
+=======
+				E235C05ADACE081382539298 /* [CP] Copy Pods Resources */,
+				753DAECC35E94EF3FFD5A528 /* [CP] Embed Pods Frameworks */,
+>>>>>>> e28363b (fixed final version)
 			);
 			buildRules = (
 			);
@@ -159,12 +176,17 @@
 			files = (
 				81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
+<<<<<<< HEAD
+=======
+				F9E3FEAF7BC159ADF27D5ECE /* PrivacyInfo.xcprivacy in Resources */,
+>>>>>>> e28363b (fixed final version)
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
+<<<<<<< HEAD
 		00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
@@ -182,6 +204,9 @@
 			shellScript = "set -e\n\nWITH_ENVIRONMENT=\"$REACT_NATIVE_PATH/scripts/xcode/with-environment.sh\"\nREACT_NATIVE_XCODE=\"$REACT_NATIVE_PATH/scripts/react-native-xcode.sh\"\n\n/bin/sh -c \"$WITH_ENVIRONMENT $REACT_NATIVE_XCODE\"\n";
 		};
 		00EEFC60759A1932668264C0 /* [CP] Embed Pods Frameworks */ = {
+=======
+		753DAECC35E94EF3FFD5A528 /* [CP] Embed Pods Frameworks */ = {
+>>>>>>> e28363b (fixed final version)
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -189,10 +214,20 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-UniPilot/Pods-UniPilot-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
+<<<<<<< HEAD
+=======
+			inputPaths = (
+			);
+>>>>>>> e28363b (fixed final version)
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-UniPilot/Pods-UniPilot-frameworks-${CONFIGURATION}-output-files.xcfilelist",
 			);
+<<<<<<< HEAD
+=======
+			outputPaths = (
+			);
+>>>>>>> e28363b (fixed final version)
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-UniPilot/Pods-UniPilot-frameworks.sh\"\n";
@@ -228,10 +263,20 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-UniPilot/Pods-UniPilot-resources-${CONFIGURATION}-input-files.xcfilelist",
 			);
+<<<<<<< HEAD
+=======
+			inputPaths = (
+			);
+>>>>>>> e28363b (fixed final version)
 			name = "[CP] Copy Pods Resources";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-UniPilot/Pods-UniPilot-resources-${CONFIGURATION}-output-files.xcfilelist",
 			);
+<<<<<<< HEAD
+=======
+			outputPaths = (
+			);
+>>>>>>> e28363b (fixed final version)
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-UniPilot/Pods-UniPilot-resources.sh\"\n";
@@ -374,7 +419,15 @@
 					"-DFOLLY_CFG_NO_COROUTINES=1",
 					"-DFOLLY_HAVE_CLOCK_GETTIME=1",
 				);
+<<<<<<< HEAD
 				SDKROOT = iphoneos;
+=======
+				OTHER_LDFLAGS = "$(inherited)  ";
+				REACT_NATIVE_PATH = "${PODS_ROOT}/../../node_modules/react-native";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) DEBUG";
+				USE_HERMES = true;
+>>>>>>> e28363b (fixed final version)
 			};
 			name = Debug;
 		};
@@ -439,7 +492,14 @@
 					"-DFOLLY_CFG_NO_COROUTINES=1",
 					"-DFOLLY_HAVE_CLOCK_GETTIME=1",
 				);
+<<<<<<< HEAD
 				SDKROOT = iphoneos;
+=======
+				OTHER_LDFLAGS = "$(inherited)  ";
+				REACT_NATIVE_PATH = "${PODS_ROOT}/../../node_modules/react-native";
+				SDKROOT = iphoneos;
+				USE_HERMES = true;
+>>>>>>> e28363b (fixed final version)
 				VALIDATE_PRODUCT = YES;
 			};
 			name = Release;
