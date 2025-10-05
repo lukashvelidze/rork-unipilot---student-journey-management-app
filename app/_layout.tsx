@@ -1,16 +1,10 @@
-<<<<<<< HEAD
-=======
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { useFonts } from "expo-font";
->>>>>>> e28363b (fixed final version)
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect } from "react";
 import { StatusBar } from "expo-status-bar";
-<<<<<<< HEAD
-=======
 import { Platform } from "react-native";
->>>>>>> e28363b (fixed final version)
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useThemeStore } from "@/store/themeStore";
@@ -25,12 +19,6 @@ const queryClient = new QueryClient();
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
-<<<<<<< HEAD
-  useEffect(() => {
-    // Hide splash screen immediately since we're not loading custom fonts
-    SplashScreen.hideAsync();
-  }, []);
-=======
   const [loaded, error] = useFonts({
     ...FontAwesome.font,
   });
@@ -50,7 +38,6 @@ export default function RootLayout() {
   if (!loaded && !error) {
     return null;
   }
->>>>>>> e28363b (fixed final version)
 
   return <RootLayoutNav />;
 }

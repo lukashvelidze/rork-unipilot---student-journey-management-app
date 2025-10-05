@@ -3,6 +3,7 @@
     "name": "UniPilot - Student Journey Management App",
     "slug": "unipilot-student-journey-management-app",
     "version": "1.0.0",
+    "sdkVersion": "54.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "myapp",
@@ -54,8 +55,4 @@
       }
     }
   }
-<<<<<<< HEAD
 }
-=======
-}
->>>>>>> e28363b (fixed final version)

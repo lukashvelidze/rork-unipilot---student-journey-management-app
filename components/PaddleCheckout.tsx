@@ -185,7 +185,7 @@ export default function PaddleCheckout({
                   </Text>
                 </TouchableOpacity>
                 
-                <Text style={styles.secureText}>🔒 Secure payment powered by Paddle</Text>
+                <Text style={styles.secureText}>🎭 Demo payment system (Paddle removed)</Text>
               </View>
             ) : (
               <View style={styles.processingContainer}>
