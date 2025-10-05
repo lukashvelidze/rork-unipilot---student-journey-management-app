@@ -23,6 +23,7 @@ interface ButtonProps {
   style?: StyleProp<ViewStyle>;
   textStyle?: StyleProp<TextStyle>;
   fullWidth?: boolean;
+  testID?: string;
 }
 
 const Button: React.FC<ButtonProps> = ({
@@ -37,6 +38,7 @@ const Button: React.FC<ButtonProps> = ({
   style,
   textStyle,
   fullWidth = false,
+  testID,
 }) => {
   const getButtonStyle = () => {
     let buttonStyle: ViewStyle = {};
@@ -171,6 +173,7 @@ const Button: React.FC<ButtonProps> = ({
       activeOpacity={0.7}
       // Ensure button is touchable and above other elements
       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+      testID={testID}
     >
       {loading ? (
         <ActivityIndicator

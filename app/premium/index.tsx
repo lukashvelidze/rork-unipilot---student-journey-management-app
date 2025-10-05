@@ -1,11 +1,11 @@
 import React, { useState } from "react";
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert, Platform } from "react-native";
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert } from "react-native";
 import { useRouter } from "expo-router";
-import { Crown, Check, Zap, Target, BookOpen, Calendar, Video, Users, Award, Gift, ChevronRight, Star, BarChart3, UserCheck, MessageCircle, CreditCard } from "lucide-react-native";
+import { Crown, Check, Zap, BookOpen, Video, Award, Gift, ChevronRight, Star, BarChart3, UserCheck, CreditCard } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useColors } from "@/hooks/useColors";
-import { usePaddle } from "@/hooks/usePaddle";
 import Card from "@/components/Card";
 import Button from "@/components/Button";
 import Input from "@/components/Input";
@@ -14,8 +14,8 @@ import { useUserStore } from "@/store/userStore";
 export default function PremiumScreen() {
   const router = useRouter();
   const Colors = useColors();
+  const insets = useSafeAreaInsets();
   const { user, isPremium, setPremium } = useUserStore();
-  const { paddle, isLoading: paddleLoading, isInitialized, openCheckout } = usePaddle();
   const [promoCode, setPromoCode] = useState("");
   const [isProcessingPromo, setIsProcessingPromo] = useState(false);
   const [showPromoInput, setShowPromoInput] = useState(false);
@@ -137,17 +137,16 @@ export default function PremiumScreen() {
   
   const handleSubscribe = async () => {
     try {
-      await openCheckout('pri_01jyk3h7eec66x5m7h31p66r8w');
+      console.log('Starting dummy subscription flow');
+      await new Promise(resolve => setTimeout(resolve, 800));
+      setPremium(true);
+      Alert.alert('Premium Activated', 'Your demo subscription is active. Enjoy premium features!', [
+        { text: 'Explore', onPress: () => router.push('/premium/resources') },
+        { text: 'OK', style: 'cancel' },
+      ]);
     } catch (error) {
-      console.error('Subscription error:', error);
-      // Fallback to webview if Paddle fails
-      router.push({
-        pathname: '/webview',
-        params: {
-          url: 'https://lukashvelidze.github.io/unipilot/',
-          title: 'Subscribe to UniPilot'
-        }
-      });
+      console.error('Dummy subscription error:', error);
+      Alert.alert('Error', 'Something went wrong. Please try again.');
     }
   };
   
@@ -160,7 +159,7 @@ export default function PremiumScreen() {
   
   if (isUserPremium) {
     return (
-      <ScrollView style={[styles.container, { backgroundColor: Colors.background }]} contentContainerStyle={styles.scrollContent}>
+      <ScrollView style={[styles.container, { backgroundColor: Colors.background, paddingTop: insets.top, paddingBottom: insets.bottom }]} contentContainerStyle={styles.scrollContent}>
         <LinearGradient
           colors={[Colors.primary, Colors.secondary]}
           style={styles.premiumHeader}
@@ -252,9 +251,7 @@ export default function PremiumScreen() {
         {/* Success Stories */}
         <Card style={[styles.successCard, { backgroundColor: Colors.card }]} variant="glass">
           <Text style={[styles.successTitle, { color: Colors.text }]}>🎓 Success Stories</Text>
-          <Text style={[styles.successDescription, { color: Colors.lightText }]}>
-            "UniPilot Premium helped me get into Harvard with a full scholarship. The personal mentor and AI guidance were game-changers!"
-          </Text>
+          <Text style={[styles.successDescription, { color: Colors.lightText }]}>UniPilot Premium helped me get into Harvard with a full scholarship. The personal mentor and AI guidance were game-changers!</Text>
           <Text style={[styles.successAuthor, { color: Colors.primary }]}>- Sarah M., Harvard University</Text>
           
           <View style={styles.successStats}>
@@ -293,7 +290,7 @@ export default function PremiumScreen() {
   }
   
   return (
-    <ScrollView style={[styles.container, { backgroundColor: Colors.background }]} contentContainerStyle={styles.scrollContent}>
+    <ScrollView style={[styles.container, { backgroundColor: Colors.background, paddingTop: insets.top, paddingBottom: insets.bottom }]} contentContainerStyle={styles.scrollContent}>
       <LinearGradient
         colors={[Colors.primary, Colors.secondary]}
         style={styles.header}
@@ -441,20 +438,15 @@ export default function PremiumScreen() {
         </View>
         
         <Button
-          title={paddleLoading ? "Processing..." : "Subscribe"}
+          title="Subscribe"
           onPress={handleSubscribe}
-          loading={paddleLoading}
-          disabled={paddleLoading || !isInitialized}
           fullWidth
           style={[styles.subscribeButton, { backgroundColor: Colors.secondary }]}
           icon={<CreditCard size={20} color="#FFFFFF" />}
+          testID="subscribe-button"
         />
         
-        {Platform.OS !== 'web' && !isInitialized && (
-          <Text style={[styles.initializingText, { color: Colors.lightText }]}>
-            Initializing payment system...
-          </Text>
-        )}
+
       </Card>
       
       {/* Features Grid */}
@@ -491,21 +483,15 @@ export default function PremiumScreen() {
         <Text style={[styles.testimonialsTitle, { color: Colors.text }]}>What Students Say</Text>
         <View style={styles.testimonialsList}>
           <View style={[styles.testimonial, { backgroundColor: Colors.surface, borderLeftColor: Colors.primary }]}>
-            <Text style={[styles.testimonialText, { color: Colors.text }]}>
-              "The personal mentor helped me perfect my application. Got into MIT!"
-            </Text>
+            <Text style={[styles.testimonialText, { color: Colors.text }]}>The personal mentor helped me perfect my application. Got into MIT!</Text>
             <Text style={[styles.testimonialAuthor, { color: Colors.primary }]}>- Alex K., MIT</Text>
           </View>
           <View style={[styles.testimonial, { backgroundColor: Colors.surface, borderLeftColor: Colors.primary }]}>
-            <Text style={[styles.testimonialText, { color: Colors.text }]}>
-              "Premium resources saved me months of research. Highly recommended!"
-            </Text>
+            <Text style={[styles.testimonialText, { color: Colors.text }]}>Premium resources saved me months of research. Highly recommended!</Text>
             <Text style={[styles.testimonialAuthor, { color: Colors.primary }]}>- Maria S., TU Munich</Text>
           </View>
           <View style={[styles.testimonial, { backgroundColor: Colors.surface, borderLeftColor: Colors.primary }]}>
-            <Text style={[styles.testimonialText, { color: Colors.text }]}>
-              "The analytics feature helped me track my progress perfectly!"
-            </Text>
+            <Text style={[styles.testimonialText, { color: Colors.text }]}>The analytics feature helped me track my progress perfectly!</Text>
             <Text style={[styles.testimonialAuthor, { color: Colors.primary }]}>- David L., Oxford</Text>
           </View>
         </View>
@@ -518,7 +504,7 @@ export default function PremiumScreen() {
           <Text style={[styles.debugText, { color: Colors.lightText }]}>Store isPremium: {isPremium ? "true" : "false"}</Text>
           <Text style={[styles.debugText, { color: Colors.lightText }]}>User isPremium: {user?.isPremium ? "true" : "false"}</Text>
           <Text style={[styles.debugText, { color: Colors.lightText }]}>Final isPremium: {isUserPremium ? "true" : "false"}</Text>
-          <Text style={[styles.debugText, { color: Colors.lightText }]}>Current promo code: "{promoCode}"</Text>
+          <Text style={[styles.debugText, { color: Colors.lightText }]}>Current promo code: {promoCode || '—'}</Text>
         </Card>
       )}
     </ScrollView>
