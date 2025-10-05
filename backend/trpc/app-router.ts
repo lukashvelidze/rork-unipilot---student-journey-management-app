@@ -6,7 +6,7 @@ import { createPostProcedure } from "./routes/community/create-post/route";
 import { likePostProcedure } from "./routes/community/like-post/route";
 import { addCommentProcedure } from "./routes/community/add-comment/route";
 import { likeCommentProcedure } from "./routes/community/like-comment/route";
-
+import { paddleWebhookProcedure } from "./routes/paddle/webhook/route";
 import { getSubscriptionProcedure, updateSubscriptionProcedure, cancelSubscriptionProcedure } from "./routes/user/subscription/route";
 
 export const appRouter = router({
@@ -21,7 +21,9 @@ export const appRouter = router({
     addComment: addCommentProcedure,
     likeComment: likeCommentProcedure,
   }),
-
+  paddle: router({
+    webhook: paddleWebhookProcedure,
+  }),
   user: router({
     getSubscription: getSubscriptionProcedure,
     updateSubscription: updateSubscriptionProcedure,

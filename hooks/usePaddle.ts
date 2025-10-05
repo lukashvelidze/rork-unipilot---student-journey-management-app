@@ -1,18 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Platform, Alert } from 'react-native';
+import { Paddle } from '@paddle/paddle-js';
 import { useRouter } from 'expo-router';
 import { initializePaddleService, openEmbeddedCheckout } from '@/lib/paddle';
 import { useUserStore } from '@/store/userStore';
 
-// Dummy Paddle interface for type compatibility
-interface DummyPaddle {
-  Checkout: {
-    open: (options: any) => void;
-  };
-}
-
 export const usePaddle = () => {
-  const [paddle, setPaddle] = useState<DummyPaddle | null>(null);
+  const [paddle, setPaddle] = useState<Paddle | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
   const { setPremium } = useUserStore();
@@ -25,9 +19,9 @@ export const usePaddle = () => {
         const paddleInstance = await initializePaddleService();
         setPaddle(paddleInstance);
         setIsInitialized(true);
-        console.log('✅ Dummy Paddle hook initialized for', Platform.OS);
+        console.log('✅ Paddle hook initialized for', Platform.OS);
       } catch (error) {
-        console.error('Failed to initialize dummy Paddle:', error);
+        console.error('Failed to initialize Paddle:', error);
       } finally {
         setIsLoading(false);
       }
@@ -40,36 +34,36 @@ export const usePaddle = () => {
     try {
       setIsLoading(true);
       
-      // Use dummy embedded checkout for both web and mobile
+      // Use embedded checkout for both web and mobile
       const result = await openEmbeddedCheckout('paddle-checkout', {
-        priceId: typeof options === 'string' ? options : options?.priceId || 'dummy_price_123',
+        priceId: typeof options === 'string' ? options : options?.priceId,
         customerEmail: options?.customer?.email || '',
         userId: options?.customData?.userId || 'anonymous',
         onSuccess: (data) => {
-          console.log('✅ Dummy payment successful:', data);
+          console.log('✅ Payment successful:', data);
           setPremium(true);
           router.push('/payment-success');
         },
         onError: (error) => {
-          console.error('❌ Dummy payment error:', error);
+          console.error('❌ Payment error:', error);
           Alert.alert(
-            'Demo Payment Error',
-            'There was an issue with the demo payment. Please try again.',
+            'Payment Error',
+            'There was an issue processing your payment. Please try again.',
             [{ text: 'OK' }]
           );
         },
         onClose: () => {
-          console.log('❌ Demo checkout closed by user');
+          console.log('❌ Checkout closed by user');
         }
       });
 
       return result;
       
     } catch (error) {
-      console.error('Demo checkout error:', error);
+      console.error('Checkout error:', error);
       Alert.alert(
-        'Demo Payment Error',
-        'There was an issue with the demo payment. Please try again.',
+        'Payment Error',
+        'There was an issue processing your payment. Please try again.',
         [{ text: 'OK' }]
       );
     } finally {

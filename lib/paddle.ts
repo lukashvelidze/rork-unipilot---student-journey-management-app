@@ -1,40 +1,26 @@
+import { initializePaddle, Paddle } from '@paddle/paddle-js';
 import { Platform } from 'react-native';
 
-// Dummy Paddle interface for type compatibility
-interface DummyPaddle {
-  Checkout: {
-    open: (options: any) => void;
-  };
-}
+let paddleInstance: Paddle | null = null;
 
-let paddleInstance: DummyPaddle | null = null;
-
-export const initializePaddleService = async (): Promise<DummyPaddle | null> => {
+export const initializePaddleService = async (): Promise<Paddle | null> => {
   try {
     if (paddleInstance) {
       return paddleInstance;
     }
 
-    // Create dummy Paddle instance
-    const dummyPaddle: DummyPaddle = {
-      Checkout: {
-        open: (options: any) => {
-          console.log('🎭 Dummy Paddle checkout opened with options:', options);
-          // Simulate successful payment after 2 seconds
-          setTimeout(() => {
-            console.log('✅ Dummy payment successful!');
-            // You can add any success handling here
-          }, 2000);
-        }
-      }
-    };
+    // Initialize Paddle for both web and mobile
+    const paddle = await initializePaddle({
+      environment: 'sandbox', // Use 'production' for live environment
+      token: 'test_c25cc3df5ddfcd6b3b2a8420700',
+    });
     
-    paddleInstance = dummyPaddle;
-    console.log('✅ Dummy Paddle initialized successfully for', Platform.OS);
+    paddleInstance = paddle ?? null;
+    console.log('✅ Paddle initialized successfully for', Platform.OS);
 
     return paddleInstance;
   } catch (error) {
-    console.error('Failed to initialize dummy Paddle:', error);
+    console.error('Failed to initialize Paddle:', error);
     return null;
   }
 };
@@ -54,11 +40,11 @@ export const openEmbeddedCheckout = async (
     const paddle = await initializePaddleService();
     
     if (!paddle) {
-      throw new Error('Dummy Paddle not initialized');
+      throw new Error('Paddle not initialized');
     }
 
     const {
-      priceId = 'dummy_price_123',
+      priceId = 'pri_01jyk3h7eec66x5m7h31p66r8w',
       customerEmail = '',
       userId = 'anonymous',
       onSuccess,
@@ -66,26 +52,35 @@ export const openEmbeddedCheckout = async (
       onClose
     } = options;
 
-    console.log('🎭 Opening dummy checkout with options:', { priceId, customerEmail, userId });
-
-    // Simulate successful payment after 1 second
-    setTimeout(() => {
-      console.log('✅ Dummy payment successful!');
-      if (onSuccess) {
-        onSuccess({
-          transactionId: 'dummy_txn_' + Date.now(),
-          status: 'completed',
-          amount: 4.99,
-          currency: 'USD'
-        });
-      }
-    }, 1000);
-
-    // For web, return success indicator
+    // For web, use embedded checkout
     if (Platform.OS === 'web') {
-      return { success: true, platform: 'web' };
+      try {
+        paddle.Checkout.open({
+          items: [{ priceId, quantity: 1 }],
+          customer: {
+            email: customerEmail,
+          },
+          customData: {
+            userId,
+            app: 'unipilot',
+            platform: Platform.OS,
+          },
+          settings: {
+            displayMode: 'inline',
+            theme: 'light',
+            locale: 'en',
+            allowDiscountRemoval: false,
+          }
+        });
+
+        // Return success indicator for web
+        return { success: true, platform: 'web' };
+      } catch (error) {
+        console.error('Failed to open web checkout:', error);
+        throw error;
+      }
     } else {
-      // For mobile, return dummy checkout configuration
+      // For mobile, return checkout configuration for WebView
       return {
         items: [{ priceId, quantity: 1 }],
         customer: { email: customerEmail },
@@ -98,28 +93,28 @@ export const openEmbeddedCheckout = async (
       };
     }
   } catch (error) {
-    console.error('Failed to open dummy checkout:', error);
+    console.error('Failed to open embedded checkout:', error);
     throw error;
   }
 };
 
 // Legacy function - kept for backwards compatibility
-export const openPaddleCheckout = async (priceId: string = 'dummy_price_123') => {
+export const openPaddleCheckout = async (priceId: string = 'pri_01jyk3h7eec66x5m7h31p66r8w') => {
   return openEmbeddedCheckout('paddle-checkout', { priceId });
 };
 
-export const getPaddleInstance = (): DummyPaddle | null => {
+export const getPaddleInstance = (): Paddle | null => {
   return paddleInstance;
 };
 
-// Utility function to create dummy checkout URL for WebView
+// Utility function to create checkout URL for WebView
 export const createCheckoutUrl = (options: {
   priceId?: string;
   customerEmail?: string;
   userId?: string;
 }) => {
   const {
-    priceId = 'dummy_price_123',
+    priceId = 'pri_01jyk3h7eec66x5m7h31p66r8w',
     customerEmail = '',
     userId = 'anonymous'
   } = options;
@@ -130,7 +125,8 @@ export const createCheckoutUrl = (options: {
     <head>
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-      <title>UniPilot Premium - Demo Mode</title>
+      <title>UniPilot Premium</title>
+      <script src="https://cdn.paddle.com/paddle/v2/paddle.js"></script>
       <style>
         * {
           margin: 0;
@@ -165,16 +161,6 @@ export const createCheckoutUrl = (options: {
           right: 0;
           height: 4px;
           background: linear-gradient(90deg, #667eea, #764ba2);
-        }
-        .demo-badge {
-          background: #ff6b6b;
-          color: white;
-          padding: 4px 12px;
-          border-radius: 20px;
-          font-size: 12px;
-          font-weight: 600;
-          margin-bottom: 20px;
-          display: inline-block;
         }
         .logo {
           font-size: 32px;
@@ -266,6 +252,11 @@ export const createCheckoutUrl = (options: {
           border-color: #cbd5e0;
           background: #f7fafc;
         }
+        .loading {
+          color: #718096;
+          font-style: italic;
+          margin-top: 20px;
+        }
         .spinner {
           border: 2px solid #e2e8f0;
           border-top: 2px solid #667eea;
@@ -288,11 +279,18 @@ export const createCheckoutUrl = (options: {
           border-radius: 10px;
           margin-top: 20px;
         }
+        .status-error {
+          background: #fed7d7;
+          border: 1px solid #fc8181;
+          color: #742a2a;
+          padding: 15px;
+          border-radius: 10px;
+          margin-top: 20px;
+        }
       </style>
     </head>
     <body>
       <div class="container">
-        <div class="demo-badge">DEMO MODE</div>
         <div class="logo">👑</div>
         <div class="title">UniPilot Premium</div>
         <div class="subtitle">Unlock your full potential with premium features</div>
@@ -310,53 +308,152 @@ export const createCheckoutUrl = (options: {
           <div class="feature">Early access to features</div>
         </div>
         
-        <button id="checkout-btn" class="checkout-btn" onclick="startDummyCheckout()">
-          <span id="btn-text">Try Demo Payment</span>
+        <button id="checkout-btn" class="checkout-btn" onclick="startCheckout()">
+          <span id="btn-text">Subscribe Now</span>
         </button>
         
         <button class="cancel-btn" onclick="cancelCheckout()">
           Cancel
         </button>
         
-        <div id="status" style="display: none;"></div>
+        <div id="status" class="loading" style="display: none;">
+          <div class="spinner"></div>
+          Initializing secure payment...
+        </div>
+        
+        <div id="checkout-container" style="display: none;"></div>
       </div>
 
       <script>
-        function startDummyCheckout() {
+        let paddle;
+        let isReady = false;
+        let checkoutInstance = null;
+
+        // Initialize Paddle
+        Paddle.Setup({
+          environment: 'sandbox',
+          token: 'test_c25cc3df5ddfcd6b3b2a8420700'
+        });
+
+        Paddle.Initialize({
+          environment: 'sandbox',
+          token: 'test_c25cc3df5ddfcd6b3b2a8420700'
+        }).then((p) => {
+          console.log('✅ Paddle initialized');
+          paddle = p;
+          isReady = true;
+          document.getElementById('status').style.display = 'none';
+          document.getElementById('checkout-btn').disabled = false;
+        }).catch((error) => {
+          console.error('❌ Paddle initialization failed:', error);
+          showError('Payment system unavailable. Please try again later.');
+        });
+
+        function showError(message) {
+          const container = document.querySelector('.container');
+          const errorDiv = document.createElement('div');
+          errorDiv.className = 'status-error';
+          errorDiv.textContent = message;
+          container.appendChild(errorDiv);
+          document.getElementById('checkout-btn').disabled = true;
+        }
+
+        function showSuccess(message) {
+          const container = document.querySelector('.container');
+          const successDiv = document.createElement('div');
+          successDiv.className = 'status-success';
+          successDiv.textContent = message;
+          container.appendChild(successDiv);
+        }
+
+        function startCheckout() {
+          if (!isReady || !paddle) {
+            showError('Payment system not ready yet. Please wait...');
+            return;
+          }
+
           const btn = document.getElementById('checkout-btn');
           const btnText = document.getElementById('btn-text');
-          const status = document.getElementById('status');
           
           btn.disabled = true;
           btnText.innerHTML = '<div class="spinner"></div>Processing...';
-          status.style.display = 'block';
-          status.innerHTML = '<div class="spinner"></div>Simulating payment...';
 
-          // Simulate payment processing
-          setTimeout(() => {
-            status.innerHTML = '<div class="status-success">✅ Demo payment successful! This is a simulation.</div>';
-            btnText.textContent = 'Payment Complete';
-            
-            // Send success message to React Native
-            setTimeout(() => {
+          try {
+            checkoutInstance = paddle.Checkout.open({
+              items: [{ 
+                priceId: '${priceId}', 
+                quantity: 1 
+              }],
+              customer: {
+                email: '${customerEmail}'
+              },
+              customData: {
+                userId: '${userId}',
+                app: 'unipilot',
+                platform: 'mobile'
+              },
+              settings: {
+                displayMode: 'overlay',
+                theme: 'light',
+                locale: 'en',
+                allowDiscountRemoval: false,
+                showAddDiscounts: true,
+                showAddTaxId: false
+              }
+            });
+
+            // Handle checkout events
+            checkoutInstance.onComplete((data) => {
+              console.log('✅ Checkout completed:', data);
+              showSuccess('Payment successful! Redirecting...');
+              setTimeout(() => {
+                window.ReactNativeWebView?.postMessage(JSON.stringify({
+                  type: 'checkout_success',
+                  data: data
+                }));
+              }, 1500);
+            });
+
+            checkoutInstance.onClose(() => {
+              console.log('❌ Checkout closed');
+              btn.disabled = false;
+              btnText.textContent = 'Subscribe Now';
               window.ReactNativeWebView?.postMessage(JSON.stringify({
-                type: 'checkout_success',
-                data: {
-                  transactionId: 'demo_txn_' + Date.now(),
-                  status: 'completed',
-                  amount: 4.99,
-                  currency: 'USD'
-                }
+                type: 'checkout_closed'
               }));
-            }, 1000);
-          }, 2000);
+            });
+
+            checkoutInstance.onError((error) => {
+              console.error('❌ Checkout error:', error);
+              btn.disabled = false;
+              btnText.textContent = 'Subscribe Now';
+              showError('Payment failed. Please try again.');
+              window.ReactNativeWebView?.postMessage(JSON.stringify({
+                type: 'checkout_error',
+                error: error
+              }));
+            });
+
+          } catch (error) {
+            console.error('❌ Failed to open checkout:', error);
+            btn.disabled = false;
+            btnText.textContent = 'Subscribe Now';
+            showError('Failed to open payment. Please try again.');
+          }
         }
 
         function cancelCheckout() {
+          if (checkoutInstance) {
+            checkoutInstance.close();
+          }
           window.ReactNativeWebView?.postMessage(JSON.stringify({
             type: 'checkout_cancelled'
           }));
         }
+
+        // Show loading initially
+        document.getElementById('status').style.display = 'block';
+        document.getElementById('checkout-btn').disabled = true;
       </script>
     </body>
     </html>

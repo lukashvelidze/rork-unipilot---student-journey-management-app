@@ -1,56 +1,57 @@
 import { z } from 'zod';
 import { publicProcedure } from '../../../create-context';
 
-// Dummy webhook event schema (Paddle removed)
-const dummyWebhookSchema = z.object({
-  event_id: z.string().optional(),
-  event_type: z.string().optional(),
-  occurred_at: z.string().optional(),
-  data: z.record(z.any()).optional(),
+// Paddle webhook event schema
+const paddleWebhookSchema = z.object({
+  event_id: z.string(),
+  event_type: z.string(),
+  occurred_at: z.string(),
+  data: z.record(z.any()),
 });
 
 export const paddleWebhookProcedure = publicProcedure
-  .input(dummyWebhookSchema)
+  .input(paddleWebhookSchema)
   .mutation(async ({ input }) => {
     const { event_type, data } = input;
 
     try {
-      console.log('🎭 Dummy webhook received:', { event_type, data });
-      
-      // Simulate webhook processing
       switch (event_type) {
         case 'subscription.created':
-          console.log('🎭 Dummy subscription created:', data);
-          // In a real app, you would update user's premium status here
+          console.log('Subscription created:', data);
+          // Handle subscription creation
+          // Update user's premium status in your database
           break;
 
         case 'subscription.updated':
-          console.log('🎭 Dummy subscription updated:', data);
+          console.log('Subscription updated:', data);
+          // Handle subscription updates
           break;
 
         case 'subscription.canceled':
-          console.log('🎭 Dummy subscription canceled:', data);
+          console.log('Subscription canceled:', data);
+          // Handle subscription cancellation
+          // Remove user's premium status
           break;
 
         case 'transaction.completed':
-          console.log('🎭 Dummy transaction completed:', data);
-          // In a real app, you would activate premium features here
+          console.log('Transaction completed:', data);
+          // Handle successful payment
+          // Activate premium features
           break;
 
         case 'transaction.payment_failed':
-          console.log('🎭 Dummy payment failed:', data);
+          console.log('Payment failed:', data);
+          // Handle failed payment
+          // Send notification to user
           break;
 
         default:
-          console.log('🎭 Dummy webhook event (unhandled):', event_type);
+          console.log('Unhandled webhook event:', event_type);
       }
 
-      return { 
-        success: true, 
-        message: 'Dummy webhook processed successfully (Paddle removed)' 
-      };
+      return { success: true, message: 'Webhook processed successfully' };
     } catch (error) {
-      console.error('Dummy webhook processing error:', error);
-      throw new Error('Failed to process dummy webhook');
+      console.error('Webhook processing error:', error);
+      throw new Error('Failed to process webhook');
     }
   });

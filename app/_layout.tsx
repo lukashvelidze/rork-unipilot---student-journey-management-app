@@ -26,13 +26,12 @@ export default function RootLayout() {
   useEffect(() => {
     if (error) {
       console.error("Font loading error:", error);
-      SplashScreen.hideAsync().catch(() => {});
     }
   }, [error]);
 
   useEffect(() => {
     if (loaded) {
-      SplashScreen.hideAsync().catch(() => {});
+      SplashScreen.hideAsync();
     }
   }, [loaded]);
 
