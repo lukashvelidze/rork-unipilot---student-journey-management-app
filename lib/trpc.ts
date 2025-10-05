@@ -7,17 +7,18 @@ export const trpc = createTRPCReact<AppRouter>();
 
 const getBaseUrl = () => {
   if (process.env.EXPO_PUBLIC_RORK_API_BASE_URL) {
-    return process.env.EXPO_PUBLIC_RORK_API_BASE_URL;
+    return process.env.EXPO_PUBLIC_RORK_API_BASE_URL as string;
   }
 
-  // Fallback for development
+  if (typeof window !== "undefined" && (window as any).location?.origin) {
+    return ((window as any).location.origin as string) ?? "";
+  }
+
   if (__DEV__) {
     return "http://localhost:3000";
   }
 
-  throw new Error(
-    "No base url found, please set EXPO_PUBLIC_RORK_API_BASE_URL"
-  );
+  return ""; // Avoid throwing to prevent crashes on devices without env configured
 };
 
 export const trpcClient = trpc.createClient({
@@ -30,11 +31,11 @@ export const trpcClient = trpc.createClient({
           ...options,
           headers: {
             ...options?.headers,
-            'Content-Type': 'application/json',
+            "Content-Type": "application/json",
           },
         }).catch((error) => {
-          console.error('TRPC fetch error:', error);
-          throw new Error('Network error: Unable to connect to server');
+          console.error("TRPC fetch error:", error);
+          throw new Error("Network error: Unable to connect to server");
         });
       },
     }),

@@ -1,4 +1,2 @@
-#UniPilot - Studnet jurney Management App 
-Created By Luka Shvelidze & Giorgi Michitashvili
-2025
-
+# rork-unipilot---student-journey-management-app
+Created by Rork
