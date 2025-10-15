@@ -81,7 +81,7 @@ export const cancelSubscriptionProcedure = publicProcedure
       throw new Error('Subscription not found');
     }
     
-    // In a real app, you would call Paddle's API to cancel the subscription
+    // In a real app, you would call your payment provider's API to cancel the subscription
     subscription.status = 'canceled';
     subscription.updatedAt = new Date().toISOString();
     mockSubscriptions.set(userId, subscription);

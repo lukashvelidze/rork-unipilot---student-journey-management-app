@@ -1,6 +1,0 @@
-module Pods_UniPilot {
-  umbrella header "Pods-UniPilot-umbrella.h"
-
-  export *
-  module * { export * }
-}

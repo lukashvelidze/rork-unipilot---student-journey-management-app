@@ -1,190 +1,59 @@
 import React from "react";
-import {
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  ActivityIndicator,
-  ViewStyle,
-  TextStyle,
-  View,
-  StyleProp,
-} from "react-native";
+import { TouchableOpacity, Text, ActivityIndicator, StyleSheet, ViewStyle, TextStyle, View, StyleProp } from "react-native";
 import Colors from "@/constants/colors";
 
 interface ButtonProps {
   title: string;
   onPress: () => void;
-  variant?: "primary" | "secondary" | "outline" | "text" | "destructive";
-  size?: "small" | "medium" | "large";
   disabled?: boolean;
   loading?: boolean;
-  icon?: React.ReactNode;
-  iconPosition?: "left" | "right";
-  style?: StyleProp<ViewStyle>;
-  textStyle?: StyleProp<TextStyle>;
+  variant?: "default" | "outline";
   fullWidth?: boolean;
-  testID?: string;
+  style?: ViewStyle;
+  textStyle?: TextStyle;
+  icon?: React.ReactNode;
 }
 
 const Button: React.FC<ButtonProps> = ({
   title,
   onPress,
-  variant = "primary",
-  size = "medium",
   disabled = false,
   loading = false,
-  icon,
-  iconPosition = "left",
+  variant = "default",
+  fullWidth = false,
   style,
   textStyle,
-  fullWidth = false,
-  testID,
+  icon,
 }) => {
-  const getButtonStyle = () => {
-    let buttonStyle: ViewStyle = {};
+  const isDisabled = disabled || loading;
+  const containerStyles: StyleProp<ViewStyle> = [
+    styles.button,
+    variant === "outline" ? styles.buttonOutline : styles.buttonDefault,
+    fullWidth ? styles.fullWidth : undefined,
+    isDisabled ? styles.disabled : undefined,
+    style,
+  ].filter(Boolean) as ViewStyle[];
 
-    switch (variant) {
-      case "primary":
-        buttonStyle = {
-          backgroundColor: Colors.primary,
-          borderColor: Colors.primary,
-        };
-        break;
-      case "secondary":
-        buttonStyle = {
-          backgroundColor: Colors.secondary,
-          borderColor: Colors.secondary,
-        };
-        break;
-      case "outline":
-        buttonStyle = {
-          backgroundColor: "transparent",
-          borderColor: Colors.primary,
-          borderWidth: 1,
-        };
-        break;
-      case "text":
-        buttonStyle = {
-          backgroundColor: "transparent",
-          borderColor: "transparent",
-        };
-        break;
-      case "destructive":
-        buttonStyle = {
-          backgroundColor: "#FF3B30",
-          borderColor: "#FF3B30",
-        };
-        break;
-    }
-
-    if (disabled) {
-      buttonStyle.opacity = 0.5;
-    }
-
-    return buttonStyle;
-  };
-
-  const getTextStyle = () => {
-    let style: TextStyle = {};
-
-    switch (variant) {
-      case "primary":
-      case "secondary":
-      case "destructive":
-        style = {
-          color: Colors.white,
-        };
-        break;
-      case "outline":
-      case "text":
-        style = {
-          color: Colors.primary,
-        };
-        break;
-    }
-
-    switch (size) {
-      case "small":
-        style.fontSize = 14;
-        break;
-      case "medium":
-        style.fontSize = 16;
-        break;
-      case "large":
-        style.fontSize = 18;
-        break;
-    }
-
-    return style;
-  };
-
-  const getSizeStyle = () => {
-    switch (size) {
-      case "small":
-        return {
-          paddingVertical: 8,
-          paddingHorizontal: 16,
-          borderRadius: 4,
-          minHeight: 36,
-        };
-      case "medium":
-        return {
-          paddingVertical: 12,
-          paddingHorizontal: 24,
-          borderRadius: 6,
-          minHeight: 48,
-        };
-      case "large":
-        return {
-          paddingVertical: 16,
-          paddingHorizontal: 32,
-          borderRadius: 8,
-          minHeight: 56,
-        };
-    }
-  };
-
-  // Enhanced button press handler with better touch handling
-  const handlePress = () => {
-    console.log("Button pressed:", title, "disabled:", disabled, "loading:", loading);
-    if (disabled || loading) {
-      console.log("Button press ignored - disabled or loading");
-      return;
-    }
-    
-    try {
-      onPress();
-    } catch (error) {
-      console.error("Error in button onPress:", error);
-    }
-  };
+  const labelStyles: StyleProp<TextStyle> = [
+    styles.label,
+    variant === "outline" ? { color: Colors.primary } : undefined,
+    textStyle,
+  ].filter(Boolean) as TextStyle[];
 
   return (
     <TouchableOpacity
-      onPress={handlePress}
-      disabled={disabled || loading}
-      style={[
-        styles.button,
-        getButtonStyle(),
-        getSizeStyle(),
-        fullWidth && styles.fullWidth,
-        style,
-      ]}
-      activeOpacity={0.7}
-      // Ensure button is touchable and above other elements
-      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-      testID={testID}
+      accessibilityRole="button"
+      onPress={onPress}
+      style={containerStyles}
+      disabled={isDisabled}
+      activeOpacity={0.8}
     >
       {loading ? (
-        <ActivityIndicator
-          color={variant === "outline" || variant === "text" ? Colors.primary : Colors.white}
-          size="small"
-        />
+        <ActivityIndicator color={variant === "outline" ? Colors.primary : "#FFFFFF"} />
       ) : (
-        <View style={styles.contentContainer}>
-          {icon && iconPosition === "left" ? <View style={styles.iconLeft}>{icon}</View> : null}
-          <Text style={[styles.text, getTextStyle(), textStyle]}>{title}</Text>
-          {icon && iconPosition === "right" ? <View style={styles.iconRight}>{icon}</View> : null}
+        <View style={styles.contentRow}>
+          {icon ? <View style={styles.icon}>{icon}</View> : null}
+          <Text style={labelStyles}>{title}</Text>
         </View>
       )}
     </TouchableOpacity>
@@ -193,32 +62,42 @@ const Button: React.FC<ButtonProps> = ({
 
 const styles = StyleSheet.create({
   button: {
-    flexDirection: "row",
-    justifyContent: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
     alignItems: "center",
-    borderRadius: 6,
-    // Ensure button is above other elements
-    zIndex: 100,
-    elevation: 100,
+    justifyContent: "center",
+    borderWidth: 1,
+  },
+  buttonDefault: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+  },
+  buttonOutline: {
+    backgroundColor: "transparent",
+    borderColor: Colors.border,
+  },
+  label: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "600",
   },
   fullWidth: {
     width: "100%",
   },
-  text: {
-    fontWeight: "600",
-    textAlign: "center",
+  disabled: {
+    opacity: 0.6,
   },
-  contentContainer: {
+  contentRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
+    gap: 8,
   },
-  iconLeft: {
+  icon: {
     marginRight: 8,
-  },
-  iconRight: {
-    marginLeft: 8,
   },
 });
 
 export default Button;
+
+
