@@ -1,13 +1,14 @@
 {
   "expo": {
     "name": "UniPilot",
-    "slug": "dev.lukashvelidze.unipilot",
+    "slug": "dev-lukashvelidze-unipilot",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "myapp",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
+    "jsEngine": "hermes",
     "splash": {
       "image": "./assets/images/splash-icon.png",
       "resizeMode": "contain",
