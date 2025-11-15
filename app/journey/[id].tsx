@@ -11,6 +11,7 @@ import Button from "@/components/Button";
 import { useJourneyStore } from "@/store/journeyStore";
 import { useUserStore } from "@/store/userStore";
 import { JourneyStage, Task } from "@/types/user";
+import { supabase } from "@/lib/supabase";
 
 const stageInfo = {
   research: {
@@ -90,38 +91,93 @@ export default function StageDetailScreen() {
     );
   }
 
-  const handleTaskToggle = (taskId: string, currentCompleted: boolean) => {
+  const handleTaskToggle = async (taskId: string, currentCompleted: boolean) => {
     const task = stage.tasks.find(t => t.id === taskId);
     if (!task) return;
 
-    // Check if this is an acceptance task
-    if (task.title.includes("🎉 Receive acceptance letter")) {
-      Alert.alert(
-        "🎉 Congratulations!",
-        "You've been accepted! This will unlock additional tasks in your journey.",
-        [
-          { text: "Cancel", style: "cancel" },
-          { 
-            text: "Mark as Complete", 
-            onPress: () => {
-              updateTaskCompletion(stageId, taskId, !currentCompleted);
-              markAcceptance(stageId);
-              setAcceptanceLetterChecked(true);
-              
-              // Add celebration milestone
-              addRecentMilestone({
-                type: "stage_complete",
-                stage: stageId,
-                timestamp: Date.now()
-              });
-            }
-          }
-        ]
-      );
-      return;
-    }
+    const newCompleted = !currentCompleted;
 
-    updateTaskCompletion(stageId, taskId, !currentCompleted);
+    // Update in Supabase
+    try {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) return;
+
+      // Check if progress exists
+      const { data: existingProgress } = await supabase
+        .from("user_progress")
+        .select("*")
+        .eq("user_id", authUser.id)
+        .eq("checklist_item_id", taskId)
+        .single();
+
+      if (existingProgress) {
+        // Update existing progress
+        const { error } = await supabase
+          .from("user_progress")
+          .update({
+            is_completed: newCompleted,
+            value: newCompleted ? {} : null,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("user_id", authUser.id)
+          .eq("checklist_item_id", taskId);
+
+        if (error) {
+          console.error("Error updating progress:", error);
+          Alert.alert("Error", "Failed to update task. Please try again.");
+          return;
+        }
+      } else {
+        // Insert new progress
+        const { error } = await supabase
+          .from("user_progress")
+          .insert([{
+            user_id: authUser.id,
+            checklist_item_id: taskId,
+            is_completed: newCompleted,
+            value: newCompleted ? {} : null,
+          }]);
+
+        if (error) {
+          console.error("Error creating progress:", error);
+          Alert.alert("Error", "Failed to update task. Please try again.");
+          return;
+        }
+      }
+
+      // Check if this is an acceptance task
+      if (task.title.includes("🎉 Receive acceptance letter")) {
+        Alert.alert(
+          "🎉 Congratulations!",
+          "You've been accepted! This will unlock additional tasks in your journey.",
+          [
+            { text: "Cancel", style: "cancel" },
+            { 
+              text: "Mark as Complete", 
+              onPress: () => {
+                updateTaskCompletion(stageId, taskId, newCompleted);
+                markAcceptance(stageId);
+                setAcceptanceLetterChecked(true);
+                
+                // Add celebration milestone
+                addRecentMilestone({
+                  type: "stage_complete",
+                  stage: stageId,
+                  timestamp: Date.now()
+                });
+              }
+            }
+          ]
+        );
+        return;
+      }
+
+      // Update local store
+      updateTaskCompletion(stageId, taskId, newCompleted);
+    } catch (error) {
+      console.error("Error toggling task:", error);
+      Alert.alert("Error", "Something went wrong. Please try again.");
+    }
   };
 
   const toggleTaskExpansion = (taskId: string) => {

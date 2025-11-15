@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert, Modal } from "react-native";
+import React, { useState, useEffect } from "react";
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert, Modal, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, Stack } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
@@ -8,86 +8,235 @@ import { useColors } from "@/hooks/useColors";
 import Card from "@/components/Card";
 import Button from "@/components/Button";
 import { useUserStore } from "@/store/userStore";
-import { universityApplicationChecklist, getTasksByCategory, ApplicationTask } from "@/mocks/applicationChecklist";
+import { supabase } from "@/lib/supabase";
+
+interface Checklist {
+  id: string;
+  country_code: string;
+  visa_type: string;
+  title: string;
+  sort_order: number;
+}
+
+interface ChecklistItem {
+  id: string;
+  checklist_id: string;
+  label: string;
+  field_type: "checkbox" | "file" | "text";
+  metadata: any;
+  sort_order: number;
+}
+
+interface ChecklistWithItems extends Checklist {
+  items: ChecklistItem[];
+}
+
+interface UserProgress {
+  checklist_item_id: string;
+  is_completed: boolean;
+  value: any;
+}
 
 export default function ApplicationChecklistScreen() {
   const router = useRouter();
   const Colors = useColors();
-  const [completedTasks, setCompletedTasks] = useState<Set<string>>(new Set());
+  const { user } = useUserStore();
+  
+  const [checklists, setChecklists] = useState<ChecklistWithItems[]>([]);
+  const [userProgress, setUserProgress] = useState<Map<string, UserProgress>>(new Map());
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
-  const [hasAcceptance, setHasAcceptance] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const categories = [
-    { key: "all", title: "All Tasks", count: universityApplicationChecklist.length },
-    { key: "pre_application", title: "Pre-Application", count: getTasksByCategory("pre_application").length },
-    { key: "application", title: "Application", count: getTasksByCategory("application").length },
-    { key: "post_application", title: "Post-Application", count: getTasksByCategory("post_application").length },
-    { key: "acceptance", title: "After Acceptance", count: getTasksByCategory("acceptance").length },
-  ];
+  // Fetch checklists and items from Supabase
+  useEffect(() => {
+    fetchChecklists();
+  }, [user]);
 
-  const filteredTasks = selectedCategory === "all" 
-    ? universityApplicationChecklist 
-    : getTasksByCategory(selectedCategory as ApplicationTask['category']);
+  const fetchChecklists = async () => {
+    try {
+      setIsLoading(true);
+      
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser || !user?.destinationCountry || !user?.destinationCountry.code) {
+        setIsLoading(false);
+        return;
+      }
 
-  const visibleTasks = filteredTasks.filter(task => 
-    !task.requiresAcceptance || hasAcceptance || task.id === "receive-acceptance"
-  );
+      // Get visa type from profile
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("visa_type")
+        .eq("id", authUser.id)
+        .single();
 
-  const handleTaskToggle = (taskId: string) => {
-    const task = universityApplicationChecklist.find(t => t.id === taskId);
-    if (!task) return;
+      if (!profile?.visa_type) {
+        setIsLoading(false);
+        return;
+      }
 
-    if (task.id === "receive-acceptance") {
-            Alert.alert(
-        "🎉 Congratulations!",
-        "Mark this as complete when you receive your first acceptance letter. This will unlock additional tasks to help you prepare for enrollment.",
-        [
-          { text: "Cancel", style: "cancel" },
-          { 
-            text: "Mark Complete", 
-            onPress: () => {
-              const newCompleted = new Set(completedTasks);
-              newCompleted.add(taskId);
-              setCompletedTasks(newCompleted);
-              setHasAcceptance(true);
-            }
-          }
-        ]
-      );
-      return;
+      // Fetch checklists for this country and visa type
+      const { data: checklistsData, error: checklistsError } = await supabase
+        .from("checklists")
+        .select("*")
+        .eq("country_code", user.destinationCountry.code)
+        .eq("visa_type", profile.visa_type)
+        .order("sort_order", { ascending: true });
+
+      if (checklistsError) {
+        console.error("Error fetching checklists:", checklistsError);
+        setIsLoading(false);
+        return;
+      }
+
+      if (!checklistsData || checklistsData.length === 0) {
+        setIsLoading(false);
+        return;
+      }
+
+      // Fetch checklist items for all checklists
+      const checklistIds = checklistsData.map(c => c.id);
+      const { data: itemsData, error: itemsError } = await supabase
+        .from("checklist_items")
+        .select("*")
+        .in("checklist_id", checklistIds)
+        .order("sort_order", { ascending: true });
+
+      if (itemsError) {
+        console.error("Error fetching checklist items:", itemsError);
+        setIsLoading(false);
+        return;
+      }
+
+      // Group items by checklist
+      const checklistsWithItems: ChecklistWithItems[] = checklistsData.map(checklist => ({
+        ...checklist,
+        items: (itemsData || []).filter(item => item.checklist_id === checklist.id),
+      }));
+
+      setChecklists(checklistsWithItems);
+
+      // Fetch user progress
+      const itemIds = (itemsData || []).map(item => item.id);
+      if (itemIds.length > 0) {
+        const { data: progressData } = await supabase
+          .from("user_progress")
+          .select("*")
+          .eq("user_id", authUser.id)
+          .in("checklist_item_id", itemIds);
+
+        if (progressData) {
+          const progressMap = new Map<string, UserProgress>();
+          progressData.forEach(progress => {
+            progressMap.set(progress.checklist_item_id, {
+              checklist_item_id: progress.checklist_item_id,
+              is_completed: progress.is_completed,
+              value: progress.value,
+            });
+          });
+          setUserProgress(progressMap);
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching checklists:", error);
+    } finally {
+      setIsLoading(false);
     }
-
-    const newCompleted = new Set(completedTasks);
-    if (completedTasks.has(taskId)) {
-      newCompleted.delete(taskId);
-    } else {
-      newCompleted.add(taskId);
-    }
-    setCompletedTasks(newCompleted);
   };
 
-  const toggleTaskExpansion = (taskId: string) => {
+  // Get all items from all checklists
+  const allItems = checklists.flatMap(checklist => 
+    checklist.items.map(item => ({
+      ...item,
+      checklistTitle: checklist.title,
+      checklistId: checklist.id,
+    }))
+  );
+
+  // Categories based on checklist titles
+  const categories = [
+    { key: "all", title: "All Tasks", count: allItems.length },
+    ...checklists.map(checklist => ({
+      key: checklist.id,
+      title: checklist.title,
+      count: checklist.items.length,
+    })),
+  ];
+
+  const filteredItems = selectedCategory === "all"
+    ? allItems
+    : allItems.filter(item => item.checklistId === selectedCategory);
+
+  const handleTaskToggle = async (itemId: string) => {
+    try {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) return;
+
+      const currentProgress = userProgress.get(itemId);
+      const newCompleted = !currentProgress?.is_completed;
+
+      // Update user_progress in Supabase
+      if (currentProgress) {
+        // Update existing progress
+        const { error } = await supabase
+          .from("user_progress")
+          .update({
+            is_completed: newCompleted,
+            value: newCompleted ? {} : null,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("user_id", authUser.id)
+          .eq("checklist_item_id", itemId);
+
+        if (error) {
+          console.error("Error updating progress:", error);
+          Alert.alert("Error", "Failed to update task. Please try again.");
+          return;
+        }
+      } else {
+        // Insert new progress
+        const { error } = await supabase
+          .from("user_progress")
+          .insert([{
+            user_id: authUser.id,
+            checklist_item_id: itemId,
+            is_completed: newCompleted,
+            value: newCompleted ? {} : null,
+          }]);
+
+        if (error) {
+          console.error("Error creating progress:", error);
+          Alert.alert("Error", "Failed to update task. Please try again.");
+          return;
+        }
+      }
+
+      // Update local state
+      const newProgress = new Map(userProgress);
+      newProgress.set(itemId, {
+        checklist_item_id: itemId,
+        is_completed: newCompleted,
+        value: newCompleted ? {} : null,
+      });
+      setUserProgress(newProgress);
+    } catch (error) {
+      console.error("Error toggling task:", error);
+      Alert.alert("Error", "Something went wrong. Please try again.");
+    }
+  };
+
+  const toggleTaskExpansion = (itemId: string) => {
     const newExpanded = new Set(expandedTasks);
-    if (newExpanded.has(taskId)) {
-      newExpanded.delete(taskId);
+    if (newExpanded.has(itemId)) {
+      newExpanded.delete(itemId);
     } else {
-      newExpanded.add(taskId);
+      newExpanded.add(itemId);
     }
     setExpandedTasks(newExpanded);
   };
 
-  const getPriorityColor = (priority: ApplicationTask['priority']) => {
-    switch (priority) {
-      case "high": return Colors.error;
-      case "medium": return Colors.warning;
-      case "low": return Colors.success;
-      default: return Colors.lightText;
-    }
-  };
-
-  const completedCount = visibleTasks.filter(task => completedTasks.has(task.id)).length;
-  const progressPercentage = visibleTasks.length > 0 ? Math.round((completedCount / visibleTasks.length) * 100) : 0;
+  const completedCount = filteredItems.filter(item => userProgress.get(item.id)?.is_completed).length;
+  const progressPercentage = filteredItems.length > 0 ? Math.round((completedCount / filteredItems.length) * 100) : 0;
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: Colors.background }]} edges={['top']}>
@@ -126,7 +275,7 @@ export default function ApplicationChecklistScreen() {
               </View>
               <View style={styles.progressStats}>
                 <Text style={styles.progressText}>
-                  {completedCount} of {visibleTasks.length} tasks completed
+                  {completedCount} of {filteredItems.length} tasks completed
                 </Text>
                 <Text style={styles.progressPercentage}>{progressPercentage}%</Text>
               </View>
@@ -181,113 +330,123 @@ export default function ApplicationChecklistScreen() {
         </ScrollView>
       </View>
 
-      {/* Acceptance Notice */}
-      {!hasAcceptance && selectedCategory === "acceptance" && (
-        <Card style={[styles.noticeCard, { backgroundColor: Colors.lightBackground, borderColor: Colors.warning }]}>
-          <View style={styles.noticeContent}>
-            <AlertCircle size={20} color={Colors.warning} />
-            <Text style={[styles.noticeText, { color: Colors.text }]}>
-              These tasks will be unlocked after you mark "Receive Acceptance Letter" as complete.
-            </Text>
-          </View>
-        </Card>
-      )}
-
       {/* Tasks List */}
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.tasksContainer}>
-          {visibleTasks.map((task, index) => {
-            return (
-            <Card key={task.id} style={[styles.taskCard, { backgroundColor: Colors.card }]}>
-              <TouchableOpacity
-                style={styles.taskHeader}
-                onPress={() => {
-                  handleTaskToggle(task.id);
-                }}
-                activeOpacity={0.7}
-              >
-                <View style={styles.taskLeft}>
-                  <View style={[styles.taskCheckbox, { borderColor: completedTasks.has(task.id) ? Colors.success : Colors.border }]}>
-                    {completedTasks.has(task.id) ? (
-                      <CheckSquare size={20} color={Colors.success} />
-                    ) : (
-                      <Square size={20} color={Colors.lightText} />
-                    )}
-                  </View>
-                  <View style={styles.taskContent}>
-                    <View style={styles.taskTitleRow}>
-                      <Text style={[
-                        styles.taskTitle, 
-                        { color: completedTasks.has(task.id) ? Colors.lightText : Colors.text },
-                        completedTasks.has(task.id) && styles.taskTitleCompleted
-                      ]}>
-                        {task.title}
-                      </Text>
-                      <View style={styles.taskMeta}>
-                        <View style={[styles.priorityBadge, { backgroundColor: getPriorityColor(task.priority) + "20" }]}>
-                          <Text style={[styles.priorityText, { color: getPriorityColor(task.priority) }]}>
-                            {task.priority.toUpperCase()}
-                          </Text>
-                        </View>
-                        <View style={[styles.timeBadge, { backgroundColor: Colors.lightBackground }]}>
-                          <Clock size={12} color={Colors.lightText} />
-                          <Text style={[styles.timeText, { color: Colors.lightText }]}>
-                            {task.estimatedTime}
-                          </Text>
-                        </View>
-                      </View>
-                    </View>
-                    <Text style={[styles.taskDescription, { color: Colors.lightText }]}>
-                      {task.description}
-                    </Text>
-                  </View>
-                </View>
-                <TouchableOpacity
-                  onPress={() => toggleTaskExpansion(task.id)}
-                  style={styles.expandButton}
-                >
-                  {expandedTasks.has(task.id) ? (
-                    <ChevronUp size={20} color={Colors.primary} />
-                  ) : (
-                    <ChevronDown size={20} color={Colors.primary} />
-                  )}
-                </TouchableOpacity>
-                </TouchableOpacity>
-              
-              {expandedTasks.has(task.id) && (
-                <View style={[styles.taskDetails, { backgroundColor: Colors.lightBackground }]}>
-                  {/* Tips */}
-                  <View style={styles.tipsSection}>
-                    <Text style={[styles.sectionTitle, { color: Colors.text }]}>💡 Tips</Text>
-                    {task.tips.map((tip, tipIndex) => (
-                      <View key={tipIndex} style={styles.tipItem}>
-                        <Text style={[styles.tipBullet, { color: Colors.primary }]}>•</Text>
-                        <Text style={[styles.tipText, { color: Colors.text }]}>{tip}</Text>
-                      </View>
-                    ))}
-                  </View>
-                  
-                  {/* Resources */}
-                  {task.resources && task.resources.length > 0 && (
-                    <View style={styles.resourcesSection}>
-                      <Text style={[styles.sectionTitle, { color: Colors.text }]}>📚 Resources</Text>
-                      {task.resources.map((resource, resourceIndex) => (
-                        <View key={resourceIndex} style={styles.resourceItem}>
-                          <Text style={[styles.resourceBullet, { color: Colors.secondary }]}>•</Text>
-                          <Text style={[styles.resourceText, { color: Colors.text }]}>{resource}</Text>
-                        </View>
-                      ))}
-                    </View>
-                  )}
-                </View>
-              )}
-            </Card>
-            );
-          })}
+      {isLoading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+          <Text style={[styles.loadingText, { color: Colors.lightText }]}>Loading checklists...</Text>
         </View>
+      ) : filteredItems.length === 0 ? (
+        <View style={styles.emptyContainer}>
+          <Text style={[styles.emptyText, { color: Colors.text }]}>
+            No checklists found for your destination and visa type.
+          </Text>
+          <Text style={[styles.emptySubtext, { color: Colors.lightText }]}>
+            Please complete your onboarding to see personalized checklists.
+          </Text>
+        </View>
+      ) : (
+        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+          <View style={styles.tasksContainer}>
+            {filteredItems.map((item) => {
+              const isCompleted = userProgress.get(item.id)?.is_completed || false;
+              return (
+                <Card key={item.id} style={[styles.taskCard, { backgroundColor: Colors.card }]}>
+                  <TouchableOpacity
+                    style={styles.taskHeader}
+                    onPress={() => {
+                      handleTaskToggle(item.id);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.taskLeft}>
+                      <View style={[styles.taskCheckbox, { borderColor: isCompleted ? Colors.success : Colors.border }]}>
+                        {isCompleted ? (
+                          <CheckSquare size={20} color={Colors.success} />
+                        ) : (
+                          <Square size={20} color={Colors.lightText} />
+                        )}
+                      </View>
+                      <View style={styles.taskContent}>
+                        <View style={styles.taskTitleRow}>
+                          <Text style={[
+                            styles.taskTitle, 
+                            { color: isCompleted ? Colors.lightText : Colors.text },
+                            isCompleted && styles.taskTitleCompleted
+                          ]}>
+                            {item.label}
+                          </Text>
+                          <View style={styles.taskMeta}>
+                            <View style={[styles.typeBadge, { backgroundColor: Colors.lightBackground }]}>
+                              <Text style={[styles.typeText, { color: Colors.text }]}>
+                                {item.field_type.toUpperCase()}
+                              </Text>
+                            </View>
+                          </View>
+                        </View>
+                        {item.checklistTitle && (
+                          <Text style={[styles.taskDescription, { color: Colors.lightText }]}>
+                            {item.checklistTitle}
+                          </Text>
+                        )}
+                      </View>
+                    </View>
+                    <TouchableOpacity
+                      onPress={() => toggleTaskExpansion(item.id)}
+                      style={styles.expandButton}
+                    >
+                      {expandedTasks.has(item.id) ? (
+                        <ChevronUp size={20} color={Colors.primary} />
+                      ) : (
+                        <ChevronDown size={20} color={Colors.primary} />
+                      )}
+                    </TouchableOpacity>
+                  </TouchableOpacity>
+                
+                  {expandedTasks.has(item.id) && (
+                    <View style={[styles.taskDetails, { backgroundColor: Colors.lightBackground }]}>
+                      {item.metadata && typeof item.metadata === 'object' && (
+                        <>
+                          {item.metadata.description && (
+                            <View style={styles.tipsSection}>
+                              <Text style={[styles.sectionTitle, { color: Colors.text }]}>Description</Text>
+                              <Text style={[styles.tipText, { color: Colors.text }]}>{item.metadata.description}</Text>
+                            </View>
+                          )}
+                          {item.metadata.tips && Array.isArray(item.metadata.tips) && (
+                            <View style={styles.tipsSection}>
+                              <Text style={[styles.sectionTitle, { color: Colors.text }]}>💡 Tips</Text>
+                              {item.metadata.tips.map((tip: string, tipIndex: number) => (
+                                <View key={tipIndex} style={styles.tipItem}>
+                                  <Text style={[styles.tipBullet, { color: Colors.primary }]}>•</Text>
+                                  <Text style={[styles.tipText, { color: Colors.text }]}>{tip}</Text>
+                                </View>
+                              ))}
+                            </View>
+                          )}
+                          {item.metadata.resources && Array.isArray(item.metadata.resources) && (
+                            <View style={styles.resourcesSection}>
+                              <Text style={[styles.sectionTitle, { color: Colors.text }]}>📚 Resources</Text>
+                              {item.metadata.resources.map((resource: string, resourceIndex: number) => (
+                                <View key={resourceIndex} style={styles.resourceItem}>
+                                  <Text style={[styles.resourceBullet, { color: Colors.secondary }]}>•</Text>
+                                  <Text style={[styles.resourceText, { color: Colors.text }]}>{resource}</Text>
+                                </View>
+                              ))}
+                            </View>
+                          )}
+                        </>
+                      )}
+                    </View>
+                  )}
+                </Card>
+              );
+            })}
+          </View>
 
-        <View style={styles.bottomPadding} />
-      </ScrollView>
+          <View style={styles.bottomPadding} />
+        </ScrollView>
+      )}
     </SafeAreaView>
   );
 }
@@ -486,6 +645,41 @@ const styles = StyleSheet.create({
   timeText: {
     fontSize: 10,
     fontWeight: "500",
+  },
+  typeBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  typeText: {
+    fontSize: 10,
+    fontWeight: "600",
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 24,
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 24,
+  },
+  emptyText: {
+    fontSize: 16,
+    fontWeight: "600",
+    marginBottom: 8,
+    textAlign: "center",
+  },
+  emptySubtext: {
+    fontSize: 14,
+    textAlign: "center",
   },
   taskDescription: {
     fontSize: 14,

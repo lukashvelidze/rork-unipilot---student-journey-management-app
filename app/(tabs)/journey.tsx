@@ -16,9 +16,9 @@ import { useJourneyStore } from "@/store/journeyStore";
 import { useUserStore } from "@/store/userStore";
 import { calculateOverallProgress } from "@/utils/helpers";
 import { getRandomQuote, generalQuotes } from "@/mocks/quotes";
-import { initialJourneyProgress } from "@/mocks/journeyTasks";
 import { TimelineEvent } from "@/types/user";
-import { JourneyStage, MemoryMood } from "@/types/user";
+import { JourneyStage, MemoryMood, JourneyProgress, Task } from "@/types/user";
+import { supabase } from "@/lib/supabase";
 
 const { width, height } = Dimensions.get("window");
 
@@ -49,13 +49,157 @@ export default function JourneyScreen() {
   const [selectedMoodFilter, setSelectedMoodFilter] = useState<MemoryMood | "all">("all");
   const [showFilters, setShowFilters] = useState(false);
   
-  // Initialize journey progress if not already set
+  // Fetch journey progress from Supabase checklists
   useEffect(() => {
-    if (user && journeyProgress.length === 0) {
-      console.log("Setting initial journey progress");
-      setJourneyProgress(initialJourneyProgress);
+    fetchJourneyProgress();
+  }, [user]);
+
+  const fetchJourneyProgress = async () => {
+    try {
+      if (!user?.destinationCountry?.code) {
+        return;
+      }
+
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) return;
+
+      // Get visa type from profile
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("visa_type")
+        .eq("id", authUser.id)
+        .single();
+
+      if (!profile?.visa_type) return;
+
+      // Fetch checklists for this country and visa type
+      const { data: checklistsData } = await supabase
+        .from("checklists")
+        .select("*")
+        .eq("country_code", user.destinationCountry.code)
+        .eq("visa_type", profile.visa_type)
+        .order("sort_order", { ascending: true });
+
+      if (!checklistsData || checklistsData.length === 0) {
+        console.log("No checklists found for this country/visa combination");
+        return;
+      }
+
+      // Fetch checklist items
+      const checklistIds = checklistsData.map(c => c.id);
+      const { data: itemsData } = await supabase
+        .from("checklist_items")
+        .select("*")
+        .in("checklist_id", checklistIds)
+        .order("sort_order", { ascending: true });
+
+      if (!itemsData) return;
+
+      // Fetch user progress
+      const itemIds = itemsData.map(item => item.id);
+      const { data: progressData } = await supabase
+        .from("user_progress")
+        .select("*")
+        .eq("user_id", authUser.id)
+        .in("checklist_item_id", itemIds);
+
+      // Create a map of completed items
+      const completedItems = new Set(
+        (progressData || []).filter(p => p.is_completed).map(p => p.checklist_item_id)
+      );
+
+      // Map checklists to journey stages
+      // We'll use a simple mapping: each checklist becomes a "stage" or we group them
+      // For now, let's create stages based on checklist titles
+      const stageMapping: Record<string, JourneyStage> = {
+        "pre-arrival": "pre_departure",
+        "pre-arrival documents": "pre_departure",
+        "arrival": "arrival",
+        "arrival & orientation": "arrival",
+        "academic": "academic",
+        "academic requirements": "academic",
+        "accommodation": "arrival",
+        "accommodation & housing": "arrival",
+        "financial": "pre_departure",
+        "financial & insurance": "pre_departure",
+      };
+
+      // Group checklists by stage
+      const stagesMap = new Map<JourneyStage, { checklist: any; items: any[] }[]>();
+
+      checklistsData.forEach(checklist => {
+        const titleLower = checklist.title.toLowerCase();
+        let stage: JourneyStage = "pre_departure"; // default
+
+        // Find matching stage
+        for (const [key, mappedStage] of Object.entries(stageMapping)) {
+          if (titleLower.includes(key)) {
+            stage = mappedStage;
+            break;
+          }
+        }
+
+        // If no match, try to infer from title
+        if (titleLower.includes("research") || titleLower.includes("university")) {
+          stage = "research";
+        } else if (titleLower.includes("application") || titleLower.includes("apply")) {
+          stage = "application";
+        } else if (titleLower.includes("visa")) {
+          stage = "visa";
+        } else if (titleLower.includes("career") || titleLower.includes("professional")) {
+          stage = "career";
+        }
+
+        const items = itemsData.filter(item => item.checklist_id === checklist.id);
+        
+        if (!stagesMap.has(stage)) {
+          stagesMap.set(stage, []);
+        }
+        stagesMap.get(stage)!.push({ checklist, items });
+      });
+
+      // Convert to JourneyProgress format
+      const progress: JourneyProgress[] = [];
+      const stageOrder: JourneyStage[] = ["research", "application", "visa", "pre_departure", "arrival", "academic", "career"];
+
+      stageOrder.forEach(stage => {
+        const stageData = stagesMap.get(stage);
+        if (!stageData || stageData.length === 0) return;
+
+        // Combine all items from all checklists in this stage
+        const allTasks: Task[] = [];
+        stageData.forEach(({ items }) => {
+          items.forEach(item => {
+            allTasks.push({
+              id: item.id,
+              title: item.label,
+              completed: completedItems.has(item.id),
+              completedDate: completedItems.has(item.id) ? new Date().toISOString() : undefined,
+            });
+          });
+        });
+
+        if (allTasks.length === 0) return;
+
+        const completedCount = allTasks.filter(t => t.completed).length;
+        const progressPercent = Math.round((completedCount / allTasks.length) * 100);
+
+        progress.push({
+          stage,
+          progress: progressPercent,
+          completed: progressPercent === 100,
+          completedDate: progressPercent === 100 ? new Date().toISOString() : undefined,
+          tasks: allTasks,
+        });
+      });
+
+      if (progress.length > 0) {
+        setJourneyProgress(progress);
+      }
+    } catch (error) {
+      console.error("Error fetching journey progress:", error);
     }
-  }, [user, journeyProgress.length, setJourneyProgress]);
+  };
   
   // Handle tab parameter from navigation
   useEffect(() => {

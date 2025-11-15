@@ -11,22 +11,76 @@ import { useUserStore } from "@/store/userStore";
 import { useJourneyStore } from "@/store/journeyStore";
 import { calculateOverallProgress } from "@/utils/helpers";
 import { getRandomQuote, generalQuotes } from "@/mocks/quotes";
-import { initialJourneyProgress } from "@/mocks/journeyTasks";
+import { supabase } from "@/lib/supabase";
 
 export default function HomeScreen() {
   const router = useRouter();
   const Colors = useColors();
-  const { user } = useUserStore();
+  const { user, setUser } = useUserStore();
   const { journeyProgress, setJourneyProgress } = useJourneyStore();
   
-  // Initialize journey progress if not already set
+  // Fetch user data from database on mount
   useEffect(() => {
-    if (user && journeyProgress.length === 0) {
-      console.log("Initializing journey progress for user:", user.name);
-      setJourneyProgress(initialJourneyProgress);
+    async function fetchUserData() {
+      try {
+        const { data: { user: authUser } } = await supabase.auth.getUser();
+        if (!authUser) return;
+
+        // Fetch profile from database
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", authUser.id)
+          .single();
+
+        if (profile) {
+          // Fetch countries
+          const { getCountries } = require("@/lib/supabase");
+          const countries = await getCountries();
+          
+          const homeCountry = profile.country_origin 
+            ? (countries.origin.find((c: any) => c.code === profile.country_origin) || {
+                code: profile.country_origin,
+                name: profile.country_origin,
+                flag: "",
+              })
+            : null;
+            
+          const destinationCountry = profile.destination_country
+            ? (countries.destination.find((c: any) => c.code === profile.destination_country) || {
+                code: profile.destination_country,
+                name: profile.destination_country,
+                flag: "",
+              })
+            : null;
+
+          // Update user store with database data
+          setUser({
+            ...user!,
+            id: authUser.id,
+            name: profile.full_name || "",
+            email: profile.email || authUser.email || "",
+            homeCountry: homeCountry || user?.homeCountry,
+            destinationCountry: destinationCountry || user?.destinationCountry,
+            educationBackground: {
+              level: (profile.level_of_study as any) || user?.educationBackground?.level || "bachelors",
+            },
+            onboardingCompleted: !!profile.visa_type,
+          });
+
+          // Journey progress is now fetched from Supabase in the journey page
+          // No need to initialize here with mock data
+        }
+      } catch (error) {
+        console.error("Error fetching user data:", error);
+      }
     }
-  }, [user, journeyProgress.length, setJourneyProgress]);
-  
+
+    if (user) {
+      fetchUserData();
+    }
+  }, []);
+
   // Redirect to onboarding if user is not set up
   useEffect(() => {
     if (!user) {
@@ -90,7 +144,12 @@ export default function HomeScreen() {
         <View style={styles.header}>
           <View style={styles.headerTop}>
             <View>
-              <Text style={[styles.name, { color: Colors.text }]}>{user.name}</Text>
+              <Text style={[styles.greeting, { color: Colors.lightText }]}>
+                Welcome back,
+              </Text>
+              <Text style={[styles.name, { color: Colors.text }]}>
+                {user.name?.split(' ')[0] || user.name}!
+              </Text>
             </View>
           </View>
         </View>

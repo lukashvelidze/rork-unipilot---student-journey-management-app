@@ -47,6 +47,8 @@
       "typedRoutes": true
     },
     "extra": {
+      "supabaseUrl": "https://yagdgijrdlifgcjkcnqe.supabase.co",
+      "supabaseAnonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlhZ2RnaWpyZGxpZmdjamtjbnFlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjMwMDA3MjMsImV4cCI6MjA3ODU3NjcyM30.4CsQTrlIac38iVLXkrUdxVoTJuPEBqKKjw0ohr56qwA",
       "router": {
         "origin": "https://rork.com/"
       },
