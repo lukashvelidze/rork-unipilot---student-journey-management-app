@@ -16,7 +16,7 @@ import { initialJourneyProgress } from "@/mocks/journeyTasks";
 export default function HomeScreen() {
   const router = useRouter();
   const Colors = useColors();
-  const { user, isPremium } = useUserStore();
+  const { user } = useUserStore();
   const { journeyProgress, setJourneyProgress } = useJourneyStore();
   
   // Initialize journey progress if not already set
@@ -76,66 +76,11 @@ export default function HomeScreen() {
       onPress: () => router.push("/(tabs)/journey"),
     },
     {
-      title: "Premium Features",
-      description: "Explore premium tools",
-      icon: Crown,
-      color: Colors.accent,
-      onPress: () => router.push("/(tabs)/community"),
-    },
-  ];
-
-  const premiumFeatures = [
-    {
-      title: "Personal Mentor",
-      description: "1-on-1 guidance sessions",
-      icon: UserCheck,
-      color: Colors.primary,
-      onPress: () => router.push("/premium/mentor"),
-    },
-    {
-      title: "Advanced Analytics",
-      description: "Track your progress",
-      icon: BarChart3,
-      color: Colors.secondary,
-      onPress: () => router.push("/premium/analytics"),
-    },
-    {
-      title: "Premium Resources",
-      description: "Exclusive templates & guides",
-      icon: BookOpen,
-      color: Colors.accent,
-      onPress: () => router.push("/premium/resources"),
-    },
-    {
-      title: "Exclusive Webinars",
-      description: "Live expert sessions",
-      icon: Video,
-      color: Colors.success,
-      onPress: () => router.push("/premium/webinars"),
-    },
-  ];
-
-  const premiumQuickActions = [
-    {
       title: "AI Assistant",
       description: "Get personalized guidance",
       icon: Zap,
-      color: Colors.primary,
+      color: Colors.accent,
       onPress: () => router.push("/unipilot-ai"),
-    },
-    {
-      title: "Premium Resources",
-      description: "Access exclusive content",
-      icon: BookOpen,
-      color: Colors.secondary,
-      onPress: () => router.push("/premium/resources"),
-    },
-    {
-      title: "Personal Mentor",
-      description: "Book 1-on-1 sessions",
-      icon: UserCheck,
-      color: Colors.success,
-      onPress: () => router.push("/premium/mentor"),
     },
   ];
   
@@ -145,15 +90,8 @@ export default function HomeScreen() {
         <View style={styles.header}>
           <View style={styles.headerTop}>
             <View>
-              <Text style={[styles.greeting, { color: Colors.lightText }]}>Welcome back,</Text>
-              <Text style={[styles.name, { color: Colors.text }]}>{user.name}!</Text>
+              <Text style={[styles.name, { color: Colors.text }]}>{user.name}</Text>
             </View>
-            {isPremium && (
-              <View style={[styles.premiumBadge, { backgroundColor: Colors.premiumBackground, borderColor: Colors.premium }]}>
-                <Crown size={16} color={Colors.premium} />
-                <Text style={[styles.premiumText, { color: Colors.premium }]}>Premium</Text>
-              </View>
-            )}
           </View>
         </View>
         
@@ -190,48 +128,6 @@ export default function HomeScreen() {
             <Text style={[styles.viewJourneyText, { color: Colors.primary }]}>View Full Journey</Text>
           </TouchableOpacity>
         </Card>
-        
-        {isPremium && (
-          <>
-            <Card style={[styles.premiumFeaturesCard, { backgroundColor: Colors.premiumBackground, borderColor: Colors.premium }]}>
-              <View style={styles.sectionHeader}>
-                <Crown size={20} color={Colors.premium} />
-                <Text style={[styles.premiumSectionTitle, { color: Colors.text }]}>Premium Features</Text>
-              </View>
-              
-              <View style={styles.premiumGrid}>
-                {premiumFeatures.map((feature, index) => (
-                  <TouchableOpacity
-                    key={index}
-                    style={[styles.premiumFeatureCard, { backgroundColor: Colors.white, borderLeftColor: feature.color }]}
-                    onPress={feature.onPress}
-                  >
-                    <feature.icon size={20} color={feature.color} />
-                    <Text style={[styles.premiumFeatureTitle, { color: Colors.text }]}>{feature.title}</Text>
-                    <Text style={[styles.premiumFeatureDescription, { color: Colors.lightText }]}>{feature.description}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </Card>
-
-            <Card style={[styles.premiumActionsCard, { backgroundColor: Colors.premiumBackground, borderColor: Colors.premium }]}>
-              <Text style={[styles.sectionTitle, { color: Colors.text }]}>Premium Quick Actions</Text>
-              <View style={styles.premiumActionsGrid}>
-                {premiumQuickActions.map((action, index) => (
-                  <TouchableOpacity
-                    key={index}
-                    style={[styles.premiumActionCard, { backgroundColor: Colors.white, borderColor: action.color }]}
-                    onPress={action.onPress}
-                  >
-                    <action.icon size={24} color={action.color} />
-                    <Text style={[styles.actionTitle, { color: Colors.text }]}>{action.title}</Text>
-                    <Text style={[styles.actionDescription, { color: Colors.lightText }]}>{action.description}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </Card>
-          </>
-        )}
         
         {upcomingTasks.length > 0 && (
           <Card style={[styles.tasksCard, { backgroundColor: Colors.card }]}>
@@ -279,25 +175,6 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {!isPremium && (
-          <Card style={[styles.upgradeCard, { backgroundColor: Colors.premiumBackground, borderColor: Colors.premium }]}>
-            <View style={styles.upgradeContent}>
-              <Crown size={32} color={Colors.premium} />
-              <View style={styles.upgradeText}>
-                <Text style={[styles.upgradeTitle, { color: Colors.text }]}>Unlock Premium Features</Text>
-                <Text style={[styles.upgradeDescription, { color: Colors.lightText }]}>
-                  Get personal mentoring, advanced analytics, and exclusive resources for just $4.99/month
-                </Text>
-              </View>
-            </View>
-            <TouchableOpacity
-              style={[styles.upgradeButton, { backgroundColor: Colors.premium }]}
-              onPress={() => router.push("/premium")}
-            >
-              <Text style={styles.upgradeButtonText}>Upgrade Now - $4.99/month</Text>
-            </TouchableOpacity>
-          </Card>
-        )}
       </ScrollView>
     </SafeAreaView>
   );

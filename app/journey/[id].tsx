@@ -68,7 +68,6 @@ export default function StageDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
   const Colors = useColors();
-  const { isPremium } = useUserStore();
   const { 
     journeyProgress, 
     updateTaskCompletion, 
@@ -99,7 +98,7 @@ export default function StageDetailScreen() {
     if (task.title.includes("🎉 Receive acceptance letter")) {
       Alert.alert(
         "🎉 Congratulations!",
-        "You've been accepted! This will unlock additional premium tasks in your journey. Upgrade to Premium to access post-acceptance guidance.",
+        "You've been accepted! This will unlock additional tasks in your journey.",
         [
           { text: "Cancel", style: "cancel" },
           { 
@@ -115,23 +114,6 @@ export default function StageDetailScreen() {
                 stage: stageId,
                 timestamp: Date.now()
               });
-              
-              // Show premium upgrade prompt after a short delay
-              setTimeout(() => {
-                if (!isPremium) {
-                  Alert.alert(
-                    "🎓 Unlock Your Next Steps",
-                    "Congratulations on your acceptance! Upgrade to Premium to access exclusive post-acceptance guidance including visa applications, housing, and pre-departure checklists.",
-                    [
-                      { text: "Maybe Later", style: "cancel" },
-                      { 
-                        text: "Upgrade to Premium", 
-                        onPress: () => router.push('/premium/subscription')
-                      }
-                    ]
-                  );
-                }
-              }, 1000);
             }
           }
         ]
@@ -187,7 +169,7 @@ export default function StageDetailScreen() {
   const totalTasks = stage.tasks.length;
   const hasAcceptance = stage.hasAcceptance || stage.tasks.some(t => t.title.includes("🎉 Receive acceptance letter") && t.completed);
 
-  // Filter tasks based on acceptance status and premium status
+  // Filter tasks based on acceptance status
   const visibleTasks = stage.tasks.filter(task => {
     // For application stage, check acceptance-related tasks
     if (stageId === "application") {
@@ -200,16 +182,8 @@ export default function StageDetailScreen() {
           task.title.includes("Submit final transcripts");
       
       if (isPostAcceptanceTask) {
-        // Only show if user has acceptance AND premium (except for the acceptance task itself)
-        return hasAcceptance && (isPremium || task.title.includes("🎉 Receive acceptance letter"));
-      }
-    }
-    
-    // For other stages, check if they require premium after acceptance
-    if (stageId === "visa" || stageId === "pre_departure" || stageId === "arrival" || stageId === "academic" || stageId === "career") {
-      // These stages require premium if user has marked acceptance
-      if (acceptanceLetterChecked && !isPremium) {
-        return false;
+        // Only show if user has acceptance (except for the acceptance task itself)
+        return hasAcceptance || task.title.includes("🎉 Receive acceptance letter");
       }
     }
     
@@ -280,37 +254,13 @@ export default function StageDetailScreen() {
           </Card>
         )}
 
-        {/* Premium Notice for Locked Stages */}
-        {(stageId === "visa" || stageId === "pre_departure" || stageId === "arrival" || stageId === "academic" || stageId === "career") && acceptanceLetterChecked && !isPremium && (
-          <Card style={[styles.premiumNoticeCard, { backgroundColor: Colors.lightBackground, borderColor: Colors.primary }]}>
-            <View style={styles.premiumNoticeContent}>
-              <Crown size={24} color={Colors.primary} />
-              <View style={styles.premiumNoticeText}>
-                <Text style={[styles.premiumNoticeTitle, { color: Colors.primary }]}>
-                  🎓 Premium Stage Unlocked!
-                </Text>
-                <Text style={[styles.premiumNoticeDescription, { color: Colors.text }]}>
-                  This stage is now available with Premium. Upgrade to access detailed guidance for your next steps.
-                </Text>
-                <TouchableOpacity
-                  style={[styles.upgradeButton, { backgroundColor: Colors.primary }]}
-                  onPress={() => router.push('/premium/subscription')}
-                >
-                  <Text style={styles.upgradeButtonText}>Upgrade to Premium</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </Card>
-        )}
-
         <View style={styles.tasksContainer}>
-          {visibleTasks.length === 0 && (stageId === "visa" || stageId === "pre_departure" || stageId === "arrival" || stageId === "academic" || stageId === "career") && acceptanceLetterChecked && !isPremium ? (
+          {visibleTasks.length === 0 ? (
             <Card style={[styles.emptyStateCard, { backgroundColor: Colors.card }]}>
               <View style={styles.emptyStateContent}>
-                <Crown size={48} color={Colors.lightText} />
-                <Text style={[styles.emptyStateTitle, { color: Colors.text }]}>Premium Required</Text>
+                <Text style={[styles.emptyStateTitle, { color: Colors.text }]}>No tasks available</Text>
                 <Text style={[styles.emptyStateDescription, { color: Colors.lightText }]}>
-                  This stage contains premium content. Upgrade to access detailed tasks and guidance.
+                  Tasks will appear here as you progress through your journey.
                 </Text>
               </View>
             </Card>
@@ -360,14 +310,6 @@ export default function StageDetailScreen() {
                   <Text style={[styles.taskAdviceText, { color: Colors.text }]}>
                     💡 {getTaskAdvice(task)}
                   </Text>
-                  {!isPremium && (
-                    <TouchableOpacity
-                      style={[styles.premiumButton, { backgroundColor: Colors.primary }]}
-                      onPress={() => router.push("/(tabs)/community")}
-                    >
-                      <Text style={styles.premiumButtonText}>Get Premium Tips</Text>
-                    </TouchableOpacity>
-                  )}
                 </View>
               )}
               </Card>
@@ -381,14 +323,6 @@ export default function StageDetailScreen() {
           <Text style={[styles.tipsText, { color: Colors.lightText }]}>
             {getStageSpecificTips(stageId)}
           </Text>
-          
-          {!isPremium && (
-            <Button
-              title="Unlock Premium Resources"
-              onPress={() => router.push("/(tabs)/community")}
-              style={[styles.premiumCTA, { backgroundColor: Colors.primary }]}
-            />
-          )}
         </Card>
 
         <View style={styles.bottomPadding} />
@@ -428,11 +362,12 @@ const styles = StyleSheet.create({
     marginTop: 50,
   },
   header: {
-    marginBottom: 16,
+    marginBottom: 8,
   },
   headerGradient: {
     padding: 16,
-    paddingTop: 20,
+    paddingTop: 12,
+    paddingBottom: 16,
   },
   headerContent: {
     alignItems: "center",
@@ -444,24 +379,24 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255, 255, 255, 0.2)",
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 12,
+    marginBottom: 8,
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: "700",
     color: "#FFFFFF",
-    marginBottom: 6,
+    marginBottom: 4,
     textAlign: "center",
   },
   headerDescription: {
     fontSize: 14,
     color: "rgba(255, 255, 255, 0.9)",
     textAlign: "center",
-    marginBottom: 16,
+    marginBottom: 12,
   },
   progressSection: {
     width: "100%",
-    marginBottom: 12,
+    marginBottom: 8,
   },
   progressStats: {
     flexDirection: "row",

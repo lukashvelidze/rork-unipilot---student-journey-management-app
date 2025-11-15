@@ -26,7 +26,7 @@ export default function JourneyScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const Colors = useColors();
-  const { user, isPremium } = useUserStore();
+  const { user } = useUserStore();
   const { 
     journeyProgress, 
     recentMilestone, 
@@ -290,33 +290,14 @@ export default function JourneyScreen() {
             
             <View style={styles.stagesContainer}>
               {journeyProgress.map((stage) => {
-                // Check if stage should be locked for non-premium users
-                const isLockedStage = (stage.stage === "visa" || stage.stage === "pre_departure" || 
-                                     stage.stage === "arrival" || stage.stage === "academic" || 
-                                     stage.stage === "career") && !isPremium;
-                
                 return (
                   <StageProgress
                     key={stage.stage}
                     stage={stage}
                     onPress={() => {
-                      if (isLockedStage) {
-                        Alert.alert(
-                          "🎓 Premium Required",
-                          `The ${stage.stage} stage is now available with Premium. Upgrade to access detailed guidance for your next steps.`,
-                          [
-                            { text: "Maybe Later", style: "cancel" },
-                            { 
-                              text: "Upgrade to Premium", 
-                              onPress: () => router.push('/premium/subscription')
-                            }
-                          ]
-                        );
-                      } else {
-                        router.push(`/journey/${stage.stage}`);
-                      }
+                      router.push(`/journey/${stage.stage}`);
                     }}
-                    isLocked={isLockedStage}
+                    isLocked={false}
                   />
                 );
               })}

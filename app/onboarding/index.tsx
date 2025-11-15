@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { StyleSheet, View, Text, Image, TouchableOpacity, ScrollView, Alert } from "react-native";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { ChevronRight } from "lucide-react-native";
 import Colors from "@/constants/colors";
@@ -15,6 +16,7 @@ import { Country, UserProfile } from "@/types/user";
 
 export default function OnboardingScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { user, setUser, updateOnboardingStep, completeOnboarding } = useUserStore();
   const { setJourneyProgress } = useJourneyStore();
   
@@ -361,10 +363,10 @@ export default function OnboardingScreen() {
   };
   
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       {/* Progress bar - only show for steps 1-4 */}
       {step > 0 && step < 4 && (
-        <View style={styles.progressContainer}>
+        <View style={[styles.progressContainer, { paddingTop: Math.max(insets.top, 16) }]}>
           <View style={styles.progressBar}>
             <View
               style={[
@@ -421,7 +423,7 @@ export default function OnboardingScreen() {
           </TouchableOpacity>
         )}
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -432,7 +434,6 @@ const styles = StyleSheet.create({
   },
   progressContainer: {
     paddingHorizontal: 24,
-    paddingTop: 24,
     paddingBottom: 16,
     backgroundColor: Colors.background,
   },

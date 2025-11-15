@@ -21,26 +21,6 @@ export default function PaymentSuccessScreen() {
     setPremium(true);
   }, [setPremium]);
 
-  const premiumFeatures = [
-    {
-      icon: Crown,
-      title: 'Personal Mentor Access',
-      description: 'Get 1-on-1 sessions with university admission experts',
-      color: Colors.primary,
-    },
-    {
-      icon: Gift,
-      title: 'Premium Resources Library',
-      description: 'Exclusive templates, guides, and application materials',
-      color: Colors.accent,
-    },
-    {
-      icon: Sparkles,
-      title: 'Advanced Analytics',
-      description: 'Detailed progress tracking and success predictions',
-      color: Colors.info,
-    },
-  ];
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: Colors.background }]} contentContainerStyle={styles.scrollContent}>
@@ -60,9 +40,9 @@ export default function PaymentSuccessScreen() {
         end={{ x: 1, y: 1 }}
       >
         <Crown size={64} color={Colors.white} />
-        <Text style={styles.title}>🎉 Welcome to Premium!</Text>
+        <Text style={styles.title}>🎉 Payment Successful!</Text>
         <Text style={styles.subtitle}>
-          Your payment was successful. You now have access to all premium features!
+          Welcome to UniPilot Essential Plan ($4.99/month). You've unlocked all Journey Roadmap modules available after your acceptance letter.
         </Text>
       </LinearGradient>
 
@@ -72,14 +52,14 @@ export default function PaymentSuccessScreen() {
           <Text style={[styles.successTitle, { color: Colors.text }]}>Payment Confirmed</Text>
         </View>
         <Text style={[styles.successDescription, { color: Colors.lightText }]}>
-          Thank you for subscribing to UniPilot Premium! Your subscription is now active and you have unlimited access to all premium features.
+          Your subscription is now active. You have access to all Journey Roadmap modules available after your acceptance letter.
         </Text>
         
         <View style={[styles.subscriptionDetails, { backgroundColor: Colors.surface }]}>
           <Text style={[styles.detailsTitle, { color: Colors.text }]}>Subscription Details</Text>
           <View style={styles.detailRow}>
             <Text style={[styles.detailLabel, { color: Colors.lightText }]}>Plan:</Text>
-            <Text style={[styles.detailValue, { color: Colors.text }]}>UniPilot Premium</Text>
+            <Text style={[styles.detailValue, { color: Colors.text }]}>UniPilot Essential Plan</Text>
           </View>
           <View style={styles.detailRow}>
             <Text style={[styles.detailLabel, { color: Colors.lightText }]}>Price:</Text>
@@ -92,49 +72,17 @@ export default function PaymentSuccessScreen() {
         </View>
       </Card>
 
-      <View style={styles.featuresSection}>
-        <Text style={[styles.sectionTitle, { color: Colors.text }]}>What's Unlocked</Text>
-        <View style={styles.featuresList}>
-          {premiumFeatures.map((feature, index) => (
-            <View key={index} style={[styles.featureItem, { backgroundColor: Colors.card }]}>
-              <feature.icon size={24} color={feature.color} />
-              <View style={styles.featureContent}>
-                <Text style={[styles.featureTitle, { color: Colors.text }]}>{feature.title}</Text>
-                <Text style={[styles.featureDescription, { color: Colors.lightText }]}>{feature.description}</Text>
-              </View>
-              <Check size={20} color={Colors.success} />
-            </View>
-          ))}
-        </View>
-      </View>
-
       <Card style={[styles.nextStepsCard, { backgroundColor: Colors.premiumBackground, borderColor: Colors.premium }]} variant="outlined">
         <Text style={[styles.nextStepsTitle, { color: Colors.text }]}>🚀 Next Steps</Text>
         <Text style={[styles.nextStepsDescription, { color: Colors.lightText }]}>
-          Ready to supercharge your study abroad journey? Here's what you can do next:
+          Continue your journey and explore the unlocked roadmap modules:
         </Text>
         
         <View style={styles.actionButtons}>
           <Button
-            title="Explore Premium Resources"
-            onPress={() => router.push('/premium/resources')}
-            icon={<Gift size={20} color={Colors.white} />}
-            style={[styles.actionButton, { backgroundColor: Colors.primary }]}
-            fullWidth
-          />
-          
-          <Button
-            title="Start AI Assistant"
-            onPress={() => router.push('/unipilot-ai')}
-            icon={<Sparkles size={20} color={Colors.white} />}
-            style={[styles.actionButton, { backgroundColor: Colors.secondary }]}
-            fullWidth
-          />
-          
-          <Button
             title="Continue Journey"
-            onPress={() => router.push('/(tabs)')}
-            icon={<ArrowRight size={20} color={Colors.primary} />}
+            onPress={() => router.push('/(tabs)/journey')}
+            icon={<ArrowRight size={20} color={Colors.primary } />}
             variant="outline"
             fullWidth
           />

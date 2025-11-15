@@ -13,12 +13,10 @@ import { universityApplicationChecklist, getTasksByCategory, ApplicationTask } f
 export default function ApplicationChecklistScreen() {
   const router = useRouter();
   const Colors = useColors();
-  const { isPremium } = useUserStore();
   const [completedTasks, setCompletedTasks] = useState<Set<string>>(new Set());
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [hasAcceptance, setHasAcceptance] = useState(false);
-  const [showPremiumModal, setShowPremiumModal] = useState(false);
 
   const categories = [
     { key: "all", title: "All Tasks", count: universityApplicationChecklist.length },
@@ -32,34 +30,16 @@ export default function ApplicationChecklistScreen() {
     ? universityApplicationChecklist 
     : getTasksByCategory(selectedCategory as ApplicationTask['category']);
 
-  // Filter tasks based on premium status - only show post-acceptance tasks if premium
-  const accessibleTasks = filteredTasks.filter(task => {
-    // If task requires acceptance and user has acceptance but no premium, hide it (except the acceptance task itself)
-    if (task.requiresAcceptance && hasAcceptance && !isPremium && task.id !== "receive-acceptance") {
-      return false;
-    }
-    return true;
-  });
-  
-  const visibleTasks = accessibleTasks.filter(task => 
+  const visibleTasks = filteredTasks.filter(task => 
     !task.requiresAcceptance || hasAcceptance || task.id === "receive-acceptance"
   );
-
-  // Check if user should see premium overlay for post-acceptance tasks
-  const shouldShowPremiumOverlay = hasAcceptance && !isPremium && 
-    (selectedCategory === "acceptance" || selectedCategory === "all");
-
-  const handlePremiumUpgrade = () => {
-    setShowPremiumModal(false);
-    router.push('/premium/subscription');
-  };
 
   const handleTaskToggle = (taskId: string) => {
     const task = universityApplicationChecklist.find(t => t.id === taskId);
     if (!task) return;
 
     if (task.id === "receive-acceptance") {
-      Alert.alert(
+            Alert.alert(
         "🎉 Congratulations!",
         "Mark this as complete when you receive your first acceptance letter. This will unlock additional tasks to help you prepare for enrollment.",
         [
@@ -71,11 +51,6 @@ export default function ApplicationChecklistScreen() {
               newCompleted.add(taskId);
               setCompletedTasks(newCompleted);
               setHasAcceptance(true);
-              
-              // Show premium subscription prompt after acceptance
-              setTimeout(() => {
-                setShowPremiumModal(true);
-              }, 500);
             }
           }
         ]
@@ -222,22 +197,12 @@ export default function ApplicationChecklistScreen() {
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.tasksContainer}>
           {visibleTasks.map((task, index) => {
-            const isPostAcceptanceTask = task.requiresAcceptance && hasAcceptance;
-            const shouldBlurTask = isPostAcceptanceTask && !isPremium;
-            
             return (
             <Card key={task.id} style={[styles.taskCard, { backgroundColor: Colors.card }]}>
               <TouchableOpacity
-                style={[styles.taskHeader, shouldBlurTask && styles.blurredTask]}
+                style={styles.taskHeader}
                 onPress={() => {
-                  // Check if this is a post-acceptance task that requires premium
-                  if (task.requiresAcceptance && hasAcceptance && !isPremium && task.id !== "receive-acceptance") {
-                    setShowPremiumModal(true);
-                  } else if (shouldBlurTask) {
-                    setShowPremiumModal(true);
-                  } else {
-                    handleTaskToggle(task.id);
-                  }
+                  handleTaskToggle(task.id);
                 }}
                 activeOpacity={0.7}
               >
@@ -287,16 +252,9 @@ export default function ApplicationChecklistScreen() {
                     <ChevronDown size={20} color={Colors.primary} />
                   )}
                 </TouchableOpacity>
-              </TouchableOpacity>
+                </TouchableOpacity>
               
-              {shouldBlurTask && (
-                <View style={styles.premiumOverlay}>
-                  <Crown size={24} color={Colors.primary} />
-                  <Text style={[styles.premiumOverlayText, { color: Colors.primary }]}>Premium Required</Text>
-                </View>
-              )}
-              
-              {expandedTasks.has(task.id) && !shouldBlurTask && (
+              {expandedTasks.has(task.id) && (
                 <View style={[styles.taskDetails, { backgroundColor: Colors.lightBackground }]}>
                   {/* Tips */}
                   <View style={styles.tipsSection}>
@@ -321,16 +279,6 @@ export default function ApplicationChecklistScreen() {
                       ))}
                     </View>
                   )}
-                  
-                  {!isPremium && (
-                    <TouchableOpacity
-                      style={[styles.premiumButton, { backgroundColor: Colors.primary }]}
-                      onPress={() => router.push("/(tabs)/community")}
-                    >
-                      <Star size={16} color={Colors.white} />
-                      <Text style={styles.premiumButtonText}>Get Premium Templates & Guides</Text>
-                    </TouchableOpacity>
-                  )}
                 </View>
               )}
             </Card>
@@ -338,94 +286,8 @@ export default function ApplicationChecklistScreen() {
           })}
         </View>
 
-        {/* Bottom CTA */}
-        <Card style={[styles.ctaCard, { backgroundColor: Colors.card }]}>
-          <Text style={[styles.ctaTitle, { color: Colors.text }]}>Need More Help?</Text>
-          <Text style={[styles.ctaDescription, { color: Colors.lightText }]}>
-            Get access to premium templates, expert guidance, and personalized support to maximize your application success.
-          </Text>
-          <Button
-            title="Upgrade to Premium"
-            onPress={() => router.push("/(tabs)/community")}
-            style={[styles.ctaButton, { backgroundColor: Colors.primary }]}
-            icon={<Star size={20} color={Colors.white} />}
-          />
-        </Card>
-
         <View style={styles.bottomPadding} />
       </ScrollView>
-
-      {/* Premium Overlay Modal */}
-      <Modal
-        visible={showPremiumModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowPremiumModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={[styles.premiumModal, { backgroundColor: Colors.card }]}>
-            <TouchableOpacity
-              style={styles.closeButton}
-              onPress={() => setShowPremiumModal(false)}
-            >
-              <X size={24} color={Colors.lightText} />
-            </TouchableOpacity>
-            
-            <LinearGradient
-              colors={[Colors.primary, Colors.secondary]}
-              style={styles.premiumModalHeader}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-            >
-              <Crown size={48} color={Colors.white} />
-              <Text style={styles.premiumModalTitle}>Unlock Post-Acceptance Tasks</Text>
-              <Text style={styles.premiumModalSubtitle}>
-                Congratulations on your acceptance! Upgrade to Premium to access exclusive post-acceptance guidance.
-              </Text>
-            </LinearGradient>
-            
-            <View style={styles.premiumModalContent}>
-              <Text style={[styles.premiumModalDescription, { color: Colors.text }]}>
-                Premium unlocks essential tasks for your next steps:
-              </Text>
-              
-              <View style={styles.premiumFeaturesList}>
-                <View style={styles.premiumFeature}>
-                  <Star size={16} color={Colors.primary} />
-                  <Text style={[styles.premiumFeatureText, { color: Colors.text }]}>Visa application guidance</Text>
-                </View>
-                <View style={styles.premiumFeature}>
-                  <Star size={16} color={Colors.primary} />
-                  <Text style={[styles.premiumFeatureText, { color: Colors.text }]}>Housing and accommodation tips</Text>
-                </View>
-                <View style={styles.premiumFeature}>
-                  <Star size={16} color={Colors.primary} />
-                  <Text style={[styles.premiumFeatureText, { color: Colors.text }]}>Financial planning resources</Text>
-                </View>
-                <View style={styles.premiumFeature}>
-                  <Star size={16} color={Colors.primary} />
-                  <Text style={[styles.premiumFeatureText, { color: Colors.text }]}>Pre-departure checklists</Text>
-                </View>
-              </View>
-              
-              <Button
-                title="Upgrade to Premium"
-                onPress={handlePremiumUpgrade}
-                style={[styles.premiumUpgradeButton, { backgroundColor: Colors.primary }]}
-                icon={<Crown size={20} color={Colors.white} />}
-                fullWidth
-              />
-              
-              <TouchableOpacity
-                onPress={() => setShowPremiumModal(false)}
-                style={styles.premiumModalClose}
-              >
-                <Text style={[styles.premiumModalCloseText, { color: Colors.lightText }]}>Maybe Later</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
     </SafeAreaView>
   );
 }

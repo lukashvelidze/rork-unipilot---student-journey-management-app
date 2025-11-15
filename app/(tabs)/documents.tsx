@@ -64,7 +64,12 @@ export default function DocumentsScreen() {
                   selectedFilter === item && { color: Colors.white },
                 ]}
               >
-                {item === "all" ? "All" : item.replace("_", " ")}
+                {item === "all" 
+                  ? "All" 
+                  : item
+                      .split("_")
+                      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                      .join(" ")}
               </Text>
             </TouchableOpacity>
           )}
@@ -92,7 +97,10 @@ export default function DocumentsScreen() {
           <Text style={[styles.emptyText, { color: Colors.lightText }]}>
             {selectedFilter === "all"
               ? "Add your first document to keep track of important paperwork"
-              : `No ${selectedFilter.replace("_", " ")} documents found. Add one to get started.`}
+              : `No ${selectedFilter
+                  .split("_")
+                  .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                  .join(" ")} documents found. Add one to get started.`}
           </Text>
           <TouchableOpacity
             style={[styles.addDocumentButton, { backgroundColor: Colors.primary }]}
