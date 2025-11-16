@@ -123,9 +123,9 @@ export default function Step4Destination() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={[]}>
       {/* Progress bar */}
-      <View style={[styles.progressContainer, { paddingTop: Math.max(insets.top, 16) }]}>
+      <View style={styles.progressContainer}>
         <View style={styles.progressBar}>
           <View style={[styles.progressFill, { width: "67%" }]} />
         </View>
@@ -230,6 +230,7 @@ const styles = StyleSheet.create({
   },
   progressContainer: {
     paddingHorizontal: 24,
+    paddingTop: 16,
     paddingBottom: 16,
     backgroundColor: Colors.background,
   },

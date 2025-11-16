@@ -121,7 +121,7 @@ export default function Step5Visa() {
 
   if (isLoading) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
+      <SafeAreaView style={styles.container} edges={[]}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={Colors.primary} />
           <Text style={styles.loadingText}>Loading visa types...</Text>
@@ -131,9 +131,9 @@ export default function Step5Visa() {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={[]}>
       {/* Progress bar */}
-      <View style={[styles.progressContainer, { paddingTop: Math.max(insets.top, 16) }]}>
+      <View style={styles.progressContainer}>
         <View style={styles.progressBar}>
           <View style={[styles.progressFill, { width: "83%" }]} />
         </View>
@@ -248,6 +248,7 @@ const styles = StyleSheet.create({
   },
   progressContainer: {
     paddingHorizontal: 24,
+    paddingTop: 16,
     paddingBottom: 16,
     backgroundColor: Colors.background,
   },

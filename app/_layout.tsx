@@ -86,6 +86,13 @@ function RootLayoutNav() {
           >
             <Stack.Screen name="index" options={{ headerShown: false }} />
             <Stack.Screen name="onboarding/index" options={{ headerShown: false }} />
+            <Stack.Screen name="onboarding/step0-welcome" options={{ title: "Welcome", headerShown: false }} />
+            <Stack.Screen name="onboarding/step1-account" options={{ title: "Step 1: Account" }} />
+            <Stack.Screen name="onboarding/step2-home-country" options={{ title: "Step 2: Home Country" }} />
+            <Stack.Screen name="onboarding/step3-education" options={{ title: "Step 3: Education" }} />
+            <Stack.Screen name="onboarding/step4-destination" options={{ title: "Step 4: Destination" }} />
+            <Stack.Screen name="onboarding/step5-visa" options={{ title: "Step 5: Visa Type" }} />
+            <Stack.Screen name="onboarding/step6-finish" options={{ title: "Step 6: Complete" }} />
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen name="journey/[id]" options={{ title: "Stage Details" }} />
             <Stack.Screen name="documents/new" options={{ title: "Add Document" }} />

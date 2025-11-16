@@ -15,7 +15,7 @@ export default function Step0Welcome() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={[]}>
       {/* Main content */}
       <ScrollView
         style={styles.scrollView}

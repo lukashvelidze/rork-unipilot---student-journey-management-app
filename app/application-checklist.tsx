@@ -50,99 +50,152 @@ export default function ApplicationChecklistScreen() {
 
   // Fetch checklists and items from Supabase
   useEffect(() => {
-    fetchChecklists();
-  }, [user]);
+    loadChecklistsForUser();
+  }, [user?.destinationCountry?.code, user?.id]);
 
-  const fetchChecklists = async () => {
+  /**
+   * Load checklists for the current user based on their subscription tier, country, and visa type
+   * Applies premium filtering and merges user progress
+   */
+  async function loadChecklistsForUser() {
     try {
       setIsLoading(true);
       
-      const { data: { user: authUser } } = await supabase.auth.getUser();
-      if (!authUser || !user?.destinationCountry || !user?.destinationCountry.code) {
+      // Step 1: Fetch user profile
+      const {
+        data: { user: authUser },
+      } = await supabase.auth.getUser();
+
+      if (!authUser) {
         setIsLoading(false);
         return;
       }
 
-      // Get visa type from profile
       const { data: profile } = await supabase
         .from("profiles")
-        .select("visa_type")
+        .select("subscription_tier, destination_country, visa_type")
         .eq("id", authUser.id)
         .single();
 
-      if (!profile?.visa_type) {
+      if (!profile || !profile.destination_country || !profile.visa_type) {
         setIsLoading(false);
         return;
       }
 
-      // Fetch checklists for this country and visa type
-      const { data: checklistsData, error: checklistsError } = await supabase
+      // Step 2: Query checklists based on user visa and country
+      // Use .or() with and() inside to group: (visa_type = X AND country_code = Y) OR (visa_type = X AND country_code IS NULL)
+      // This ensures correct visa type AND correct country-specific OR generic checklists
+      
+      // Define subscription tier hierarchy
+      const allowedTiers: Record<string, string[]> = {
+        free: ["free"],
+        basic: ["free", "basic"],
+        standard: ["free", "basic", "standard"],
+        premium: ["free", "basic", "standard", "premium"]
+      };
+      
+      const userTier = profile.subscription_tier || "free";
+      const tiersToShow = allowedTiers[userTier] || allowedTiers.free;
+      
+      // Query checklists with nested checklist_items
+      // Supabase automatically joins via FK: checklist_items.checklist_id → checklists.id
+      let query = supabase
         .from("checklists")
-        .select("*")
-        .eq("country_code", user.destinationCountry.code)
-        .eq("visa_type", profile.visa_type)
-        .order("sort_order", { ascending: true });
+        .select(`
+          id,
+          title,
+          sort_order,
+          subscription_tier,
+          country_code,
+          visa_type,
+          checklist_items (
+            id,
+            label,
+            field_type,
+            metadata,
+            sort_order
+          )
+        `)
+        .or(
+          `and(visa_type.eq.${profile.visa_type},country_code.eq.${profile.destination_country}),` +
+          `and(visa_type.eq.${profile.visa_type},country_code.is.null)`
+        )
+        .in("subscription_tier", tiersToShow)
+        .order("sort_order", { ascending: true })
+        .order("sort_order", { foreignTable: "checklist_items", ascending: true });
 
-      if (checklistsError) {
-        console.error("Error fetching checklists:", checklistsError);
+      const { data: checklists, error } = await query;
+
+      if (error) throw error;
+
+      if (!checklists || checklists.length === 0) {
         setIsLoading(false);
         return;
       }
-
-      if (!checklistsData || checklistsData.length === 0) {
-        setIsLoading(false);
-        return;
-      }
-
-      // Fetch checklist items for all checklists
-      const checklistIds = checklistsData.map(c => c.id);
-      const { data: itemsData, error: itemsError } = await supabase
-        .from("checklist_items")
-        .select("*")
-        .in("checklist_id", checklistIds)
-        .order("sort_order", { ascending: true });
-
-      if (itemsError) {
-        console.error("Error fetching checklist items:", itemsError);
-        setIsLoading(false);
-        return;
-      }
-
-      // Group items by checklist
-      const checklistsWithItems: ChecklistWithItems[] = checklistsData.map(checklist => ({
-        ...checklist,
-        items: (itemsData || []).filter(item => item.checklist_id === checklist.id),
-      }));
-
-      setChecklists(checklistsWithItems);
 
       // Fetch user progress
-      const itemIds = (itemsData || []).map(item => item.id);
-      if (itemIds.length > 0) {
-        const { data: progressData } = await supabase
-          .from("user_progress")
-          .select("*")
-          .eq("user_id", authUser.id)
-          .in("checklist_item_id", itemIds);
+      const { data: progress } = await supabase
+        .from("user_progress")
+        .select("checklist_item_id, is_completed, value")
+        .eq("user_id", authUser.id);
 
-        if (progressData) {
-          const progressMap = new Map<string, UserProgress>();
-          progressData.forEach(progress => {
-            progressMap.set(progress.checklist_item_id, {
-              checklist_item_id: progress.checklist_item_id,
-              is_completed: progress.is_completed,
-              value: progress.value,
-            });
+      // Merge progress into checklist items
+      const checklistsWithProgress = checklists.map((cl: any) => {
+        const itemsWithProgress = (cl.checklist_items || []).map((item: any) => {
+          const p = progress?.find((x) => x.checklist_item_id === item.id);
+          return {
+            ...item,
+            is_completed: p?.is_completed ?? false,
+            value: p?.value ?? null,
+          };
+        });
+
+        return {
+          id: cl.id,
+          title: cl.title,
+          sort_order: cl.sort_order,
+          subscription_tier: cl.subscription_tier,
+          items: itemsWithProgress,
+        };
+      });
+
+      // Transform to match ChecklistWithItems interface
+      const transformedChecklists: ChecklistWithItems[] = checklistsWithProgress.map((cl: any) => ({
+        id: cl.id,
+        country_code: cl.country_code || profile.destination_country, // Use actual country_code from DB or fallback
+        visa_type: cl.visa_type || profile.visa_type, // Use actual visa_type from DB or fallback
+        title: cl.title,
+        sort_order: cl.sort_order,
+        items: cl.items.map((item: any) => ({
+          id: item.id,
+          checklist_id: cl.id,
+          label: item.label,
+          field_type: item.field_type,
+          metadata: item.metadata,
+          sort_order: item.sort_order,
+        })),
+      }));
+
+      setChecklists(transformedChecklists);
+
+      // Update user progress map
+      const progressMap = new Map<string, UserProgress>();
+      if (progress) {
+        progress.forEach((p) => {
+          progressMap.set(p.checklist_item_id, {
+            checklist_item_id: p.checklist_item_id,
+            is_completed: p.is_completed,
+            value: p.value,
           });
-          setUserProgress(progressMap);
-        }
+        });
       }
+      setUserProgress(progressMap);
     } catch (error) {
-      console.error("Error fetching checklists:", error);
+      console.error("Error loading checklists:", error);
     } finally {
       setIsLoading(false);
     }
-  };
+  }
 
   // Get all items from all checklists
   const allItems = checklists.flatMap(checklist => 

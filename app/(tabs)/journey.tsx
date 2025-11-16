@@ -52,33 +52,56 @@ export default function JourneyScreen() {
   // Fetch journey progress from Supabase checklists
   useEffect(() => {
     fetchJourneyProgress();
-  }, [user]);
+  }, [user?.destinationCountry?.code, user?.id]);
 
   const fetchJourneyProgress = async () => {
     try {
-      if (!user?.destinationCountry?.code) {
-        return;
-      }
-
       const { data: { user: authUser } } = await supabase.auth.getUser();
       if (!authUser) return;
 
-      // Get visa type from profile
+      // Get visa type, destination country, and subscription tier from profile (source of truth)
       const { data: profile } = await supabase
         .from("profiles")
-        .select("visa_type")
+        .select("visa_type, destination_country, subscription_tier")
         .eq("id", authUser.id)
         .single();
 
-      if (!profile?.visa_type) return;
+      if (!profile?.visa_type || !profile?.destination_country) {
+        console.log("Profile missing visa_type or destination_country");
+        return;
+      }
 
       // Fetch checklists for this country and visa type
-      const { data: checklistsData } = await supabase
+      // Use .or() with and() inside to group: (visa_type = X AND country_code = Y) OR (visa_type = X AND country_code IS NULL)
+      // This ensures correct visa type AND correct country-specific OR generic checklists
+      
+      // Define subscription tier hierarchy
+      const allowedTiers: Record<string, string[]> = {
+        free: ["free"],
+        basic: ["free", "basic"],
+        standard: ["free", "basic", "standard"],
+        premium: ["free", "basic", "standard", "premium"]
+      };
+      
+      const userTier = profile.subscription_tier || "free";
+      const tiersToShow = allowedTiers[userTier] || allowedTiers.free;
+      
+      let query = supabase
         .from("checklists")
         .select("*")
-        .eq("country_code", user.destinationCountry.code)
-        .eq("visa_type", profile.visa_type)
+        .or(
+          `and(visa_type.eq.${profile.visa_type},country_code.eq.${profile.destination_country}),` +
+          `and(visa_type.eq.${profile.visa_type},country_code.is.null)`
+        )
+        .in("subscription_tier", tiersToShow)
         .order("sort_order", { ascending: true });
+
+      const { data: checklistsData, error: checklistsError } = await query;
+
+      if (checklistsError) {
+        console.error("Error fetching checklists:", checklistsError);
+        return;
+      }
 
       if (!checklistsData || checklistsData.length === 0) {
         console.log("No checklists found for this country/visa combination");
@@ -86,7 +109,7 @@ export default function JourneyScreen() {
       }
 
       // Fetch checklist items
-      const checklistIds = checklistsData.map(c => c.id);
+      const checklistIds = checklistsData.map((c: any) => c.id);
       const { data: itemsData } = await supabase
         .from("checklist_items")
         .select("*")
@@ -127,7 +150,7 @@ export default function JourneyScreen() {
       // Group checklists by stage
       const stagesMap = new Map<JourneyStage, { checklist: any; items: any[] }[]>();
 
-      checklistsData.forEach(checklist => {
+      checklistsData.forEach((checklist: any) => {
         const titleLower = checklist.title.toLowerCase();
         let stage: JourneyStage = "pre_departure"; // default
 

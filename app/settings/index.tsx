@@ -28,6 +28,8 @@ import { useUserStore } from "@/store/userStore";
 import { useJourneyStore } from "@/store/journeyStore";
 import { countries } from "@/mocks/countries";
 import { Country } from "@/types/user";
+import { supabase } from "@/lib/supabase";
+import { updateProfile } from "@/lib/supabase";
 
 interface SettingItem {
   id: string;
@@ -56,7 +58,7 @@ export default function SettingsScreen() {
   const [showDestinationSelector, setShowDestinationSelector] = useState(false);
   const [showHomeSelector, setShowHomeSelector] = useState(false);
   
-  const handleLogout = () => {
+  const handleLogout = async () => {
     Alert.alert(
       "Sign Out",
       "Are you sure you want to sign out?",
@@ -65,9 +67,12 @@ export default function SettingsScreen() {
         {
           text: "Sign Out",
           style: "destructive",
-          onPress: () => {
-            logout();
-            router.replace("/");
+          onPress: async () => {
+            await logout();
+            // Sign out from Supabase
+            const { signOut } = await import("@/lib/supabase");
+            await signOut();
+            router.replace("/onboarding/step1-account");
           },
         },
       ]
@@ -128,7 +133,25 @@ export default function SettingsScreen() {
             try {
               console.log("Updating destination country to:", country.name);
               
-              // Update the destination country in user store
+              // Get authenticated user
+              const { data: { user: authUser } } = await supabase.auth.getUser();
+              if (!authUser) {
+                Alert.alert("Error", "You must be logged in to update your destination country.");
+                return;
+              }
+              
+              // Update the database profile
+              const { error: updateError } = await updateProfile({
+                destination_country: country.code,
+              });
+              
+              if (updateError) {
+                console.error("Error updating profile:", updateError);
+                Alert.alert("Error", "Failed to update destination country in database. Please try again.");
+                return;
+              }
+              
+              // Update the destination country in user store (this will also update journey progress)
               updateDestinationCountry(country);
               
               // Force refresh the journey store
@@ -156,14 +179,39 @@ export default function SettingsScreen() {
     );
   };
   
-  const handleHomeCountryChange = (country: Country) => {
-    updateHomeCountry(country);
-    setShowHomeSelector(false);
-    Alert.alert(
-      "Home Country Updated",
-      `Your home country has been changed to ${country.flag} ${country.name}.`,
-      [{ text: "OK" }]
-    );
+  const handleHomeCountryChange = async (country: Country) => {
+    try {
+      // Get authenticated user
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) {
+        Alert.alert("Error", "You must be logged in to update your home country.");
+        return;
+      }
+      
+      // Update the database profile
+      const { error: updateError } = await updateProfile({
+        country_origin: country.code,
+      });
+      
+      if (updateError) {
+        console.error("Error updating profile:", updateError);
+        Alert.alert("Error", "Failed to update home country in database. Please try again.");
+        return;
+      }
+      
+      // Update the home country in user store
+      updateHomeCountry(country);
+      setShowHomeSelector(false);
+      
+      Alert.alert(
+        "Home Country Updated",
+        `Your home country has been changed to ${country.flag} ${country.name}.`,
+        [{ text: "OK" }]
+      );
+    } catch (error) {
+      console.error("Error updating home country:", error);
+      Alert.alert("Error", "Failed to update home country. Please try again.");
+    }
   };
   
   const settingSections = [

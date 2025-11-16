@@ -225,7 +225,10 @@ export default function ProfileScreen() {
         {/* Sign Out Button */}
         <Button
           title="Sign Out"
-          onPress={logout}
+          onPress={async () => {
+            await logout();
+            router.replace("/onboarding/step1-account");
+          }}
           variant="outline"
           size="medium"
           fullWidth

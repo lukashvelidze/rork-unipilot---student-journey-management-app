@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { StyleSheet, View, Text, ScrollView, Alert, TouchableOpacity } from "react-native";
+import { StyleSheet, View, Text, ScrollView, Alert, TouchableOpacity, KeyboardAvoidingView, Platform } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { ChevronRight } from "lucide-react-native";
@@ -224,22 +224,27 @@ export default function Step1Account() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Progress bar */}
-      <View style={[styles.progressContainer, { paddingTop: Math.max(insets.top, 16) }]}>
-        <View style={styles.progressBar}>
-          <View style={[styles.progressFill, { width: "17%" }]} />
-        </View>
-        <Text style={styles.progressText}>Step 1 of 6</Text>
-      </View>
-
-      {/* Main content */}
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
+    <SafeAreaView style={styles.container} edges={[]}>
+      <KeyboardAvoidingView
+        style={styles.keyboardView}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
       >
+        {/* Progress bar */}
+        <View style={styles.progressContainer}>
+          <View style={styles.progressBar}>
+            <View style={[styles.progressFill, { width: "17%" }]} />
+          </View>
+          <Text style={styles.progressText}>Step 1 of 6</Text>
+        </View>
+
+        {/* Main content */}
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
         <View style={styles.stepContainer}>
           <Text style={styles.stepTitle}>Let's get to know you</Text>
           <Text style={styles.stepDescription}>
@@ -293,16 +298,17 @@ export default function Step1Account() {
         </View>
       </ScrollView>
 
-      {/* Fixed footer with buttons */}
-      <View style={styles.footer}>
-        <Button
-          title={isSignUp ? "Sign Up" : "Sign In"}
-          onPress={isSignUp ? handleSignUp : handleSignIn}
-          loading={isProcessing}
-          fullWidth
-          icon={<ChevronRight size={20} color={Colors.white} />}
-        />
-      </View>
+        {/* Fixed footer with buttons */}
+        <View style={styles.footer}>
+          <Button
+            title={isSignUp ? "Sign Up" : "Sign In"}
+            onPress={isSignUp ? handleSignUp : handleSignIn}
+            loading={isProcessing}
+            fullWidth
+            icon={<ChevronRight size={20} color={Colors.white} />}
+          />
+        </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -312,8 +318,12 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.background,
   },
+  keyboardView: {
+    flex: 1,
+  },
   progressContainer: {
     paddingHorizontal: 24,
+    paddingTop: 16,
     paddingBottom: 16,
     backgroundColor: Colors.background,
   },

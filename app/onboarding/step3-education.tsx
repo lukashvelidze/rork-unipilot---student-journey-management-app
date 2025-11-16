@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity } from "react-native";
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity, KeyboardAvoidingView, Platform } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { ChevronRight, GraduationCap } from "lucide-react-native";
@@ -92,22 +92,27 @@ export default function Step3Education() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Progress bar */}
-      <View style={[styles.progressContainer, { paddingTop: Math.max(insets.top, 16) }]}>
-        <View style={styles.progressBar}>
-          <View style={[styles.progressFill, { width: "60%" }]} />
-        </View>
-        <Text style={styles.progressText}>Step 3 of 6</Text>
-      </View>
-
-      {/* Main content */}
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
+    <SafeAreaView style={styles.container} edges={[]}>
+      <KeyboardAvoidingView
+        style={styles.keyboardView}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
       >
+        {/* Progress bar */}
+        <View style={styles.progressContainer}>
+          <View style={styles.progressBar}>
+            <View style={[styles.progressFill, { width: "60%" }]} />
+          </View>
+          <Text style={styles.progressText}>Step 3 of 6</Text>
+        </View>
+
+        {/* Main content */}
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
         <View style={styles.stepContainer}>
           <View style={styles.iconContainer}>
             <GraduationCap size={48} color={Colors.primary} />
@@ -177,7 +182,8 @@ export default function Step3Education() {
         >
           <Text style={styles.skipText}>Skip for now</Text>
         </TouchableOpacity>
-      </View>
+        </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -187,8 +193,12 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.background,
   },
+  keyboardView: {
+    flex: 1,
+  },
   progressContainer: {
     paddingHorizontal: 24,
+    paddingTop: 16,
     paddingBottom: 16,
     backgroundColor: Colors.background,
   },
