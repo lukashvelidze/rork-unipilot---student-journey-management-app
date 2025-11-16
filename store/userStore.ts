@@ -2,7 +2,6 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { UserProfile, Country, EducationLevel } from "@/types/user";
-import { getJourneyProgressForCountry } from "@/mocks/journeyTasks";
 
 interface UserState {
   user: UserProfile | null;
@@ -103,7 +102,7 @@ export const useUserStore = create<UserState>()(
           testScores: [],
           universities: [],
           documents: [],
-          journeyProgress: getJourneyProgressForCountry(userData.destinationCountry.code),
+          journeyProgress: [], // Journey progress will be loaded from database
           memories: [],
           onboardingCompleted: false,
           onboardingStep: 0,
@@ -131,24 +130,18 @@ export const useUserStore = create<UserState>()(
           
           console.log("Updating destination country to:", country.name);
           
-          // Generate new journey progress for the new destination country
-          const newJourneyProgress = getJourneyProgressForCountry(country.code);
-          console.log("Generated new journey progress with", newJourneyProgress.length, "stages");
-          
+          // Update destination country - journey progress will be fetched from database
+          // by the journey screen when it detects the country change
           const updatedUser = {
             ...state.user,
             destinationCountry: country,
-            journeyProgress: newJourneyProgress,
+            // Clear journey progress - it will be reloaded from database
+            journeyProgress: [],
           };
           
-          // Update the journey store immediately
-          setTimeout(() => {
-            const { useJourneyStore } = require("@/store/journeyStore");
-            const journeyStore = useJourneyStore.getState();
-            console.log("Updating journey store with new progress");
-            journeyStore.setJourneyProgress(newJourneyProgress);
-            journeyStore.refreshJourney();
-          }, 0);
+          // Don't call refreshJourney here - it causes race conditions
+          // The journey screen will automatically fetch new data when it detects
+          // the destination country change via useEffect dependency
           
           return {
             user: updatedUser,

@@ -9,7 +9,6 @@ import CountrySelector from "@/components/CountrySelector";
 import { useUserStore } from "@/store/userStore";
 import { useJourneyStore } from "@/store/journeyStore";
 import { supabase, getCountries } from "@/lib/supabase";
-import { getJourneyProgressForCountry } from "@/mocks/journeyTasks";
 import { Country } from "@/types/user";
 
 export default function Step4Destination() {
@@ -79,10 +78,6 @@ export default function Step4Destination() {
         return;
       }
 
-      // Generate country-specific journey progress
-      const customizedJourney = getJourneyProgressForCountry(destinationCountry.code);
-      console.log("Generated customized journey for", destinationCountry.name, ":", customizedJourney.length, "stages");
-
       // Update profile in Supabase
       const { error: updateError } = await supabase
         .from("profiles")
@@ -99,18 +94,19 @@ export default function Step4Destination() {
         return;
       }
 
-      // Update local store
+      // Update local store - journey progress will be loaded from database
+      // after visa type is selected and onboarding is complete
       if (user) {
         setUser({
           ...user,
           destinationCountry,
-          journeyProgress: customizedJourney,
+          journeyProgress: [], // Will be loaded from database after onboarding
           onboardingStep: 5,
         });
       }
 
-      // Update journey store
-      setJourneyProgress(customizedJourney);
+      // Clear journey store - it will be populated from database after onboarding
+      setJourneyProgress([]);
 
       // Navigate to next step
       router.push("/onboarding/step5-visa");

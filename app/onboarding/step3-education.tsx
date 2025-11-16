@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, KeyboardAvoidingView, Platform } from "react-native";
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity, KeyboardAvoidingView, Platform, InteractionManager } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { ChevronRight, GraduationCap } from "lucide-react-native";
@@ -24,12 +24,51 @@ export default function Step3Education() {
   const [selectedLevel, setSelectedLevel] = useState<EducationLevel | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState("");
+  const [isReady, setIsReady] = useState(false);
 
-  // Pre-fill if returning user
+  // Initialize component - check auth and pre-fill data
   useEffect(() => {
-    if (user?.educationBackground?.level) {
-      setSelectedLevel(user.educationBackground.level);
+    let isMounted = true;
+    
+    async function initialize() {
+      try {
+        // Check authentication first
+        const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+        if (authError || !authUser) {
+          // User not authenticated, redirect after a delay to prevent blocking
+          if (isMounted) {
+            InteractionManager.runAfterInteractions(() => {
+              setTimeout(() => {
+                router.replace("/onboarding/step1-account");
+              }, 300);
+            });
+          }
+          return;
+        }
+        
+        // Small delay to ensure user store is ready (especially when coming from settings)
+        await new Promise(resolve => setTimeout(resolve, 150));
+        
+        if (isMounted) {
+          // Pre-fill education level if available
+          if (user?.educationBackground?.level) {
+            setSelectedLevel(user.educationBackground.level);
+          }
+          setIsReady(true);
+        }
+      } catch (error) {
+        console.error("Error initializing step3:", error);
+        if (isMounted) {
+          setIsReady(true); // Still allow component to render
+        }
+      }
     }
+    
+    initialize();
+    
+    return () => {
+      isMounted = false;
+    };
   }, [user]);
 
   const handleContinue = async () => {
@@ -46,10 +85,18 @@ export default function Step3Education() {
     setError("");
 
     try {
-      const { data: { user: authUser } } = await supabase.auth.getUser();
+      const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
       
-      if (!authUser) {
-        router.replace("/onboarding/step1-account");
+      if (authError || !authUser) {
+        console.error("Auth error in handleContinue:", authError);
+        setError("Authentication error. Please try again.");
+        setIsProcessing(false);
+        // Use InteractionManager to prevent blocking
+        InteractionManager.runAfterInteractions(() => {
+          setTimeout(() => {
+            router.replace("/onboarding/step1-account");
+          }, 300);
+        });
         return;
       }
 
@@ -77,12 +124,23 @@ export default function Step3Education() {
             ...user.educationBackground,
             level: selectedLevel,
           },
-          onboardingStep: 4,
+          onboardingStep: user.destinationCountry ? 5 : 4, // Skip step4 if destination is already set
         });
       }
 
-      // Navigate to next step
-      router.push("/onboarding/step4-destination");
+      // Use InteractionManager to ensure UI is ready before navigation
+      InteractionManager.runAfterInteractions(() => {
+        // Small delay to ensure state updates are processed
+        setTimeout(() => {
+          // Navigate to next step
+          // If destination is already set (e.g., from settings), skip to visa step
+          if (user?.destinationCountry) {
+            router.replace("/onboarding/step5-visa");
+          } else {
+            router.replace("/onboarding/step4-destination");
+          }
+        }, 100);
+      });
     } catch (error: any) {
       console.error("Error saving education level:", error);
       setError("Something went wrong. Please try again.");
@@ -90,6 +148,17 @@ export default function Step3Education() {
       setIsProcessing(false);
     }
   };
+
+  // Show loading state while initializing
+  if (!isReady) {
+    return (
+      <SafeAreaView style={styles.container} edges={[]}>
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Loading...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={[]}>
@@ -176,7 +245,20 @@ export default function Step3Education() {
         
         <TouchableOpacity
           style={styles.skipButton}
-          onPress={() => router.push("/onboarding/step4-destination")}
+          onPress={() => {
+            if (isProcessing) return;
+            // Use InteractionManager to ensure UI is ready
+            InteractionManager.runAfterInteractions(() => {
+              setTimeout(() => {
+                // Skip to appropriate step based on whether destination is set
+                if (user?.destinationCountry) {
+                  router.replace("/onboarding/step5-visa");
+                } else {
+                  router.replace("/onboarding/step4-destination");
+                }
+              }, 100);
+            });
+          }}
           disabled={isProcessing}
           activeOpacity={0.7}
         >
@@ -318,6 +400,15 @@ const styles = StyleSheet.create({
   },
   skipText: {
     fontSize: 14,
+    color: Colors.lightText,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  loadingText: {
+    fontSize: 16,
     color: Colors.lightText,
   },
 });

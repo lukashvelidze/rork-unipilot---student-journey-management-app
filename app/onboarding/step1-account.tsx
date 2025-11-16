@@ -27,7 +27,13 @@ export default function Step1Account() {
 
   // Check if user is already authenticated
   useEffect(() => {
-    checkAuth();
+    // Add a delay to prevent immediate redirects that could cause freezing
+    // This is especially important when coming from other onboarding steps
+    const timer = setTimeout(() => {
+      checkAuth();
+    }, 300);
+    
+    return () => clearTimeout(timer);
   }, []);
 
   // Pre-fill if returning user
@@ -43,7 +49,13 @@ export default function Step1Account() {
       const { data: { user: authUser } } = await supabase.auth.getUser();
       if (authUser) {
         // User is already authenticated, check if they need to continue onboarding
-        router.replace("/onboarding");
+        // Use InteractionManager to prevent blocking
+        const { InteractionManager } = require("react-native");
+        InteractionManager.runAfterInteractions(() => {
+          setTimeout(() => {
+            router.replace("/onboarding");
+          }, 200);
+        });
       }
     } catch (error) {
       // Not authenticated, continue with sign up

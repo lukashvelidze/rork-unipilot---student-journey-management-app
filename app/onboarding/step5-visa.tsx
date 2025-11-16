@@ -30,22 +30,44 @@ export default function Step5Visa() {
 
   useEffect(() => {
     loadVisaTypes();
-  }, []);
+  }, [user?.destinationCountry?.code]); // Reload when destination country changes
 
   const loadVisaTypes = async () => {
     try {
+      setIsLoading(true);
       const { data: { user: authUser } } = await supabase.auth.getUser();
       
-      if (!authUser || !user?.destinationCountry) {
+      if (!authUser) {
         setIsLoading(false);
         return;
+      }
+
+      // Get destination country from user store or fetch from profile
+      let countryCode = user?.destinationCountry?.code;
+      
+      if (!countryCode) {
+        // Fetch from profile if not in store
+        const { data: profile, error: profileError } = await supabase
+          .from("profiles")
+          .select("destination_country")
+          .eq("id", authUser.id)
+          .single();
+        
+        if (profileError || !profile?.destination_country) {
+          console.error("No destination country found");
+          setError("Please set your destination country first.");
+          setIsLoading(false);
+          return;
+        }
+        
+        countryCode = profile.destination_country;
       }
 
       // Query visa types for the destination country
       const { data, error: queryError } = await supabase
         .from("visa_types")
         .select("*")
-        .eq("country_code", user.destinationCountry.code)
+        .eq("country_code", countryCode.toUpperCase())
         .eq("is_active", true)
         .order("title");
 
@@ -109,8 +131,20 @@ export default function Step5Visa() {
         });
       }
 
-      // Navigate to next step
-      router.push("/onboarding/step6-finish");
+      // If user has already completed onboarding (coming from settings),
+      // skip step6 and go directly to journey tab
+      if (user?.onboardingCompleted) {
+        // Refresh journey store to fetch new checklists
+        const { useJourneyStore } = require("@/store/journeyStore");
+        const journeyStore = useJourneyStore.getState();
+        journeyStore.refreshJourney();
+        
+        // Navigate directly to journey tab
+        router.replace("/(tabs)/journey");
+      } else {
+        // Navigate to next step (finish onboarding)
+        router.push("/onboarding/step6-finish");
+      }
     } catch (error: any) {
       console.error("Error saving visa type:", error);
       setError("Something went wrong. Please try again.");

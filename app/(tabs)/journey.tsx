@@ -67,9 +67,19 @@ export default function JourneyScreen() {
         .single();
 
       if (!profile?.visa_type || !profile?.destination_country) {
-        console.log("Profile missing visa_type or destination_country");
+        console.log("Profile missing visa_type or destination_country", {
+          visa_type: profile?.visa_type,
+          destination_country: profile?.destination_country
+        });
         return;
       }
+
+      // Log the query parameters for debugging
+      console.log("Fetching checklists with:", {
+        visa_type: profile.visa_type,
+        destination_country: profile.destination_country,
+        subscription_tier: profile.subscription_tier
+      });
 
       // Fetch checklists for this country and visa type
       // Use .or() with and() inside to group: (visa_type = X AND country_code = Y) OR (visa_type = X AND country_code IS NULL)
@@ -86,13 +96,32 @@ export default function JourneyScreen() {
       const userTier = profile.subscription_tier || "free";
       const tiersToShow = allowedTiers[userTier] || allowedTiers.free;
       
+      // Build the OR filter string - ensure country code is properly formatted
+      const countryCode = profile.destination_country.trim().toUpperCase();
+      const visaType = profile.visa_type.trim();
+      
+      // First, let's check what checklists exist for this country/visa (without subscription filter) for debugging
+      const debugQuery = supabase
+        .from("checklists")
+        .select("id, title, country_code, visa_type, subscription_tier")
+        .or(
+          `and(visa_type.eq.${visaType},country_code.eq.${countryCode}),and(visa_type.eq.${visaType},country_code.is.null)`
+        );
+      
+      const { data: debugData } = await debugQuery;
+      console.log(`Debug: Found ${debugData?.length || 0} total checklists (any tier) for ${countryCode}/${visaType}:`, 
+        debugData?.map(c => ({ title: c.title, country: c.country_code, visa: c.visa_type, tier: c.subscription_tier }))
+      );
+      
+      const orFilter = `and(visa_type.eq.${visaType},country_code.eq.${countryCode}),and(visa_type.eq.${visaType},country_code.is.null)`;
+      
+      console.log("Query filter:", orFilter);
+      console.log("Subscription tiers to show:", tiersToShow);
+      
       let query = supabase
         .from("checklists")
         .select("*")
-        .or(
-          `and(visa_type.eq.${profile.visa_type},country_code.eq.${profile.destination_country}),` +
-          `and(visa_type.eq.${profile.visa_type},country_code.is.null)`
-        )
+        .or(orFilter)
         .in("subscription_tier", tiersToShow)
         .order("sort_order", { ascending: true });
 
@@ -100,11 +129,25 @@ export default function JourneyScreen() {
 
       if (checklistsError) {
         console.error("Error fetching checklists:", checklistsError);
+        console.error("Query details:", {
+          visa_type: visaType,
+          country_code: countryCode,
+          subscription_tiers: tiersToShow,
+          error: checklistsError
+        });
         return;
       }
 
+      console.log(`Found ${checklistsData?.length || 0} checklists for ${countryCode} with visa ${visaType}`);
+
       if (!checklistsData || checklistsData.length === 0) {
-        console.log("No checklists found for this country/visa combination");
+        console.log("No checklists found for this country/visa combination", {
+          country_code: countryCode,
+          visa_type: visaType,
+          subscription_tiers: tiersToShow
+        });
+        // Clear any existing progress since there are no checklists for this country/visa
+        setJourneyProgress([]);
         return;
       }
 
@@ -216,9 +259,8 @@ export default function JourneyScreen() {
         });
       });
 
-      if (progress.length > 0) {
-        setJourneyProgress(progress);
-      }
+      // Always set progress (even if empty) to clear any old hardcoded data
+      setJourneyProgress(progress);
     } catch (error) {
       console.error("Error fetching journey progress:", error);
     }

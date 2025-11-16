@@ -78,6 +78,10 @@ export default function ApplicationChecklistScreen() {
         .single();
 
       if (!profile || !profile.destination_country || !profile.visa_type) {
+        console.log("Profile missing required fields", {
+          destination_country: profile?.destination_country,
+          visa_type: profile?.visa_type
+        });
         setIsLoading(false);
         return;
       }
@@ -96,6 +100,19 @@ export default function ApplicationChecklistScreen() {
       
       const userTier = profile.subscription_tier || "free";
       const tiersToShow = allowedTiers[userTier] || allowedTiers.free;
+      
+      // Normalize country code and visa type
+      const countryCode = profile.destination_country.trim().toUpperCase();
+      const visaType = profile.visa_type.trim();
+      
+      console.log("Loading checklists with:", {
+        country_code: countryCode,
+        visa_type: visaType,
+        subscription_tiers: tiersToShow
+      });
+      
+      // Build the OR filter string
+      const orFilter = `and(visa_type.eq.${visaType},country_code.eq.${countryCode}),and(visa_type.eq.${visaType},country_code.is.null)`;
       
       // Query checklists with nested checklist_items
       // Supabase automatically joins via FK: checklist_items.checklist_id → checklists.id
@@ -116,15 +133,24 @@ export default function ApplicationChecklistScreen() {
             sort_order
           )
         `)
-        .or(
-          `and(visa_type.eq.${profile.visa_type},country_code.eq.${profile.destination_country}),` +
-          `and(visa_type.eq.${profile.visa_type},country_code.is.null)`
-        )
+        .or(orFilter)
         .in("subscription_tier", tiersToShow)
         .order("sort_order", { ascending: true })
         .order("sort_order", { foreignTable: "checklist_items", ascending: true });
 
       const { data: checklists, error } = await query;
+      
+      if (error) {
+        console.error("Error fetching checklists:", error);
+        console.error("Query details:", {
+          visa_type: visaType,
+          country_code: countryCode,
+          subscription_tiers: tiersToShow,
+          error: error
+        });
+      } else {
+        console.log(`Found ${checklists?.length || 0} checklists for ${countryCode} with visa ${visaType}`);
+      }
 
       if (error) throw error;
 

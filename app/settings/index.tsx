@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert, Switch } from "react-native";
+import React, { useState, useEffect } from "react";
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert, Switch, Modal, ActivityIndicator, InteractionManager } from "react-native";
 import { useRouter } from "expo-router";
 import { 
   User, 
@@ -26,10 +26,8 @@ import Button from "@/components/Button";
 import CountrySelector from "@/components/CountrySelector";
 import { useUserStore } from "@/store/userStore";
 import { useJourneyStore } from "@/store/journeyStore";
-import { countries } from "@/mocks/countries";
 import { Country } from "@/types/user";
-import { supabase } from "@/lib/supabase";
-import { updateProfile } from "@/lib/supabase";
+import { supabase, updateProfile, getCountries } from "@/lib/supabase";
 
 interface SettingItem {
   id: string;
@@ -57,6 +55,28 @@ export default function SettingsScreen() {
   const [autoDownload, setAutoDownload] = useState(false);
   const [showDestinationSelector, setShowDestinationSelector] = useState(false);
   const [showHomeSelector, setShowHomeSelector] = useState(false);
+  const [destinationCountries, setDestinationCountries] = useState<Country[]>([]);
+  const [originCountries, setOriginCountries] = useState<Country[]>([]);
+  const [isLoadingCountries, setIsLoadingCountries] = useState(false);
+  
+  // Fetch countries from database
+  useEffect(() => {
+    async function fetchCountries() {
+      try {
+        setIsLoadingCountries(true);
+        const { destination, origin } = await getCountries();
+        setDestinationCountries(destination);
+        setOriginCountries(origin);
+      } catch (error) {
+        console.error("Error fetching countries:", error);
+        Alert.alert("Error", "Failed to load countries. Please try again.");
+      } finally {
+        setIsLoadingCountries(false);
+      }
+    }
+    
+    fetchCountries();
+  }, []);
   
   const handleLogout = async () => {
     Alert.alert(
@@ -120,64 +140,84 @@ export default function SettingsScreen() {
     );
   };
   
-  const handleDestinationCountryChange = (country: Country) => {
-    Alert.alert(
-      "Change Destination Country",
-      `Changing your destination to ${country.name} will update your journey tasks and requirements with country-specific visa processes, document requirements, and regulations. This action cannot be undone. Continue?`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Change",
-          style: "default",
-          onPress: async () => {
-            try {
-              console.log("Updating destination country to:", country.name);
-              
-              // Get authenticated user
-              const { data: { user: authUser } } = await supabase.auth.getUser();
-              if (!authUser) {
-                Alert.alert("Error", "You must be logged in to update your destination country.");
-                return;
-              }
-              
-              // Update the database profile
-              const { error: updateError } = await updateProfile({
-                destination_country: country.code,
-              });
-              
-              if (updateError) {
-                console.error("Error updating profile:", updateError);
-                Alert.alert("Error", "Failed to update destination country in database. Please try again.");
-                return;
-              }
-              
-              // Update the destination country in user store (this will also update journey progress)
-              updateDestinationCountry(country);
-              
-              // Force refresh the journey store
-              setTimeout(() => {
-                refreshJourney();
-              }, 100);
-              
-              setShowDestinationSelector(false);
-              
-              Alert.alert(
-                "Destination Updated",
-                `Your destination has been changed to ${country.flag} ${country.name}. Your journey tasks have been updated with country-specific requirements including visa processes, document checklists, and local regulations.`,
-                [{ 
-                  text: "View Updated Tasks", 
-                  onPress: () => router.push("/(tabs)/journey")
-                }]
-              );
-            } catch (error) {
-              console.error("Error updating destination country:", error);
-              Alert.alert("Error", "Failed to update destination country. Please try again.");
-            }
-          },
-        },
-      ]
-    );
+
+  const handleDestinationCountryChange = async (country: Country) => {
+    try {
+      console.log("Destination country selected:", country.name, country.code);
+      
+      // Close the destination selector modal first to prevent UI blocking
+      setShowDestinationSelector(false);
+      
+      // Small delay to ensure modal closes before any alerts
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Update destination country in database first
+      const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+      if (authError || !authUser) {
+        console.error("Auth error:", authError);
+        // Use setTimeout to show alert after modal closes to prevent blocking
+        setTimeout(() => {
+          Alert.alert(
+            "Error", 
+            "You must be logged in to update your destination country.",
+            [{ text: "OK" }]
+          );
+        }, 200);
+        return;
+      }
+      
+      // Update the database profile
+      const { error: updateError } = await supabase
+        .from("profiles")
+        .update({
+          destination_country: country.code.toUpperCase(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", authUser.id);
+      
+      if (updateError) {
+        console.error("Error updating profile:", updateError);
+        // Use setTimeout to show alert after modal closes to prevent blocking
+        setTimeout(() => {
+          Alert.alert(
+            "Error", 
+            "Failed to update destination country. Please try again.",
+            [{ text: "OK" }]
+          );
+        }, 200);
+        return;
+      }
+      
+      // Update the destination country in user store
+      updateDestinationCountry(country);
+      
+      // Wait a bit longer to ensure user store is fully updated
+      // This is especially important when coming from settings
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
+      // Use InteractionManager to ensure UI is ready before navigation
+      // This prevents freezing by waiting for all interactions to complete
+      InteractionManager.runAfterInteractions(() => {
+        // Small additional delay to ensure state is fully updated
+        setTimeout(() => {
+          router.replace("/onboarding/step3-education");
+        }, 100);
+      });
+    } catch (error) {
+      console.error("Error in handleDestinationCountryChange:", error);
+      // Ensure modal is closed even on error
+      setShowDestinationSelector(false);
+      // Use setTimeout to show alert after modal closes to prevent blocking
+      setTimeout(() => {
+        Alert.alert(
+          "Error",
+          "Failed to update destination country. Please try again.",
+          [{ text: "OK" }]
+        );
+      }, 200);
+    }
   };
+
   
   const handleHomeCountryChange = async (country: Country) => {
     try {
@@ -257,7 +297,20 @@ export default function SettingsScreen() {
           icon: MapPin,
           iconColor: Colors.accent,
           type: "navigation",
-          onPress: () => setShowDestinationSelector(true),
+          onPress: async () => {
+            // Check authentication before opening modal
+            try {
+              const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+              if (authError || !authUser) {
+                Alert.alert("Error", "You must be logged in to change your destination country.");
+                return;
+              }
+              setShowDestinationSelector(true);
+            } catch (error) {
+              console.error("Error checking auth:", error);
+              Alert.alert("Error", "Unable to verify authentication. Please try again.");
+            }
+          },
         },
       ] as SettingItem[],
     },
@@ -450,19 +503,31 @@ export default function SettingsScreen() {
       ))}
       
       {/* Country Selectors */}
-      {showDestinationSelector && (
+      <Modal
+        visible={showDestinationSelector}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowDestinationSelector(false)}
+      >
         <View style={styles.modalOverlay}>
           <Card style={[styles.modalCard, { backgroundColor: Colors.card }]}>
             <Text style={[styles.modalTitle, { color: Colors.text }]}>Change Destination Country</Text>
             <Text style={[styles.modalSubtitle, { color: Colors.lightText }]}>
               This will update your journey tasks with country-specific visa requirements, document checklists, and regulations.
             </Text>
-            <CountrySelector
-              label="Select Destination Country"
-              value={user?.destinationCountry || null}
-              onChange={handleDestinationCountryChange}
-              countries={countries}
-            />
+            {isLoadingCountries ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color={Colors.primary} />
+                <Text style={[styles.loadingText, { color: Colors.lightText }]}>Loading countries...</Text>
+              </View>
+            ) : (
+              <CountrySelector
+                label="Select Destination Country"
+                value={user?.destinationCountry || null}
+                onChange={handleDestinationCountryChange}
+                countries={destinationCountries}
+              />
+            )}
             <View style={styles.modalButtons}>
               <Button
                 title="Cancel"
@@ -473,18 +538,30 @@ export default function SettingsScreen() {
             </View>
           </Card>
         </View>
-      )}
+      </Modal>
       
-      {showHomeSelector && (
+      <Modal
+        visible={showHomeSelector}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowHomeSelector(false)}
+      >
         <View style={styles.modalOverlay}>
           <Card style={[styles.modalCard, { backgroundColor: Colors.card }]}>
             <Text style={[styles.modalTitle, { color: Colors.text }]}>Change Home Country</Text>
-            <CountrySelector
-              label="Select Home Country"
-              value={user?.homeCountry || null}
-              onChange={handleHomeCountryChange}
-              countries={countries}
-            />
+            {isLoadingCountries ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color={Colors.primary} />
+                <Text style={[styles.loadingText, { color: Colors.lightText }]}>Loading countries...</Text>
+              </View>
+            ) : (
+              <CountrySelector
+                label="Select Home Country"
+                value={user?.homeCountry || null}
+                onChange={handleHomeCountryChange}
+                countries={originCountries}
+              />
+            )}
             <View style={styles.modalButtons}>
               <Button
                 title="Cancel"
@@ -495,7 +572,8 @@ export default function SettingsScreen() {
             </View>
           </Card>
         </View>
-      )}
+      </Modal>
+
       
       {/* App Version */}
       <View style={styles.versionContainer}>
@@ -618,15 +696,20 @@ const styles = StyleSheet.create({
     marginLeft: 72,
   },
   modalOverlay: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
+    flex: 1,
     backgroundColor: "rgba(0, 0, 0, 0.5)",
     justifyContent: "center",
     alignItems: "center",
     padding: 20,
+  },
+  loadingContainer: {
+    padding: 24,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
   },
   modalCard: {
     width: "100%",
@@ -661,5 +744,55 @@ const styles = StyleSheet.create({
   },
   versionSubtext: {
     fontSize: 12,
+  },
+  emptyContainer: {
+    padding: 24,
+    alignItems: "center",
+  },
+  emptyText: {
+    fontSize: 16,
+    marginBottom: 8,
+    textAlign: "center",
+  },
+  emptySubtext: {
+    fontSize: 14,
+    textAlign: "center",
+  },
+  visaTypesList: {
+    maxHeight: 300,
+    marginVertical: 16,
+  },
+  visaTypeCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 2,
+    marginBottom: 12,
+  },
+  visaTypeContent: {
+    flex: 1,
+  },
+  visaTypeTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    marginBottom: 4,
+  },
+  visaTypeDescription: {
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  checkmark: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: "center",
+    alignItems: "center",
+    marginLeft: 12,
+  },
+  checkmarkText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "600",
   },
 });
