@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert, Linking, ActivityIndicator } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useRouter, Stack } from "expo-router";
-import { Crown, Check, Zap, Star, ArrowLeft } from "lucide-react-native";
+import { useRouter, Stack, useFocusEffect } from "expo-router";
+import { Crown, Check, Zap, Star, ArrowLeft, Mic, MessageSquare, BookOpen } from "lucide-react-native";
 import { useColors } from "@/hooks/useColors";
 import Button from "@/components/Button";
 import Card from "@/components/Card";
@@ -76,9 +76,18 @@ export default function PremiumScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState<string | null>(null);
 
+  // Check subscription status on mount
   useEffect(() => {
     checkSubscriptionStatus();
   }, []);
+
+  // Refresh subscription status when screen comes into focus
+  // This ensures the page updates when user returns from payment
+  useFocusEffect(
+    useCallback(() => {
+      checkSubscriptionStatus();
+    }, [])
+  );
 
   const checkSubscriptionStatus = async () => {
     try {
@@ -95,11 +104,17 @@ export default function PremiumScreen() {
         .eq("id", authUser.id)
         .single();
 
-      if (profile?.subscription_tier && profile.subscription_tier !== "free") {
-        setCurrentTier(profile.subscription_tier);
+      // Map "premium" to "pro" for consistency (premium is stored in DB, pro is used in UI)
+      const tier = profile?.subscription_tier === "premium" ? "pro" : profile?.subscription_tier;
+      if (tier && tier !== "free") {
+        setCurrentTier(tier);
+      } else {
+        // Reset to null if subscription is free or doesn't exist
+        setCurrentTier(null);
       }
     } catch (error) {
       console.error("Error checking subscription:", error);
+      setCurrentTier(null);
     } finally {
       setIsLoading(false);
     }
@@ -157,6 +172,50 @@ export default function PremiumScreen() {
     }
   };
 
+  // Check if user has an active subscription (basic, standard, or pro/premium)
+  const hasActiveSubscription = currentTier && ["basic", "standard", "pro", "premium"].includes(currentTier);
+
+  // Premium resources that will be linked to checklist items later
+  const premiumResources = [
+    {
+      id: "interview-simulator",
+      title: "Interview Simulator",
+      description: "Practice visa and university interviews with AI-powered simulations",
+      icon: Mic,
+      comingSoon: false,
+      route: "/premium/interview-simulator",
+    },
+    {
+      id: "ai-chats",
+      title: "AI Chats",
+      description: "Get personalized guidance and answers from our AI assistant",
+      icon: MessageSquare,
+      comingSoon: true,
+    },
+    {
+      id: "webinars-articles",
+      title: "Webinars & Articles",
+      description: "Access detailed guides, webinars, and articles for each checklist item",
+      icon: BookOpen,
+      comingSoon: true,
+    },
+  ];
+
+  const handleResourcePress = (resourceId: string) => {
+    const resource = premiumResources.find(r => r.id === resourceId);
+    if (!resource) return;
+
+    if (resource.comingSoon) {
+      Alert.alert(
+        "Coming Soon",
+        `${resource.title} will be available soon. This feature will be linked to help icons in your checklist items.`
+      );
+    } else if (resource.route) {
+      // Navigate to the resource route
+      router.push(resource.route as any);
+    }
+  };
+
   if (isLoading) {
     return (
       <View style={[styles.container, { backgroundColor: Colors.background }]}>
@@ -168,6 +227,109 @@ export default function PremiumScreen() {
     );
   }
 
+  // Show premium resources home page if user has active subscription
+  if (hasActiveSubscription) {
+    return (
+      <ScrollView 
+        style={[styles.container, { backgroundColor: Colors.background, paddingBottom: insets.bottom }]} 
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <Stack.Screen
+          options={{
+            title: "Premium Resources",
+            headerLeft: () => (
+              <TouchableOpacity
+                onPress={() => router.replace("/(tabs)")}
+                style={{ marginLeft: 8 }}
+              >
+                <ArrowLeft size={24} color={Colors.text} />
+              </TouchableOpacity>
+            ),
+          }}
+        />
+        {/* Header */}
+        <View style={styles.header}>
+          <Crown size={48} color={Colors.primary} />
+          <Text style={[styles.title, { color: Colors.text }]}>
+            Premium Resources
+          </Text>
+          <Text style={[styles.subtitle, { color: Colors.lightText }]}>
+            Access exclusive resources to enhance your journey
+          </Text>
+          {currentTier && (
+            <View style={[styles.currentTierBadge, { backgroundColor: Colors.success + "20" }]}>
+              <Text style={[styles.currentTierText, { color: Colors.success }]}>
+                {currentTier.charAt(0).toUpperCase() + currentTier.slice(1)} Plan
+              </Text>
+            </View>
+          )}
+        </View>
+
+        {/* Premium Resources */}
+        <View style={styles.resourcesContainer}>
+          {premiumResources.map((resource) => {
+            const IconComponent = resource.icon;
+            return (
+              <Card
+                key={resource.id}
+                style={[
+                  styles.resourceCard,
+                  { backgroundColor: Colors.card },
+                ]}
+                variant="elevated"
+              >
+                <TouchableOpacity
+                  onPress={() => handleResourcePress(resource.id)}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.resourceContent}>
+                    <View style={[styles.resourceIconContainer, { backgroundColor: Colors.primary + "20" }]}>
+                      <IconComponent size={32} color={Colors.primary} />
+                    </View>
+                    <View style={styles.resourceTextContainer}>
+                      <Text style={[styles.resourceTitle, { color: Colors.text }]}>
+                        {resource.title}
+                      </Text>
+                      <Text style={[styles.resourceDescription, { color: Colors.lightText }]}>
+                        {resource.description}
+                      </Text>
+                    </View>
+                    {resource.comingSoon && (
+                      <View style={[styles.comingSoonBadge, { backgroundColor: Colors.primary + "20" }]}>
+                        <Text style={[styles.comingSoonText, { color: Colors.primary }]}>
+                          Soon
+                        </Text>
+                      </View>
+                    )}
+                    {!resource.comingSoon && (
+                      <View style={[styles.availableBadge, { backgroundColor: Colors.success + "20" }]}>
+                        <Text style={[styles.availableText, { color: Colors.success }]}>
+                          Available
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                </TouchableOpacity>
+              </Card>
+            );
+          })}
+        </View>
+
+        {/* Info Section */}
+        <View style={styles.infoSection}>
+          <Text style={[styles.infoTitle, { color: Colors.text }]}>
+            How It Works
+          </Text>
+          <Text style={[styles.infoText, { color: Colors.lightText }]}>
+            These resources will be linked to help icons within your checklist items. Click on help icons to access detailed guides, webinars, and interactive tools for each task.
+          </Text>
+        </View>
+      </ScrollView>
+    );
+  }
+
+  // Show pricing tiers for free users
   return (
     <ScrollView 
       style={[styles.container, { backgroundColor: Colors.background, paddingBottom: insets.bottom }]} 
@@ -196,13 +358,6 @@ export default function PremiumScreen() {
         <Text style={[styles.subtitle, { color: Colors.lightText }]}>
           Unlock premium features and accelerate your journey
         </Text>
-        {currentTier && (
-          <View style={[styles.currentTierBadge, { backgroundColor: Colors.success + "20" }]}>
-            <Text style={[styles.currentTierText, { color: Colors.success }]}>
-              Current Plan: {currentTier.charAt(0).toUpperCase() + currentTier.slice(1)}
-            </Text>
-          </View>
-        )}
       </View>
 
       {/* Subscription Tiers */}
@@ -424,6 +579,70 @@ const styles = StyleSheet.create({
   footerText: {
     fontSize: 14,
     textAlign: "center",
+    lineHeight: 20,
+  },
+  resourcesContainer: {
+    gap: 16,
+    marginBottom: 24,
+  },
+  resourceCard: {
+    padding: 20,
+  },
+  resourceContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 16,
+  },
+  resourceIconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 16,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  resourceTextContainer: {
+    flex: 1,
+  },
+  resourceTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    marginBottom: 4,
+  },
+  resourceDescription: {
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  comingSoonBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  comingSoonText: {
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  availableBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  availableText: {
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  infoSection: {
+    marginTop: 8,
+    padding: 20,
+    borderRadius: 12,
+    backgroundColor: "transparent",
+  },
+  infoTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    marginBottom: 8,
+  },
+  infoText: {
+    fontSize: 14,
     lineHeight: 20,
   },
 });

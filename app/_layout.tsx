@@ -6,11 +6,24 @@ import { useEffect } from "react";
 import { StatusBar } from "expo-status-bar";
 import { Platform } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import Constants from "expo-constants";
 import { useColors } from "@/hooks/useColors";
 import { useThemeStore } from "@/store/themeStore";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { trpc, trpcClient } from "@/lib/trpc";
 import { useUserStore } from "@/store/userStore";
+
+// Conditionally import ElevenLabsProvider - it requires native modules and won't work in Expo Go
+let ElevenLabsProvider: any = null;
+try {
+  const elevenLabsModule = require("@elevenlabs/react-native");
+  ElevenLabsProvider = elevenLabsModule.ElevenLabsProvider;
+} catch (error) {
+  console.log("ElevenLabs SDK not available (likely running in Expo Go)");
+}
+
+// Check if running in Expo Go
+const isExpoGo = Constants.executionEnvironment === "storeClient";
 
 // Create a client
 const queryClient = new QueryClient();
@@ -58,15 +71,11 @@ function RootLayoutNav() {
     }
   }, [initializeUser]);
 
-  return (
-    <SafeAreaProvider>
-      <StatusBar 
-        style={isDarkMode ? "light" : "dark"} 
-        backgroundColor={Colors.background}
-      />
-      <trpc.Provider client={trpcClient} queryClient={queryClient}>
-        <QueryClientProvider client={queryClient}>
-          <Stack
+  // Wrap with ElevenLabsProvider only if available (not in Expo Go)
+  const AppContent = (
+    <trpc.Provider client={trpcClient} queryClient={queryClient}>
+      <QueryClientProvider client={queryClient}>
+        <Stack
             screenOptions={{
               headerStyle: {
                 backgroundColor: Colors.background,
@@ -113,11 +122,27 @@ function RootLayoutNav() {
             <Stack.Screen name="calendar" options={{ title: "Calendar" }} />
             <Stack.Screen name="premium" options={{ title: "UniPilot Premium", headerShown: true }} />
             <Stack.Screen name="premium/index" options={{ title: "UniPilot Premium", headerShown: true }} />
+            <Stack.Screen name="premium/interview-simulator" options={{ title: "Interview Simulator", headerShown: true }} />
             <Stack.Screen name="payment-success" options={{ title: "Payment Success", headerShown: true }} />
             <Stack.Screen name="unipilot-ai" options={{ title: "AI Assistant" }} />
           </Stack>
         </QueryClientProvider>
       </trpc.Provider>
+  );
+
+  return (
+    <SafeAreaProvider>
+      <StatusBar 
+        style={isDarkMode ? "light" : "dark"} 
+        backgroundColor={Colors.background}
+      />
+      {ElevenLabsProvider && !isExpoGo ? (
+        <ElevenLabsProvider>
+          {AppContent}
+        </ElevenLabsProvider>
+      ) : (
+        AppContent
+      )}
     </SafeAreaProvider>
   );
 }

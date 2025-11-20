@@ -86,14 +86,18 @@ export default function JourneyScreen() {
       // This ensures correct visa type AND correct country-specific OR generic checklists
       
       // Define subscription tier hierarchy
+      // Map "pro" to "premium" for consistency (pro is used in UI, premium in DB)
       const allowedTiers: Record<string, string[]> = {
         free: ["free"],
         basic: ["free", "basic"],
         standard: ["free", "basic", "standard"],
-        premium: ["free", "basic", "standard", "premium"]
+        premium: ["free", "basic", "standard", "premium"],
+        pro: ["free", "basic", "standard", "premium"] // Map pro to premium tier access
       };
       
-      const userTier = profile.subscription_tier || "free";
+      // Normalize tier: map "pro" to "premium" for lookup
+      const normalizedTier = profile.subscription_tier === "pro" ? "premium" : (profile.subscription_tier || "free");
+      const userTier = normalizedTier;
       const tiersToShow = allowedTiers[userTier] || allowedTiers.free;
       
       // Build the OR filter string - ensure country code is properly formatted

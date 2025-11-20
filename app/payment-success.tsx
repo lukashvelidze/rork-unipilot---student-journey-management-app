@@ -179,6 +179,14 @@ export default function PaymentSuccessScreen() {
             onPress={() => router.push('/(tabs)/journey')}
             icon={<ArrowRight size={20} color={Colors.white} />}
             fullWidth
+            style={styles.actionButton}
+          />
+          <Button
+            title="Explore Premium Resources"
+            onPress={() => router.push('/premium')}
+            variant="outline"
+            fullWidth
+            style={styles.actionButton}
           />
         </View>
       </Card>
@@ -283,6 +291,9 @@ const styles = StyleSheet.create({
   },
   actionButtons: {
     gap: 12,
+  },
+  actionButton: {
+    marginTop: 0,
   },
   errorCard: {
     margin: 20,

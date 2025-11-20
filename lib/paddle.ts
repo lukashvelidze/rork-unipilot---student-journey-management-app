@@ -18,7 +18,7 @@ export const PADDLE_PRICE_IDS = {
   standard: process.env.EXPO_PUBLIC_PADDLE_PRICE_ID_STANDARD || "pri_01k68wrm9arskqwz894n5afswq",
   pro: process.env.EXPO_PUBLIC_PADDLE_PRICE_ID_PRO || "pri_01ka7djg7ekbhah3gbamqemgf6",
 };
-
+r
 /**
  * Build Paddle checkout URL with parameters
  */
