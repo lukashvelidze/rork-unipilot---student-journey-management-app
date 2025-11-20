@@ -1,8 +1,8 @@
-import React, { useEffect } from "react";
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity } from "react-native";
+import React, { useEffect, useState, useCallback } from "react";
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
-import { Award, TrendingUp, BookOpen, Users, Crown, Zap, Target, Calendar, UserCheck, BarChart3, Video, CheckSquare } from "lucide-react-native";
+import { useRouter, useFocusEffect } from "expo-router";
+import { Award, TrendingUp, BookOpen, Users, Crown, Zap, Target, Calendar, UserCheck, BarChart3, Video, CheckSquare, Mic, MessageSquare } from "lucide-react-native";
 import { useColors } from "@/hooks/useColors";
 import Card from "@/components/Card";
 import ProgressBar from "@/components/ProgressBar";
@@ -18,6 +18,46 @@ export default function HomeScreen() {
   const Colors = useColors();
   const { user, setUser } = useUserStore();
   const { journeyProgress, setJourneyProgress } = useJourneyStore();
+  const [hasActiveSubscription, setHasActiveSubscription] = useState(false);
+  const [isCheckingSubscription, setIsCheckingSubscription] = useState(true);
+  
+  // Check subscription status
+  const checkSubscriptionStatus = useCallback(async () => {
+    try {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) {
+        setHasActiveSubscription(false);
+        setIsCheckingSubscription(false);
+        return;
+      }
+
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("subscription_tier")
+        .eq("id", authUser.id)
+        .single();
+
+      const tier = profile?.subscription_tier === "premium" ? "pro" : profile?.subscription_tier;
+      const isSubscribed = tier && tier !== "free" && ["basic", "standard", "pro", "premium"].includes(tier);
+      setHasActiveSubscription(!!isSubscribed);
+    } catch (error) {
+      console.error("Error checking subscription:", error);
+      setHasActiveSubscription(false);
+    } finally {
+      setIsCheckingSubscription(false);
+    }
+  }, []);
+
+  // Check subscription on mount and when screen comes into focus
+  useEffect(() => {
+    checkSubscriptionStatus();
+  }, [checkSubscriptionStatus]);
+
+  useFocusEffect(
+    useCallback(() => {
+      checkSubscriptionStatus();
+    }, [checkSubscriptionStatus])
+  );
   
   // Fetch user data from database on mount
   useEffect(() => {
@@ -114,13 +154,31 @@ export default function HomeScreen() {
   // Get next few tasks from current stage
   const upcomingTasks = currentStage?.tasks.filter(task => !task.completed).slice(0, 3) || [];
   
-  const quickActions = [
+  // Handle premium feature access
+  const handlePremiumFeature = (featureName: string, route: string) => {
+    if (hasActiveSubscription) {
+      router.push(route as any);
+    } else {
+      Alert.alert(
+        "Premium Feature",
+        `${featureName} is available with a premium subscription. Upgrade to unlock this feature and more!`,
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "View Plans", onPress: () => router.push("/premium") },
+        ]
+      );
+    }
+  };
+
+  // Base quick actions (always available)
+  const baseQuickActions = [
     {
       title: "Application Checklist",
       description: "Complete guide to applications",
       icon: CheckSquare,
       color: Colors.primary,
       onPress: () => router.push("/application-checklist"),
+      isPremium: false,
     },
     {
       title: "Continue Journey",
@@ -128,15 +186,32 @@ export default function HomeScreen() {
       icon: TrendingUp,
       color: Colors.secondary,
       onPress: () => router.push("/(tabs)/journey"),
-    },
-    {
-      title: "AI Assistant",
-      description: "Get personalized guidance",
-      icon: Zap,
-      color: Colors.accent,
-      onPress: () => router.push("/unipilot-ai"),
+      isPremium: false,
     },
   ];
+
+  // Premium quick actions (advertising)
+  const premiumQuickActions = [
+    {
+      title: "AI Assistant",
+      description: hasActiveSubscription ? "Get personalized guidance" : "Premium: AI-powered help",
+      icon: MessageSquare,
+      color: Colors.accent,
+      onPress: () => handlePremiumFeature("AI Assistant", "/(tabs)/community"),
+      isPremium: true,
+    },
+    {
+      title: "Interview Simulator",
+      description: hasActiveSubscription ? "Practice visa interviews" : "Premium: Practice interviews",
+      icon: Mic,
+      color: Colors.accent,
+      onPress: () => handlePremiumFeature("Interview Simulator", "/premium/interview-simulator"),
+      isPremium: true,
+    },
+  ];
+
+  // Combine actions - show premium actions for advertising
+  const quickActions = [...baseQuickActions, ...premiumQuickActions];
   
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: Colors.background }]} edges={['top']}>
@@ -223,10 +298,21 @@ export default function HomeScreen() {
             {quickActions.map((action, index) => (
               <TouchableOpacity
                 key={index}
-                style={[styles.actionCard, { backgroundColor: Colors.white, borderLeftColor: action.color }]}
+                style={[
+                  styles.actionCard, 
+                  { backgroundColor: Colors.white, borderLeftColor: action.color },
+                  action.isPremium && !hasActiveSubscription && styles.premiumActionCard
+                ]}
                 onPress={action.onPress}
               >
-                <action.icon size={24} color={action.color} />
+                <View style={styles.actionIconContainer}>
+                  <action.icon size={24} color={action.color} />
+                  {action.isPremium && !hasActiveSubscription && (
+                    <View style={[styles.premiumBadge, { backgroundColor: Colors.primary }]}>
+                      <Crown size={12} color="#FFFFFF" />
+                    </View>
+                  )}
+                </View>
                 <Text style={[styles.actionTitle, { color: Colors.text }]}>{action.title}</Text>
                 <Text style={[styles.actionDescription, { color: Colors.lightText }]}>{action.description}</Text>
               </TouchableOpacity>
@@ -452,6 +538,24 @@ const styles = StyleSheet.create({
   },
   actionDescription: {
     fontSize: 14,
+  },
+  actionIconContainer: {
+    position: "relative",
+  },
+  premiumBadge: {
+    position: "absolute",
+    top: -6,
+    right: -6,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 2,
+    borderColor: Colors.white || "#FFFFFF",
+  },
+  premiumActionCard: {
+    opacity: 0.9,
   },
   upgradeCard: {
     borderWidth: 1,

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   StyleSheet,
   View,
@@ -9,11 +9,15 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
+  ActivityIndicator,
 } from "react-native";
 import { useRouter } from "expo-router";
-import { Send, Crown } from "lucide-react-native";
-import Colors from "@/constants/colors";
+import { Send, Crown, Lock } from "lucide-react-native";
+import { useColors } from "@/hooks/useColors";
 import { useUserStore } from "@/store/userStore";
+import { supabase } from "@/lib/supabase";
+import Button from "@/components/Button";
+import Card from "@/components/Card";
 
 interface Message {
   id: string;
@@ -24,11 +28,115 @@ interface Message {
 
 export default function UniPilotAIScreen() {
   const router = useRouter();
+  const Colors = useColors();
   const { user } = useUserStore();
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [hasActiveSubscription, setHasActiveSubscription] = useState(false);
+  const [isCheckingSubscription, setIsCheckingSubscription] = useState(true);
   const flatListRef = useRef<FlatList>(null);
+
+  // Check subscription status
+  useEffect(() => {
+    const checkSubscription = async () => {
+      try {
+        const { data: { user: authUser } } = await supabase.auth.getUser();
+        if (!authUser) {
+          setHasActiveSubscription(false);
+          setIsCheckingSubscription(false);
+          return;
+        }
+
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("subscription_tier")
+          .eq("id", authUser.id)
+          .single();
+
+        const tier = profile?.subscription_tier === "premium" ? "pro" : profile?.subscription_tier;
+        const isSubscribed = tier && tier !== "free" && ["basic", "standard", "pro", "premium"].includes(tier);
+        setHasActiveSubscription(!!isSubscribed);
+      } catch (error) {
+        console.error("Error checking subscription:", error);
+        setHasActiveSubscription(false);
+      } finally {
+        setIsCheckingSubscription(false);
+      }
+    };
+
+    checkSubscription();
+  }, []);
+
+  // Show premium wall if not subscribed
+  if (isCheckingSubscription) {
+    return (
+      <View style={[styles.container, { backgroundColor: Colors.background }]}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+          <Text style={[styles.loadingText, { color: Colors.lightText }]}>Loading...</Text>
+        </View>
+      </View>
+    );
+  }
+
+  if (!hasActiveSubscription) {
+    return (
+      <KeyboardAvoidingView
+        style={[styles.container, { backgroundColor: Colors.background }]}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
+        <View style={styles.premiumWallContainer}>
+          <Card style={[styles.premiumCard, { backgroundColor: Colors.card }]}>
+            <View style={styles.premiumIconContainer}>
+              <Lock size={48} color={Colors.primary} />
+            </View>
+            <Text style={[styles.premiumTitle, { color: Colors.text }]}>
+              Premium Feature
+            </Text>
+            <Text style={[styles.premiumDescription, { color: Colors.lightText }]}>
+              AI Assistant is available with a premium subscription. Get personalized guidance and answers from our AI assistant.
+            </Text>
+            <View style={styles.premiumFeatures}>
+              <View style={styles.premiumFeature}>
+                <Crown size={20} color={Colors.primary} />
+                <Text style={[styles.premiumFeatureText, { color: Colors.text }]}>
+                  Unlimited AI conversations
+                </Text>
+              </View>
+              <View style={styles.premiumFeature}>
+                <Crown size={20} color={Colors.primary} />
+                <Text style={[styles.premiumFeatureText, { color: Colors.text }]}>
+                  Personalized guidance for your journey
+                </Text>
+              </View>
+              <View style={styles.premiumFeature}>
+                <Crown size={20} color={Colors.primary} />
+                <Text style={[styles.premiumFeatureText, { color: Colors.text }]}>
+                  Access to interview simulator and more
+                </Text>
+              </View>
+            </View>
+            <Button
+              title="View Premium Plans"
+              onPress={() => router.push("/premium")}
+              icon={<Crown size={20} color="#FFFFFF" />}
+              fullWidth
+              style={styles.upgradeButton}
+            />
+            <TouchableOpacity
+              onPress={() => router.back()}
+              style={styles.backButton}
+            >
+              <Text style={[styles.backButtonText, { color: Colors.lightText }]}>
+                Go Back
+              </Text>
+            </TouchableOpacity>
+          </Card>
+        </View>
+      </KeyboardAvoidingView>
+    );
+  }
 
   const handleSend = async () => {
     if (!message.trim()) return;
@@ -282,5 +390,77 @@ const styles = StyleSheet.create({
   },
   sendButtonDisabled: {
     opacity: 0.5,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: Colors.lightText,
+  },
+  premiumWallContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 24,
+  },
+  premiumCard: {
+    width: "100%",
+    maxWidth: 400,
+    padding: 24,
+    alignItems: "center",
+  },
+  premiumIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: Colors.primary + "20",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 24,
+  },
+  premiumTitle: {
+    fontSize: 24,
+    fontWeight: "700",
+    marginBottom: 12,
+    textAlign: "center",
+    color: Colors.text,
+  },
+  premiumDescription: {
+    fontSize: 16,
+    textAlign: "center",
+    lineHeight: 24,
+    marginBottom: 24,
+    color: Colors.lightText,
+  },
+  premiumFeatures: {
+    width: "100%",
+    marginBottom: 24,
+    gap: 12,
+  },
+  premiumFeature: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  premiumFeatureText: {
+    fontSize: 14,
+    flex: 1,
+    color: Colors.text,
+  },
+  upgradeButton: {
+    marginTop: 8,
+    marginBottom: 16,
+  },
+  backButton: {
+    paddingVertical: 12,
+  },
+  backButtonText: {
+    fontSize: 14,
+    textAlign: "center",
+    color: Colors.lightText,
   },
 });
