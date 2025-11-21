@@ -51,11 +51,15 @@ export function buildPaddleCheckoutUrl(params: PaddleCheckoutParams): string {
   }
   
   // Add success and cancel URLs for deep linking back to app
+  // Paddle may append customer_id and other parameters to the success URL
   const successUrl = `unipilot://payment-success?tier=${params.tier}`;
   const cancelUrl = `unipilot://premium`;
   
   url.searchParams.set("success_url", successUrl);
   url.searchParams.set("cancel_url", cancelUrl);
+  
+  // Note: Paddle may append customer_id to the success_url as a query parameter
+  // If not in URL, customer_id will be set via webhook (recommended approach)
   
   // Optional: Additional customer information
   if (params.countryCode) {

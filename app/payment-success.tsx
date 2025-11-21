@@ -9,6 +9,7 @@ import Card from '@/components/Card';
 import Button from '@/components/Button';
 import { useUserStore } from '@/store/userStore';
 import { supabase } from '@/lib/supabase';
+import { storePaddleCustomerId } from '@/lib/paddle-customer';
 import CelebrationAnimation from '@/components/CelebrationAnimation';
 
 const TIER_NAMES: Record<string, string> = {
@@ -39,8 +40,10 @@ export default function PaymentSuccessScreen() {
 
   const handlePaymentSuccess = async () => {
     try {
-      // Get tier from URL parameters
+      // Get tier and customer_id from URL parameters
       const tierParam = params.tier as string;
+      const customerId = params.customer_id as string | undefined;
+      
       if (!tierParam) {
         setError("No subscription tier found in payment confirmation.");
         setIsUpdating(false);
@@ -71,6 +74,21 @@ export default function PaymentSuccessScreen() {
         setError("Failed to activate subscription. Please contact support.");
         setIsUpdating(false);
         return;
+      }
+
+      // Store Paddle customer ID if provided in URL parameters
+      // This links the Supabase profile to the Paddle customer for webhook processing
+      if (customerId) {
+        try {
+          await storePaddleCustomerId(customerId);
+          console.log("Successfully stored Paddle customer ID:", customerId);
+        } catch (error) {
+          // Log error but don't fail the payment success flow
+          // Customer ID can also be set via webhook
+          console.error("Failed to store Paddle customer ID (will be set via webhook):", error);
+        }
+      } else {
+        console.log("No customer_id in URL parameters. Will be set via Paddle webhook.");
       }
 
       // Update local store
