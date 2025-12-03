@@ -1,14 +1,14 @@
 {
   "expo": {
     "name": "UniPilot",
-    "slug": "dev-lukashvelidze-unipilot",
+    "slug": "unipilot-student-journey-management-app",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "unipilot",
+    "scheme": "myapp",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": false,
-    "jsEngine": "hermes",
+    "newArchEnabled": true,
+    "jsEngine": "jsc",
     "splash": {
       "image": "./assets/images/splash-icon.png",
       "resizeMode": "contain",
@@ -17,12 +17,12 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "dev.lukashvelidze.unipilot",
+      "buildNumber": "2",
       "infoPlist": {
         "NSCameraUsageDescription": "This app uses the camera to allow you to take photos for your profile and content uploads.",
         "NSPhotoLibraryUsageDescription": "This app needs access to your photo library to let you select images for your profile and content uploads.",
         "NSPhotoLibraryAddUsageDescription": "This app saves images to your photo library when you choose to download or export content.",
         "NSLocationWhenInUseUsageDescription": "Location is used to personalize certain features and improve your experience while the app is in use.",
-        "NSMicrophoneUsageDescription": "This app needs microphone access to enable voice conversations with AI agents for interview practice.",
         "ITSAppUsesNonExemptEncryption": false
       }
     },
@@ -32,9 +32,7 @@
         "backgroundColor": "#ffffff"
       },
       "package": "app.rork.unipilot",
-      "permissions": [
-        "android.permission.RECORD_AUDIO"
-      ]
+      "versionCode": 2
     },
     "web": {
       "favicon": "./assets/images/favicon.png"
@@ -51,14 +49,14 @@
       "typedRoutes": true
     },
     "extra": {
-      "supabaseUrl": "https://yagdgijrdlifgcjkcnqe.supabase.co",
-      "supabaseAnonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlhZ2RnaWpyZGxpZmdjamtjbnFlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjMwMDA3MjMsImV4cCI6MjA3ODU3NjcyM30.4CsQTrlIac38iVLXkrUdxVoTJuPEBqKKjw0ohr56qwA",
       "router": {
         "origin": "https://rork.com/"
       },
       "eas": {
         "projectId": "92561ac2-1983-4bb4-afe5-e34734d340b9"
-      }
+      },
+      "supabaseUrl": "https://yagdgijrdlifgcjkcnqe.supabase.co",
+      "supabaseAnonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlhZ2RnaWpyZGxpZmdjamtjbnFlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjMwMDA3MjMsImV4cCI6MjA3ODU3NjcyM30.4CsQTrlIac38iVLXkrUdxVoTJuPEBqKKjw0ohr56qwA"
     }
   }
 }

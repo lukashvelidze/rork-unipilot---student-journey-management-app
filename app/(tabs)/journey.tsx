@@ -156,6 +156,10 @@ export default function JourneyScreen() {
       }
 
       // Fetch checklist items
+      if (!checklistsData || !Array.isArray(checklistsData) || checklistsData.length === 0) {
+        console.log("No checklists data found");
+        return;
+      }
       const checklistIds = checklistsData.map((c: any) => c.id);
       const { data: itemsData } = await supabase
         .from("checklist_items")
@@ -194,8 +198,16 @@ export default function JourneyScreen() {
         "financial & insurance": "pre_departure",
       };
 
-      // Group checklists by stage
-      const stagesMap = new Map<JourneyStage, { checklist: any; items: any[] }[]>();
+      // Group checklists by stage (using plain object instead of Map to avoid Hermes crash)
+      const stagesMap: Record<JourneyStage, { checklist: any; items: any[] }[]> = {
+        research: [],
+        application: [],
+        visa: [],
+        pre_departure: [],
+        arrival: [],
+        academic: [],
+        career: [],
+      };
 
       checklistsData.forEach((checklist: any) => {
         const titleLower = checklist.title.toLowerCase();
@@ -222,10 +234,10 @@ export default function JourneyScreen() {
 
         const items = itemsData.filter(item => item.checklist_id === checklist.id);
         
-        if (!stagesMap.has(stage)) {
-          stagesMap.set(stage, []);
+        if (!stagesMap[stage]) {
+          stagesMap[stage] = [];
         }
-        stagesMap.get(stage)!.push({ checklist, items });
+        stagesMap[stage].push({ checklist, items });
       });
 
       // Convert to JourneyProgress format
@@ -233,7 +245,7 @@ export default function JourneyScreen() {
       const stageOrder: JourneyStage[] = ["research", "application", "visa", "pre_departure", "arrival", "academic", "career"];
 
       stageOrder.forEach(stage => {
-        const stageData = stagesMap.get(stage);
+        const stageData = stagesMap[stage];
         if (!stageData || stageData.length === 0) return;
 
         // Combine all items from all checklists in this stage

@@ -43,7 +43,7 @@ export default function ApplicationChecklistScreen() {
   const { user } = useUserStore();
   
   const [checklists, setChecklists] = useState<ChecklistWithItems[]>([]);
-  const [userProgress, setUserProgress] = useState<Map<string, UserProgress>>(new Map());
+  const [userProgress, setUserProgress] = useState<Record<string, UserProgress>>({});
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [isLoading, setIsLoading] = useState(true);
@@ -208,15 +208,15 @@ export default function ApplicationChecklistScreen() {
 
       setChecklists(transformedChecklists);
 
-      // Update user progress map
-      const progressMap = new Map<string, UserProgress>();
+      // Update user progress map (using plain object instead of Map to avoid Hermes crash)
+      const progressMap: Record<string, UserProgress> = {};
       if (progress) {
         progress.forEach((p) => {
-          progressMap.set(p.checklist_item_id, {
+          progressMap[p.checklist_item_id] = {
             checklist_item_id: p.checklist_item_id,
             is_completed: p.is_completed,
             value: p.value,
-          });
+          };
         });
       }
       setUserProgress(progressMap);
@@ -255,7 +255,7 @@ export default function ApplicationChecklistScreen() {
       const { data: { user: authUser } } = await supabase.auth.getUser();
       if (!authUser) return;
 
-      const currentProgress = userProgress.get(itemId);
+      const currentProgress = userProgress[itemId];
       const newCompleted = !currentProgress?.is_completed;
 
       // Update user_progress in Supabase
@@ -295,12 +295,12 @@ export default function ApplicationChecklistScreen() {
       }
 
       // Update local state
-      const newProgress = new Map(userProgress);
-      newProgress.set(itemId, {
+      const newProgress = { ...userProgress };
+      newProgress[itemId] = {
         checklist_item_id: itemId,
         is_completed: newCompleted,
         value: newCompleted ? {} : null,
-      });
+      };
       setUserProgress(newProgress);
     } catch (error) {
       console.error("Error toggling task:", error);
@@ -318,7 +318,7 @@ export default function ApplicationChecklistScreen() {
     setExpandedTasks(newExpanded);
   };
 
-  const completedCount = filteredItems.filter(item => userProgress.get(item.id)?.is_completed).length;
+  const completedCount = filteredItems.filter(item => userProgress[item.id]?.is_completed).length;
   const progressPercentage = filteredItems.length > 0 ? Math.round((completedCount / filteredItems.length) * 100) : 0;
 
   return (
@@ -432,7 +432,7 @@ export default function ApplicationChecklistScreen() {
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
           <View style={styles.tasksContainer}>
             {filteredItems.map((item) => {
-              const isCompleted = userProgress.get(item.id)?.is_completed || false;
+              const isCompleted = userProgress[item.id]?.is_completed || false;
               return (
                 <Card key={item.id} style={[styles.taskCard, { backgroundColor: Colors.card }]}>
                   <TouchableOpacity
