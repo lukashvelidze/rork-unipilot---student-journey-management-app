@@ -302,12 +302,19 @@ export default function SettingsScreen() {
             try {
               const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
               if (authError || !authUser) {
-                Alert.alert("Error", "You must be logged in to change your destination country.");
+                // Automatically redirect to sign-in page
+                router.replace("/sign-in");
                 return;
               }
               setShowDestinationSelector(true);
-            } catch (error) {
+            } catch (error: any) {
               console.error("Error checking auth:", error);
+              // Check if it's an authentication error
+              if (error?.message?.includes('not authenticated') || error?.message?.includes('Authentication error') || error?.message?.includes('Session error')) {
+                // Automatically redirect to sign-in page
+                router.replace("/sign-in");
+                return;
+              }
               Alert.alert("Error", "Unable to verify authentication. Please try again.");
             }
           },

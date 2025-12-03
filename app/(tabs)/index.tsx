@@ -125,13 +125,13 @@ export default function HomeScreen() {
   useEffect(() => {
     if (!user) {
       console.log("No user found, redirecting to onboarding");
-      router.replace("/onboarding");
+      router.replace("/onboarding/index");
       return;
     }
     
     if (!user.onboardingCompleted) {
       console.log("Onboarding not completed, redirecting");
-      router.replace("/onboarding");
+      router.replace("/onboarding/index");
       return;
     }
   }, [user, router]);
@@ -552,7 +552,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 2,
-    borderColor: Colors.white || "#FFFFFF",
+    borderColor: "#FFFFFF",
   },
   premiumActionCard: {
     opacity: 0.9,

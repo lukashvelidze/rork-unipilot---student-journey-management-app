@@ -94,6 +94,7 @@ function RootLayoutNav() {
             }}
           >
             <Stack.Screen name="index" options={{ headerShown: false }} />
+            <Stack.Screen name="sign-in" options={{ title: "Sign In", headerShown: false }} />
             <Stack.Screen name="onboarding/index" options={{ headerShown: false }} />
             <Stack.Screen name="onboarding/step0-welcome" options={{ title: "Welcome", headerShown: false }} />
             <Stack.Screen name="onboarding/step1-account" options={{ title: "Step 1: Account" }} />
@@ -117,14 +118,11 @@ function RootLayoutNav() {
             <Stack.Screen name="profile/budget" options={{ title: "Budget" }} />
             <Stack.Screen name="profile/timeline" options={{ title: "Timeline" }} />
             <Stack.Screen name="profile/goals" options={{ title: "Career Goals" }} />
-            <Stack.Screen name="settings" options={{ title: "Settings" }} />
-            <Stack.Screen name="tasks" options={{ title: "Tasks" }} />
-            <Stack.Screen name="calendar" options={{ title: "Calendar" }} />
-            <Stack.Screen name="premium" options={{ title: "UniPilot Premium", headerShown: true }} />
+            <Stack.Screen name="settings/index" options={{ title: "Settings" }} />
             <Stack.Screen name="premium/index" options={{ title: "UniPilot Premium", headerShown: true }} />
             <Stack.Screen name="premium/interview-simulator" options={{ title: "Interview Simulator", headerShown: true }} />
             <Stack.Screen name="payment-success" options={{ title: "Payment Success", headerShown: true }} />
-            <Stack.Screen name="unipilot-ai" options={{ title: "AI Assistant" }} />
+            <Stack.Screen name="unipilot-ai/index" options={{ title: "AI Assistant" }} />
           </Stack>
         </QueryClientProvider>
       </trpc.Provider>

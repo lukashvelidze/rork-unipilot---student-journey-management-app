@@ -202,6 +202,13 @@ export default function NewDocumentScreen() {
     } catch (error: any) {
       console.error("Error uploading document:", error);
       
+      // Check if it's an authentication error
+      if (error?.message?.includes('not authenticated') || error?.message?.includes('Authentication error') || error?.message?.includes('Session error') || error?.message === "User not authenticated") {
+        // Automatically redirect to sign-in page
+        router.replace("/sign-in");
+        return;
+      }
+      
       if (error.message === "Premium feature") {
         Alert.alert(
           "Premium Feature",

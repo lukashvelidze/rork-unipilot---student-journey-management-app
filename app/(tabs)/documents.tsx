@@ -45,19 +45,9 @@ export default function DocumentsScreen() {
       // Check if it's an authentication error
       if (error?.message?.includes('not authenticated') || error?.message?.includes('Authentication error') || error?.message?.includes('Session error')) {
         if (showErrors) {
-          Alert.alert(
-            "Authentication Required",
-            "Please sign in again to access your documents.",
-            [
-              {
-                text: "OK",
-                onPress: () => {
-                  // Optionally redirect to login
-                  // router.replace("/onboarding/step1-account");
-                },
-              },
-            ]
-          );
+          // Automatically redirect to sign-in page
+          router.replace("/sign-in");
+          return;
         }
       } else if (showErrors) {
         Alert.alert("Error", error?.message || "Failed to load documents. Please try again.");

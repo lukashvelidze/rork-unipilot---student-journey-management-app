@@ -53,7 +53,7 @@ export default function Step1Account() {
         const { InteractionManager } = require("react-native");
         InteractionManager.runAfterInteractions(() => {
           setTimeout(() => {
-            router.replace("/onboarding");
+            router.replace("/onboarding/index");
           }, 200);
         });
       }

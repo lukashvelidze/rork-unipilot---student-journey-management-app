@@ -272,7 +272,7 @@ export default function UniPilotAIScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: "#FAFAFA",
   },
   header: {
     flexDirection: "row",
@@ -280,8 +280,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-    backgroundColor: Colors.white,
+    borderBottomColor: "#ECF0F1",
+    backgroundColor: "#FFFFFF",
   },
   headerContent: {
     flexDirection: "row",
@@ -293,20 +293,20 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: "600",
-    color: Colors.text,
+    color: "#2C3E50",
   },
   headerSubtitle: {
     fontSize: 14,
-    color: Colors.lightText,
+    color: "#7F8C8D",
   },
   upgradeButton: {
-    backgroundColor: Colors.primary,
+    backgroundColor: "#FF6B6B",
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
   },
   upgradeButtonText: {
-    color: Colors.white,
+    color: "#FFFFFF",
     fontSize: 14,
     fontWeight: "600",
   },
@@ -325,21 +325,21 @@ const styles = StyleSheet.create({
   },
   userMessage: {
     alignSelf: "flex-end",
-    backgroundColor: Colors.primary,
+    backgroundColor: "#FF6B6B",
   },
   aiMessage: {
     alignSelf: "flex-start",
-    backgroundColor: Colors.lightBackground,
+    backgroundColor: "#FFFFFF",
   },
   messageText: {
     fontSize: 16,
     lineHeight: 22,
   },
   userMessageText: {
-    color: Colors.white,
+    color: "#FFFFFF",
   },
   aiMessageText: {
-    color: Colors.text,
+    color: "#2C3E50",
   },
   emptyState: {
     flex: 1,
@@ -350,13 +350,13 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 24,
     fontWeight: "700",
-    color: Colors.text,
+    color: "#2C3E50",
     marginTop: 16,
     marginBottom: 8,
   },
   emptyDescription: {
     fontSize: 16,
-    color: Colors.lightText,
+    color: "#7F8C8D",
     textAlign: "center",
     lineHeight: 24,
   },
@@ -365,23 +365,23 @@ const styles = StyleSheet.create({
     alignItems: "flex-end",
     padding: 16,
     borderTopWidth: 1,
-    borderTopColor: Colors.border,
-    backgroundColor: Colors.white,
+    borderTopColor: "#ECF0F1",
+    backgroundColor: "#FFFFFF",
   },
   textInput: {
     flex: 1,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: "#ECF0F1",
     borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 12,
     fontSize: 16,
-    color: Colors.text,
+    color: "#2C3E50",
     maxHeight: 100,
     marginRight: 12,
   },
   sendButton: {
-    backgroundColor: Colors.primary,
+    backgroundColor: "#FF6B6B",
     width: 44,
     height: 44,
     borderRadius: 22,
@@ -399,7 +399,7 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 16,
     fontSize: 16,
-    color: Colors.lightText,
+    color: "#7F8C8D",
   },
   premiumWallContainer: {
     flex: 1,
@@ -417,7 +417,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: Colors.primary + "20",
+    backgroundColor: "rgba(255, 107, 107, 0.2)",
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 24,
@@ -427,14 +427,14 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     marginBottom: 12,
     textAlign: "center",
-    color: Colors.text,
+    color: "#2C3E50",
   },
   premiumDescription: {
     fontSize: 16,
     textAlign: "center",
     lineHeight: 24,
     marginBottom: 24,
-    color: Colors.lightText,
+    color: "#7F8C8D",
   },
   premiumFeatures: {
     width: "100%",
@@ -449,7 +449,7 @@ const styles = StyleSheet.create({
   premiumFeatureText: {
     fontSize: 14,
     flex: 1,
-    color: Colors.text,
+    color: "#2C3E50",
   },
   upgradeButton: {
     marginTop: 8,
@@ -461,6 +461,6 @@ const styles = StyleSheet.create({
   backButtonText: {
     fontSize: 14,
     textAlign: "center",
-    color: Colors.lightText,
+    color: "#7F8C8D",
   },
 });
