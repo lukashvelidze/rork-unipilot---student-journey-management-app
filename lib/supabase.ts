@@ -147,14 +147,28 @@ export async function getCountries() {
 
 /**
  * Generate a UUID v4
- * Simple implementation for React Native
+ * Safe implementation for React Native that avoids regex crashes in Hermes
  */
 function generateUUID(): string {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-    const r = Math.random() * 16 | 0;
-    const v = c === 'x' ? r : (r & 0x3 | 0x8);
-    return v.toString(16);
-  });
+  // Use a safer approach without regex to avoid Hermes crashes
+  const template = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx';
+  let uuid = '';
+
+  for (let i = 0; i < template.length; i++) {
+    const c = template[i];
+    if (c === 'x') {
+      const r = Math.random() * 16 | 0;
+      uuid += r.toString(16);
+    } else if (c === 'y') {
+      const r = Math.random() * 16 | 0;
+      const v = (r & 0x3 | 0x8);
+      uuid += v.toString(16);
+    } else {
+      uuid += c;
+    }
+  }
+
+  return uuid;
 }
 
 /**

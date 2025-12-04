@@ -12,6 +12,7 @@ import { useJourneyStore } from "@/store/journeyStore";
 import { calculateOverallProgress } from "@/utils/helpers";
 import { getRandomQuote, generalQuotes } from "@/mocks/quotes";
 import { supabase } from "@/lib/supabase";
+import { formatEnumValue } from "@/utils/safeStringOps";
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -182,7 +183,7 @@ export default function HomeScreen() {
     },
     {
       title: "Continue Journey",
-      description: `${currentStage?.stage.replace('_', ' ').toUpperCase()} stage`,
+      description: `${formatEnumValue(currentStage?.stage || '').toUpperCase()} stage`,
       icon: TrendingUp,
       color: Colors.secondary,
       onPress: () => router.push("/(tabs)/journey"),

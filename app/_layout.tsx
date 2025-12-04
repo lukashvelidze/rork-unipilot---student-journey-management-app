@@ -12,6 +12,8 @@ import { useThemeStore } from "@/store/themeStore";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { trpc, trpcClient } from "@/lib/trpc";
 import { useUserStore } from "@/store/userStore";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { IOSCrashPrevention } from "@/utils/iosCrashPrevention";
 
 // Conditionally import ElevenLabsProvider - it requires native modules and won't work in Expo Go
 let ElevenLabsProvider: any = null;
@@ -25,8 +27,30 @@ try {
 // Check if running in Expo Go
 const isExpoGo = Constants.executionEnvironment === "storeClient";
 
-// Create a client
-const queryClient = new QueryClient();
+// Initialize iOS crash prevention
+if (Platform.OS === 'ios') {
+  IOSCrashPrevention.initialize();
+}
+
+// Create a client with error handling
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 2,
+      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+      staleTime: 5 * 60 * 1000, // 5 minutes
+      onError: (error) => {
+        console.error('Query error:', error);
+      },
+    },
+    mutations: {
+      retry: 1,
+      onError: (error) => {
+        console.error('Mutation error:', error);
+      },
+    },
+  },
+});
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -129,18 +153,36 @@ function RootLayoutNav() {
   );
 
   return (
-    <SafeAreaProvider>
-      <StatusBar 
-        style={isDarkMode ? "light" : "dark"} 
-        backgroundColor={Colors.background}
-      />
-      {ElevenLabsProvider && !isExpoGo ? (
-        <ElevenLabsProvider>
-          {AppContent}
-        </ElevenLabsProvider>
-      ) : (
-        AppContent
-      )}
-    </SafeAreaProvider>
+    <ErrorBoundary
+      onError={(error, errorInfo) => {
+        console.error('Root error boundary caught error:', error);
+        console.error('Error info:', errorInfo);
+
+        // Log to analytics or crash reporting service here
+        if (Platform.OS === 'ios') {
+          IOSCrashPrevention.safeExecute(
+            async () => {
+              // Could send error to analytics service
+              console.log('iOS error logged');
+            },
+            'error-logging'
+          );
+        }
+      }}
+    >
+      <SafeAreaProvider>
+        <StatusBar
+          style={isDarkMode ? "light" : "dark"}
+          backgroundColor={Colors.background}
+        />
+        {ElevenLabsProvider && !isExpoGo ? (
+          <ElevenLabsProvider>
+            {AppContent}
+          </ElevenLabsProvider>
+        ) : (
+          AppContent
+        )}
+      </SafeAreaProvider>
+    </ErrorBoundary>
   );
 }

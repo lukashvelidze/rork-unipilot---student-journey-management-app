@@ -8,16 +8,22 @@
     "scheme": "myapp",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
-    "jsEngine": "jsc",
+    "jsEngine": "hermes",
     "splash": {
       "image": "./assets/images/splash-icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
     "ios": {
+      "newArchEnabled": true,
       "supportsTablet": true,
       "bundleIdentifier": "dev.lukashvelidze.unipilot",
       "buildNumber": "2",
+      "entitlements": {
+        "aps-environment": "production",
+        "com.apple.developer.associated-domains": [],
+        "keychain-access-groups": []
+      },
       "infoPlist": {
         "NSCameraUsageDescription": "This app uses the camera to allow you to take photos for your profile and content uploads.",
         "NSPhotoLibraryUsageDescription": "This app needs access to your photo library to let you select images for your profile and content uploads.",
@@ -27,6 +33,7 @@
       }
     },
     "android": {
+      "newArchEnabled": true,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
@@ -46,6 +53,7 @@
       ]
     ],
     "experiments": {
+      "newArchEnabled": true,
       "typedRoutes": true
     },
     "extra": {

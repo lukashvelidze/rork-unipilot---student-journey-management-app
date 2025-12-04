@@ -6,6 +6,7 @@ import Colors from "@/constants/colors";
 import Button from "@/components/Button";
 import { useUserStore } from "@/store/userStore";
 import { supabase } from "@/lib/supabase";
+import { formatEnumValue } from "@/utils/safeStringOps";
 
 export default function Step6Finish() {
   const router = useRouter();
@@ -171,7 +172,7 @@ export default function Step6Finish() {
               <View style={styles.summaryItem}>
                 <Text style={styles.summaryLabel}>Education Level:</Text>
                 <Text style={styles.summaryValue}>
-                  {user.educationBackground.level.replace('_', ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
+                  {formatEnumValue(user.educationBackground.level)}
                 </Text>
               </View>
             )}
