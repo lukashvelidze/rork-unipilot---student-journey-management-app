@@ -5,7 +5,8 @@
   "scripts": {
     "start": "bunx rork start -p eyw8dnix0nxwbj00av833 --tunnel",
     "start-web": "bunx rork start -p eyw8dnix0nxwbj00av833 --web --tunnel",
-    "start-web-dev": "DEBUG=expo* bunx rork start -p eyw8dnix0nxwbj00av833 --web --tunnel"
+    "start-web-dev": "DEBUG=expo* bunx rork start -p eyw8dnix0nxwbj00av833 --web --tunnel",
+    "postinstall": "patch-package"
   },
   "dependencies": {
     "@elevenlabs/react-native": "^0.5.2",
@@ -59,6 +60,8 @@
     "@babel/core": "^7.25.2",
     "@expo/ngrok": "^4.1.0",
     "@types/react": "~19.1.10",
+    "patch-package": "^8.0.1",
+    "postinstall-postinstall": "^2.1.0",
     "typescript": "~5.9.2"
   },
   "private": true,

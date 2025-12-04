@@ -43,7 +43,8 @@
         {
           "origin": "https://rork.com/"
         }
-      ]
+      ],
+      "./plugins/withLiveKitJSIFix.js"
     ],
     "experiments": {
       "typedRoutes": true

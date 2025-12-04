@@ -1,0 +1,428 @@
+diff --git a/node_modules/@livekit/react-native/ios/LKExceptionHandler.h b/node_modules/@livekit/react-native/ios/LKExceptionHandler.h
+new file mode 100644
+index 0000000..6739016
+--- /dev/null
++++ b/node_modules/@livekit/react-native/ios/LKExceptionHandler.h
+@@ -0,0 +1,35 @@
++//
++// LKExceptionHandler.h
++// Exception handler helper for LiveKit React Native module
++// Prevents NSException from escaping to JavaScript runtime
++//
++
++#import <Foundation/Foundation.h>
++
++NS_ASSUME_NONNULL_BEGIN
++
++@interface LKExceptionHandler : NSObject
++
++/**
++ * Safely execute a block that might throw NSException
++ * Returns the result or nil if exception occurred
++ */
+++ (id _Nullable)safeExecute:(id (^)(void))block withError:(NSError * _Nullable * _Nullable)error;
++
++/**
++ * Safely execute a block that returns void
++ * Returns YES if successful, NO if exception occurred
++ */
+++ (BOOL)safeExecuteVoid:(void (^)(void))block withError:(NSError * _Nullable * _Nullable)error;
++
++/**
++ * Safely execute an async block with promise callbacks
++ */
+++ (void)safeExecuteAsync:(void (^)(void))block
++              withResolve:(void (^)(id result))resolve
++               withReject:(void (^)(NSString *code, NSString *message, NSError *error))reject;
++
++@end
++
++NS_ASSUME_NONNULL_END
++
+diff --git a/node_modules/@livekit/react-native/ios/LKExceptionHandler.m b/node_modules/@livekit/react-native/ios/LKExceptionHandler.m
+new file mode 100644
+index 0000000..a3a07db
+--- /dev/null
++++ b/node_modules/@livekit/react-native/ios/LKExceptionHandler.m
+@@ -0,0 +1,81 @@
++//
++// LKExceptionHandler.m
++// Exception handler implementation for LiveKit React Native module
++// Prevents NSException from escaping to JavaScript runtime
++//
++
++#import "LKExceptionHandler.h"
++
++@implementation LKExceptionHandler
++
+++ (id _Nullable)safeExecute:(id (^)(void))block withError:(NSError * _Nullable * _Nullable)error {
++    @try {
++        return block();
++    }
++    @catch (NSException *exception) {
++        NSLog(@"Native module exception prevented: %@ - %@", exception.name, exception.reason);
++        NSLog(@"Stack trace: %@", exception.callStackSymbols);
++        
++        if (error) {
++            *error = [NSError errorWithDomain:@"LKExceptionHandler"
++                                         code:1
++                                     userInfo:@{
++                NSLocalizedDescriptionKey: exception.reason ?: @"Unknown exception",
++                @"ExceptionName": exception.name,
++                @"ExceptionReason": exception.reason ?: @""
++            }];
++        }
++        
++        return nil;
++    }
++}
++
+++ (BOOL)safeExecuteVoid:(void (^)(void))block withError:(NSError * _Nullable * _Nullable)error {
++    @try {
++        block();
++        return YES;
++    }
++    @catch (NSException *exception) {
++        NSLog(@"Native module exception prevented: %@ - %@", exception.name, exception.reason);
++        NSLog(@"Stack trace: %@", exception.callStackSymbols);
++        
++        if (error) {
++            *error = [NSError errorWithDomain:@"LKExceptionHandler"
++                                         code:1
++                                     userInfo:@{
++                NSLocalizedDescriptionKey: exception.reason ?: @"Unknown exception",
++                @"ExceptionName": exception.name,
++                @"ExceptionReason": exception.reason ?: @""
++            }];
++        }
++        
++        return NO;
++    }
++}
++
+++ (void)safeExecuteAsync:(void (^)(void))block
++              withResolve:(void (^)(id result))resolve
++               withReject:(void (^)(NSString *code, NSString *message, NSError *error))reject {
++    @try {
++        block();
++    }
++    @catch (NSException *exception) {
++        NSLog(@"Native module exception prevented in async method: %@ - %@", exception.name, exception.reason);
++        NSLog(@"Stack trace: %@", exception.callStackSymbols);
++        
++        NSError *error = [NSError errorWithDomain:@"LKExceptionHandler"
++                                             code:1
++                                         userInfo:@{
++            NSLocalizedDescriptionKey: exception.reason ?: @"Unknown exception",
++            @"ExceptionName": exception.name,
++            @"ExceptionReason": exception.reason ?: @""
++        }];
++        
++        if (reject) {
++            reject(@"EXCEPTION", exception.reason ?: @"Native module exception", error);
++        }
++    }
++}
++
++@end
++
+diff --git a/node_modules/@livekit/react-native/ios/LiveKitReactNativeModule.swift b/node_modules/@livekit/react-native/ios/LiveKitReactNativeModule.swift
+index b3c3ef4..306db9c 100644
+--- a/node_modules/@livekit/react-native/ios/LiveKitReactNativeModule.swift
++++ b/node_modules/@livekit/react-native/ios/LiveKitReactNativeModule.swift
+@@ -110,9 +110,10 @@ public class LivekitReactNativeModule: RCTEventEmitter {
+             let subviews = routePickerView.subviews
+             for subview in subviews {
+                 if subview.isKind(of: UIButton.self) {
+-                    let button = subview as! UIButton
+-                    button.sendActions(for: .touchUpInside)
+-                    break
++                    if let button = subview as? UIButton {
++                        button.sendActions(for: .touchUpInside)
++                        break
++                    }
+                 }
+             }
+         }
+diff --git a/node_modules/@livekit/react-native/ios/LivekitReactNativeModule+ExceptionHandling.m b/node_modules/@livekit/react-native/ios/LivekitReactNativeModule+ExceptionHandling.m
+new file mode 100644
+index 0000000..d3cc449
+--- /dev/null
++++ b/node_modules/@livekit/react-native/ios/LivekitReactNativeModule+ExceptionHandling.m
+@@ -0,0 +1,248 @@
++//
++// LivekitReactNativeModule+ExceptionHandling.m
++// Exception handling wrapper for LiveKit React Native module
++// Prevents NSException from escaping to JavaScript runtime
++//
++
++#import <React/RCTBridgeModule.h>
++#import <React/RCTEventEmitter.h>
++#import "LKExceptionHandler.h"
++#import <objc/runtime.h>
++
++// Forward declaration - Swift header will be generated
++@class LivekitReactNativeModule;
++
++// Store original implementations
++static IMP original_configureAudio = NULL;
++static IMP original_startAudioSession = NULL;
++static IMP original_stopAudioSession = NULL;
++static IMP original_showAudioRoutePicker = NULL;
++static IMP original_getAudioOutputs = NULL;
++static IMP original_selectAudioOutput = NULL;
++static IMP original_setAppleAudioConfiguration = NULL;
++static IMP original_createAudioSinkListener = NULL;
++static IMP original_deleteAudioSinkListener = NULL;
++static IMP original_createVolumeProcessor = NULL;
++static IMP original_deleteVolumeProcessor = NULL;
++static IMP original_createMultibandVolumeProcessor = NULL;
++static IMP original_deleteMultibandVolumeProcessor = NULL;
++static IMP original_setDefaultAudioTrackVolume = NULL;
++
++// Wrapper implementations with exception handling
++static void wrapped_configureAudio(id self, SEL _cmd, NSDictionary *config) {
++    [LKExceptionHandler safeExecuteVoid:^{
++        ((void (*)(id, SEL, NSDictionary *))original_configureAudio)(self, _cmd, config);
++    } withError:NULL];
++}
++
++static void wrapped_startAudioSession(id self, SEL _cmd, RCTPromiseResolveBlock resolve, RCTPromiseRejectBlock reject) {
++    @try {
++        ((void (*)(id, SEL, RCTPromiseResolveBlock, RCTPromiseRejectBlock))original_startAudioSession)(self, _cmd, resolve, reject);
++    }
++    @catch (NSException *exception) {
++        NSLog(@"Native module exception prevented in startAudioSession: %@ - %@", exception.name, exception.reason);
++        if (reject) {
++            reject(@"EXCEPTION", exception.reason ?: @"Native module exception", nil);
++        }
++    }
++}
++
++static void wrapped_stopAudioSession(id self, SEL _cmd, RCTPromiseResolveBlock resolve, RCTPromiseRejectBlock reject) {
++    @try {
++        ((void (*)(id, SEL, RCTPromiseResolveBlock, RCTPromiseRejectBlock))original_stopAudioSession)(self, _cmd, resolve, reject);
++    }
++    @catch (NSException *exception) {
++        NSLog(@"Native module exception prevented in stopAudioSession: %@ - %@", exception.name, exception.reason);
++        if (reject) {
++            reject(@"EXCEPTION", exception.reason ?: @"Native module exception", nil);
++        }
++    }
++}
++
++static void wrapped_showAudioRoutePicker(id self, SEL _cmd) {
++    [LKExceptionHandler safeExecuteVoid:^{
++        ((void (*)(id, SEL))original_showAudioRoutePicker)(self, _cmd);
++    } withError:NULL];
++}
++
++static void wrapped_getAudioOutputs(id self, SEL _cmd, RCTPromiseResolveBlock resolve, RCTPromiseRejectBlock reject) {
++    @try {
++        ((void (*)(id, SEL, RCTPromiseResolveBlock, RCTPromiseRejectBlock))original_getAudioOutputs)(self, _cmd, resolve, reject);
++    }
++    @catch (NSException *exception) {
++        NSLog(@"Native module exception prevented in getAudioOutputs: %@ - %@", exception.name, exception.reason);
++        if (reject) {
++            reject(@"EXCEPTION", exception.reason ?: @"Native module exception", nil);
++        }
++    }
++}
++
++static void wrapped_selectAudioOutput(id self, SEL _cmd, NSString *deviceId, RCTPromiseResolveBlock resolve, RCTPromiseRejectBlock reject) {
++    @try {
++        ((void (*)(id, SEL, NSString *, RCTPromiseResolveBlock, RCTPromiseRejectBlock))original_selectAudioOutput)(self, _cmd, deviceId, resolve, reject);
++    }
++    @catch (NSException *exception) {
++        NSLog(@"Native module exception prevented in selectAudioOutput: %@ - %@", exception.name, exception.reason);
++        if (reject) {
++            reject(@"EXCEPTION", exception.reason ?: @"Native module exception", nil);
++        }
++    }
++}
++
++static void wrapped_setAppleAudioConfiguration(id self, SEL _cmd, NSDictionary *configuration, RCTPromiseResolveBlock resolve, RCTPromiseRejectBlock reject) {
++    @try {
++        ((void (*)(id, SEL, NSDictionary *, RCTPromiseResolveBlock, RCTPromiseRejectBlock))original_setAppleAudioConfiguration)(self, _cmd, configuration, resolve, reject);
++    }
++    @catch (NSException *exception) {
++        NSLog(@"Native module exception prevented in setAppleAudioConfiguration: %@ - %@", exception.name, exception.reason);
++        if (reject) {
++            reject(@"EXCEPTION", exception.reason ?: @"Native module exception", nil);
++        }
++    }
++}
++
++static NSString *wrapped_createAudioSinkListener(id self, SEL _cmd, NSNumber *pcId, NSString *trackId) {
++    id result = [LKExceptionHandler safeExecute:^{
++        return ((NSString * (*)(id, SEL, NSNumber *, NSString *))original_createAudioSinkListener)(self, _cmd, pcId, trackId);
++    } withError:NULL];
++    return result ?: @"";
++}
++
++static id wrapped_deleteAudioSinkListener(id self, SEL _cmd, NSString *reactTag, NSNumber *pcId, NSString *trackId) {
++    return [LKExceptionHandler safeExecute:^{
++        return ((id (*)(id, SEL, NSString *, NSNumber *, NSString *))original_deleteAudioSinkListener)(self, _cmd, reactTag, pcId, trackId);
++    } withError:NULL];
++}
++
++static NSString *wrapped_createVolumeProcessor(id self, SEL _cmd, NSNumber *pcId, NSString *trackId) {
++    id result = [LKExceptionHandler safeExecute:^{
++        return ((NSString * (*)(id, SEL, NSNumber *, NSString *))original_createVolumeProcessor)(self, _cmd, pcId, trackId);
++    } withError:NULL];
++    return result ?: @"";
++}
++
++static id wrapped_deleteVolumeProcessor(id self, SEL _cmd, NSString *reactTag, NSNumber *pcId, NSString *trackId) {
++    return [LKExceptionHandler safeExecute:^{
++        return ((id (*)(id, SEL, NSString *, NSNumber *, NSString *))original_deleteVolumeProcessor)(self, _cmd, reactTag, pcId, trackId);
++    } withError:NULL];
++}
++
++static NSString *wrapped_createMultibandVolumeProcessor(id self, SEL _cmd, NSDictionary *options, NSNumber *pcId, NSString *trackId) {
++    id result = [LKExceptionHandler safeExecute:^{
++        return ((NSString * (*)(id, SEL, NSDictionary *, NSNumber *, NSString *))original_createMultibandVolumeProcessor)(self, _cmd, options, pcId, trackId);
++    } withError:NULL];
++    return result ?: @"";
++}
++
++static id wrapped_deleteMultibandVolumeProcessor(id self, SEL _cmd, NSString *reactTag, NSNumber *pcId, NSString *trackId) {
++    return [LKExceptionHandler safeExecute:^{
++        return ((id (*)(id, SEL, NSString *, NSNumber *, NSString *))original_deleteMultibandVolumeProcessor)(self, _cmd, reactTag, pcId, trackId);
++    } withError:NULL];
++}
++
++static id wrapped_setDefaultAudioTrackVolume(id self, SEL _cmd, NSNumber *volume) {
++    return [LKExceptionHandler safeExecute:^{
++        return ((id (*)(id, SEL, NSNumber *))original_setDefaultAudioTrackVolume)(self, _cmd, volume);
++    } withError:NULL];
++}
++
++__attribute__((constructor))
++static void setupExceptionHandling() {
++    Class cls = NSClassFromString(@"LivekitReactNativeModule");
++    if (!cls) {
++        NSLog(@"LivekitReactNativeModule class not found, exception handling not installed");
++        return;
++    }
++    
++    NSLog(@"Installing exception handling for LivekitReactNativeModule");
++    
++    // Swizzle methods
++    Method method;
++    
++    method = class_getInstanceMethod(cls, @selector(configureAudio:));
++    if (method) {
++        original_configureAudio = method_getImplementation(method);
++        method_setImplementation(method, (IMP)wrapped_configureAudio);
++    }
++    
++    method = class_getInstanceMethod(cls, @selector(startAudioSession:withRejecter:));
++    if (method) {
++        original_startAudioSession = method_getImplementation(method);
++        method_setImplementation(method, (IMP)wrapped_startAudioSession);
++    }
++    
++    method = class_getInstanceMethod(cls, @selector(stopAudioSession:withRejecter:));
++    if (method) {
++        original_stopAudioSession = method_getImplementation(method);
++        method_setImplementation(method, (IMP)wrapped_stopAudioSession);
++    }
++    
++    method = class_getInstanceMethod(cls, @selector(showAudioRoutePicker));
++    if (method) {
++        original_showAudioRoutePicker = method_getImplementation(method);
++        method_setImplementation(method, (IMP)wrapped_showAudioRoutePicker);
++    }
++    
++    method = class_getInstanceMethod(cls, @selector(getAudioOutputsWithResolver:withRejecter:));
++    if (method) {
++        original_getAudioOutputs = method_getImplementation(method);
++        method_setImplementation(method, (IMP)wrapped_getAudioOutputs);
++    }
++    
++    method = class_getInstanceMethod(cls, @selector(selectAudioOutput:withResolver:withRejecter:));
++    if (method) {
++        original_selectAudioOutput = method_getImplementation(method);
++        method_setImplementation(method, (IMP)wrapped_selectAudioOutput);
++    }
++    
++    method = class_getInstanceMethod(cls, @selector(setAppleAudioConfiguration:withResolver:withRejecter:));
++    if (method) {
++        original_setAppleAudioConfiguration = method_getImplementation(method);
++        method_setImplementation(method, (IMP)wrapped_setAppleAudioConfiguration);
++    }
++    
++    method = class_getInstanceMethod(cls, @selector(createAudioSinkListener:trackId:));
++    if (method) {
++        original_createAudioSinkListener = method_getImplementation(method);
++        method_setImplementation(method, (IMP)wrapped_createAudioSinkListener);
++    }
++    
++    method = class_getInstanceMethod(cls, @selector(deleteAudioSinkListener:pcId:trackId:));
++    if (method) {
++        original_deleteAudioSinkListener = method_getImplementation(method);
++        method_setImplementation(method, (IMP)wrapped_deleteAudioSinkListener);
++    }
++    
++    method = class_getInstanceMethod(cls, @selector(createVolumeProcessor:trackId:));
++    if (method) {
++        original_createVolumeProcessor = method_getImplementation(method);
++        method_setImplementation(method, (IMP)wrapped_createVolumeProcessor);
++    }
++    
++    method = class_getInstanceMethod(cls, @selector(deleteVolumeProcessor:pcId:trackId:));
++    if (method) {
++        original_deleteVolumeProcessor = method_getImplementation(method);
++        method_setImplementation(method, (IMP)wrapped_deleteVolumeProcessor);
++    }
++    
++    method = class_getInstanceMethod(cls, @selector(createMultibandVolumeProcessor:pcId:trackId:));
++    if (method) {
++        original_createMultibandVolumeProcessor = method_getImplementation(method);
++        method_setImplementation(method, (IMP)wrapped_createMultibandVolumeProcessor);
++    }
++    
++    method = class_getInstanceMethod(cls, @selector(deleteMultibandVolumeProcessor:pcId:trackId:));
++    if (method) {
++        original_deleteMultibandVolumeProcessor = method_getImplementation(method);
++        method_setImplementation(method, (IMP)wrapped_deleteMultibandVolumeProcessor);
++    }
++    
++    method = class_getInstanceMethod(cls, @selector(setDefaultAudioTrackVolume:));
++    if (method) {
++        original_setDefaultAudioTrackVolume = method_getImplementation(method);
++        method_setImplementation(method, (IMP)wrapped_setDefaultAudioTrackVolume);
++    }
++    
++    NSLog(@"Exception handling installed for LivekitReactNativeModule");
++}
++
+diff --git a/node_modules/@livekit/react-native/ios/audio/AudioRendererManager.swift b/node_modules/@livekit/react-native/ios/audio/AudioRendererManager.swift
+index fc7bab4..24c2c15 100644
+--- a/node_modules/@livekit/react-native/ios/audio/AudioRendererManager.swift
++++ b/node_modules/@livekit/react-native/ios/audio/AudioRendererManager.swift
+@@ -28,7 +28,10 @@ public class AudioRendererManager: NSObject {
+     
+     @objc
+     public func attach(renderer: RTCAudioRenderer, pcId: NSNumber, trackId: String) {
+-        let webrtcModule = self.bridge.module(for: WebRTCModule.self) as! WebRTCModule
++        guard let webrtcModule = self.bridge.module(for: WebRTCModule.self) as? WebRTCModule else {
++            lklog("couldn't find WebRTCModule")
++            return
++        }
+         guard let track = webrtcModule.track(forId: trackId, pcId: pcId) as? RTCAudioTrack
+         else {
+             lklog("couldn't find audio track: pcId: \(pcId), trackId: \(trackId)")
+@@ -55,7 +58,10 @@ public class AudioRendererManager: NSObject {
+     
+     @objc
+     public func detach(renderer: RTCAudioRenderer, pcId: NSNumber, trackId: String) {
+-        let webrtcModule = self.bridge.module(for: WebRTCModule.self) as! WebRTCModule
++        guard let webrtcModule = self.bridge.module(for: WebRTCModule.self) as? WebRTCModule else {
++            lklog("couldn't find WebRTCModule")
++            return
++        }
+         guard let track = webrtcModule.track(forId: trackId, pcId: pcId) as? RTCAudioTrack
+         else {
+             lklog("couldn't find audio track: pcId: \(pcId), trackId: \(trackId)")
