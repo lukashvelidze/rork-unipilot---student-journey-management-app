@@ -91,7 +91,7 @@ export default function SignInScreen() {
           router.replace("/(tabs)");
         } else {
           // User exists but hasn't completed onboarding
-          router.replace("/onboarding/index");
+          router.replace("/onboarding");
         }
       }
     } catch (error: any) {

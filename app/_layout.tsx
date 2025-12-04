@@ -13,7 +13,18 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { trpc, trpcClient } from "@/lib/trpc";
 import { useUserStore } from "@/store/userStore";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { IOSCrashPrevention } from "@/utils/iosCrashPrevention";
+
+// Import iOS crash prevention at module level (synchronous)
+// Wrapped in try/catch for Expo Go compatibility
+let IOSCrashPrevention: any = null;
+try {
+  if (Platform.OS === 'ios') {
+    const iosCrashModule = require('@/utils/iosCrashPrevention');
+    IOSCrashPrevention = iosCrashModule.IOSCrashPrevention;
+  }
+} catch (error) {
+  console.log("iOS crash prevention not available (likely Expo Go or web)");
+}
 
 // Conditionally import ElevenLabsProvider - it requires native modules and won't work in Expo Go
 let ElevenLabsProvider: any = null;
@@ -27,9 +38,14 @@ try {
 // Check if running in Expo Go
 const isExpoGo = Constants.executionEnvironment === "storeClient";
 
-// Initialize iOS crash prevention
-if (Platform.OS === 'ios') {
-  IOSCrashPrevention.initialize();
+// Initialize iOS crash prevention IMMEDIATELY (synchronous, before any React rendering)
+if (Platform.OS === 'ios' && !isExpoGo && IOSCrashPrevention) {
+  try {
+    IOSCrashPrevention.initialize();
+    console.log('✅ iOS crash prevention initialized synchronously');
+  } catch (error) {
+    console.error("❌ Failed to initialize iOS crash prevention:", error);
+  }
 }
 
 // Create a client with error handling
@@ -83,7 +99,7 @@ function RootLayoutNav() {
   const Colors = useColors();
   const { isDarkMode } = useThemeStore();
   const initializeUser = useUserStore((state) => state.initializeUser);
-  
+
   useEffect(() => {
     // Initialize user when app starts
     if (initializeUser) {
@@ -159,15 +175,7 @@ function RootLayoutNav() {
         console.error('Error info:', errorInfo);
 
         // Log to analytics or crash reporting service here
-        if (Platform.OS === 'ios') {
-          IOSCrashPrevention.safeExecute(
-            async () => {
-              // Could send error to analytics service
-              console.log('iOS error logged');
-            },
-            'error-logging'
-          );
-        }
+        console.log('Error logged for analytics');
       }}
     >
       <SafeAreaProvider>

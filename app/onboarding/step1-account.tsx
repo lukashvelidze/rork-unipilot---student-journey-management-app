@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { StyleSheet, View, Text, ScrollView, Alert, TouchableOpacity, KeyboardAvoidingView, Platform } from "react-native";
+import React, { useState, useEffect, useRef } from "react";
+import { StyleSheet, View, Text, ScrollView, Alert, TouchableOpacity, KeyboardAvoidingView, Platform, InteractionManager } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { ChevronRight } from "lucide-react-native";
@@ -13,7 +13,16 @@ export default function Step1Account() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { user, setUser, updateOnboardingStep } = useUserStore();
-  
+
+  // Cleanup tracking to prevent navigation after unmount
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -47,18 +56,34 @@ export default function Step1Account() {
   const checkAuth = async () => {
     try {
       const { data: { user: authUser } } = await supabase.auth.getUser();
+
+      // Check if component unmounted
+      if (!isMountedRef.current) {
+        console.log('Component unmounted during checkAuth');
+        return;
+      }
+
       if (authUser) {
         // User is already authenticated, check if they need to continue onboarding
         // Use InteractionManager to prevent blocking
-        const { InteractionManager } = require("react-native");
         InteractionManager.runAfterInteractions(() => {
+          if (!isMountedRef.current) {
+            console.log('Component unmounted before navigation');
+            return;
+          }
+
           setTimeout(() => {
-            router.replace("/onboarding/index");
+            if (isMountedRef.current) {
+              router.replace("/onboarding");
+            }
           }, 200);
         });
       }
     } catch (error) {
-      // Not authenticated, continue with sign up
+      // Log errors instead of silently suppressing
+      console.error('Error checking auth status:', error);
+      // Still continue with sign up flow on error
+      // User can retry by submitting the form
     }
   };
 
@@ -170,7 +195,9 @@ export default function Step1Account() {
         });
 
         // Navigate to next step
-        router.push("/onboarding/step2-home-country");
+        if (isMountedRef.current) {
+          router.push("/onboarding/step2-home-country");
+        }
       }
     } catch (error: any) {
       console.error("Signup error:", error);
@@ -225,7 +252,9 @@ export default function Step1Account() {
         });
 
         // Navigate to onboarding index to determine next step
-        router.replace("/onboarding");
+        if (isMountedRef.current) {
+          router.replace("/onboarding");
+        }
       }
     } catch (error: any) {
       console.error("Sign in error:", error);

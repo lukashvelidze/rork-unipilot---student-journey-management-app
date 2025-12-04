@@ -20,7 +20,7 @@ export default function IndexScreen() {
       const currentUser = useUserStore.getState().user;
       if (!currentUser || !currentUser.onboardingCompleted) {
         console.log("Redirecting to onboarding - user:", currentUser);
-        router.replace("/onboarding/index");
+        router.replace("/onboarding");
       } else {
         console.log("Redirecting to tabs - user:", currentUser.name);
         router.replace("/(tabs)");

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useFocusEffect } from "expo-router";
@@ -11,8 +11,31 @@ import { useUserStore } from "@/store/userStore";
 import { useJourneyStore } from "@/store/journeyStore";
 import { calculateOverallProgress } from "@/utils/helpers";
 import { getRandomQuote, generalQuotes } from "@/mocks/quotes";
-import { supabase } from "@/lib/supabase";
+import { supabase, getCountries } from "@/lib/supabase";
 import { formatEnumValue } from "@/utils/safeStringOps";
+
+// Timeout wrapper for Supabase calls
+const withTimeout = <T,>(
+  promise: Promise<T>,
+  timeoutMs: number = 10000,
+  errorMessage: string = 'Operation timed out'
+): Promise<T> => {
+  return new Promise((resolve, reject) => {
+    const timeoutId = setTimeout(() => {
+      reject(new Error(errorMessage));
+    }, timeoutMs);
+
+    promise
+      .then((result) => {
+        clearTimeout(timeoutId);
+        resolve(result);
+      })
+      .catch((error) => {
+        clearTimeout(timeoutId);
+        reject(error);
+      });
+  });
+};
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -21,31 +44,81 @@ export default function HomeScreen() {
   const { journeyProgress, setJourneyProgress } = useJourneyStore();
   const [hasActiveSubscription, setHasActiveSubscription] = useState(false);
   const [isCheckingSubscription, setIsCheckingSubscription] = useState(true);
-  
+
+  // Cleanup tracking
+  const isMountedRef = useRef(true);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+      // Abort any ongoing requests
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
+
   // Check subscription status
   const checkSubscriptionStatus = useCallback(async () => {
+    // Create new abort controller for this request
+    abortControllerRef.current = new AbortController();
+
     try {
-      const { data: { user: authUser } } = await supabase.auth.getUser();
-      if (!authUser) {
-        setHasActiveSubscription(false);
-        setIsCheckingSubscription(false);
+      const getUserPromise = supabase.auth.getUser();
+      const { data: { user: authUser } } = await withTimeout(
+        getUserPromise,
+        10000,
+        'Failed to get user - timeout'
+      );
+
+      // Check if component unmounted during async operation
+      if (!isMountedRef.current) {
+        console.log('Component unmounted, skipping subscription update');
         return;
       }
 
-      const { data: profile } = await supabase
+      if (!authUser) {
+        if (isMountedRef.current) {
+          setHasActiveSubscription(false);
+          setIsCheckingSubscription(false);
+        }
+        return;
+      }
+
+      const getProfilePromise = supabase
         .from("profiles")
         .select("subscription_tier")
         .eq("id", authUser.id)
         .single();
 
+      const { data: profile } = await withTimeout(
+        getProfilePromise,
+        10000,
+        'Failed to fetch profile - timeout'
+      );
+
+      // Check again after second async operation
+      if (!isMountedRef.current) {
+        console.log('Component unmounted, skipping subscription update');
+        return;
+      }
+
       const tier = profile?.subscription_tier === "premium" ? "pro" : profile?.subscription_tier;
       const isSubscribed = tier && tier !== "free" && ["basic", "standard", "pro", "premium"].includes(tier);
-      setHasActiveSubscription(!!isSubscribed);
+
+      if (isMountedRef.current) {
+        setHasActiveSubscription(!!isSubscribed);
+      }
     } catch (error) {
       console.error("Error checking subscription:", error);
-      setHasActiveSubscription(false);
+      if (isMountedRef.current) {
+        setHasActiveSubscription(false);
+      }
     } finally {
-      setIsCheckingSubscription(false);
+      if (isMountedRef.current) {
+        setIsCheckingSubscription(false);
+      }
     }
   }, []);
 
@@ -64,29 +137,50 @@ export default function HomeScreen() {
   useEffect(() => {
     async function fetchUserData() {
       try {
-        const { data: { user: authUser } } = await supabase.auth.getUser();
+        const getUserPromise = supabase.auth.getUser();
+        const { data: { user: authUser } } = await withTimeout(
+          getUserPromise,
+          10000,
+          'Failed to get user - timeout'
+        );
+
+        if (!isMountedRef.current) return;
         if (!authUser) return;
 
         // Fetch profile from database
-        const { data: profile } = await supabase
+        const getProfilePromise = supabase
           .from("profiles")
           .select("*")
           .eq("id", authUser.id)
           .single();
 
+        const { data: profile } = await withTimeout(
+          getProfilePromise,
+          10000,
+          'Failed to fetch profile - timeout'
+        );
+
+        if (!isMountedRef.current) return;
+
         if (profile) {
-          // Fetch countries
-          const { getCountries } = require("@/lib/supabase");
-          const countries = await getCountries();
-          
-          const homeCountry = profile.country_origin 
+          // Fetch countries - using top-level import
+          const getCountriesPromise = getCountries();
+          const countries = await withTimeout(
+            getCountriesPromise,
+            10000,
+            'Failed to fetch countries - timeout'
+          );
+
+          if (!isMountedRef.current) return;
+
+          const homeCountry = profile.country_origin
             ? (countries.origin.find((c: any) => c.code === profile.country_origin) || {
                 code: profile.country_origin,
                 name: profile.country_origin,
                 flag: "",
               })
             : null;
-            
+
           const destinationCountry = profile.destination_country
             ? (countries.destination.find((c: any) => c.code === profile.destination_country) || {
                 code: profile.destination_country,
@@ -94,6 +188,9 @@ export default function HomeScreen() {
                 flag: "",
               })
             : null;
+
+          // Final check before state update
+          if (!isMountedRef.current) return;
 
           // Update user store with database data
           setUser({
@@ -114,25 +211,26 @@ export default function HomeScreen() {
         }
       } catch (error) {
         console.error("Error fetching user data:", error);
+        // Don't update state on error if unmounted
       }
     }
 
-    if (user) {
+    if (user && isMountedRef.current) {
       fetchUserData();
     }
-  }, []);
+  }, []); // Empty dependency array - only run once on mount
 
   // Redirect to onboarding if user is not set up
   useEffect(() => {
     if (!user) {
       console.log("No user found, redirecting to onboarding");
-      router.replace("/onboarding/index");
+      router.replace("/onboarding");
       return;
     }
-    
+
     if (!user.onboardingCompleted) {
       console.log("Onboarding not completed, redirecting");
-      router.replace("/onboarding/index");
+      router.replace("/onboarding");
       return;
     }
   }, [user, router]);

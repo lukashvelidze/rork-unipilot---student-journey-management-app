@@ -8,7 +8,9 @@ import {
   ActivityIndicator,
   Platform,
   PermissionsAndroid,
+  Linking,
 } from "react-native";
+import { Audio } from 'expo-av';
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter, Stack } from "expo-router";
 import { Mic, MicOff, PhoneOff, ArrowLeft, Volume2, VolumeX, AlertCircle } from "lucide-react-native";
@@ -168,38 +170,81 @@ export default function InterviewSimulatorScreen() {
           }
         );
         setHasPermission(granted === PermissionsAndroid.RESULTS.GRANTED);
+        return granted === PermissionsAndroid.RESULTS.GRANTED;
       } else {
-        // iOS permissions are handled automatically when starting the session
-        setHasPermission(true);
+        // iOS: Use expo-av to request microphone permission
+        const { status, canAskAgain, granted } = await Audio.requestPermissionsAsync();
+
+        if (status === 'granted') {
+          setHasPermission(true);
+          return true;
+        } else {
+          setHasPermission(false);
+
+          if (!canAskAgain) {
+            Alert.alert(
+              "Microphone Permission Required",
+              "Please enable microphone access in Settings > UniPilot > Microphone to use the Interview Simulator.",
+              [
+                { text: "Cancel", style: "cancel" },
+                { text: "Open Settings", onPress: () => {
+                  Linking.openURL('app-settings:');
+                }}
+              ]
+            );
+          }
+          return false;
+        }
       }
     } catch (error) {
       console.error("Error requesting microphone permission:", error);
       Alert.alert("Error", "Failed to request microphone permission.");
+      setHasPermission(false);
+      return false;
     } finally {
       setIsRequestingPermission(false);
     }
   };
 
   useEffect(() => {
-    // Request permission on mount
-    if (Platform.OS === "android") {
-      requestMicrophonePermission();
-    } else {
-      setHasPermission(true);
-    }
+    // Check permission status on mount
+    const checkPermission = async () => {
+      try {
+        if (Platform.OS === "android") {
+          const granted = await PermissionsAndroid.check(
+            PermissionsAndroid.PERMISSIONS.RECORD_AUDIO
+          );
+          setHasPermission(granted);
+          if (!granted) {
+            await requestMicrophonePermission();
+          }
+        } else {
+          // iOS: Check current permission status
+          const { status } = await Audio.getPermissionsAsync();
+
+          if (status === 'granted') {
+            setHasPermission(true);
+          } else {
+            // Request permission if not granted
+            await requestMicrophonePermission();
+          }
+        }
+      } catch (error) {
+        console.error("Error checking microphone permission:", error);
+        setHasPermission(false);
+      }
+    };
+
+    checkPermission();
   }, []);
 
   const startConversation = async () => {
-    if (!hasPermission && Platform.OS === "android") {
-      Alert.alert(
-        "Microphone Permission Required",
-        "Please grant microphone permission to start the interview simulator.",
-        [
-          { text: "Cancel", style: "cancel" },
-          { text: "Grant Permission", onPress: requestMicrophonePermission },
-        ]
-      );
-      return;
+    // Verify permission before starting
+    if (!hasPermission) {
+      const granted = await requestMicrophonePermission();
+      if (!granted) {
+        return; // Don't start if permission denied
+      }
     }
 
     if (AGENT_ID === "your-agent-id-here") {

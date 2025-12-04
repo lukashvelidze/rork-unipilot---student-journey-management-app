@@ -19,10 +19,16 @@ export class IOSCrashPrevention {
     }
 
     console.log('🍎 Setting up iOS crash prevention...');
-    
+
+    // Check if ErrorUtils has the required methods
+    if (!ErrorUtils || typeof ErrorUtils.getGlobalHandler !== 'function' || typeof ErrorUtils.setGlobalHandler !== 'function') {
+      console.warn('⚠️ ErrorUtils methods not available, skipping iOS crash prevention setup');
+      return;
+    }
+
     // Store original error handler
-    this.originalHandler = ErrorUtils.getGlobalHandler();
-    
+    this.originalHandler = ErrorUtils.getGlobalHandler() || null;
+
     // Set up our crash prevention handler
     ErrorUtils.setGlobalHandler((error, isFatal) => {
       this.handleError(error, isFatal);
@@ -30,7 +36,7 @@ export class IOSCrashPrevention {
 
     // Set up unhandled promise rejection handler
     this.setupPromiseRejectionHandler();
-    
+
     this.isSetup = true;
     console.log('✅ iOS crash prevention initialized');
   }
@@ -214,9 +220,4 @@ export class IOSCrashPrevention {
       throw error;
     }
   }
-}
-
-// Auto-initialize on iOS
-if (Platform.OS === 'ios') {
-  IOSCrashPrevention.initialize();
 }
