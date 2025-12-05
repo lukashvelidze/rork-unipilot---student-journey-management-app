@@ -24,10 +24,25 @@ export const flattedStorage: StateStorage = {
       const value = await AsyncStorage.getItem(key);
       if (!value) return null;
 
+      // Detect and handle legacy JSON data (from old JSON.stringify approach)
+      // Zustand persist stores data as: {"state": {...}, "version": 3}
+      // Flatted converts this entire object to its array format
+      // Legacy JSON.stringify would produce: {"state":{...},"version":3}
+      // Flatted.stringify produces: ["object structure with special markers"]
+      const trimmedValue = value.trim();
+
+      // Quick check: if it starts with '{' and contains '"state":', it's likely legacy JSON
+      if (trimmedValue.startsWith('{') && trimmedValue.includes('"state":')) {
+        console.warn(`⚠️  ${key}: detected legacy JSON format (contains "state" key), clearing...`);
+        await AsyncStorage.removeItem(key);
+        return null; // Zustand will use default state from store definition
+      }
+
       try {
         const parsed = parse(value);
         return parsed;
       } catch (parseError) {
+        // If parse fails, it's corrupted data (possibly mixed format or incomplete write)
         console.error(`❌ Failed to parse ${key}, clearing and using defaults:`, parseError);
         // Critical: Remove corrupted data immediately to prevent future crashes
         await AsyncStorage.removeItem(key);
@@ -72,15 +87,24 @@ export async function preRehydrationCleanup() {
     try {
       const rawData = await AsyncStorage.getItem(key);
       if (rawData) {
-        try {
-          // Attempt to parse with flatted - if this fails, data is corrupted
-          parse(rawData);
-          console.log(`✅ ${key}: valid data`);
-        } catch (parseError) {
-          // Corrupted data detected - clear immediately
-          console.warn(`⚠️  ${key}: corrupted data detected, clearing...`, parseError);
+        const trimmedData = rawData.trim();
+
+        // Check for legacy JSON format first
+        if (trimmedData.startsWith('{') && trimmedData.includes('"state":')) {
+          console.warn(`⚠️  ${key}: legacy JSON format detected, clearing...`);
           await AsyncStorage.removeItem(key);
           console.log(`✅ ${key}: cleared successfully`);
+        } else {
+          try {
+            // Attempt to parse with flatted - if this fails, data is corrupted
+            parse(rawData);
+            console.log(`✅ ${key}: valid flatted data`);
+          } catch (parseError) {
+            // Corrupted data detected - clear immediately
+            console.warn(`⚠️  ${key}: corrupted data detected, clearing...`);
+            await AsyncStorage.removeItem(key);
+            console.log(`✅ ${key}: cleared successfully`);
+          }
         }
       } else {
         console.log(`ℹ️  ${key}: no data (fresh install or already cleared)`);
