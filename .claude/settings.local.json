@@ -4,7 +4,9 @@
       "Bash(npm install)",
       "Bash(npx expo install:*)",
       "Bash(npx expo start --clear)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npm install:*)"
     ],
     "deny": [],
     "ask": []

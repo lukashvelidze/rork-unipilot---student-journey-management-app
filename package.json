@@ -40,6 +40,7 @@
     "expo-symbols": "~1.0.7",
     "expo-system-ui": "^6.0.7",
     "expo-web-browser": "~15.0.8",
+    "flatted": "^3.3.3",
     "hono": "^4.8.2",
     "livekit-client": "^2.16.0",
     "lottie-react-native": "~7.3.1",

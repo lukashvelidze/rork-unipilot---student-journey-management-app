@@ -1,7 +1,7 @@
 import { create } from "zustand";
-import { persist, createJSONStorage } from "zustand/middleware";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { persist } from "zustand/middleware";
 import { JourneyProgress, JourneyStage, Memory, MemoryMood } from "@/types/user";
+import { flattedStorage } from "@/utils/hermesStorage";
 
 interface Milestone {
   type: "stage_complete" | "progress_milestone" | "confetti";
@@ -336,7 +336,18 @@ export const useJourneyStore = create<JourneyState>()(
     }),
     {
       name: "journey-storage",
-      storage: createJSONStorage(() => AsyncStorage),
+      storage: flattedStorage,
+      version: 3, // Bump to clear old incorrectly serialized data
+      onRehydrateStorage: () => (state, error) => {
+        if (error) {
+          console.error('❌ Journey store rehydration error, using defaults:', error);
+          // State will fallback to default (empty journeyProgress array)
+        } else if (state) {
+          console.log('✅ Journey store rehydrated successfully');
+        } else {
+          console.log('ℹ️  Journey store: no persisted data, using defaults');
+        }
+      },
     }
   )
 );

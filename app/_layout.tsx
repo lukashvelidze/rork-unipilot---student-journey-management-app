@@ -13,6 +13,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { trpc, trpcClient } from "@/lib/trpc";
 import { useUserStore } from "@/store/userStore";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { preRehydrationCleanup } from "@/utils/hermesStorage";
 
 // Import iOS crash prevention at module level (synchronous)
 // Wrapped in try/catch for Expo Go compatibility
@@ -47,6 +48,26 @@ if (Platform.OS === 'ios' && !isExpoGo && IOSCrashPrevention) {
     console.error("❌ Failed to initialize iOS crash prevention:", error);
   }
 }
+
+// Initialize storage cleanup IMMEDIATELY (before any Zustand rehydration)
+// This runs asynchronously in the background but starts before React renders
+let cleanupAttempted = false;
+async function ensureCleanStorage() {
+  if (cleanupAttempted) return;
+  cleanupAttempted = true;
+
+  try {
+    await preRehydrationCleanup();
+    console.log('✅ Storage cleanup completed before rehydration');
+  } catch (error) {
+    console.error('❌ Failed to pre-cleanup storage:', error);
+    // Continue anyway - Layer 2 (enhanced getItem) will handle corrupted data
+  }
+}
+
+// Call immediately on module load (don't await - let it run in background)
+// Zustand stores are created lazily, so this runs before they try to rehydrate
+ensureCleanStorage().catch(e => console.error('❌ Cleanup error:', e));
 
 // Create a client with error handling
 const queryClient = new QueryClient({

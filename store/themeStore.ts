@@ -1,6 +1,6 @@
 import { create } from "zustand";
-import { persist, createJSONStorage } from "zustand/middleware";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { persist } from "zustand/middleware";
+import { flattedStorage } from "@/utils/hermesStorage";
 
 interface ThemeState {
   isDarkMode: boolean;
@@ -21,7 +21,17 @@ export const useThemeStore = create<ThemeState>()(
     }),
     {
       name: "theme-storage",
-      storage: createJSONStorage(() => AsyncStorage),
+      storage: flattedStorage,
+      version: 3, // Bump to clear old incorrectly serialized data
+      onRehydrateStorage: () => (state, error) => {
+        if (error) {
+          console.error('❌ Theme store rehydration error, using defaults:', error);
+        } else if (state) {
+          console.log('✅ Theme store rehydrated successfully');
+        } else {
+          console.log('ℹ️  Theme store: no persisted data, using defaults');
+        }
+      },
     }
   )
 );

@@ -213,12 +213,19 @@ export default function JourneyScreen() {
         const titleLower = checklist.title.toLowerCase();
         let stage: JourneyStage = "pre_departure"; // default
 
-        // Find matching stage
-        for (const [key, mappedStage] of Object.entries(stageMapping)) {
-          if (titleLower.includes(key)) {
-            stage = mappedStage;
-            break;
+        // Find matching stage - use array iteration instead of Object.entries to avoid Hermes enumeration bugs
+        try {
+          const mappingKeys = Object.keys(stageMapping);
+          for (let i = 0; i < mappingKeys.length; i++) {
+            const key = mappingKeys[i];
+            if (titleLower.includes(key)) {
+              stage = stageMapping[key];
+              break;
+            }
           }
+        } catch (error) {
+          console.error("Error mapping stage:", error);
+          // Continue with default stage
         }
 
         // If no match, try to infer from title
@@ -278,7 +285,10 @@ export default function JourneyScreen() {
       // Always set progress (even if empty) to clear any old hardcoded data
       setJourneyProgress(progress);
     } catch (error) {
-      console.error("Error fetching journey progress:", error);
+      console.error("❌ Critical error in fetchJourneyProgress:", error);
+      // Don't crash - use safe default
+      setJourneyProgress([]);
+      // Error is logged but app continues to work
     }
   };
   

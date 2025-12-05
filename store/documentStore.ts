@@ -1,7 +1,7 @@
 import { create } from "zustand";
-import { persist, createJSONStorage } from "zustand/middleware";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { persist } from "zustand/middleware";
 import { Document } from "@/types/user";
+import { flattedStorage } from "@/utils/hermesStorage";
 
 interface DocumentState {
   documents: Document[];
@@ -55,7 +55,17 @@ export const useDocumentStore = create<DocumentState>()(
     }),
     {
       name: "document-storage",
-      storage: createJSONStorage(() => AsyncStorage),
+      storage: flattedStorage,
+      version: 3, // Bump to clear old incorrectly serialized data
+      onRehydrateStorage: () => (state, error) => {
+        if (error) {
+          console.error('❌ Document store rehydration error, using defaults:', error);
+        } else if (state) {
+          console.log('✅ Document store rehydrated successfully');
+        } else {
+          console.log('ℹ️  Document store: no persisted data, using defaults');
+        }
+      },
     }
   )
 );

@@ -1,7 +1,7 @@
 import { create } from "zustand";
-import { persist, createJSONStorage } from "zustand/middleware";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { persist } from "zustand/middleware";
 import { UserProfile, Country, EducationLevel } from "@/types/user";
+import { flattedStorage } from "@/utils/hermesStorage";
 
 interface UserState {
   user: UserProfile | null;
@@ -160,7 +160,17 @@ export const useUserStore = create<UserState>()(
     }),
     {
       name: "user-storage",
-      storage: createJSONStorage(() => AsyncStorage),
+      storage: flattedStorage,
+      version: 3, // Bump to clear old incorrectly serialized data
+      onRehydrateStorage: () => (state, error) => {
+        if (error) {
+          console.error('❌ User store rehydration error, using defaults:', error);
+        } else if (state) {
+          console.log('✅ User store rehydrated successfully');
+        } else {
+          console.log('ℹ️  User store: no persisted data, using defaults');
+        }
+      },
     }
   )
 );
