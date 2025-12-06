@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert, Linking, ActivityIndicator } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter, Stack, useFocusEffect } from "expo-router";
-import { Crown, Check, Zap, Star, ArrowLeft, Mic, MessageSquare, BookOpen } from "lucide-react-native";
+import { Crown, Check, Zap, Star, ArrowLeft, Mic, MessageSquare, BookOpen, Lock } from "lucide-react-native";
 import { useColors } from "@/hooks/useColors";
 import Button from "@/components/Button";
 import Card from "@/components/Card";
@@ -175,6 +175,9 @@ export default function PremiumScreen() {
   // Check if user has an active subscription (basic, standard, or pro/premium)
   const hasActiveSubscription = currentTier && ["basic", "standard", "pro", "premium"].includes(currentTier);
 
+  // Check if user has Pro tier access
+  const hasProAccess = currentTier === "pro" || currentTier === "premium";
+
   // Premium resources that will be linked to checklist items later
   const premiumResources = [
     {
@@ -184,6 +187,7 @@ export default function PremiumScreen() {
       icon: Mic,
       comingSoon: false,
       route: "/premium/interview-simulator",
+      proOnly: true,
     },
     {
       id: "ai-chats",
@@ -191,6 +195,7 @@ export default function PremiumScreen() {
       description: "Get personalized guidance and answers from our AI assistant",
       icon: MessageSquare,
       comingSoon: true,
+      proOnly: false,
     },
     {
       id: "webinars-articles",
@@ -198,6 +203,7 @@ export default function PremiumScreen() {
       description: "Access detailed guides, webinars, and articles for each checklist item",
       icon: BookOpen,
       comingSoon: true,
+      proOnly: false,
     },
   ];
 
@@ -302,7 +308,15 @@ export default function PremiumScreen() {
                         </Text>
                       </View>
                     )}
-                    {!resource.comingSoon && (
+                    {!resource.comingSoon && resource.proOnly && !hasProAccess && (
+                      <View style={[styles.proOnlyBadge, { backgroundColor: Colors.warning + "20" }]}>
+                        <Lock size={12} color={Colors.warning} />
+                        <Text style={[styles.proOnlyText, { color: Colors.warning }]}>
+                          Pro
+                        </Text>
+                      </View>
+                    )}
+                    {!resource.comingSoon && (!resource.proOnly || hasProAccess) && (
                       <View style={[styles.availableBadge, { backgroundColor: Colors.success + "20" }]}>
                         <Text style={[styles.availableText, { color: Colors.success }]}>
                           Available
@@ -627,6 +641,18 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   availableText: {
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  proOnlyBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    gap: 4,
+  },
+  proOnlyText: {
     fontSize: 12,
     fontWeight: "600",
   },

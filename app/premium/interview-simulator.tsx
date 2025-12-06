@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   StyleSheet,
   View,
@@ -9,14 +9,17 @@ import {
   Platform,
   PermissionsAndroid,
   Linking,
+  ScrollView,
 } from "react-native";
 import { Audio } from 'expo-av';
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useRouter, Stack } from "expo-router";
-import { Mic, MicOff, PhoneOff, ArrowLeft, Volume2, VolumeX, AlertCircle } from "lucide-react-native";
+import { Stack, useRouter } from "expo-router";
+import { Mic, MicOff, PhoneOff, Volume2, AlertCircle, Lock, Crown, ArrowRight } from "lucide-react-native";
 import { useColors } from "@/hooks/useColors";
 import Card from "@/components/Card";
+import Button from "@/components/Button";
 import { useUserStore } from "@/store/userStore";
+import { supabase } from "@/lib/supabase";
 import Constants from "expo-constants";
 
 // Conditionally import ElevenLabs hooks - they require native modules
@@ -33,118 +36,48 @@ try {
 // Check if running in Expo Go
 const isExpoGo = Constants.executionEnvironment === "storeClient";
 
-export default function InterviewSimulatorScreen() {
+// Separate component for the actual interview functionality
+// This ensures hooks are called consistently
+function InterviewContent() {
   const Colors = useColors();
-  const insets = useSafeAreaInsets();
-  const router = useRouter();
   const { user } = useUserStore();
+  const scrollViewRef = useRef<ScrollView>(null);
 
-  const [isConnected, setIsConnected] = useState(false);
+  const [isConnecting, setIsConnecting] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [hasPermission, setHasPermission] = useState(false);
   const [isRequestingPermission, setIsRequestingPermission] = useState(false);
   const [messages, setMessages] = useState<Array<{ id: string; text: string; type: "user" | "agent" | "system" }>>([]);
+  const [sessionActive, setSessionActive] = useState(false);
+  const [connectionError, setConnectionError] = useState<string | null>(null);
 
   // Get agent ID from environment variable or use placeholder
-  // TODO: Replace with your actual ElevenLabs agent ID
-  const AGENT_ID = process.env.EXPO_PUBLIC_ELEVENLABS_AGENT_ID || "your-agent-id-here";
+  const AGENT_ID = process.env.EXPO_PUBLIC_ELEVENLABS_AGENT_ID || "agent_7401k7a0wx3mfy2tmm361gsbh61a";
 
-  // Show error if ElevenLabs is not available (Expo Go)
-  if (!isElevenLabsAvailable || isExpoGo) {
-    return (
-      <View style={[styles.container, { backgroundColor: Colors.background, paddingTop: insets.top }]}>
-        <Stack.Screen
-          options={{
-            title: "Interview Simulator",
-            headerLeft: () => (
-              <TouchableOpacity
-                onPress={() => router.back()}
-                style={{ marginLeft: 8 }}
-              >
-                <ArrowLeft size={24} color={Colors.text} />
-              </TouchableOpacity>
-            ),
-          }}
-        />
-        <View style={styles.errorContainer}>
-          <View style={[styles.errorIconContainer, { backgroundColor: Colors.error + "20" || "#FF3B3020" }]}>
-            <AlertCircle size={48} color={Colors.error || "#FF3B30"} />
-          </View>
-          <Text style={[styles.errorTitle, { color: Colors.text }]}>
-            Development Build Required
-          </Text>
-          <Text style={[styles.errorText, { color: Colors.lightText }]}>
-            The Interview Simulator requires native modules and cannot run in Expo Go.
-          </Text>
-          <Text style={[styles.errorText, { color: Colors.lightText, marginTop: 12 }]}>
-            Please build a development build using:
-          </Text>
-          <View style={[styles.codeBlock, { backgroundColor: Colors.card }]}>
-            <Text style={[styles.codeText, { color: Colors.text }]}>
-              npx expo run:ios
-            </Text>
-            <Text style={[styles.codeText, { color: Colors.text, marginTop: 8 }]}>
-              npx expo run:android
-            </Text>
-          </View>
-          <TouchableOpacity
-            style={[styles.backButton, { backgroundColor: Colors.primary }]}
-            onPress={() => router.back()}
-          >
-            <Text style={styles.backButtonText}>Go Back</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    );
-  }
+  // Configure audio session for playback
+  const configureAudio = useCallback(async () => {
+    try {
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+        staysActiveInBackground: false,
+        shouldDuckAndroid: true,
+        playThroughEarpieceAndroid: false,
+      });
+      console.log("Audio configured successfully");
+    } catch (error) {
+      console.error("Failed to configure audio:", error);
+    }
+  }, []);
 
-  const conversation = useConversation({
-    onConnect: () => {
-      console.log("Connected to conversation");
-      setIsConnected(true);
-      addMessage("system", "Connected to interview simulator. The agent is ready to start.");
-    },
-    onDisconnect: () => {
-      console.log("Disconnected from conversation");
-      setIsConnected(false);
-      addMessage("system", "Disconnected from interview simulator.");
-    },
-    onMessage: (message: any) => {
-      console.log("Message received:", message);
-      // Handle different message types from ElevenLabs SDK
-      // The message structure may vary, so we handle multiple possible formats
-      const messageText = message.text || message.content || message.message || "";
-      const messageType = message.type || message.role || "";
-      
-      if (messageType === "user" || messageType === "user_transcript" || messageType === "user_message") {
-        if (messageText) {
-          addMessage("user", messageText);
-        }
-      } else if (messageType === "agent" || messageType === "assistant" || messageType === "agent_response") {
-        if (messageText) {
-          addMessage("agent", messageText);
-        }
-      } else if (messageType === "debug" || messageType === "system") {
-        // Optionally show debug messages
-        console.log("Debug:", messageText);
-      } else if (messageText) {
-        // Fallback: if we have text but unknown type, show it as agent message
-        addMessage("agent", messageText);
-      }
-    },
-    onError: (error) => {
-      console.error("Conversation error:", error);
-      Alert.alert("Error", error.message || "An error occurred during the conversation.");
-    },
-    onModeChange: (mode) => {
-      console.log("Conversation mode changed:", mode);
-    },
-    onStatusChange: (prop) => {
-      console.log("Conversation status changed:", prop.status);
-    },
-  });
+  // Scroll to bottom when new messages arrive
+  const scrollToBottom = useCallback(() => {
+    setTimeout(() => {
+      scrollViewRef.current?.scrollToEnd({ animated: true });
+    }, 100);
+  }, []);
 
-  const addMessage = (type: "user" | "agent" | "system", text: string) => {
+  const addMessage = useCallback((type: "user" | "agent" | "system", text: string) => {
     setMessages((prev) => [
       ...prev,
       {
@@ -153,7 +86,98 @@ export default function InterviewSimulatorScreen() {
         type,
       },
     ]);
-  };
+    scrollToBottom();
+  }, [scrollToBottom]);
+
+  // Initialize conversation hook with callbacks - MUST be called unconditionally
+  // Wrap all callbacks in try-catch to prevent uncaught errors from crashing the app
+  const conversation = useConversation({
+    onConnect: () => {
+      try {
+        console.log("Connected to conversation");
+        setConnectionError(null);
+        setIsConnecting(false);
+        setSessionActive(true);
+        addMessage("system", "Connected! The interviewer is ready. Start speaking when you're ready.");
+      } catch (e) {
+        console.error("Error in onConnect:", e);
+      }
+    },
+    onDisconnect: () => {
+      try {
+        console.log("Disconnected from conversation");
+        setIsConnecting(false);
+        setSessionActive(false);
+        // Only add message if there was no error (normal disconnect)
+        if (!connectionError) {
+          addMessage("system", "Interview session ended.");
+        }
+      } catch (e) {
+        console.error("Error in onDisconnect:", e);
+      }
+    },
+    onMessage: (message: any) => {
+      try {
+        console.log("Message received:", message);
+        const messageText = message.text || message.content || message.message || "";
+        const messageType = message.type || message.role || "";
+
+        if (messageType === "user" || messageType === "user_transcript" || messageType === "user_message") {
+          if (messageText) {
+            addMessage("user", messageText);
+          }
+        } else if (messageType === "agent" || messageType === "assistant" || messageType === "agent_response") {
+          if (messageText) {
+            addMessage("agent", messageText);
+          }
+        } else if (messageType === "debug" || messageType === "system") {
+          console.log("Debug:", messageText);
+        } else if (messageText) {
+          addMessage("agent", messageText);
+        }
+      } catch (e) {
+        console.error("Error in onMessage:", e);
+      }
+    },
+    onError: (error: any) => {
+      try {
+        console.error("Conversation error:", error);
+        const errorMessage = error?.message || "Connection lost. Please try again.";
+        setConnectionError(errorMessage);
+        setIsConnecting(false);
+        setSessionActive(false);
+        addMessage("system", `Connection error: ${errorMessage}`);
+        // Don't show Alert here as it can cause issues - just update the UI
+      } catch (e) {
+        console.error("Error in onError handler:", e);
+      }
+    },
+    onModeChange: (mode: any) => {
+      try {
+        console.log("Conversation mode changed:", mode);
+      } catch (e) {
+        console.error("Error in onModeChange:", e);
+      }
+    },
+    onStatusChange: (prop: any) => {
+      try {
+        console.log("Conversation status changed:", prop?.status);
+        if (prop?.status === "connected") {
+          setSessionActive(true);
+          setIsConnecting(false);
+          setConnectionError(null);
+        } else if (prop?.status === "disconnected") {
+          setSessionActive(false);
+          setIsConnecting(false);
+        }
+      } catch (e) {
+        console.error("Error in onStatusChange:", e);
+      }
+    },
+  });
+
+  // Derive connection state
+  const isConnected = sessionActive || conversation?.status === "connected";
 
   const requestMicrophonePermission = async () => {
     setIsRequestingPermission(true);
@@ -172,8 +196,7 @@ export default function InterviewSimulatorScreen() {
         setHasPermission(granted === PermissionsAndroid.RESULTS.GRANTED);
         return granted === PermissionsAndroid.RESULTS.GRANTED;
       } else {
-        // iOS: Use expo-av to request microphone permission
-        const { status, canAskAgain, granted } = await Audio.requestPermissionsAsync();
+        const { status, canAskAgain } = await Audio.requestPermissionsAsync();
 
         if (status === 'granted') {
           setHasPermission(true);
@@ -207,6 +230,9 @@ export default function InterviewSimulatorScreen() {
   };
 
   useEffect(() => {
+    // Configure audio on mount
+    configureAudio();
+
     // Check permission status on mount
     const checkPermission = async () => {
       try {
@@ -219,13 +245,11 @@ export default function InterviewSimulatorScreen() {
             await requestMicrophonePermission();
           }
         } else {
-          // iOS: Check current permission status
           const { status } = await Audio.getPermissionsAsync();
 
           if (status === 'granted') {
             setHasPermission(true);
           } else {
-            // Request permission if not granted
             await requestMicrophonePermission();
           }
         }
@@ -236,14 +260,28 @@ export default function InterviewSimulatorScreen() {
     };
 
     checkPermission();
+
+    // Cleanup on unmount
+    return () => {
+      if (sessionActive && conversation) {
+        try {
+          conversation.endSession();
+        } catch (e) {
+          console.log("Cleanup: session already ended");
+        }
+      }
+    };
   }, []);
 
   const startConversation = async () => {
+    // Clear any previous errors
+    setConnectionError(null);
+
     // Verify permission before starting
     if (!hasPermission) {
       const granted = await requestMicrophonePermission();
       if (!granted) {
-        return; // Don't start if permission denied
+        return;
       }
     }
 
@@ -256,59 +294,73 @@ export default function InterviewSimulatorScreen() {
     }
 
     try {
+      // Configure audio before starting
+      await configureAudio();
+
+      setIsConnecting(true);
       setMessages([]);
+      addMessage("system", "Connecting to interview simulator...");
+
       await conversation.startSession({
         agentId: AGENT_ID,
         userId: user?.id || "anonymous",
       });
+
+      // Session started - state will be updated via onConnect callback
     } catch (error: any) {
       console.error("Failed to start conversation:", error);
-      Alert.alert("Error", error.message || "Failed to start the interview simulator. Please try again.");
+      setIsConnecting(false);
+      setSessionActive(false);
+      setConnectionError(error?.message || "Failed to connect");
+      addMessage("system", `Failed to start: ${error?.message || "Connection error. Please try again."}`);
     }
   };
 
   const endConversation = async () => {
     try {
+      setIsConnecting(false);
       await conversation.endSession();
-      setMessages([]);
+      setSessionActive(false);
     } catch (error: any) {
       console.error("Failed to end conversation:", error);
-      Alert.alert("Error", "Failed to end the conversation. Please try again.");
+      setSessionActive(false);
+      setIsConnecting(false);
     }
   };
 
   const toggleMute = () => {
     const newMutedState = !isMuted;
     setIsMuted(newMutedState);
-    conversation.setMicMuted(newMutedState);
+    if (conversation?.setMicMuted) {
+      conversation.setMicMuted(newMutedState);
+    }
   };
 
   const sendFeedback = async (liked: boolean) => {
     try {
-      await conversation.sendFeedback(liked);
-      Alert.alert("Thank you!", "Your feedback helps us improve the interview simulator.");
+      if (conversation?.sendFeedback) {
+        await conversation.sendFeedback(liked);
+        Alert.alert("Thank you!", "Your feedback helps us improve the interview simulator.");
+      }
     } catch (error) {
       console.error("Failed to send feedback:", error);
     }
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: Colors.background, paddingTop: insets.top }]}>
+    <View style={[styles.container, { backgroundColor: Colors.background }]}>
       <Stack.Screen
         options={{
           title: "Interview Simulator",
-          headerLeft: () => (
-            <TouchableOpacity
-              onPress={() => router.back()}
-              style={{ marginLeft: 8 }}
-            >
-              <ArrowLeft size={24} color={Colors.text} />
-            </TouchableOpacity>
-          ),
+          headerShown: true,
         }}
       />
 
-      <View style={styles.content}>
+      <ScrollView
+        style={styles.scrollContainer}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Header Section */}
         <View style={styles.header}>
           <View style={[styles.iconContainer, { backgroundColor: Colors.primary + "20" }]}>
@@ -316,21 +368,30 @@ export default function InterviewSimulatorScreen() {
           </View>
           <Text style={[styles.title, { color: Colors.text }]}>Interview Simulator</Text>
           <Text style={[styles.subtitle, { color: Colors.lightText }]}>
-            Practice visa and university interviews with AI-powered simulations
+            Practice visa and university interviews with AI
           </Text>
         </View>
 
         {/* Status Card */}
         <Card style={[styles.statusCard, { backgroundColor: Colors.card }]}>
           <View style={styles.statusRow}>
-            <View style={[styles.statusIndicator, { backgroundColor: isConnected ? Colors.success : Colors.lightText + "40" }]} />
+            <View style={[
+              styles.statusIndicator,
+              {
+                backgroundColor: isConnected
+                  ? Colors.success
+                  : isConnecting
+                    ? Colors.warning || "#FFA500"
+                    : Colors.lightText + "40"
+              }
+            ]} />
             <Text style={[styles.statusText, { color: Colors.text }]}>
-              {isConnected ? "Connected" : "Disconnected"}
+              {isConnected ? "Connected" : isConnecting ? "Connecting..." : "Ready to Start"}
             </Text>
-            {conversation.isSpeaking && (
+            {conversation?.isSpeaking && (
               <View style={styles.speakingIndicator}>
                 <Volume2 size={16} color={Colors.primary} />
-                <Text style={[styles.speakingText, { color: Colors.primary }]}>Agent Speaking</Text>
+                <Text style={[styles.speakingText, { color: Colors.primary }]}>Speaking</Text>
               </View>
             )}
           </View>
@@ -339,13 +400,20 @@ export default function InterviewSimulatorScreen() {
         {/* Messages Area */}
         <Card style={[styles.messagesCard, { backgroundColor: Colors.card }]}>
           <Text style={[styles.messagesTitle, { color: Colors.text }]}>Conversation</Text>
-          <View style={styles.messagesContainer}>
+          <ScrollView
+            ref={scrollViewRef}
+            style={styles.messagesScrollView}
+            contentContainerStyle={styles.messagesContainer}
+            showsVerticalScrollIndicator={true}
+            nestedScrollEnabled={true}
+            onContentSizeChange={() => scrollToBottom()}
+          >
             {messages.length === 0 ? (
               <View style={styles.emptyMessages}>
                 <Text style={[styles.emptyText, { color: Colors.lightText }]}>
                   {isConnected
                     ? "Start speaking to begin the interview..."
-                    : "Start a conversation to see messages here"}
+                    : "Tap 'Start Interview' to begin"}
                 </Text>
               </View>
             ) : (
@@ -358,14 +426,20 @@ export default function InterviewSimulatorScreen() {
                     message.type === "agent" && styles.agentMessage,
                     message.type === "system" && styles.systemMessage,
                     message.type === "user" && { backgroundColor: Colors.primary + "20" },
-                    message.type === "agent" && { backgroundColor: Colors.card },
-                    message.type === "system" && { backgroundColor: Colors.lightText + "10" },
+                    message.type === "agent" && { backgroundColor: Colors.lightBackground || Colors.card, borderWidth: 1, borderColor: Colors.border },
+                    message.type === "system" && { backgroundColor: Colors.lightText + "15" },
                   ]}
                 >
+                  {message.type !== "system" && (
+                    <Text style={[styles.messageLabel, { color: Colors.lightText }]}>
+                      {message.type === "user" ? "You" : "Interviewer"}
+                    </Text>
+                  )}
                   <Text
                     style={[
                       styles.messageText,
                       { color: message.type === "system" ? Colors.lightText : Colors.text },
+                      message.type === "system" && styles.systemMessageText,
                     ]}
                   >
                     {message.text}
@@ -373,12 +447,32 @@ export default function InterviewSimulatorScreen() {
                 </View>
               ))
             )}
-          </View>
+          </ScrollView>
         </Card>
+
+        {/* Error Banner */}
+        {connectionError && !isConnected && (
+          <Card style={[styles.errorBanner, { backgroundColor: (Colors.error || "#FF3B30") + "15", borderColor: Colors.error || "#FF3B30" }]}>
+            <View style={styles.errorBannerContent}>
+              <AlertCircle size={20} color={Colors.error || "#FF3B30"} />
+              <Text style={[styles.errorBannerText, { color: Colors.error || "#FF3B30" }]}>
+                {connectionError}
+              </Text>
+            </View>
+          </Card>
+        )}
 
         {/* Controls */}
         <View style={styles.controls}>
-          {!isConnected ? (
+          {isConnecting ? (
+            <TouchableOpacity
+              style={[styles.dangerButton, { backgroundColor: Colors.error || "#FF3B30" }]}
+              onPress={endConversation}
+            >
+              <ActivityIndicator color="#FFFFFF" size="small" style={{ marginRight: 8 }} />
+              <Text style={styles.dangerButtonText}>Cancel</Text>
+            </TouchableOpacity>
+          ) : !isConnected ? (
             <TouchableOpacity
               style={[styles.primaryButton, { backgroundColor: Colors.primary }]}
               onPress={startConversation}
@@ -389,7 +483,7 @@ export default function InterviewSimulatorScreen() {
               ) : (
                 <>
                   <Mic size={20} color="#FFFFFF" />
-                  <Text style={styles.primaryButtonText}>Start Interview</Text>
+                  <Text style={styles.primaryButtonText}>{connectionError ? "Retry Interview" : "Start Interview"}</Text>
                 </>
               )}
             </TouchableOpacity>
@@ -416,14 +510,14 @@ export default function InterviewSimulatorScreen() {
                 onPress={endConversation}
               >
                 <PhoneOff size={20} color="#FFFFFF" />
-                <Text style={styles.dangerButtonText}>End Interview</Text>
+                <Text style={styles.dangerButtonText}>End</Text>
               </TouchableOpacity>
             </>
           )}
         </View>
 
         {/* Feedback Section */}
-        {conversation.canSendFeedback && isConnected && (
+        {conversation?.canSendFeedback && isConnected && (
           <Card style={[styles.feedbackCard, { backgroundColor: Colors.card }]}>
             <Text style={[styles.feedbackTitle, { color: Colors.text }]}>How was your experience?</Text>
             <View style={styles.feedbackButtons}>
@@ -431,52 +525,279 @@ export default function InterviewSimulatorScreen() {
                 style={[styles.feedbackButton, { backgroundColor: Colors.success + "20" }]}
                 onPress={() => sendFeedback(true)}
               >
-                <Text style={[styles.feedbackButtonText, { color: Colors.success }]}>👍 Good</Text>
+                <Text style={[styles.feedbackButtonText, { color: Colors.success }]}>Good</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.feedbackButton, { backgroundColor: Colors.error + "20" || "#FF3B3020" }]}
+                style={[styles.feedbackButton, { backgroundColor: (Colors.error || "#FF3B30") + "20" }]}
                 onPress={() => sendFeedback(false)}
               >
-                <Text style={[styles.feedbackButtonText, { color: Colors.error || "#FF3B30" }]}>👎 Needs Improvement</Text>
+                <Text style={[styles.feedbackButtonText, { color: Colors.error || "#FF3B30" }]}>Needs Work</Text>
               </TouchableOpacity>
             </View>
           </Card>
         )}
-      </View>
+      </ScrollView>
     </View>
   );
+}
+
+// Main screen component that handles access control
+export default function InterviewSimulatorScreen() {
+  const Colors = useColors();
+  const insets = useSafeAreaInsets();
+  const router = useRouter();
+
+  const [isCheckingAccess, setIsCheckingAccess] = useState(true);
+  const [hasProAccess, setHasProAccess] = useState(false);
+
+  // Check if user has Pro tier access
+  useEffect(() => {
+    const checkProAccess = async () => {
+      try {
+        const { data: { user: authUser } } = await supabase.auth.getUser();
+        if (!authUser) {
+          setHasProAccess(false);
+          setIsCheckingAccess(false);
+          return;
+        }
+
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("subscription_tier")
+          .eq("id", authUser.id)
+          .single();
+
+        // Only Pro tier (or premium which maps to pro) has access to interview simulator
+        const tier = profile?.subscription_tier;
+        const isProTier = tier === "pro" || tier === "premium";
+        setHasProAccess(isProTier);
+      } catch (error) {
+        console.error("Error checking pro access:", error);
+        setHasProAccess(false);
+      } finally {
+        setIsCheckingAccess(false);
+      }
+    };
+
+    checkProAccess();
+  }, []);
+
+  // Show loading while checking access
+  if (isCheckingAccess) {
+    return (
+      <View style={[styles.container, { backgroundColor: Colors.background, paddingTop: insets.top }]}>
+        <Stack.Screen
+          options={{
+            title: "Interview Simulator",
+            headerShown: true,
+          }}
+        />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+          <Text style={[styles.loadingText, { color: Colors.lightText }]}>
+            Checking access...
+          </Text>
+        </View>
+      </View>
+    );
+  }
+
+  // Show upgrade prompt if user doesn't have Pro access
+  if (!hasProAccess) {
+    return (
+      <View style={[styles.container, { backgroundColor: Colors.background, paddingTop: insets.top }]}>
+        <Stack.Screen
+          options={{
+            title: "Interview Simulator",
+            headerShown: true,
+          }}
+        />
+        <View style={styles.lockedContainer}>
+          <View style={[styles.lockedIconContainer, { backgroundColor: Colors.primary + "20" }]}>
+            <Lock size={48} color={Colors.primary} />
+          </View>
+          <Text style={[styles.lockedTitle, { color: Colors.text }]}>
+            Pro Feature
+          </Text>
+          <Text style={[styles.lockedDescription, { color: Colors.lightText }]}>
+            The Interview Simulator is an exclusive Pro plan feature. Practice visa and university interviews with AI-powered voice conversations.
+          </Text>
+
+          <Card style={[styles.featureCard, { backgroundColor: Colors.card }]} variant="elevated">
+            <View style={styles.featureRow}>
+              <Crown size={24} color={Colors.primary} />
+              <View style={styles.featureTextContainer}>
+                <Text style={[styles.featureTitle, { color: Colors.text }]}>What's Included</Text>
+                <Text style={[styles.featureText, { color: Colors.lightText }]}>
+                  • AI-powered interview practice{'\n'}
+                  • Real-time voice conversations{'\n'}
+                  • Visa interview preparation{'\n'}
+                  • University admission practice
+                </Text>
+              </View>
+            </View>
+          </Card>
+
+          <Button
+            title="Upgrade to Pro"
+            onPress={() => router.push("/premium")}
+            icon={<ArrowRight size={20} color="#FFFFFF" />}
+            fullWidth
+            style={styles.upgradeButton}
+          />
+
+          <TouchableOpacity onPress={() => router.back()} style={styles.backLink}>
+            <Text style={[styles.backLinkText, { color: Colors.primary }]}>
+              Go Back
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
+  // Show error if ElevenLabs is not available (Expo Go)
+  if (!isElevenLabsAvailable || isExpoGo) {
+    return (
+      <View style={[styles.container, { backgroundColor: Colors.background, paddingTop: insets.top }]}>
+        <Stack.Screen
+          options={{
+            title: "Interview Simulator",
+            headerShown: true,
+          }}
+        />
+        <View style={styles.errorContainer}>
+          <View style={[styles.errorIconContainer, { backgroundColor: (Colors.error || "#FF3B30") + "20" }]}>
+            <AlertCircle size={48} color={Colors.error || "#FF3B30"} />
+          </View>
+          <Text style={[styles.errorTitle, { color: Colors.text }]}>
+            Development Build Required
+          </Text>
+          <Text style={[styles.errorText, { color: Colors.lightText }]}>
+            The Interview Simulator requires native modules and cannot run in Expo Go.
+          </Text>
+          <Text style={[styles.errorText, { color: Colors.lightText, marginTop: 12 }]}>
+            Please build a development build using:
+          </Text>
+          <View style={[styles.codeBlock, { backgroundColor: Colors.card }]}>
+            <Text style={[styles.codeText, { color: Colors.text }]}>
+              npx expo run:ios
+            </Text>
+            <Text style={[styles.codeText, { color: Colors.text, marginTop: 8 }]}>
+              npx expo run:android
+            </Text>
+          </View>
+        </View>
+      </View>
+    );
+  }
+
+  // Render the actual interview content (with ElevenLabs hooks)
+  return <InterviewContent />;
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  content: {
+  loadingContainer: {
     flex: 1,
-    padding: 20,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 24,
   },
-  header: {
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+  },
+  lockedContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 24,
+  },
+  lockedIconContainer: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    justifyContent: "center",
     alignItems: "center",
     marginBottom: 24,
   },
-  iconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  title: {
+  lockedTitle: {
     fontSize: 28,
     fontWeight: "700",
+    marginBottom: 12,
+    textAlign: "center",
+  },
+  lockedDescription: {
+    fontSize: 16,
+    textAlign: "center",
+    lineHeight: 24,
+    marginBottom: 24,
+    maxWidth: 320,
+  },
+  featureCard: {
+    padding: 20,
+    marginBottom: 24,
+    width: "100%",
+  },
+  featureRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 16,
+  },
+  featureTextContainer: {
+    flex: 1,
+  },
+  featureTitle: {
+    fontSize: 18,
+    fontWeight: "600",
     marginBottom: 8,
+  },
+  featureText: {
+    fontSize: 14,
+    lineHeight: 22,
+  },
+  upgradeButton: {
+    marginBottom: 16,
+  },
+  backLink: {
+    padding: 12,
+  },
+  backLinkText: {
+    fontSize: 16,
+    fontWeight: "500",
+  },
+  scrollContainer: {
+    flex: 1,
+  },
+  content: {
+    padding: 20,
+    paddingBottom: 40,
+  },
+  header: {
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  iconContainer: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: "700",
+    marginBottom: 6,
     textAlign: "center",
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 14,
     textAlign: "center",
-    lineHeight: 22,
+    lineHeight: 20,
   },
   statusCard: {
     padding: 16,
@@ -507,24 +828,29 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   messagesCard: {
-    flex: 1,
     padding: 16,
     marginBottom: 16,
-    minHeight: 200,
+    minHeight: 280,
+    maxHeight: 400,
   },
   messagesTitle: {
     fontSize: 18,
     fontWeight: "600",
     marginBottom: 12,
   },
-  messagesContainer: {
+  messagesScrollView: {
     flex: 1,
+    minHeight: 200,
+  },
+  messagesContainer: {
     gap: 12,
+    paddingBottom: 8,
   },
   emptyMessages: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+    minHeight: 150,
   },
   emptyText: {
     fontSize: 14,
@@ -533,7 +859,7 @@ const styles = StyleSheet.create({
   messageBubble: {
     padding: 12,
     borderRadius: 12,
-    maxWidth: "85%",
+    maxWidth: "90%",
   },
   userMessage: {
     alignSelf: "flex-end",
@@ -545,9 +871,20 @@ const styles = StyleSheet.create({
     alignSelf: "center",
     maxWidth: "100%",
   },
+  messageLabel: {
+    fontSize: 11,
+    fontWeight: "600",
+    marginBottom: 4,
+    textTransform: "uppercase",
+  },
   messageText: {
     fontSize: 15,
-    lineHeight: 20,
+    lineHeight: 22,
+  },
+  systemMessageText: {
+    textAlign: "center",
+    fontStyle: "italic",
+    fontSize: 13,
   },
   controls: {
     flexDirection: "row",
@@ -595,6 +932,22 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 16,
     fontWeight: "600",
+  },
+  errorBanner: {
+    padding: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderRadius: 12,
+  },
+  errorBannerContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  errorBannerText: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: "500",
   },
   feedbackCard: {
     padding: 16,
@@ -657,16 +1010,4 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: Platform.OS === "ios" ? "Courier" : "monospace",
   },
-  backButton: {
-    paddingHorizontal: 32,
-    paddingVertical: 16,
-    borderRadius: 12,
-    marginTop: 8,
-  },
-  backButtonText: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "600",
-  },
 });
-

@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback, useRef } from "react";
 import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useFocusEffect } from "expo-router";
-import { Award, TrendingUp, BookOpen, Users, Crown, Zap, Target, Calendar, UserCheck, BarChart3, Video, CheckSquare, Mic, MessageSquare } from "lucide-react-native";
+import { Award, TrendingUp, BookOpen, Crown, Zap, Target, Calendar, UserCheck, BarChart3, Video, CheckSquare, Mic, MessageSquare } from "lucide-react-native";
 import { useColors } from "@/hooks/useColors";
 import Card from "@/components/Card";
 import ProgressBar from "@/components/ProgressBar";
@@ -296,7 +296,7 @@ export default function HomeScreen() {
       description: hasActiveSubscription ? "Get personalized guidance" : "Premium: AI-powered help",
       icon: MessageSquare,
       color: Colors.accent,
-      onPress: () => handlePremiumFeature("AI Assistant", "/(tabs)/community"),
+      onPress: () => handlePremiumFeature("AI Assistant", "/(tabs)/premium"),
       isPremium: true,
     },
     {

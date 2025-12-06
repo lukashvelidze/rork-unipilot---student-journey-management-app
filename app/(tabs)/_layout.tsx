@@ -56,7 +56,7 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="community"
+        name="premium"
         options={{
           title: "Premium",
           tabBarIcon: ({ color }) => <Crown size={24} color={color} />,

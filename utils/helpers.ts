@@ -1,5 +1,4 @@
 import { JourneyProgress } from "@/types/user";
-import { Topic } from "@/types/community";
 import Colors from "@/constants/colors";
 
 export const generateId = (): string => {
@@ -74,29 +73,6 @@ export const getCelebrationMessage = (progress: number): string => {
     return "You're making great progress!";
   } else {
     return "Keep up the good work!";
-  }
-};
-
-// Map topic to a color
-export const getTopicColor = (topic: Topic): string => {
-  switch (topic) {
-    case "visa":
-      return Colors.success; // Green
-    case "university":
-      return Colors.primary; // Blue
-    case "accommodation":
-      return Colors.secondary; // Green
-    case "finances":
-      return Colors.warning; // Yellow
-    case "culture":
-      return "#9C27B0"; // Purple
-    case "academics":
-      return Colors.info; // Blue
-    case "career":
-      return Colors.career; // Teal
-    case "general":
-    default:
-      return Colors.info; // Info blue
   }
 };
 
