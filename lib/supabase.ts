@@ -1,6 +1,17 @@
 import { createClient } from '@supabase/supabase-js';
 import 'react-native-url-polyfill/auto';
 import Constants from 'expo-constants';
+import {
+  Article,
+  ArticleFilters,
+  ArticleInput,
+  CommunityComment,
+  CommunityCommentInput,
+  CommunityUserProfile,
+  CommunityPost,
+  CommunityPostFilters,
+  CommunityPostInput,
+} from '@/types/community';
 
 const supabaseUrl = Constants.expoConfig?.extra?.supabaseUrl!;
 const supabaseAnonKey = Constants.expoConfig?.extra?.supabaseAnonKey!;
@@ -380,3 +391,470 @@ export async function deleteDocument(documentId: string, filePath: string) {
   if (dbError) throw dbError;
 }
 
+export interface VisaTypeOption {
+  id: string;
+  code: string;
+  title: string;
+  description?: string | null;
+}
+
+const normalizeCountryCode = (code?: string | null) =>
+  code && typeof code === "string" ? code.trim().toUpperCase() : null;
+
+const normalizeVisaType = (code?: string | null) =>
+  code && typeof code === "string" ? code.trim().toUpperCase() : null;
+
+const normalizeVisaArray = (visaTypes?: string[] | null) => {
+  if (!visaTypes || visaTypes.length === 0) {
+    return null;
+  }
+  const normalized = visaTypes
+    .map((visa) => normalizeVisaType(visa))
+    .filter((visa): visa is string => !!visa);
+  return normalized.length > 0 ? normalized : null;
+};
+
+const matchesArticleFilters = (article: Article, origin: string | null, visa: string | null) => {
+  const originMatches =
+    article.is_global ||
+    !article.origin_country_code ||
+    !origin ||
+    normalizeCountryCode(article.origin_country_code) === origin;
+
+  const visaList = article.visa_types?.map((value) => normalizeVisaType(value)).filter(Boolean) as string[] | undefined;
+  const visaMatches =
+    !article.visa_types ||
+    !visaList ||
+    visaList.length === 0 ||
+    !visa ||
+    visaList.includes(visa);
+
+  return originMatches && visaMatches;
+};
+
+const matchesCommunityPostFilters = (
+  post: CommunityPost,
+  origin: string | null,
+  visa: string | null,
+  linkedArticleId?: string | null
+) => {
+  if (linkedArticleId && post.linked_article_id !== linkedArticleId) {
+    return false;
+  }
+
+  const originMatches =
+    !origin ||
+    !post.origin_country_code ||
+    normalizeCountryCode(post.origin_country_code) === origin;
+
+  const visaMatches =
+    !visa ||
+    !post.visa_type ||
+    normalizeVisaType(post.visa_type) === visa;
+
+  return originMatches && visaMatches;
+};
+
+const buildCommentTree = (comments: CommunityComment[]): CommunityComment[] => {
+  const map = new Map<string, CommunityComment>();
+  const roots: CommunityComment[] = [];
+
+  comments.forEach((comment) => {
+    map.set(comment.id, { ...comment, replies: [] });
+  });
+
+  map.forEach((comment) => {
+    if (comment.parent_id && map.has(comment.parent_id)) {
+      const parent = map.get(comment.parent_id);
+      if (parent) {
+        parent.replies = parent.replies || [];
+        parent.replies.push(comment);
+      }
+    } else {
+      roots.push(comment);
+    }
+  });
+
+  return roots;
+};
+
+const isMissingColumnError = (error: any, column: string) => {
+  if (!error) return false;
+  if (error.code === "42703") return true;
+  if (typeof error.message === "string" && error.message.includes(column)) return true;
+  return false;
+};
+
+const payloadHasKey = (payload: Record<string, any>, key: string) =>
+  Object.prototype.hasOwnProperty.call(payload, key);
+
+
+export async function fetchVisaTypesForDestination(countryCode?: string | null) {
+  const normalizedCode = normalizeCountryCode(countryCode);
+
+  if (!normalizedCode) {
+    return [];
+  }
+
+  const { data, error } = await supabase
+    .from("visa_types")
+    .select("id, code, title, description, is_active, country_code")
+    .or(`country_code.eq.${normalizedCode},country_code.is.null`)
+    .eq("is_active", true)
+    .order("country_code", { ascending: false })
+    .order("title", { ascending: true });
+
+  if (error) throw error;
+
+  return (data || []).map((visa) => ({
+    id: visa.id,
+    code: visa.code,
+    title: visa.title,
+    description: visa.description,
+  })) as VisaTypeOption[];
+}
+
+export async function fetchArticles(filters: ArticleFilters): Promise<Article[]> {
+  const destination = normalizeCountryCode(filters.destinationCountry);
+  if (!destination) {
+    throw new Error("Destination country is required");
+  }
+
+  const query = supabase
+    .from("articles")
+    .select("*")
+    .eq("destination_country_code", destination)
+    .order("updated_at", { ascending: false });
+
+  if (!filters.includeDrafts) {
+    query.eq("published", true);
+  }
+
+  const { data, error } = await query;
+
+  if (error) throw error;
+
+  const normalizedOrigin = normalizeCountryCode(filters.originCountry || null);
+  const normalizedVisa = normalizeVisaType(filters.visaType || null);
+  const articles = (data || []) as Article[];
+
+  if (!articles.length) {
+    return [];
+  }
+
+  const authorIds = Array.from(
+    new Set(articles.map((article) => article.author_id).filter((id): id is string => !!id))
+  );
+  const authorMap = new Map<string, ArticleAuthor>();
+
+  if (authorIds.length > 0) {
+    const { data: authors, error: authorError } = await supabase
+      .from("profiles")
+      .select("*")
+      .in("id", authorIds);
+
+    if (authorError) {
+      console.warn("Unable to load article authors:", authorError.message);
+    }
+
+    authors?.forEach((author: any) => {
+      authorMap.set(author.id, {
+        id: author.id,
+        display_name: author.display_name || author.full_name || null,
+        avatar_url: author.avatar_url || null,
+        full_name: author.full_name || null,
+      });
+    });
+  }
+
+  return articles
+    .filter((article) => matchesArticleFilters(article, normalizedOrigin, normalizedVisa))
+    .map((article) => ({
+      ...article,
+      author: article.author_id ? authorMap.get(article.author_id) || null : null,
+    }));
+}
+
+export async function upsertArticle(input: ArticleInput): Promise<Article> {
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    throw new Error("User not authenticated");
+  }
+
+  const destination = normalizeCountryCode(input.destination_country_code);
+
+  if (!destination) {
+    throw new Error("Destination country code is required");
+  }
+
+  const upsertPayload: any = {
+    title: input.title,
+    summary: input.summary || null,
+    content: input.content,
+    destination_country_code: destination,
+    origin_country_code: normalizeCountryCode(input.origin_country_code || null),
+    visa_types: normalizeVisaArray(input.visa_types),
+    is_global: !!input.is_global,
+    published: input.published ?? true,
+    updated_at: new Date().toISOString(),
+  };
+
+  if (input.id) {
+    upsertPayload.id = input.id;
+    if (input.author_id) {
+      upsertPayload.author_id = input.author_id;
+    }
+  } else if (input.author_id || user.id) {
+    upsertPayload.author_id = input.author_id || user.id;
+  }
+
+  const upsertOnce = async (payload: any) => {
+    return supabase
+      .from("articles")
+      .upsert(payload, { onConflict: "id" })
+      .select("*")
+      .single();
+  };
+
+  let { data, error } = await upsertOnce(upsertPayload);
+
+  if (error && isMissingColumnError(error, "author_id") && payloadHasKey(upsertPayload, "author_id")) {
+    const fallbackPayload = { ...upsertPayload };
+    delete fallbackPayload.author_id;
+    ({ data, error } = await upsertOnce(fallbackPayload));
+  }
+
+  if (error) throw error;
+  return data as Article;
+}
+
+export async function deleteArticle(articleId: string) {
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    throw new Error("User not authenticated");
+  }
+
+  const { error } = await supabase
+    .from("articles")
+    .delete()
+    .eq("id", articleId);
+
+  if (error) throw error;
+}
+
+export async function fetchCommunityPosts(filters: CommunityPostFilters): Promise<CommunityPost[]> {
+  const destination = normalizeCountryCode(filters.destinationCountry);
+  if (!destination) {
+    throw new Error("Destination country is required");
+  }
+
+  const buildPostsQuery = (includeHiddenFilter: boolean) => {
+    let query = supabase
+      .from("community_posts")
+      .select("*")
+      .eq("destination_country_code", destination)
+      .order("created_at", { ascending: false });
+
+    if (includeHiddenFilter) {
+      query = query.eq("is_hidden", false);
+    }
+
+    if (filters.linkedArticleId) {
+      query = query.eq("linked_article_id", filters.linkedArticleId);
+    }
+
+    return query;
+  };
+
+  let { data, error } = await buildPostsQuery(true);
+
+  if (error && isMissingColumnError(error, "is_hidden")) {
+    ({ data, error } = await buildPostsQuery(false));
+  }
+
+  if (error) throw error;
+
+  const posts = (data || []) as CommunityPost[];
+
+  if (!posts.length) {
+    return [];
+  }
+
+  const postIds = posts.map((post) => post.id);
+  const postUserIds = posts.map((post) => post.user_id).filter((id): id is string => !!id);
+  const articleIds = posts.map((post) => post.linked_article_id).filter((id): id is string => !!id);
+
+  const fetchCommentsQuery = (includeHiddenFilter: boolean) => {
+    let query = supabase
+      .from("community_comments")
+      .select("*")
+      .in("post_id", postIds)
+      .order("created_at", { ascending: true });
+
+    if (includeHiddenFilter) {
+      query = query.eq("is_hidden", false);
+    }
+
+    return query;
+  };
+
+  let { data: commentsData, error: commentsError } = await fetchCommentsQuery(true);
+
+  if (commentsError && isMissingColumnError(commentsError, "is_hidden")) {
+    ({ data: commentsData, error: commentsError } = await fetchCommentsQuery(false));
+  }
+
+  if (commentsError) throw commentsError;
+
+  const comments = (commentsData || []) as CommunityComment[];
+  const commentUserIds = comments.map((comment) => comment.user_id).filter((id): id is string => !!id);
+
+  const uniqueUserIds = Array.from(new Set([...postUserIds, ...commentUserIds]));
+  const authorMap = new Map<string, CommunityUserProfile>();
+
+  if (uniqueUserIds.length > 0) {
+    const { data: profilesData, error: profilesError } = await supabase
+      .from("profiles")
+      .select("*")
+      .in("id", uniqueUserIds);
+
+    if (profilesError) {
+      console.warn("Unable to load community profiles:", profilesError.message);
+    }
+
+    profilesData?.forEach((profile: any) => {
+      authorMap.set(profile.id, {
+        id: profile.id,
+        display_name: profile.display_name || profile.full_name || null,
+        avatar_url: profile.avatar_url || null,
+        bio: profile.bio || null,
+        full_name: profile.full_name || null,
+      });
+    });
+  }
+
+  const articleMap = new Map<string, Pick<Article, "id" | "title">>();
+  if (articleIds.length > 0) {
+    const uniqueArticleIds = Array.from(new Set(articleIds));
+    const { data: linkedArticles } = await supabase
+      .from("articles")
+      .select("id, title")
+      .in("id", uniqueArticleIds);
+
+    linkedArticles?.forEach((article) => {
+      articleMap.set(article.id, article);
+    });
+  }
+
+  const commentsByPost = new Map<string, CommunityComment[]>();
+  comments.forEach((comment) => {
+    const enrichedComment: CommunityComment = {
+      ...comment,
+      author: comment.user_id ? authorMap.get(comment.user_id) || null : null,
+    };
+    const bucket = commentsByPost.get(comment.post_id) || [];
+    bucket.push(enrichedComment);
+    commentsByPost.set(comment.post_id, bucket);
+  });
+
+  const normalizedOrigin = normalizeCountryCode(filters.originCountry || null);
+  const normalizedVisa = normalizeVisaType(filters.visaType || null);
+
+  return posts
+    .map((post) => {
+      const postComments = commentsByPost.get(post.id) || [];
+
+      return {
+        ...post,
+        author: post.user_id ? authorMap.get(post.user_id) || null : null,
+        article: post.linked_article_id ? articleMap.get(post.linked_article_id) || null : null,
+        comments: buildCommentTree(postComments),
+      } as CommunityPost;
+    })
+    .filter((post) => matchesCommunityPostFilters(post, normalizedOrigin, normalizedVisa, filters.linkedArticleId));
+}
+
+export async function createCommunityPost(input: CommunityPostInput): Promise<CommunityPost> {
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    throw new Error("User not authenticated");
+  }
+
+  const destination = normalizeCountryCode(input.destination_country_code);
+  if (!destination) {
+    throw new Error("Destination country is required");
+  }
+
+  const payload: Record<string, any> = {
+    title: input.title,
+    body: input.body,
+    destination_country_code: destination,
+    origin_country_code: normalizeCountryCode(input.origin_country_code || null),
+    visa_type: normalizeVisaType(input.visa_type || null),
+    anonymous: !!input.anonymous,
+    linked_article_id: input.linked_article_id || null,
+    user_id: user.id,
+  };
+
+  const insertPost = async (body: Record<string, any>) =>
+    supabase.from("community_posts").insert([body]).select("*").single();
+
+  let { data, error } = await insertPost(payload);
+
+  if (error && isMissingColumnError(error, "user_id") && payloadHasKey(payload, "user_id")) {
+    const fallback = { ...payload };
+    delete fallback.user_id;
+    ({ data, error } = await insertPost(fallback));
+  }
+
+  if (error) throw error;
+
+  return data as CommunityPost;
+}
+
+export async function createCommunityComment(input: CommunityCommentInput): Promise<CommunityComment> {
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    throw new Error("User not authenticated");
+  }
+
+  if (!input.post_id) {
+    throw new Error("Post ID is required");
+  }
+
+  let payload: Record<string, any> = {
+    post_id: input.post_id,
+    body: input.body,
+    anonymous: !!input.anonymous,
+    parent_id: input.parent_id || null,
+    user_id: user.id,
+  };
+
+  const insertComment = async (body: Record<string, any>) =>
+    supabase.from("community_comments").insert([body]).select("*").single();
+
+  while (true) {
+    const { data, error } = await insertComment(payload);
+    if (!error) {
+      return data as CommunityComment;
+    }
+
+    if (isMissingColumnError(error, "parent_id") && payloadHasKey(payload, "parent_id")) {
+      const { parent_id, ...rest } = payload;
+      payload = rest;
+      continue;
+    }
+
+    if (isMissingColumnError(error, "user_id") && payloadHasKey(payload, "user_id")) {
+      const { user_id, ...rest } = payload;
+      payload = rest;
+      continue;
+    }
+
+    throw error;
+  }
+}
