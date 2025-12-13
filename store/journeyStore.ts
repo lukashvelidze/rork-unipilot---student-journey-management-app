@@ -50,8 +50,8 @@ interface JourneyState {
   flightSearchParams: FlightSearchParams | null;
   memories: Memory[];
   setJourneyProgress: (progress: JourneyProgress[]) => void;
-  updateTaskCompletion: (stageId: JourneyStage, taskId: string, completed: boolean) => void;
-  markAcceptance: (stageId: JourneyStage) => void;
+  updateTaskCompletion: (checklistId: string, taskId: string, completed: boolean) => void;
+  markAcceptance: (checklistId: string) => void;
   addRecentMilestone: (milestone: Milestone) => void;
   clearRecentMilestone: () => void;
   getOverallProgress: () => number;
@@ -87,10 +87,10 @@ export const useJourneyStore = create<JourneyState>()(
         });
       },
       
-      updateTaskCompletion: (stageId, taskId, completed) => {
+      updateTaskCompletion: (checklistId, taskId, completed) => {
         set((state) => {
           const updatedProgress = state.journeyProgress.map((stage) => {
-            if (stage.stage === stageId) {
+            if (stage.id === checklistId) {
               const updatedTasks = stage.tasks.map((task) => {
                 if (task.id === taskId) {
                   const updatedTask = { 
@@ -133,10 +133,10 @@ export const useJourneyStore = create<JourneyState>()(
         });
       },
       
-      markAcceptance: (stageId) => {
+      markAcceptance: (checklistId) => {
         set((state) => {
           const updatedProgress = state.journeyProgress.map((stage) => {
-            if (stage.stage === stageId) {
+            if (stage.id === checklistId) {
               return {
                 ...stage,
                 hasAcceptance: true,

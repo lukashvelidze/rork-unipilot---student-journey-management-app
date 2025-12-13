@@ -177,112 +177,76 @@ export default function JourneyScreen() {
         .eq("user_id", authUser.id)
         .in("checklist_item_id", itemIds);
 
-      // Create a map of completed items
-      const completedItems = new Set(
-        (progressData || []).filter(p => p.is_completed).map(p => p.checklist_item_id)
-      );
-
-      // Map checklists to journey stages
-      // We'll use a simple mapping: each checklist becomes a "stage" or we group them
-      // For now, let's create stages based on checklist titles
-      const stageMapping: Record<string, JourneyStage> = {
-        "pre-arrival": "pre_departure",
-        "pre-arrival documents": "pre_departure",
-        "arrival": "arrival",
-        "arrival & orientation": "arrival",
-        "academic": "academic",
-        "academic requirements": "academic",
-        "accommodation": "arrival",
-        "accommodation & housing": "arrival",
-        "financial": "pre_departure",
-        "financial & insurance": "pre_departure",
-      };
-
-      // Group checklists by stage (using plain object instead of Map to avoid Hermes crash)
-      const stagesMap: Record<JourneyStage, { checklist: any; items: any[] }[]> = {
-        research: [],
-        application: [],
-        visa: [],
-        pre_departure: [],
-        arrival: [],
-        academic: [],
-        career: [],
-      };
-
-      checklistsData.forEach((checklist: any) => {
-        const titleLower = checklist.title.toLowerCase();
-        let stage: JourneyStage = "pre_departure"; // default
-
-        // Find matching stage - use array iteration instead of Object.entries to avoid Hermes enumeration bugs
-        try {
-          const mappingKeys = Object.keys(stageMapping);
-          for (let i = 0; i < mappingKeys.length; i++) {
-            const key = mappingKeys[i];
-            if (titleLower.includes(key)) {
-              stage = stageMapping[key];
-              break;
-            }
-          }
-        } catch (error) {
-          console.error("Error mapping stage:", error);
-          // Continue with default stage
-        }
-
-        // If no match, try to infer from title
-        if (titleLower.includes("research") || titleLower.includes("university")) {
-          stage = "research";
-        } else if (titleLower.includes("application") || titleLower.includes("apply")) {
-          stage = "application";
-        } else if (titleLower.includes("visa")) {
-          stage = "visa";
-        } else if (titleLower.includes("career") || titleLower.includes("professional")) {
-          stage = "career";
-        }
-
-        const items = itemsData.filter(item => item.checklist_id === checklist.id);
-        
-        if (!stagesMap[stage]) {
-          stagesMap[stage] = [];
-        }
-        stagesMap[stage].push({ checklist, items });
+      const progressMap = new Map<string, any>();
+      (progressData || []).forEach((entry) => {
+        progressMap.set(entry.checklist_item_id, entry);
       });
 
-      // Convert to JourneyProgress format
-      const progress: JourneyProgress[] = [];
-      const stageOrder: JourneyStage[] = ["research", "application", "visa", "pre_departure", "arrival", "academic", "career"];
+      const determineStage = (title: string): JourneyStage => {
+        const titleLower = title.toLowerCase();
 
-      stageOrder.forEach(stage => {
-        const stageData = stagesMap[stage];
-        if (!stageData || stageData.length === 0) return;
+        const mapping: { match: RegExp; stage: JourneyStage }[] = [
+          { match: /research|university|program/, stage: "research" },
+          { match: /application|apply/, stage: "application" },
+          { match: /visa|immigration/, stage: "visa" },
+          { match: /pre[-\s]?departure|document|financial|insurance|pre-arrival/, stage: "pre_departure" },
+          { match: /arrival|orientation|accommodation|housing/, stage: "arrival" },
+          { match: /academic|class|course/, stage: "academic" },
+          { match: /career|internship|job/, stage: "career" },
+        ];
 
-        // Combine all items from all checklists in this stage
-        const allTasks: Task[] = [];
-        stageData.forEach(({ items }) => {
-          items.forEach(item => {
-            allTasks.push({
+        for (let i = 0; i < mapping.length; i++) {
+          if (mapping[i].match.test(titleLower)) {
+            return mapping[i].stage;
+          }
+        }
+
+        return "pre_departure";
+      };
+
+      const progress: JourneyProgress[] = (checklistsData || []).map((checklist: any) => {
+        const tasks: Task[] = itemsData
+          .filter(item => item.checklist_id === checklist.id)
+          .map((item) => {
+            const progressEntry = progressMap.get(item.id);
+            const isCompleted = !!progressEntry?.is_completed;
+            const completedDate = isCompleted
+              ? progressEntry?.updated_at || progressEntry?.created_at || new Date().toISOString()
+              : undefined;
+
+            return {
               id: item.id,
               title: item.label,
-              completed: completedItems.has(item.id),
-              completedDate: completedItems.has(item.id) ? new Date().toISOString() : undefined,
-            });
+              completed: isCompleted,
+              completedDate,
+              checklistId: checklist.id,
+              checklistTitle: checklist.title,
+            };
           });
-        });
 
-        if (allTasks.length === 0) return;
+        const completedCount = tasks.filter(t => t.completed).length;
+        const progressPercent = tasks.length > 0 ? Math.round((completedCount / tasks.length) * 100) : 0;
 
-        const completedCount = allTasks.filter(t => t.completed).length;
-        const progressPercent = Math.round((completedCount / allTasks.length) * 100);
-
-        progress.push({
-          stage,
+        return {
+          id: checklist.id,
+          stage: determineStage(checklist.title),
+          title: checklist.title,
+          description: checklist.description || undefined,
           progress: progressPercent,
           completed: progressPercent === 100,
           completedDate: progressPercent === 100 ? new Date().toISOString() : undefined,
-          tasks: allTasks,
-        });
+          tasks,
+          hasAcceptance: tasks.some(task => task.title.includes("🎉 Receive acceptance letter") && task.completed),
+          checklists: [
+            {
+              id: checklist.id,
+              title: checklist.title,
+              items: tasks,
+            },
+          ],
+        };
       });
 
-      // Always set progress (even if empty) to clear any old hardcoded data
       setJourneyProgress(progress);
     } catch (error) {
       console.error("❌ Critical error in fetchJourneyProgress:", error);
@@ -525,12 +489,13 @@ export default function JourneyScreen() {
             
             <View style={styles.stagesContainer}>
               {journeyProgress.map((stage) => {
+                const checklistId = stage.id || stage.stage;
                 return (
                   <StageProgress
-                    key={stage.stage}
+                    key={checklistId}
                     stage={stage}
                     onPress={() => {
-                      router.push(`/journey/${stage.stage}`);
+                      router.push(`/journey/${checklistId}`);
                     }}
                     isLocked={false}
                   />

@@ -887,39 +887,61 @@ const getCareerTasks = (destinationCountry: string) => {
 };
 
 export const getJourneyProgressForCountry = (destinationCountry: string): JourneyProgress[] => {
+  const stageTitles: Record<string, string> = {
+    research: "Research Phase",
+    application: "Application Process",
+    visa: "Visa Preparation",
+    pre_departure: "Pre-Departure Planning",
+    arrival: "Arrival & Orientation",
+    academic: "Academic Journey",
+    career: "Career Development",
+  };
+
   return [
     {
+      id: generateId(),
       stage: "research",
+      title: stageTitles.research,
       progress: 0,
       completed: false,
       tasks: baseResearchTasks,
     },
     {
+      id: generateId(),
       stage: "application",
+      title: stageTitles.application,
       progress: 0,
       completed: false,
       tasks: baseApplicationTasks,
     },
     {
+      id: generateId(),
       stage: "visa",
+      title: stageTitles.visa,
       progress: 0,
       completed: false,
       tasks: getVisaTasks(destinationCountry),
     },
     {
+      id: generateId(),
       stage: "pre_departure",
+      title: stageTitles.pre_departure,
       progress: 0,
       completed: false,
       tasks: getPreDepartureTasks(destinationCountry),
     },
     {
+      id: generateId(),
       stage: "arrival",
+      title: stageTitles.arrival,
       progress: 0,
       completed: false,
       tasks: getArrivalTasks(destinationCountry),
     },
     {
+      id: generateId(),
       stage: "academic",
+      title: stageTitles.academic,
       progress: 0,
       completed: false,
       tasks: [
@@ -961,7 +983,9 @@ export const getJourneyProgressForCountry = (destinationCountry: string): Journe
       ],
     },
     {
+      id: generateId(),
       stage: "career",
+      title: stageTitles.career,
       progress: 0,
       completed: false,
       tasks: getCareerTasks(destinationCountry),

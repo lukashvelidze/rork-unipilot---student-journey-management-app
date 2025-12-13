@@ -7,9 +7,7 @@ import { CheckSquare, Square, ChevronLeft, Award, Clock, Calendar, Star, Trophy,
 import { useColors } from "@/hooks/useColors";
 import Card from "@/components/Card";
 import ProgressBar from "@/components/ProgressBar";
-import Button from "@/components/Button";
 import { useJourneyStore } from "@/store/journeyStore";
-import { useUserStore } from "@/store/userStore";
 import { JourneyStage, Task } from "@/types/user";
 import { supabase } from "@/lib/supabase";
 
@@ -76,14 +74,22 @@ export default function StageDetailScreen() {
     addRecentMilestone 
   } = useJourneyStore();
 
-  const stageId = id as JourneyStage;
-  const stage = journeyProgress.find(s => s.stage === stageId);
-  const info = stageInfo[stageId];
+  const checklistId = id as string;
+  const stage =
+    journeyProgress.find(s => s.id === checklistId) ||
+    journeyProgress.find(s => s.stage === checklistId);
+  const stageCategory: JourneyStage = stage?.stage || "pre_departure";
+  const stageMeta = stageInfo[stageCategory] || stageInfo.pre_departure;
+  const info = {
+    ...stageMeta,
+    title: stage?.title || stageMeta.title,
+    description: stage?.description || stageMeta.description,
+  };
 
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
   const [acceptanceLetterChecked, setAcceptanceLetterChecked] = useState<boolean>(false);
 
-  if (!stage || !info) {
+  if (!stage) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: Colors.background }]} edges={['top']}>
         <Text style={[styles.errorText, { color: Colors.text }]}>Stage not found</Text>
@@ -155,14 +161,14 @@ export default function StageDetailScreen() {
             { 
               text: "Mark as Complete", 
               onPress: () => {
-                updateTaskCompletion(stageId, taskId, newCompleted);
-                markAcceptance(stageId);
+                updateTaskCompletion(stage.id, taskId, newCompleted);
+                markAcceptance(stage.id);
                 setAcceptanceLetterChecked(true);
                 
                 // Add celebration milestone
                 addRecentMilestone({
                   type: "stage_complete",
-                  stage: stageId,
+                  stage: stageCategory,
                   timestamp: Date.now()
                 });
               }
@@ -173,7 +179,7 @@ export default function StageDetailScreen() {
       }
 
       // Update local store
-      updateTaskCompletion(stageId, taskId, newCompleted);
+      updateTaskCompletion(stage.id, taskId, newCompleted);
     } catch (error) {
       console.error("Error toggling task:", error);
       Alert.alert("Error", "Something went wrong. Please try again.");
@@ -225,26 +231,36 @@ export default function StageDetailScreen() {
   const totalTasks = stage.tasks.length;
   const hasAcceptance = stage.hasAcceptance || stage.tasks.some(t => t.title.includes("🎉 Receive acceptance letter") && t.completed);
 
-  // Filter tasks based on acceptance status
-  const visibleTasks = stage.tasks.filter(task => {
-    // For application stage, check acceptance-related tasks
-    if (stageId === "application") {
-      const isPostAcceptanceTask = task.title.includes("Compare offers") || 
-          task.title.includes("Accept offer") || 
-          task.title.includes("Decline other offers") ||
-          task.title.includes("Request official enrollment") ||
-          task.title.includes("Register for orientation") ||
-          task.title.includes("Apply for on-campus housing") ||
-          task.title.includes("Submit final transcripts");
-      
+  const shouldDisplayTask = (task: Task) => {
+    if (stageCategory === "application") {
+      const isPostAcceptanceTask =
+        task.title.includes("Compare offers") ||
+        task.title.includes("Accept offer") ||
+        task.title.includes("Decline other offers") ||
+        task.title.includes("Request official enrollment") ||
+        task.title.includes("Register for orientation") ||
+        task.title.includes("Apply for on-campus housing") ||
+        task.title.includes("Submit final transcripts");
+
       if (isPostAcceptanceTask) {
-        // Only show if user has acceptance (except for the acceptance task itself)
         return hasAcceptance || task.title.includes("🎉 Receive acceptance letter");
       }
     }
-    
+
     return true;
-  });
+  };
+
+  const checklistSections = (stage.checklists && stage.checklists.length > 0
+      ? stage.checklists
+      : [{ id: stage.id || stage.stage, title: stage.title || info.title, items: stage.tasks }]
+    )
+    .map((section) => ({
+      ...section,
+      items: section.items.filter(shouldDisplayTask),
+    }))
+    .filter((section) => section.items.length > 0);
+
+  const hasVisibleTasks = checklistSections.length > 0;
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: Colors.background }]} edges={['top']}>
@@ -301,7 +317,7 @@ export default function StageDetailScreen() {
 
       {/* Tasks List */}
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {hasAcceptance && stageId === "application" && (
+        {hasAcceptance && stageCategory === "application" && (
           <Card style={[styles.acceptanceCard, { backgroundColor: Colors.lightBackground, borderColor: Colors.success }]}>
             <View style={styles.acceptanceContent}>
               <Sparkles size={24} color={Colors.success} />
@@ -318,7 +334,7 @@ export default function StageDetailScreen() {
         )}
 
         <View style={styles.tasksContainer}>
-          {visibleTasks.length === 0 ? (
+          {!hasVisibleTasks ? (
             <Card style={[styles.emptyStateCard, { backgroundColor: Colors.card }]}>
               <View style={styles.emptyStateContent}>
                 <Text style={[styles.emptyStateTitle, { color: Colors.text }]}>No tasks available</Text>
@@ -328,54 +344,59 @@ export default function StageDetailScreen() {
               </View>
             </Card>
           ) : (
-            visibleTasks.map((task, index) => (
-              <Card key={task.id} style={[styles.taskCard, { backgroundColor: Colors.card }]}>
-                <TouchableOpacity
-                  style={styles.taskHeader}
-                  onPress={() => handleTaskToggle(task.id, task.completed)}
-                  activeOpacity={0.7}
-                >
-                <View style={styles.taskLeft}>
-                  <View style={[styles.taskCheckbox, { borderColor: task.completed ? Colors.success : Colors.border }]}>
-                    {task.completed ? (
-                      <CheckSquare size={20} color={Colors.success} />
-                    ) : (
-                      <Square size={20} color={Colors.lightText} />
+            checklistSections.map((section) => (
+              <View key={section.id} style={styles.checklistSection}>
+                <Text style={[styles.checklistTitle, { color: Colors.text }]}>{section.title}</Text>
+                {section.items.map((task) => (
+                  <Card key={task.id} style={[styles.taskCard, { backgroundColor: Colors.card }]}>
+                    <TouchableOpacity
+                      style={styles.taskHeader}
+                      onPress={() => handleTaskToggle(task.id, task.completed)}
+                      activeOpacity={0.7}
+                    >
+                      <View style={styles.taskLeft}>
+                        <View style={[styles.taskCheckbox, { borderColor: task.completed ? Colors.success : Colors.border }]}>
+                          {task.completed ? (
+                            <CheckSquare size={20} color={Colors.success} />
+                          ) : (
+                            <Square size={20} color={Colors.lightText} />
+                          )}
+                        </View>
+                        <View style={styles.taskContent}>
+                          <Text style={[
+                            styles.taskTitle, 
+                            { color: task.completed ? Colors.lightText : Colors.text },
+                            task.completed && styles.taskTitleCompleted
+                          ]}>
+                            {task.title}
+                          </Text>
+                          {task.completed && task.completedDate && (
+                            <Text style={[styles.taskCompletedDate, { color: Colors.success }]}>
+                              Completed on {new Date(task.completedDate).toLocaleDateString()}
+                            </Text>
+                          )}
+                        </View>
+                      </View>
+                      <TouchableOpacity
+                        onPress={() => toggleTaskExpansion(task.id)}
+                        style={styles.expandButton}
+                      >
+                        <Text style={[styles.expandButtonText, { color: Colors.primary }]}>
+                          {expandedTasks.has(task.id) ? "Less" : "Help"}
+                        </Text>
+                      </TouchableOpacity>
+                    </TouchableOpacity>
+                    
+                    {expandedTasks.has(task.id) && (
+                      <View style={[styles.taskAdvice, { backgroundColor: Colors.lightBackground }]}>
+                        <Text style={[styles.taskAdviceText, { color: Colors.text }]}>
+                          💡 {getTaskAdvice(task)}
+                        </Text>
+                      </View>
                     )}
-                  </View>
-                  <View style={styles.taskContent}>
-                    <Text style={[
-                      styles.taskTitle, 
-                      { color: task.completed ? Colors.lightText : Colors.text },
-                      task.completed && styles.taskTitleCompleted
-                    ]}>
-                      {task.title}
-                    </Text>
-                    {task.completed && task.completedDate && (
-                      <Text style={[styles.taskCompletedDate, { color: Colors.success }]}>
-                        Completed on {new Date(task.completedDate).toLocaleDateString()}
-                      </Text>
-                    )}
-                  </View>
-                </View>
-                <TouchableOpacity
-                  onPress={() => toggleTaskExpansion(task.id)}
-                  style={styles.expandButton}
-                >
-                  <Text style={[styles.expandButtonText, { color: Colors.primary }]}>
-                    {expandedTasks.has(task.id) ? "Less" : "Help"}
-                  </Text>
-                </TouchableOpacity>
-              </TouchableOpacity>
-              
-              {expandedTasks.has(task.id) && (
-                <View style={[styles.taskAdvice, { backgroundColor: Colors.lightBackground }]}>
-                  <Text style={[styles.taskAdviceText, { color: Colors.text }]}>
-                    💡 {getTaskAdvice(task)}
-                  </Text>
-                </View>
-              )}
-              </Card>
+                  </Card>
+                ))}
+              </View>
             ))
           )}
         </View>
@@ -384,7 +405,7 @@ export default function StageDetailScreen() {
         <Card style={[styles.tipsCard, { backgroundColor: Colors.card }]}>
           <Text style={[styles.tipsTitle, { color: Colors.text }]}>💡 Stage Tips</Text>
           <Text style={[styles.tipsText, { color: Colors.lightText }]}>
-            {getStageSpecificTips(stageId)}
+            {getStageSpecificTips(stageCategory)}
           </Text>
         </Card>
 
@@ -527,6 +548,14 @@ const styles = StyleSheet.create({
   },
   tasksContainer: {
     marginBottom: 24,
+  },
+  checklistSection: {
+    marginBottom: 20,
+  },
+  checklistTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    marginBottom: 8,
   },
   taskCard: {
     marginBottom: 12,

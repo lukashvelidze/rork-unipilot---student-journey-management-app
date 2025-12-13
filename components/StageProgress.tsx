@@ -146,7 +146,7 @@ const StageProgress: React.FC<StageProgressProps> = ({ stage, onPress, isLocked 
               ]}
             />
             <Text style={[styles.title, isLocked && { color: Colors.lightText }]}>
-              {isLocked ? "🔒 " : ""}{getStageTitle(stage.stage)}
+              {isLocked ? "🔒 " : ""}{stage.title || getStageTitle(stage.stage)}
             </Text>
             
             {isLocked ? (

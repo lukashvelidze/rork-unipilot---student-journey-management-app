@@ -23,7 +23,10 @@ export interface Task {
 }
 
 export interface JourneyProgress {
+  id: string;
   stage: JourneyStage;
+  title: string;
+  description?: string;
   progress: number; // 0-100
   completed: boolean;
   completedDate?: string;
