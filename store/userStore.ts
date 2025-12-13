@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { UserProfile, Country, EducationLevel } from "@/types/user";
+import { UserProfile, Country, EducationLevel, SubscriptionTier } from "@/types/user";
 import { flattedStorage } from "@/utils/hermesStorage";
 
 interface UserState {
@@ -27,6 +27,21 @@ interface UserState {
   updateHomeCountry: (country: Country) => void;
 }
 
+const normalizeTier = (tier?: string | null): SubscriptionTier => {
+  if (!tier) return "free";
+  const lower = tier.toLowerCase();
+  if (lower === "premium" || lower === "pro" || lower === "standard" || lower === "basic") {
+    return lower as SubscriptionTier;
+  }
+  return "free";
+};
+
+const isPremiumTier = (tier?: string | null) => {
+  if (!tier) return false;
+  const lower = tier.toLowerCase();
+  return lower === "premium" || lower === "pro";
+};
+
 export const useUserStore = create<UserState>()(
   persist(
     (set, get) => ({
@@ -35,14 +50,25 @@ export const useUserStore = create<UserState>()(
       error: null,
       isPremium: false,
       
-      setUser: (user) => set({ user, isPremium: user.isPremium || false }),
+      setUser: (user) => {
+        const tier = user.subscriptionTier ? normalizeTier(user.subscriptionTier) : (user.isPremium ? "premium" : "free");
+        set({ 
+          user: { ...user, subscriptionTier: tier },
+          isPremium: user.isPremium || isPremiumTier(tier) 
+        });
+      },
       
       updateUser: (userData) =>
         set((state) => {
           const updatedUser = state.user ? { ...state.user, ...userData } : null;
+          const tier = updatedUser
+            ? (updatedUser.subscriptionTier
+                ? normalizeTier(updatedUser.subscriptionTier)
+                : (updatedUser.isPremium ? "premium" : (state.user?.subscriptionTier || "free")))
+            : "free";
           return {
-            user: updatedUser,
-            isPremium: updatedUser?.isPremium || state.isPremium,
+            user: updatedUser ? { ...updatedUser, subscriptionTier: tier } : null,
+            isPremium: updatedUser ? (updatedUser.isPremium || isPremiumTier(tier)) : state.isPremium,
           };
         }),
       
@@ -108,6 +134,7 @@ export const useUserStore = create<UserState>()(
           onboardingStep: 0,
           isPremium: false,
           premiumSince: null,
+          subscriptionTier: "free",
         };
         set({ user: newUser, isPremium: false });
       },
@@ -119,6 +146,7 @@ export const useUserStore = create<UserState>()(
                 ...state.user,
                 isPremium,
                 premiumSince: isPremium ? new Date().toISOString() : null,
+                subscriptionTier: isPremium ? "premium" : state.user.subscriptionTier || "free",
               }
             : null,
           isPremium,

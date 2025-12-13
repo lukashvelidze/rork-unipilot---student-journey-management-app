@@ -5,6 +5,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useUserStore } from "@/store/userStore";
 import { supabase } from "@/lib/supabase";
 import Colors from "@/constants/colors";
+import { SubscriptionTier } from "@/types/user";
 
 export default function OnboardingIndex() {
   const router = useRouter();
@@ -66,11 +67,8 @@ export default function OnboardingIndex() {
           onboardingStep = 2; // Has account, go to home country
         }
 
-        // Import country data helper and types
-        const { getCountryByCode } = require("@/mocks/countries");
+        // Import types and fetch countries from Supabase
         const { EducationLevel } = require("@/types/user");
-        
-        // Fetch countries from Supabase to get proper country objects
         const { getCountries } = require("@/lib/supabase");
         let originCountries: any[] = [];
         let destinationCountries: any[] = [];
@@ -100,6 +98,9 @@ export default function OnboardingIndex() {
             })
           : user?.destinationCountry || { code: "", name: "", flag: "" };
         
+        const subscriptionTier = (profile.subscription_tier || user?.subscriptionTier || "free").toLowerCase() as SubscriptionTier;
+        const premiumPlan = subscriptionTier === "premium" || subscriptionTier === "pro";
+
         const updatedUser = {
           ...user!,
           id: authUser.id,
@@ -112,6 +113,8 @@ export default function OnboardingIndex() {
           },
           onboardingCompleted: isOnboardingComplete,
           onboardingStep,
+          subscriptionTier,
+          isPremium: premiumPlan,
         };
 
         setUser(updatedUser);

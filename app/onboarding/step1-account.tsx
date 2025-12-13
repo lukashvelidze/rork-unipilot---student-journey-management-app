@@ -8,6 +8,7 @@ import Button from "@/components/Button";
 import Input from "@/components/Input";
 import { useUserStore } from "@/store/userStore";
 import { supabase } from "@/lib/supabase";
+import { SubscriptionTier } from "@/types/user";
 
 export default function Step1Account() {
   const router = useRouter();
@@ -192,6 +193,8 @@ export default function Step1Account() {
           name,
           email,
           onboardingStep: 2,
+          subscriptionTier: user?.subscriptionTier || "free",
+          isPremium: user?.isPremium || false,
         });
 
         // Navigate to next step
@@ -243,12 +246,17 @@ export default function Step1Account() {
           .eq("id", data.user.id)
           .single();
 
+        const subscriptionTier = (profile?.subscription_tier || user?.subscriptionTier || "free").toLowerCase() as SubscriptionTier;
+        const premiumPlan = subscriptionTier === "premium" || subscriptionTier === "pro";
+
         // Update local store
         setUser({
           ...user!,
           id: data.user.id,
           name: profile?.full_name || data.user.email || "",
           email: profile?.email || data.user.email || "",
+          subscriptionTier,
+          isPremium: premiumPlan,
         });
 
         // Navigate to onboarding index to determine next step
@@ -426,4 +434,3 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
 });
-

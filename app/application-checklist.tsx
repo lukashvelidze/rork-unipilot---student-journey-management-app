@@ -3,7 +3,7 @@ import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert, Modal, Act
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, Stack } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
-import { CheckSquare, Square, Clock, AlertCircle, Star, Trophy, ChevronDown, ChevronUp, Filter, Target, Crown, X } from "lucide-react-native";
+import { CheckSquare, Square, Clock, AlertCircle, Star, Trophy, ChevronDown, ChevronUp, Filter, Target, Crown, X, ChevronLeft } from "lucide-react-native";
 import { useColors } from "@/hooks/useColors";
 import Card from "@/components/Card";
 import Button from "@/components/Button";
@@ -340,6 +340,13 @@ export default function ApplicationChecklistScreen() {
           end={{ x: 1, y: 1 }}
           style={styles.headerGradient}
         >
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={styles.backButton}
+            activeOpacity={0.8}
+          >
+            <ChevronLeft size={20} color="#FFFFFF" />
+          </TouchableOpacity>
           <View style={styles.headerContent}>
             <Target size={24} color="#FFFFFF" />
             <Text style={styles.headerTitle}>University Application Checklist</Text>
@@ -544,6 +551,15 @@ const styles = StyleSheet.create({
   headerGradient: {
     padding: 16,
     paddingTop: 20,
+    position: "relative",
+  },
+  backButton: {
+    position: "absolute",
+    top: 16,
+    left: 16,
+    padding: 6,
+    borderRadius: 16,
+    backgroundColor: "rgba(0, 0, 0, 0.25)",
   },
   headerContent: {
     alignItems: "center",

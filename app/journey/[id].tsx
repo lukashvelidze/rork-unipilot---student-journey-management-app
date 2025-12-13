@@ -265,6 +265,13 @@ export default function StageDetailScreen() {
           end={{ x: 1, y: 1 }}
           style={styles.headerGradient}
         >
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={styles.backButton}
+            activeOpacity={0.8}
+          >
+            <ChevronLeft size={20} color="#FFFFFF" />
+          </TouchableOpacity>
           <View style={styles.headerContent}>
             <View style={styles.headerIcon}>
               <info.icon size={24} color="#FFFFFF" />
@@ -424,6 +431,15 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingTop: 12,
     paddingBottom: 16,
+    position: "relative",
+  },
+  backButton: {
+    position: "absolute",
+    top: 12,
+    left: 12,
+    padding: 6,
+    borderRadius: 16,
+    backgroundColor: "rgba(0, 0, 0, 0.2)",
   },
   headerContent: {
     alignItems: "center",

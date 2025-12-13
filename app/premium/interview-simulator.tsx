@@ -13,8 +13,8 @@ import {
 } from "react-native";
 import { Audio } from 'expo-av';
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Stack, useRouter } from "expo-router";
-import { Mic, MicOff, PhoneOff, Volume2, AlertCircle, Lock, Crown, ArrowRight } from "lucide-react-native";
+import { Stack, useRouter, useNavigation } from "expo-router";
+import { Mic, MicOff, PhoneOff, Volume2, AlertCircle, Lock, Crown, ArrowRight, ChevronLeft } from "lucide-react-native";
 import { useColors } from "@/hooks/useColors";
 import Card from "@/components/Card";
 import Button from "@/components/Button";
@@ -40,6 +40,7 @@ const isExpoGo = Constants.executionEnvironment === "storeClient";
 // This ensures hooks are called consistently
 function InterviewContent() {
   const Colors = useColors();
+  const navigation = useNavigation();
   const { user } = useUserStore();
   const scrollViewRef = useRef<ScrollView>(null);
 
@@ -316,7 +317,7 @@ function InterviewContent() {
     }
   };
 
-  const endConversation = async () => {
+  const endConversation = useCallback(async () => {
     try {
       setIsConnecting(false);
       await conversation.endSession();
@@ -326,7 +327,35 @@ function InterviewContent() {
       setSessionActive(false);
       setIsConnecting(false);
     }
-  };
+  }, [conversation]);
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener("beforeRemove", (event) => {
+      if (!sessionActive && !isConnecting) {
+        return;
+      }
+
+      event.preventDefault();
+      Alert.alert(
+        "Leave Interview?",
+        "Please end the interview before leaving this screen.",
+        [
+          { text: "Stay", style: "cancel" },
+          {
+            text: "End & Leave",
+            style: "destructive",
+            onPress: () => {
+              endConversation().finally(() => {
+                navigation.dispatch(event.data.action);
+              });
+            },
+          },
+        ]
+      );
+    });
+
+    return unsubscribe;
+  }, [navigation, sessionActive, isConnecting, endConversation]);
 
   const toggleMute = () => {
     const newMutedState = !isMuted;
@@ -363,6 +392,13 @@ function InterviewContent() {
       >
         {/* Header Section */}
         <View style={styles.header}>
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            style={[styles.inlineBackButton, { backgroundColor: Colors.lightBackground }]}
+            activeOpacity={0.8}
+          >
+            <ChevronLeft size={20} color={Colors.text} />
+          </TouchableOpacity>
           <View style={[styles.iconContainer, { backgroundColor: Colors.primary + "20" }]}>
             <Mic size={32} color={Colors.primary} />
           </View>
@@ -779,6 +815,12 @@ const styles = StyleSheet.create({
   header: {
     alignItems: "center",
     marginBottom: 20,
+  },
+  inlineBackButton: {
+    alignSelf: "flex-start",
+    padding: 8,
+    borderRadius: 999,
+    marginBottom: 12,
   },
   iconContainer: {
     width: 70,

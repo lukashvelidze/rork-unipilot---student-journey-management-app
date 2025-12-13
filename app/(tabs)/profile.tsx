@@ -11,6 +11,19 @@ import Avatar from "@/components/Avatar";
 import { useUserStore } from "@/store/userStore";
 import { useJourneyStore } from "@/store/journeyStore";
 import { useDocumentStore } from "@/store/documentStore";
+import { EducationLevel } from "@/types/user";
+
+const formatEducationLevel = (level: EducationLevel | undefined): string => {
+  if (!level) return "Not set";
+  const labels: Record<EducationLevel, string> = {
+    high_school: "High School",
+    bachelors: "Bachelor's Degree",
+    masters: "Master's Degree",
+    phd: "PhD",
+    other: "Other",
+  };
+  return labels[level] || level;
+};
 
 export default function ProfileScreen() {
   const router = useRouter();
@@ -56,6 +69,8 @@ export default function ProfileScreen() {
   const actualJourneyProgress = calculateJourneyProgress();
   const actualCompletedTasks = calculateCompletedTasks();
   const actualDocumentCount = documents.length;
+  const userTier = (user.subscriptionTier || (user.isPremium ? "premium" : "free")).toLowerCase();
+  const showUpgradeCTA = !["premium", "pro"].includes(userTier);
 
   const profileStats = [
     {
@@ -185,7 +200,7 @@ export default function ProfileScreen() {
               <View style={styles.infoContent}>
                 <Text style={[styles.infoLabel, { color: Colors.lightText }]}>Education Level</Text>
                 <Text style={[styles.infoValue, { color: Colors.text }]}>
-                  {user.educationBackground?.level || "Not set"}
+                  {formatEducationLevel(user.educationBackground?.level)}
                 </Text>
               </View>
             </View>
@@ -204,8 +219,8 @@ export default function ProfileScreen() {
           </View>
         </Card>
         
-        {/* Premium Upgrade (if not premium) */}
-        {!isPremium && (
+        {/* Premium Upgrade (if not at highest tier) */}
+        {showUpgradeCTA && (
           <Card style={[styles.upgradeCard, { backgroundColor: Colors.premiumBackground, borderColor: Colors.premium }]} variant="elevated">
             <View style={styles.upgradeContent}>
               <Crown size={32} color={Colors.premium} />

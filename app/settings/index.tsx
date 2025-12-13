@@ -1,33 +1,26 @@
-import React, { useState, useEffect } from "react";
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert, Switch, Modal, ActivityIndicator, InteractionManager } from "react-native";
+import React, { useState } from "react";
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert, Switch } from "react-native";
 import { useRouter } from "expo-router";
-import { 
-  User, 
-  Bell, 
-  Shield, 
-  HelpCircle, 
-  MessageSquare, 
-  Star, 
-  LogOut, 
+import {
+  User,
+  Bell,
+  HelpCircle,
+  MessageSquare,
+  Star,
+  LogOut,
   ChevronRight,
   Moon,
   Globe,
   Download,
   Trash2,
-  Crown,
-  MapPin,
-  Home
+  Crown
 } from "lucide-react-native";
 import { useColors } from "@/hooks/useColors";
 import { useThemeStore } from "@/store/themeStore";
 import Theme from "@/constants/theme";
 import Card from "@/components/Card";
-import Button from "@/components/Button";
-import CountrySelector from "@/components/CountrySelector";
 import { useUserStore } from "@/store/userStore";
-import { useJourneyStore } from "@/store/journeyStore";
-import { Country } from "@/types/user";
-import { supabase, updateProfile, getCountries } from "@/lib/supabase";
+import { supabase } from "@/lib/supabase";
 
 interface SettingItem {
   id: string;
@@ -35,48 +28,21 @@ interface SettingItem {
   subtitle?: string;
   icon: any;
   iconColor: string;
-  type: "navigation" | "toggle" | "action" | "country_selector";
+  type: "navigation" | "toggle" | "action";
   value?: boolean;
   onPress?: () => void;
   onToggle?: (value: boolean) => void;
   destructive?: boolean;
-  country?: Country | null;
-  onCountryChange?: (country: Country) => void;
 }
 
 export default function SettingsScreen() {
   const router = useRouter();
   const Colors = useColors();
-  const { user, logout, isPremium, updateDestinationCountry, updateHomeCountry } = useUserStore();
-  const { refreshJourney } = useJourneyStore();
+  const { user, logout, isPremium } = useUserStore();
   const { isDarkMode, toggleDarkMode } = useThemeStore();
-  
+
   const [notifications, setNotifications] = useState(true);
   const [autoDownload, setAutoDownload] = useState(false);
-  const [showDestinationSelector, setShowDestinationSelector] = useState(false);
-  const [showHomeSelector, setShowHomeSelector] = useState(false);
-  const [destinationCountries, setDestinationCountries] = useState<Country[]>([]);
-  const [originCountries, setOriginCountries] = useState<Country[]>([]);
-  const [isLoadingCountries, setIsLoadingCountries] = useState(false);
-  
-  // Fetch countries from database
-  useEffect(() => {
-    async function fetchCountries() {
-      try {
-        setIsLoadingCountries(true);
-        const { destination, origin } = await getCountries();
-        setDestinationCountries(destination);
-        setOriginCountries(origin);
-      } catch (error) {
-        console.error("Error fetching countries:", error);
-        Alert.alert("Error", "Failed to load countries. Please try again.");
-      } finally {
-        setIsLoadingCountries(false);
-      }
-    }
-    
-    fetchCountries();
-  }, []);
   
   const handleLogout = async () => {
     Alert.alert(
@@ -139,121 +105,7 @@ export default function SettingsScreen() {
       ]
     );
   };
-  
 
-  const handleDestinationCountryChange = async (country: Country) => {
-    try {
-      console.log("Destination country selected:", country.name, country.code);
-      
-      // Close the destination selector modal first to prevent UI blocking
-      setShowDestinationSelector(false);
-      
-      // Small delay to ensure modal closes before any alerts
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
-      // Update destination country in database first
-      const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
-      if (authError || !authUser) {
-        console.error("Auth error:", authError);
-        // Use setTimeout to show alert after modal closes to prevent blocking
-        setTimeout(() => {
-          Alert.alert(
-            "Error", 
-            "You must be logged in to update your destination country.",
-            [{ text: "OK" }]
-          );
-        }, 200);
-        return;
-      }
-      
-      // Update the database profile
-      const { error: updateError } = await supabase
-        .from("profiles")
-        .update({
-          destination_country: country.code.toUpperCase(),
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", authUser.id);
-      
-      if (updateError) {
-        console.error("Error updating profile:", updateError);
-        // Use setTimeout to show alert after modal closes to prevent blocking
-        setTimeout(() => {
-          Alert.alert(
-            "Error", 
-            "Failed to update destination country. Please try again.",
-            [{ text: "OK" }]
-          );
-        }, 200);
-        return;
-      }
-      
-      // Update the destination country in user store
-      updateDestinationCountry(country);
-      
-      // Wait a bit longer to ensure user store is fully updated
-      // This is especially important when coming from settings
-      await new Promise(resolve => setTimeout(resolve, 200));
-      
-      // Use InteractionManager to ensure UI is ready before navigation
-      // This prevents freezing by waiting for all interactions to complete
-      InteractionManager.runAfterInteractions(() => {
-        // Small additional delay to ensure state is fully updated
-        setTimeout(() => {
-          router.replace("/onboarding/step3-education");
-        }, 100);
-      });
-    } catch (error) {
-      console.error("Error in handleDestinationCountryChange:", error);
-      // Ensure modal is closed even on error
-      setShowDestinationSelector(false);
-      // Use setTimeout to show alert after modal closes to prevent blocking
-      setTimeout(() => {
-        Alert.alert(
-          "Error",
-          "Failed to update destination country. Please try again.",
-          [{ text: "OK" }]
-        );
-      }, 200);
-    }
-  };
-
-  
-  const handleHomeCountryChange = async (country: Country) => {
-    try {
-      // Get authenticated user
-      const { data: { user: authUser } } = await supabase.auth.getUser();
-      if (!authUser) {
-        Alert.alert("Error", "You must be logged in to update your home country.");
-        return;
-      }
-      
-      // Update the database profile
-      const { error: updateError } = await updateProfile({
-        country_origin: country.code,
-      });
-      
-      if (updateError) {
-        console.error("Error updating profile:", updateError);
-        Alert.alert("Error", "Failed to update home country in database. Please try again.");
-        return;
-      }
-      
-      // Update the home country in user store
-      updateHomeCountry(country);
-      setShowHomeSelector(false);
-      
-      Alert.alert(
-        "Home Country Updated",
-        `Your home country has been changed to ${country.flag} ${country.name}.`,
-        [{ text: "OK" }]
-      );
-    } catch (error) {
-      console.error("Error updating home country:", error);
-      Alert.alert("Error", "Failed to update home country. Please try again.");
-    }
-  };
-  
   const settingSections = [
     {
       title: "Account",
@@ -275,49 +127,6 @@ export default function SettingsScreen() {
           iconColor: Colors.premium,
           type: "navigation",
           onPress: () => router.push("/premium"),
-        },
-      ] as SettingItem[],
-    },
-    {
-      title: "Journey Settings",
-      items: [
-        {
-          id: "homeCountry",
-          title: "Home Country",
-          subtitle: user?.homeCountry?.name || "Not set",
-          icon: Home,
-          iconColor: Colors.secondary,
-          type: "navigation",
-          onPress: () => setShowHomeSelector(true),
-        },
-        {
-          id: "destinationCountry",
-          title: "Destination Country",
-          subtitle: user?.destinationCountry?.name ? `${user.destinationCountry.flag} ${user.destinationCountry.name}` : "Not set",
-          icon: MapPin,
-          iconColor: Colors.accent,
-          type: "navigation",
-          onPress: async () => {
-            // Check authentication before opening modal
-            try {
-              const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
-              if (authError || !authUser) {
-                // Automatically redirect to sign-in page
-                router.replace("/sign-in");
-                return;
-              }
-              setShowDestinationSelector(true);
-            } catch (error: any) {
-              console.error("Error checking auth:", error);
-              // Check if it's an authentication error
-              if (error?.message?.includes('not authenticated') || error?.message?.includes('Authentication error') || error?.message?.includes('Session error')) {
-                // Automatically redirect to sign-in page
-                router.replace("/sign-in");
-                return;
-              }
-              Alert.alert("Error", "Unable to verify authentication. Please try again.");
-            }
-          },
         },
       ] as SettingItem[],
     },
@@ -509,79 +318,6 @@ export default function SettingsScreen() {
         </View>
       ))}
       
-      {/* Country Selectors */}
-      <Modal
-        visible={showDestinationSelector}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setShowDestinationSelector(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <Card style={[styles.modalCard, { backgroundColor: Colors.card }]}>
-            <Text style={[styles.modalTitle, { color: Colors.text }]}>Change Destination Country</Text>
-            <Text style={[styles.modalSubtitle, { color: Colors.lightText }]}>
-              This will update your journey tasks with country-specific visa requirements, document checklists, and regulations.
-            </Text>
-            {isLoadingCountries ? (
-              <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color={Colors.primary} />
-                <Text style={[styles.loadingText, { color: Colors.lightText }]}>Loading countries...</Text>
-              </View>
-            ) : (
-              <CountrySelector
-                label="Select Destination Country"
-                value={user?.destinationCountry || null}
-                onChange={handleDestinationCountryChange}
-                countries={destinationCountries}
-              />
-            )}
-            <View style={styles.modalButtons}>
-              <Button
-                title="Cancel"
-                onPress={() => setShowDestinationSelector(false)}
-                variant="outline"
-                style={styles.modalButton}
-              />
-            </View>
-          </Card>
-        </View>
-      </Modal>
-      
-      <Modal
-        visible={showHomeSelector}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setShowHomeSelector(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <Card style={[styles.modalCard, { backgroundColor: Colors.card }]}>
-            <Text style={[styles.modalTitle, { color: Colors.text }]}>Change Home Country</Text>
-            {isLoadingCountries ? (
-              <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color={Colors.primary} />
-                <Text style={[styles.loadingText, { color: Colors.lightText }]}>Loading countries...</Text>
-              </View>
-            ) : (
-              <CountrySelector
-                label="Select Home Country"
-                value={user?.homeCountry || null}
-                onChange={handleHomeCountryChange}
-                countries={originCountries}
-              />
-            )}
-            <View style={styles.modalButtons}>
-              <Button
-                title="Cancel"
-                onPress={() => setShowHomeSelector(false)}
-                variant="outline"
-                style={styles.modalButton}
-              />
-            </View>
-          </Card>
-        </View>
-      </Modal>
-
-      
       {/* App Version */}
       <View style={styles.versionContainer}>
         <Text style={[styles.versionText, { color: Colors.lightText }]}>UniPilot v1.0.0</Text>
@@ -702,45 +438,6 @@ const styles = StyleSheet.create({
     height: 1,
     marginLeft: 72,
   },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 20,
-  },
-  loadingContainer: {
-    padding: 24,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 14,
-  },
-  modalCard: {
-    width: "100%",
-    maxWidth: 400,
-    padding: 24,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    marginBottom: 8,
-  },
-  modalSubtitle: {
-    fontSize: 14,
-    marginBottom: 20,
-    lineHeight: 20,
-  },
-  modalButtons: {
-    flexDirection: "row",
-    justifyContent: "flex-end",
-    marginTop: 20,
-  },
-  modalButton: {
-    marginLeft: 12,
-  },
   versionContainer: {
     alignItems: "center",
     marginTop: 20,
@@ -751,55 +448,5 @@ const styles = StyleSheet.create({
   },
   versionSubtext: {
     fontSize: 12,
-  },
-  emptyContainer: {
-    padding: 24,
-    alignItems: "center",
-  },
-  emptyText: {
-    fontSize: 16,
-    marginBottom: 8,
-    textAlign: "center",
-  },
-  emptySubtext: {
-    fontSize: 14,
-    textAlign: "center",
-  },
-  visaTypesList: {
-    maxHeight: 300,
-    marginVertical: 16,
-  },
-  visaTypeCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 2,
-    marginBottom: 12,
-  },
-  visaTypeContent: {
-    flex: 1,
-  },
-  visaTypeTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    marginBottom: 4,
-  },
-  visaTypeDescription: {
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  checkmark: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    justifyContent: "center",
-    alignItems: "center",
-    marginLeft: 12,
-  },
-  checkmarkText: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "600",
   },
 });

@@ -13,6 +13,7 @@ import { calculateOverallProgress } from "@/utils/helpers";
 import { getRandomQuote, generalQuotes } from "@/mocks/quotes";
 import { supabase, getCountries } from "@/lib/supabase";
 import { formatEnumValue } from "@/utils/safeStringOps";
+import { SubscriptionTier } from "@/types/user";
 
 // Timeout wrapper for Supabase calls
 const withTimeout = <T,>(
@@ -40,7 +41,7 @@ const withTimeout = <T,>(
 export default function HomeScreen() {
   const router = useRouter();
   const Colors = useColors();
-  const { user, setUser } = useUserStore();
+  const { user, setUser, updateUser } = useUserStore();
   const { journeyProgress, setJourneyProgress } = useJourneyStore();
   const [hasActiveSubscription, setHasActiveSubscription] = useState(false);
   const [isCheckingSubscription, setIsCheckingSubscription] = useState(true);
@@ -104,11 +105,15 @@ export default function HomeScreen() {
         return;
       }
 
-      const tier = profile?.subscription_tier === "premium" ? "pro" : profile?.subscription_tier;
-      const isSubscribed = tier && tier !== "free" && ["basic", "standard", "pro", "premium"].includes(tier);
+      const tier = (profile?.subscription_tier || "free").toLowerCase();
+      const isSubscribed = ["basic", "standard", "pro", "premium"].includes(tier);
 
       if (isMountedRef.current) {
-        setHasActiveSubscription(!!isSubscribed);
+        setHasActiveSubscription(isSubscribed);
+        updateUser({
+          subscriptionTier: tier as SubscriptionTier,
+          isPremium: tier === "premium" || tier === "pro",
+        });
       }
     } catch (error) {
       console.error("Error checking subscription:", error);
@@ -192,6 +197,9 @@ export default function HomeScreen() {
           // Final check before state update
           if (!isMountedRef.current) return;
 
+          const subscriptionTier = (profile.subscription_tier || user?.subscriptionTier || "free").toLowerCase() as SubscriptionTier;
+          const premiumPlan = subscriptionTier === "premium" || subscriptionTier === "pro";
+
           // Update user store with database data
           setUser({
             ...user!,
@@ -204,6 +212,8 @@ export default function HomeScreen() {
               level: (profile.level_of_study as any) || user?.educationBackground?.level || "bachelors",
             },
             onboardingCompleted: !!profile.visa_type,
+            subscriptionTier,
+            isPremium: premiumPlan,
           });
 
           // Journey progress is now fetched from Supabase in the journey page
@@ -245,6 +255,16 @@ export default function HomeScreen() {
   
   const overallProgress = calculateOverallProgress(journeyProgress);
   const dailyQuote = getRandomQuote(generalQuotes);
+  const tierLabels: Record<string, string> = {
+    free: "Free",
+    basic: "Basic",
+    standard: "Standard",
+    premium: "Premium",
+    pro: "Premium",
+  };
+  const effectiveTier = (user.subscriptionTier || (hasActiveSubscription ? "standard" : "free")).toLowerCase();
+  const subscriptionLabel = tierLabels[effectiveTier] || "Free";
+  const isTopTier = effectiveTier === "premium" || effectiveTier === "pro";
   
   // Get current active stage (first incomplete stage)
   const currentStage = journeyProgress.find(stage => !stage.completed) || journeyProgress[0];
@@ -324,6 +344,18 @@ export default function HomeScreen() {
               <Text style={[styles.name, { color: Colors.text }]}>
                 {user.name?.split(' ')[0] || user.name}!
               </Text>
+              <View style={[
+                styles.subscriptionBadge,
+                { backgroundColor: Colors.lightBackground }
+              ]}>
+                <Crown size={14} color={Colors.primary} />
+                <Text style={[
+                  styles.subscriptionBadgeText,
+                  { color: isTopTier ? Colors.primary : Colors.lightText }
+                ]}>
+                  {subscriptionLabel} Plan
+                </Text>
+              </View>
             </View>
           </View>
         </View>
@@ -458,6 +490,21 @@ const styles = StyleSheet.create({
   name: {
     fontSize: 28,
     fontWeight: "700",
+  },
+  subscriptionBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginTop: 6,
+    gap: 6,
+  },
+  subscriptionBadgeText: {
+    fontSize: 12,
+    fontWeight: "600",
+    textTransform: "uppercase",
   },
   premiumBadge: {
     flexDirection: "row",

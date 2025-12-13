@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from "react";
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from "react-native";
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { ChevronRight } from "lucide-react-native";
 import Colors from "@/constants/colors";
 import Button from "@/components/Button";
 import { useUserStore } from "@/store/userStore";
 import { supabase } from "@/lib/supabase";
+import { Country } from "@/types/user";
 
 interface VisaType {
   id: string;
@@ -20,8 +21,47 @@ interface VisaType {
 export default function Step5Visa() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { user, setUser, updateOnboardingStep } = useUserStore();
-  
+  const params = useLocalSearchParams<{
+    pendingCountryCode?: string;
+    pendingCountryName?: string;
+    pendingCountryFlag?: string;
+    pendingHomeCountryCode?: string;
+    pendingHomeCountryName?: string;
+    pendingHomeCountryFlag?: string;
+    pendingName?: string;
+    pendingEmail?: string;
+    pendingEducationLevel?: string;
+    pendingCareerGoal?: string;
+    pendingBio?: string;
+    fromEditProfile?: string;
+  }>();
+  const { user, setUser, updateDestinationCountry, updateUser } = useUserStore();
+
+  // Check if we have a pending country change from edit profile
+  const normalizeParam = (value?: string | string[]) => {
+    if (Array.isArray(value)) {
+      return value[0];
+    }
+    return value;
+  };
+
+  const pendingDestinationCountry: Country | null = normalizeParam(params.pendingCountryCode) ? {
+    code: normalizeParam(params.pendingCountryCode)!,
+    name: normalizeParam(params.pendingCountryName) || normalizeParam(params.pendingCountryCode)!,
+    flag: normalizeParam(params.pendingCountryFlag) || "",
+  } : null;
+
+  const pendingHomeCountry: Country | null = normalizeParam(params.pendingHomeCountryCode) ? {
+    code: normalizeParam(params.pendingHomeCountryCode)!,
+    name: normalizeParam(params.pendingHomeCountryName) || normalizeParam(params.pendingHomeCountryCode)!,
+    flag: normalizeParam(params.pendingHomeCountryFlag) || "",
+  } : null;
+
+  const isFromEditProfile = params.fromEditProfile === "true";
+
+  // Use pending country if available, otherwise use user's current destination
+  const effectiveCountry = pendingDestinationCountry || user?.destinationCountry;
+
   const [visaTypes, setVisaTypes] = useState<VisaType[]>([]);
   const [selectedVisaType, setSelectedVisaType] = useState<VisaType | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -30,21 +70,22 @@ export default function Step5Visa() {
 
   useEffect(() => {
     loadVisaTypes();
-  }, [user?.destinationCountry?.code]); // Reload when destination country changes
+  }, [effectiveCountry?.code]); // Reload when effective country changes
 
   const loadVisaTypes = async () => {
     try {
       setIsLoading(true);
+      setError("");
       const { data: { user: authUser } } = await supabase.auth.getUser();
-      
+
       if (!authUser) {
         setIsLoading(false);
         return;
       }
 
-      // Get destination country from user store or fetch from profile
-      let countryCode = user?.destinationCountry?.code;
-      
+      // Get destination country - prefer pending country, then user store, then fetch from profile
+      let countryCode = effectiveCountry?.code;
+
       if (!countryCode) {
         // Fetch from profile if not in store
         const { data: profile, error: profileError } = await supabase
@@ -52,30 +93,33 @@ export default function Step5Visa() {
           .select("destination_country")
           .eq("id", authUser.id)
           .single();
-        
+
         if (profileError || !profile?.destination_country) {
           console.error("No destination country found");
           setError("Please set your destination country first.");
           setIsLoading(false);
           return;
         }
-        
+
         countryCode = profile.destination_country;
       }
 
-      // Query visa types for the destination country
+      const sanitizedCode = countryCode.trim().toUpperCase();
+      // Query visa types for the destination country or generic ones
       const { data, error: queryError } = await supabase
         .from("visa_types")
         .select("*")
-        .eq("country_code", countryCode.toUpperCase())
+        .or(`country_code.eq.${sanitizedCode},country_code.is.null`)
         .eq("is_active", true)
-        .order("title");
+        .order("country_code", { ascending: false })
+        .order("title", { ascending: true });
 
       if (queryError) {
         console.error("Error loading visa types:", queryError);
         setError("Failed to load visa types. Please try again.");
       } else {
         setVisaTypes(data || []);
+        setError("");
       }
     } catch (error: any) {
       console.error("Error loading visa types:", error);
@@ -100,20 +144,42 @@ export default function Step5Visa() {
 
     try {
       const { data: { user: authUser } } = await supabase.auth.getUser();
-      
+
       if (!authUser) {
+        setIsProcessing(false);
         router.replace("/onboarding/step1-account");
         return;
       }
 
-      // Update profile in Supabase
-      // Note: visa_type stores the visa code (TEXT), not the UUID
+      // Build the update object
+      const updateData: any = {
+        visa_type: selectedVisaType.code,
+        updated_at: new Date().toISOString(),
+      };
+
+      // If coming from edit profile, include all profile updates
+      if (isFromEditProfile) {
+        if (pendingDestinationCountry) {
+          updateData.destination_country = pendingDestinationCountry.code.toUpperCase();
+        }
+        if (pendingHomeCountry) {
+          updateData.country_origin = pendingHomeCountry.code.toUpperCase();
+        }
+        if (params.pendingName) {
+          updateData.full_name = params.pendingName;
+        }
+        if (params.pendingEmail) {
+          updateData.email = params.pendingEmail;
+        }
+        if (params.pendingEducationLevel) {
+          updateData.level_of_study = params.pendingEducationLevel;
+        }
+      }
+
+      // Update profile in Supabase (all data together)
       const { error: updateError } = await supabase
         .from("profiles")
-        .update({
-          visa_type: selectedVisaType.code,
-          updated_at: new Date().toISOString(),
-        })
+        .update(updateData)
         .eq("id", authUser.id);
 
       if (updateError) {
@@ -125,24 +191,76 @@ export default function Step5Visa() {
 
       // Update local store
       if (user) {
-        setUser({
-          ...user,
-          onboardingStep: 6,
-        });
+        if (isFromEditProfile) {
+          // Update all profile data in store
+          const updatedUserData: any = {
+            destinationCountry: pendingDestinationCountry || user.destinationCountry,
+          };
+
+          if (pendingHomeCountry) {
+            updatedUserData.homeCountry = pendingHomeCountry;
+          }
+          if (params.pendingName) {
+            updatedUserData.name = params.pendingName;
+          }
+          if (params.pendingEmail) {
+            updatedUserData.email = params.pendingEmail;
+          }
+          if (params.pendingEducationLevel) {
+            updatedUserData.educationBackground = {
+              ...user.educationBackground,
+              level: params.pendingEducationLevel,
+            };
+          }
+          if (params.pendingCareerGoal) {
+            updatedUserData.careerGoal = params.pendingCareerGoal;
+          }
+          if (params.pendingBio) {
+            updatedUserData.bio = params.pendingBio;
+          }
+
+          updateUser(updatedUserData);
+          updateDestinationCountry(pendingDestinationCountry || user.destinationCountry!);
+        } else {
+          setUser({
+            ...user,
+            onboardingStep: 6,
+          });
+        }
       }
 
-      // If user has already completed onboarding (coming from settings),
-      // skip step6 and go directly to journey tab
+      // Refresh journey store to fetch new checklists
+      const { useJourneyStore } = require("@/store/journeyStore");
+      const journeyStore = useJourneyStore.getState();
+
+      // Clear old journey data and refresh
+      journeyStore.setJourneyProgress([]);
+      await journeyStore.refreshJourney();
+
+      // Navigate based on where user came from
+      if (isFromEditProfile) {
+        Alert.alert(
+          "Journey Updated",
+          "Your journey modules were refreshed for the new country. Would you like to view them now?",
+          [
+            {
+              text: "Not now",
+              style: "cancel",
+              onPress: () => router.replace("/(tabs)/profile"),
+            },
+            {
+              text: "Go to journey",
+              onPress: () => router.replace("/(tabs)/journey"),
+            },
+          ]
+        );
+        return;
+      }
+
       if (user?.onboardingCompleted) {
-        // Refresh journey store to fetch new checklists
-        const { useJourneyStore } = require("@/store/journeyStore");
-        const journeyStore = useJourneyStore.getState();
-        journeyStore.refreshJourney();
-        
-        // Navigate directly to journey tab
         router.replace("/(tabs)/journey");
       } else {
-        // Navigate to next step (finish onboarding)
+        // Normal onboarding flow - go to finish step
         router.push("/onboarding/step6-finish");
       }
     } catch (error: any) {
@@ -166,13 +284,15 @@ export default function Step5Visa() {
 
   return (
     <SafeAreaView style={styles.container} edges={[]}>
-      {/* Progress bar */}
-      <View style={styles.progressContainer}>
-        <View style={styles.progressBar}>
-          <View style={[styles.progressFill, { width: "83%" }]} />
+      {/* Progress bar - only show during onboarding */}
+      {!isFromEditProfile && !user?.onboardingCompleted && (
+        <View style={styles.progressContainer}>
+          <View style={styles.progressBar}>
+            <View style={[styles.progressFill, { width: "83%" }]} />
+          </View>
+          <Text style={styles.progressText}>Step 5 of 6</Text>
         </View>
-        <Text style={styles.progressText}>Step 5 of 6</Text>
-      </View>
+      )}
 
       {/* Main content */}
       <ScrollView
@@ -182,9 +302,14 @@ export default function Step5Visa() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.stepContainer}>
-          <Text style={styles.stepTitle}>What type of visa do you need?</Text>
+          <Text style={styles.stepTitle}>
+            {isFromEditProfile ? "Update Your Visa Type" : "What type of visa do you need?"}
+          </Text>
           <Text style={styles.stepDescription}>
-            Select the visa type that matches your study plans for {user?.destinationCountry?.name || "your destination"}
+            {isFromEditProfile
+              ? `You changed your destination to ${effectiveCountry?.name || "a new country"}. Please select the visa type for this country.`
+              : `Select the visa type that matches your study plans for ${effectiveCountry?.name || "your destination"}`
+            }
           </Text>
 
           {error && !selectedVisaType && (
@@ -194,7 +319,7 @@ export default function Step5Visa() {
           {visaTypes.length === 0 ? (
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyText}>
-                No visa types found for {user?.destinationCountry?.name || "this country"}.
+                No visa types found for {effectiveCountry?.name || "this country"}.
               </Text>
               <Text style={styles.emptySubtext}>
                 You can continue and update this later.
@@ -254,11 +379,21 @@ export default function Step5Visa() {
         
         <TouchableOpacity
           style={styles.skipButton}
-          onPress={() => router.push("/onboarding/step6-finish")}
+          onPress={() => {
+            if (isFromEditProfile) {
+              // Go back to edit profile without saving
+              router.back();
+            } else if (user?.onboardingCompleted) {
+              // Go back to previous screen
+              router.back();
+            } else {
+              router.push("/onboarding/step6-finish");
+            }
+          }}
           disabled={isProcessing}
           activeOpacity={0.7}
         >
-          <Text style={styles.skipText}>Skip for now</Text>
+          <Text style={styles.skipText}>{isFromEditProfile ? "Cancel" : "Skip for now"}</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -413,4 +548,3 @@ const styles = StyleSheet.create({
     color: Colors.lightText,
   },
 });
-

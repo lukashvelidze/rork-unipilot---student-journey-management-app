@@ -8,6 +8,7 @@ import Button from "@/components/Button";
 import Input from "@/components/Input";
 import { useUserStore } from "@/store/userStore";
 import { supabase } from "@/lib/supabase";
+import { SubscriptionTier } from "@/types/user";
 
 export default function SignInScreen() {
   const router = useRouter();
@@ -75,6 +76,9 @@ export default function SignInScreen() {
           .eq("id", data.user.id)
           .single();
 
+        const subscriptionTier = (profile?.subscription_tier || "free").toLowerCase() as SubscriptionTier;
+        const premiumPlan = subscriptionTier === "premium" || subscriptionTier === "pro";
+
         // Update local store
         const updatedUser = {
           ...user!,
@@ -82,6 +86,8 @@ export default function SignInScreen() {
           name: profile?.full_name || data.user.email || "",
           email: profile?.email || data.user.email || "",
           onboardingCompleted: !!profile?.visa_type,
+           subscriptionTier,
+           isPremium: premiumPlan,
         };
 
         setUser(updatedUser);
@@ -234,4 +240,3 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 });
-

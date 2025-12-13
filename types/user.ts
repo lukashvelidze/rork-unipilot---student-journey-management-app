@@ -95,6 +95,8 @@ export interface EducationBackground {
   graduationDate?: string;
 }
 
+export type SubscriptionTier = "free" | "basic" | "standard" | "premium" | "pro";
+
 export interface UserProfile {
   id: string;
   name: string;
@@ -114,6 +116,7 @@ export interface UserProfile {
   onboardingStep: number;
   isPremium: boolean;
   premiumSince?: string | null;
+  subscriptionTier?: SubscriptionTier | null;
   createdAt?: string;
   updatedAt?: string;
 }

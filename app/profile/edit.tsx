@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { StyleSheet, View, Text, ScrollView, Alert, TouchableOpacity } from "react-native";
+import { StyleSheet, View, Text, ScrollView, Alert, TouchableOpacity, ActivityIndicator } from "react-native";
 import { useRouter } from "expo-router";
 import { Save, User, Mail, MapPin, GraduationCap, Calendar, Target } from "lucide-react-native";
 import Colors from "@/constants/colors";
@@ -10,7 +10,7 @@ import Input from "@/components/Input";
 import CountrySelector from "@/components/CountrySelector";
 import Avatar from "@/components/Avatar";
 import { useUserStore } from "@/store/userStore";
-import { countries } from "@/mocks/countries";
+import { getCountries, supabase } from "@/lib/supabase";
 import { Country, EducationLevel } from "@/types/user";
 
 const educationLevels = [
@@ -35,7 +35,7 @@ const careerGoals = [
 export default function EditProfileScreen() {
   const router = useRouter();
   const { user, updateUser } = useUserStore();
-  
+
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -45,15 +45,37 @@ export default function EditProfileScreen() {
     careerGoal: "",
     bio: "",
   });
-  
+
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingCountries, setIsLoadingCountries] = useState(true);
+  const [originCountries, setOriginCountries] = useState<Country[]>([]);
+  const [destinationCountries, setDestinationCountries] = useState<Country[]>([]);
   const [errors, setErrors] = useState({
     name: "",
     email: "",
     homeCountry: "",
     destinationCountry: "",
   });
-  
+
+  // Fetch countries from database
+  useEffect(() => {
+    async function fetchCountries() {
+      try {
+        setIsLoadingCountries(true);
+        const { origin, destination } = await getCountries();
+        setOriginCountries(origin);
+        setDestinationCountries(destination);
+      } catch (error) {
+        console.error("Error fetching countries:", error);
+        Alert.alert("Error", "Failed to load countries. Please try again.");
+      } finally {
+        setIsLoadingCountries(false);
+      }
+    }
+
+    fetchCountries();
+  }, []);
+
   useEffect(() => {
     if (user) {
       setFormData({
@@ -89,6 +111,20 @@ export default function EditProfileScreen() {
       newErrors.email = "";
     }
     
+    if (!formData.homeCountry) {
+      newErrors.homeCountry = "Please select your home country";
+      isValid = false;
+    } else {
+      newErrors.homeCountry = "";
+    }
+
+    if (!formData.destinationCountry) {
+      newErrors.destinationCountry = "Please select your destination country";
+      isValid = false;
+    } else {
+      newErrors.destinationCountry = "";
+    }
+
     setErrors(newErrors);
     return isValid;
   };
@@ -97,13 +133,53 @@ export default function EditProfileScreen() {
     if (!validateForm()) {
       return;
     }
-    
+
+    // Check if country selections changed
+    const destinationChanged = formData.destinationCountry?.code !== user?.destinationCountry?.code;
+    const homeChanged = formData.homeCountry?.code !== user?.homeCountry?.code;
+
     setIsLoading(true);
-    
+
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
+      // Get auth user
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) {
+        Alert.alert("Error", "You must be logged in to update your profile.");
+        setIsLoading(false);
+        return;
+      }
+
+      // Update profile in database
+      const profileUpdates: any = {
+        full_name: formData.name,
+        email: formData.email,
+        country_origin: formData.homeCountry?.code?.toUpperCase() || null,
+        level_of_study: formData.educationLevel,
+        updated_at: new Date().toISOString(),
+      };
+
+      if (formData.destinationCountry) {
+        profileUpdates.destination_country = formData.destinationCountry.code.toUpperCase();
+      }
+
+      if (destinationChanged || homeChanged) {
+        // Clear visa type so the user must reselect for the new country setup
+        profileUpdates.visa_type = null;
+      }
+
+      const { error: updateError } = await supabase
+        .from("profiles")
+        .update(profileUpdates)
+        .eq("id", authUser.id);
+
+      if (updateError) {
+        console.error("Error updating profile:", updateError);
+        Alert.alert("Error", "Failed to update profile. Please try again.");
+        setIsLoading(false);
+        return;
+      }
+
+      // Update local store
       if (user) {
         const updatedUserData = {
           name: formData.name,
@@ -117,9 +193,32 @@ export default function EditProfileScreen() {
           careerGoal: formData.careerGoal,
           bio: formData.bio,
         };
-        
+
         updateUser(updatedUserData);
-        
+
+        const requiresVisaUpdate = (destinationChanged || homeChanged) && !!formData.destinationCountry;
+
+        if (requiresVisaUpdate && formData.destinationCountry) {
+          router.push({
+            pathname: "/onboarding/step5-visa",
+            params: {
+              pendingCountryCode: formData.destinationCountry.code,
+              pendingCountryName: formData.destinationCountry.name,
+              pendingCountryFlag: formData.destinationCountry.flag || "",
+              pendingHomeCountryCode: formData.homeCountry?.code || "",
+              pendingHomeCountryName: formData.homeCountry?.name || "",
+              pendingHomeCountryFlag: formData.homeCountry?.flag || "",
+              pendingName: formData.name,
+              pendingEmail: formData.email,
+              pendingEducationLevel: formData.educationLevel,
+              pendingCareerGoal: formData.careerGoal || "",
+              pendingBio: formData.bio || "",
+              fromEditProfile: "true"
+            }
+          });
+          return;
+        }
+
         Alert.alert(
           "Profile Updated",
           "Your profile has been successfully updated.",
@@ -262,22 +361,31 @@ export default function EditProfileScreen() {
           <MapPin size={20} color={Colors.secondary} />
           <Text style={styles.sectionTitle}>Location</Text>
         </View>
-        
-        <CountrySelector
-          label="Home Country"
-          value={formData.homeCountry}
-          onChange={(country) => setFormData(prev => ({ ...prev, homeCountry: country }))}
-          countries={countries}
-          error={errors.homeCountry}
-        />
-        
-        <CountrySelector
-          label="Destination Country"
-          value={formData.destinationCountry}
-          onChange={(country) => setFormData(prev => ({ ...prev, destinationCountry: country }))}
-          countries={countries}
-          error={errors.destinationCountry}
-        />
+
+        {isLoadingCountries ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="small" color={Colors.primary} />
+            <Text style={styles.loadingText}>Loading countries...</Text>
+          </View>
+        ) : (
+          <>
+            <CountrySelector
+              label="Home Country"
+              value={formData.homeCountry}
+              onChange={(country) => setFormData(prev => ({ ...prev, homeCountry: country }))}
+              countries={originCountries}
+              error={errors.homeCountry}
+            />
+
+            <CountrySelector
+              label="Destination Country"
+              value={formData.destinationCountry}
+              onChange={(country) => setFormData(prev => ({ ...prev, destinationCountry: country }))}
+              countries={destinationCountries}
+              error={errors.destinationCountry}
+            />
+          </>
+        )}
       </Card>
       
       {/* Education Information */}
@@ -405,5 +513,14 @@ const styles = StyleSheet.create({
     color: Colors.text,
     textAlign: "center",
     marginTop: 20,
+  },
+  loadingContainer: {
+    padding: 24,
+    alignItems: "center",
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: Colors.lightText,
   },
 });
