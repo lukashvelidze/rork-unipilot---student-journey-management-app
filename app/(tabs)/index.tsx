@@ -265,6 +265,8 @@ export default function HomeScreen() {
   const effectiveTier = (user.subscriptionTier || (hasActiveSubscription ? "standard" : "free")).toLowerCase();
   const subscriptionLabel = tierLabels[effectiveTier] || "Free";
   const isTopTier = effectiveTier === "premium" || effectiveTier === "pro";
+  const tierOrder: Record<string, number> = { free: 0, basic: 1, standard: 2, premium: 3, pro: 3 };
+  const hasStandardAccess = (tierOrder[effectiveTier] || 0) >= tierOrder["standard"];
   
   // Get current active stage (first incomplete stage)
   const currentStage = journeyProgress.find(stage => !stage.completed) || journeyProgress[0];
@@ -281,6 +283,21 @@ export default function HomeScreen() {
       Alert.alert(
         "Premium Feature",
         `${featureName} is available with a premium subscription. Upgrade to unlock this feature and more!`,
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "View Plans", onPress: () => router.push("/premium") },
+        ]
+      );
+    }
+  };
+
+  const handleStandardFeature = (featureName: string, route: string) => {
+    if (hasStandardAccess) {
+      router.push(route as any);
+    } else {
+      Alert.alert(
+        "Upgrade required",
+        `${featureName} is available on the Standard plan or higher.`,
         [
           { text: "Cancel", style: "cancel" },
           { text: "View Plans", onPress: () => router.push("/premium") },
@@ -325,6 +342,14 @@ export default function HomeScreen() {
       icon: Mic,
       color: Colors.accent,
       onPress: () => handlePremiumFeature("Interview Simulator", "/premium/interview-simulator"),
+      isPremium: true,
+    },
+    {
+      title: "Curated Articles",
+      description: hasStandardAccess ? "Editorial visa guidance" : "Standard tier required",
+      icon: BookOpen,
+      color: Colors.accent,
+      onPress: () => handleStandardFeature("Articles", "/premium/articles"),
       isPremium: true,
     },
   ];
