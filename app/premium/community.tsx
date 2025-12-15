@@ -1,8 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   Modal,
+  NativeSyntheticEvent,
+  NativeScrollEvent,
   ScrollView,
   StyleSheet,
   Switch,
@@ -12,15 +14,19 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Stack } from "expo-router";
+import { Stack, useFocusEffect } from "expo-router";
 import {
   ArrowRight,
   BookOpen,
   Check,
+  ChevronDown,
+  ChevronUp,
   Link2,
   MessageSquare,
+  Plus,
   PlusCircle,
   Send,
+  SlidersHorizontal,
   Users,
   X,
 } from "lucide-react-native";
@@ -43,7 +49,7 @@ import {
   deleteArticle,
   VisaTypeOption,
 } from "@/lib/supabase";
-import { Article, CommunityPost } from "@/types/community";
+import { Article, CommunityComment, CommunityPost } from "@/types/community";
 
 type TabKey = "articles" | "community";
 
@@ -120,11 +126,114 @@ export default function PremiumCommunityScreen() {
   const [editingArticleId, setEditingArticleId] = useState<string | null>(null);
   const [articleFormError, setArticleFormError] = useState<string | null>(null);
   const [linkArticleModalVisible, setLinkArticleModalVisible] = useState(false);
+  const [filtersExpanded, setFiltersExpanded] = useState(false);
+  const [postComposerVisible, setPostComposerVisible] = useState(false);
+  const [postReactions, setPostReactions] = useState<Record<string, { helpful: boolean; insightful: boolean }>>({});
+  const [readingProgress, setReadingProgress] = useState(0);
 
   const selectedArticleForFilter = useMemo(
     () => articles.find((article) => article.id === linkedArticleFilter),
     [articles, linkedArticleFilter]
   );
+
+  const getArticleCategory = useCallback((article: Article) => {
+    if (article.is_global) return "Global Insight";
+    if (article.visa_types?.length) return "Visa Guidance";
+    if (article.origin_country_code) return `From ${article.origin_country_code.toUpperCase()}`;
+    return "Student Journey";
+  }, []);
+
+  const getArticleExcerpt = useCallback((article: Article) => {
+    const sourceText = article.summary || article.content || "";
+    if (sourceText.length <= 180) {
+      return sourceText;
+    }
+    return `${sourceText.slice(0, 177).trim()}…`;
+  }, []);
+
+  const getArticleReadTime = useCallback((article: Article) => {
+    const words = article.content ? article.content.trim().split(/\s+/).length : 0;
+    const minutes = Math.max(1, Math.round(words / 200));
+    return `${minutes} min read`;
+  }, []);
+
+  const countComments = useCallback((comments?: CommunityComment[]): number => {
+    if (!comments?.length) return 0;
+    return comments.reduce((acc, comment) => acc + 1 + countComments(comment.replies), 0);
+  }, []);
+
+  const getPostTag = useCallback((post: CommunityPost) => {
+    if (post.visa_type) return "Visas";
+    if (post.article) return "Guides";
+    if (post.destination_country_code) return "Destinations";
+    return "Community";
+  }, []);
+
+  const getPostPreview = useCallback((post: CommunityPost) => {
+    if (!post.body) return "";
+    const trimmed = post.body.trim();
+    if (trimmed.length <= 160) return trimmed;
+    return `${trimmed.slice(0, 157)}…`;
+  }, []);
+
+  const formatRelativeTime = useCallback((value?: string) => {
+    if (!value) return "";
+    const created = new Date(value).getTime();
+    const now = Date.now();
+    const diff = Math.max(0, now - created);
+    const minute = 60 * 1000;
+    const hour = 60 * minute;
+    const day = 24 * hour;
+    if (diff < hour) {
+      const minutes = Math.max(1, Math.round(diff / minute));
+      return `${minutes}m ago`;
+    }
+    if (diff < day) {
+      const hours = Math.round(diff / hour);
+      return `${hours}h ago`;
+    }
+    const days = Math.round(diff / day);
+    return `${days}d ago`;
+  }, []);
+
+  const togglePostReaction = useCallback((postId: string, key: "helpful" | "insightful") => {
+    setPostReactions((prev) => {
+      const existing = prev[postId] || { helpful: false, insightful: false };
+      return {
+        ...prev,
+        [postId]: {
+          ...existing,
+          [key]: !existing[key],
+        },
+      };
+    });
+  }, []);
+
+  const filterSummary = useMemo(
+    () => [
+      {
+        key: "destination",
+        label: "To",
+        value: selectedDestination?.name || "Select destination",
+      },
+      {
+        key: "origin",
+        label: "From",
+        value: selectedOrigin?.name || "All origins",
+      },
+      {
+        key: "visa",
+        label: "Visa",
+        value: selectedVisa?.title || (profileVisa ? profileVisa.toUpperCase() : "All visas"),
+      },
+    ],
+    [profileVisa, selectedDestination?.name, selectedOrigin?.name, selectedVisa?.title]
+  );
+
+  // Track if initial data load has completed to prevent double fetches
+  const hasInitializedRef = useRef(false);
+  const hasInitiallyLoadedRef = useRef(false);
+  const isLoadingRef = useRef({ articles: false, community: false });
 
   const applyCountryDefaults = useCallback(
     (
@@ -187,8 +296,32 @@ export default function PremiumCommunityScreen() {
   }, [loadProfileDefaults]);
 
   useEffect(() => {
+    if (hasInitializedRef.current) {
+      return;
+    }
+    hasInitializedRef.current = true;
     initialize();
   }, [initialize]);
+
+  const handleFilterChipPress = useCallback(() => {
+    setFiltersExpanded((prev) => !prev);
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (isBootstrapping || !selectedDestination?.code) {
+        return;
+      }
+      loadArticlesData();
+      loadCommunityData();
+    }, [isBootstrapping, loadArticlesData, loadCommunityData, selectedDestination?.code])
+  );
+
+  const handleArticleScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
+    const totalScrollable = Math.max(1, contentSize.height - layoutMeasurement.height);
+    setReadingProgress(Math.min(1, Math.max(0, contentOffset.y / totalScrollable)));
+  }, []);
 
   const loadVisaOptionsForFilters = useCallback(
     async (destinationCode?: string | null, preferredVisa?: string | null) => {
@@ -243,6 +376,12 @@ export default function PremiumCommunityScreen() {
     }
   }, [articleFormDestination?.code, loadVisaOptionsForArticleForm]);
 
+  useEffect(() => {
+    if (articleModal) {
+      setReadingProgress(0);
+    }
+  }, [articleModal]);
+
   const handleDestinationChange = (country: Country) => {
     setSelectedDestination(country);
     setSelectedVisa(null);
@@ -258,7 +397,13 @@ export default function PremiumCommunityScreen() {
       return;
     }
 
+    // Prevent concurrent fetches
+    if (isLoadingRef.current.articles) {
+      return;
+    }
+
     try {
+      isLoadingRef.current.articles = true;
       setArticlesLoading(true);
       setArticlesError(null);
       const data = await fetchArticles({
@@ -272,6 +417,7 @@ export default function PremiumCommunityScreen() {
       console.error("Error loading articles:", error);
       setArticlesError(error.message || "Unable to load articles");
     } finally {
+      isLoadingRef.current.articles = false;
       setArticlesLoading(false);
     }
   }, [isAdmin, profileOriginCode, profileVisa, selectedDestination?.code, selectedOrigin?.code, selectedVisa?.code]);
@@ -281,7 +427,13 @@ export default function PremiumCommunityScreen() {
       return;
     }
 
+    // Prevent concurrent fetches
+    if (isLoadingRef.current.community) {
+      return;
+    }
+
     try {
+      isLoadingRef.current.community = true;
       setCommunityLoading(true);
       setCommunityError(null);
       const posts = await fetchCommunityPosts({
@@ -295,6 +447,7 @@ export default function PremiumCommunityScreen() {
       console.error("Error loading community posts:", error);
       setCommunityError(error.message || "Unable to load community posts");
     } finally {
+      isLoadingRef.current.community = false;
       setCommunityLoading(false);
     }
   }, [
@@ -306,12 +459,25 @@ export default function PremiumCommunityScreen() {
     selectedVisa?.code,
   ]);
 
+  // Effect to load data when filters change - use primitive values to avoid callback identity issues
   useEffect(() => {
     if (!isBootstrapping && selectedDestination) {
+      // Mark initial load as complete after first load
+      if (!hasInitiallyLoadedRef.current) {
+        hasInitiallyLoadedRef.current = true;
+      }
       loadArticlesData();
       loadCommunityData();
     }
-  }, [isBootstrapping, loadArticlesData, loadCommunityData, selectedDestination]);
+    // Only depend on primitive filter values, not the callback functions
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    isBootstrapping,
+    selectedDestination?.code,
+    selectedOrigin?.code,
+    selectedVisa?.code,
+    linkedArticleFilter,
+  ]);
 
   const handleCreatePost = async () => {
     if (!selectedDestination?.code) {
@@ -342,6 +508,7 @@ export default function PremiumCommunityScreen() {
         linkedArticleId: linkedArticleFilter,
       });
       await loadCommunityData();
+      setPostComposerVisible(false);
     } catch (error) {
       console.error("Error creating community post:", error);
       Alert.alert("Error", "Unable to share your experience right now. Please try again.");
@@ -476,9 +643,10 @@ export default function PremiumCommunityScreen() {
     const authorName = isAnonymous
       ? "Anonymous member"
       : comment.author?.display_name || comment.author?.full_name || "Community member";
+    const indentLevel = Math.min(depth, 1);
 
     return (
-      <View key={comment.id} style={[styles.commentContainer, { marginLeft: depth * 16 }]}>
+      <View key={comment.id} style={[styles.commentContainer, { marginLeft: indentLevel * 16 }]}>
         <Text style={[styles.commentAuthor, { color: Colors.text }]}>{authorName}</Text>
         <Text style={[styles.commentBody, { color: Colors.lightText }]}>{comment.body}</Text>
         <View style={styles.commentMetaRow}>
@@ -496,110 +664,129 @@ export default function PremiumCommunityScreen() {
     );
   };
 
-  if (isBootstrapping) {
-    return (
-      <SafeAreaView style={[styles.loadingContainer, { backgroundColor: Colors.background }]} edges={['top']}>
-        <ActivityIndicator size="large" color={Colors.primary} />
-        <Text style={[styles.loadingText, { color: Colors.lightText }]}>Loading resources...</Text>
-      </SafeAreaView>
-    );
-  }
-
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: Colors.background }]} edges={['top']}>
       <Stack.Screen
         options={{
           title: "Community & Articles",
+          headerBackTitleVisible: false,
         }}
       />
+      {isBootstrapping ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+          <Text style={[styles.loadingText, { color: Colors.lightText }]}>Loading resources...</Text>
+        </View>
+      ) : (
       <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer} showsVerticalScrollIndicator={false}>
-        <Card style={[styles.heroCard, { backgroundColor: Colors.card }]} variant="elevated">
-          <View style={styles.heroIcon}>
-            <BookOpen size={28} color={Colors.primary} />
-          </View>
-          <Text style={[styles.heroTitle, { color: Colors.text }]}>Expert guidance + peer stories</Text>
-          <Text style={[styles.heroSubtitle, { color: Colors.lightText }]}>
-            Switch between curated articles and real student experiences tailored to your journey filters.
-          </Text>
-        </Card>
-
-        <Card style={[styles.filterCard, { backgroundColor: Colors.card }]}>
-          <Text style={[styles.sectionTitle, { color: Colors.text }]}>Filters</Text>
-          <CountrySelector
-            label="Destination Country"
-            value={selectedDestination}
-            onChange={handleDestinationChange}
-            countries={countries.destination}
-            placeholder="Select destination"
-          />
-          <CountrySelector
-            label="Origin Country"
-            value={selectedOrigin}
-            onChange={handleOriginChange}
-            countries={countries.origin}
-            placeholder="All origins"
-          />
-          {selectedOrigin && (
-            <TouchableOpacity style={styles.clearButton} onPress={() => setSelectedOrigin(null)}>
-              <Text style={{ color: Colors.primary, fontSize: 12 }}>Clear origin filter</Text>
-            </TouchableOpacity>
-          )}
-
-          <View style={styles.selectorRow}>
-            <View style={styles.selectorLabelRow}>
-              <Text style={[styles.selectorLabel, { color: Colors.text }]}>Visa Type</Text>
-              {visaLoading && <ActivityIndicator size="small" color={Colors.primary} />}
-            </View>
-            <TouchableOpacity
-              style={[styles.selectorButton, { borderColor: Colors.border }]}
-              onPress={() => setVisaModalVisible(true)}
-              disabled={visaOptions.length === 0}
-            >
-              <Text style={{ color: selectedVisa ? Colors.text : Colors.lightText }}>
-                {selectedVisa ? selectedVisa.title : "All visa types"}
-              </Text>
-              <ArrowRight size={16} color={Colors.lightText} />
-            </TouchableOpacity>
-          </View>
-
-          {linkedArticleFilter && selectedArticleForFilter && (
-            <View style={[styles.filterBadge, { backgroundColor: Colors.lightBackground }]}>
-              <Text style={{ color: Colors.text, flex: 1 }} numberOfLines={1}>
-                Discussing: {selectedArticleForFilter.title}
-              </Text>
-              <TouchableOpacity onPress={() => setLinkedArticleFilter(null)}>
-                <X size={16} color={Colors.lightText} />
-              </TouchableOpacity>
-            </View>
-          )}
-        </Card>
-
-        <View style={[styles.tabSwitch, { borderColor: Colors.border, backgroundColor: Colors.lightBackground }]}>
-          {(["articles", "community"] as TabKey[]).map((tab) => {
-            const isActive = activeTab === tab;
-            const IconComponent = tab === "articles" ? BookOpen : Users;
-            return (
-              <TouchableOpacity
-                key={tab}
-                style={[
-                  styles.tabButton,
-                  isActive && { backgroundColor: Colors.card, borderColor: Colors.primary },
-                ]}
-                onPress={() => setActiveTab(tab)}
-              >
-                <IconComponent size={16} color={isActive ? Colors.primary : Colors.lightText} />
-                <Text
+        <View style={[styles.tabSliderWrapper, { borderColor: Colors.border, backgroundColor: Colors.card }]}>
+          <Text style={[styles.sectionHint, { color: Colors.lightText }]}>Choose what to explore</Text>
+          <View style={[styles.tabSliderContainer, { backgroundColor: Colors.lightBackground, borderColor: Colors.border }]}>
+            {(["articles", "community"] as TabKey[]).map((tab) => {
+              const isActive = activeTab === tab;
+              const IconComponent = tab === "articles" ? BookOpen : Users;
+              return (
+                <TouchableOpacity
+                  key={tab}
                   style={[
-                    styles.tabButtonText,
-                    { color: isActive ? Colors.primary : Colors.lightText },
+                    styles.tabSliderOption,
+                    isActive && {
+                      backgroundColor: Colors.card,
+                      borderColor: Colors.primary,
+                    },
                   ]}
+                  onPress={() => setActiveTab(tab)}
                 >
-                  {tab === "articles" ? "Articles" : "Community"}
+                  <IconComponent size={16} color={isActive ? Colors.primary : Colors.lightText} />
+                  <Text
+                    style={[
+                      styles.tabButtonText,
+                      { color: isActive ? Colors.primary : Colors.lightText },
+                    ]}
+                  >
+                    {tab === "articles" ? "Articles" : "Community"}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+
+        <View style={[styles.filterSummaryContainer, { borderColor: Colors.border, backgroundColor: Colors.card }]}>
+          <View style={styles.filterSummaryRow}>
+            {filterSummary.map((item) => (
+              <TouchableOpacity
+                key={item.key}
+                style={[styles.filterSummaryChip, { borderColor: Colors.border }]}
+                onPress={handleFilterChipPress}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.filterSummaryLabel, { color: Colors.lightText }]}>{item.label}</Text>
+                <Text style={{ color: Colors.text, fontWeight: "600" }} numberOfLines={1}>
+                  {item.value}
                 </Text>
               </TouchableOpacity>
-            );
-          })}
+            ))}
+          </View>
+          <TouchableOpacity style={styles.filterToggle} onPress={handleFilterChipPress}>
+            <SlidersHorizontal size={16} color={Colors.primary} />
+            <Text style={{ color: Colors.text, fontWeight: "600" }}>Adjust filters</Text>
+            {filtersExpanded ? <ChevronUp size={16} color={Colors.lightText} /> : <ChevronDown size={16} color={Colors.lightText} />}
+          </TouchableOpacity>
         </View>
+
+        {filtersExpanded && (
+          <Card style={[styles.filterCard, { backgroundColor: Colors.card }]} variant="outlined">
+            <Text style={[styles.sectionTitle, { color: Colors.text }]}>Filters</Text>
+            <CountrySelector
+              label="Destination Country"
+              value={selectedDestination}
+              onChange={handleDestinationChange}
+              countries={countries.destination}
+              placeholder="Select destination"
+            />
+            <CountrySelector
+              label="Origin Country"
+              value={selectedOrigin}
+              onChange={handleOriginChange}
+              countries={countries.origin}
+              placeholder="All origins"
+            />
+            {selectedOrigin && (
+              <TouchableOpacity style={styles.clearButton} onPress={() => setSelectedOrigin(null)}>
+                <Text style={{ color: Colors.primary, fontSize: 12 }}>Clear origin filter</Text>
+              </TouchableOpacity>
+            )}
+
+            <View style={styles.selectorRow}>
+              <View style={styles.selectorLabelRow}>
+                <Text style={[styles.selectorLabel, { color: Colors.text }]}>Visa Type</Text>
+                {visaLoading && <ActivityIndicator size="small" color={Colors.primary} />}
+              </View>
+              <TouchableOpacity
+                style={[styles.selectorButton, { borderColor: Colors.border }]}
+                onPress={() => setVisaModalVisible(true)}
+                disabled={visaOptions.length === 0}
+              >
+                <Text style={{ color: selectedVisa ? Colors.text : Colors.lightText }}>
+                  {selectedVisa ? selectedVisa.title : "All visa types"}
+                </Text>
+                <ArrowRight size={16} color={Colors.lightText} />
+              </TouchableOpacity>
+            </View>
+          </Card>
+        )}
+
+        {linkedArticleFilter && selectedArticleForFilter && (
+          <View style={[styles.filterBadge, { backgroundColor: Colors.lightBackground }]}>
+            <Text style={{ color: Colors.text, flex: 1 }} numberOfLines={1}>
+              Discussing: {selectedArticleForFilter.title}
+            </Text>
+            <TouchableOpacity onPress={() => setLinkedArticleFilter(null)}>
+              <X size={16} color={Colors.lightText} />
+            </TouchableOpacity>
+          </View>
+        )}
 
         {activeTab === "articles" ? (
           <View>
@@ -621,58 +808,62 @@ export default function PremiumCommunityScreen() {
             ) : (
               articles.map((article) => (
                 <Card key={article.id} style={[styles.articleCard, { backgroundColor: Colors.card }]} variant="outlined">
-                  <View style={styles.articleHeader}>
-                    <Text style={[styles.articleTitle, { color: Colors.text }]}>{article.title}</Text>
-                    {isAdmin && (
-                      <View
-                        style={[
-                          styles.statusBadge,
-                          { backgroundColor: article.published ? Colors.success + "20" : Colors.warning + "20" },
-                        ]}
-                      >
-                        <Text
-                          style={{
-                            color: article.published ? Colors.success : Colors.warning,
-                            fontSize: 12,
-                            fontWeight: "600",
-                          }}
-                        >
-                          {article.published ? "Published" : "Draft"}
+                  <TouchableOpacity
+                    activeOpacity={0.85}
+                    onPress={() => setArticleModal(article)}
+                    style={styles.articleCardBody}
+                  >
+                    <View style={styles.articleHeaderRow}>
+                      <Text style={[styles.articleCategory, { color: Colors.lightText }]}>
+                        {getArticleCategory(article).toUpperCase()}
+                      </Text>
+                      <View style={styles.articleHeaderMeta}>
+                        {isAdmin && (
+                          <View
+                            style={[
+                              styles.statusChip,
+                              { backgroundColor: article.published ? Colors.success + "20" : Colors.warning + "20" },
+                            ]}
+                          >
+                            <Text style={{ color: article.published ? Colors.success : Colors.warning, fontSize: 11, fontWeight: "600" }}>
+                              {article.published ? "Published" : "Draft"}
+                            </Text>
+                          </View>
+                        )}
+                        <Text style={[styles.articleMetaText, { color: Colors.lightText }]}>{getArticleReadTime(article)}</Text>
+                      </View>
+                    </View>
+                    <View style={styles.articleContentRow}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.articleTitle, { color: Colors.text }]} numberOfLines={2}>
+                          {article.title}
+                        </Text>
+                        <Text style={[styles.articleExcerpt, { color: Colors.lightText }]} numberOfLines={3}>
+                          {getArticleExcerpt(article)}
+                        </Text>
+                        <View style={styles.articleMetaRow}>
+                          <Text style={[styles.articleMetaText, { color: Colors.lightText }]}>
+                            {formatDate(article.updated_at)}
+                          </Text>
+                          <View style={[styles.metaDot, { backgroundColor: Colors.border }]} />
+                          <Text style={[styles.articleMetaText, { color: Colors.lightText }]}>
+                            {article.is_global ? "Global origin" : article.origin_country_code || "All origins"}
+                          </Text>
+                        </View>
+                      </View>
+                      <View style={[styles.articleThumbnail, { borderColor: Colors.border, backgroundColor: Colors.lightBackground }]}>
+                        <Text style={{ color: Colors.lightText, fontWeight: "700" }}>
+                          {(article.destination_country_code || "UP").slice(0, 2).toUpperCase()}
                         </Text>
                       </View>
-                    )}
-                  </View>
-                  {article.summary && (
-                    <Text style={[styles.articleSummary, { color: Colors.lightText }]} numberOfLines={3}>
-                      {article.summary}
-                    </Text>
-                  )}
-                  <View style={styles.articleMeta}>
-                    <View style={[styles.metaPill, { backgroundColor: Colors.lightBackground }]}>
-                      <Text style={{ color: Colors.lightText, fontSize: 12 }}>
-                        {article.is_global ? "Global Origin" : article.origin_country_code || "All origins"}
-                      </Text>
                     </View>
-                    <View style={[styles.metaPill, { backgroundColor: Colors.lightBackground }]}>
-                      <Text style={{ color: Colors.lightText, fontSize: 12 }}>
-                        {article.visa_types?.length ? `${article.visa_types.length} visa types` : "All visas"}
-                      </Text>
+                    <View style={styles.articleFooterRow}>
+                      <TouchableOpacity onPress={() => handleDiscussArticle(article)}>
+                        <Text style={{ color: Colors.primary, fontWeight: "600" }}>Discuss with peers</Text>
+                      </TouchableOpacity>
+                      <ArrowRight size={16} color={Colors.lightText} />
                     </View>
-                  </View>
-                  <View style={styles.cardActions}>
-                    <Button
-                      title="Read"
-                      onPress={() => setArticleModal(article)}
-                      variant="outline"
-                      style={styles.buttonFlex}
-                    />
-                    <Button
-                      title="Discuss"
-                      onPress={() => handleDiscussArticle(article)}
-                      style={styles.buttonFlex}
-                      icon={<MessageSquare size={16} color="#fff" />}
-                    />
-                  </View>
+                  </TouchableOpacity>
                   {isAdmin && (
                     <View style={styles.adminActions}>
                       <TouchableOpacity onPress={() => handleEditArticle(article)}>
@@ -806,53 +997,20 @@ export default function PremiumCommunityScreen() {
           </View>
         ) : (
           <View>
-            <Card style={[styles.postComposer, { backgroundColor: Colors.card }]} variant="elevated">
-              <Text style={[styles.sectionTitle, { color: Colors.text }]}>Share your experience</Text>
-              <Input
-                label="Title"
-                placeholder="e.g. Visa interview timeline"
-                value={newPost.title}
-                onChangeText={(text) => setNewPost((prev) => ({ ...prev, title: text }))}
-              />
-              <Text style={[styles.inputLabel, { color: Colors.text }]}>Story</Text>
-              <TextInput
-                style={[
-                  styles.textArea,
-                  { borderColor: Colors.border, backgroundColor: Colors.lightBackground, color: Colors.text },
-                ]}
-                multiline
-                numberOfLines={4}
-                value={newPost.body}
-                onChangeText={(text) => setNewPost((prev) => ({ ...prev, body: text }))}
-                placeholder="Share what helped you or what to avoid..."
-                placeholderTextColor={Colors.lightText}
-              />
-              <View style={styles.toggleRow}>
-                <Text style={{ color: Colors.text }}>Post anonymously</Text>
-                <Switch
-                  value={newPost.anonymous}
-                  onValueChange={(value) => setNewPost((prev) => ({ ...prev, anonymous: value }))}
-                />
+            <Card style={[styles.communityHeaderCard, { backgroundColor: Colors.card }]} variant="elevated">
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.sectionTitle, { color: Colors.text, marginBottom: 4 }]}>Community stories</Text>
+                <Text style={{ color: Colors.lightText }}>
+                  See what fellow students with similar journeys are talking about.
+                </Text>
               </View>
               <TouchableOpacity
-                style={[styles.selectorButton, { borderColor: Colors.border }]}
-                onPress={() => setLinkArticleModalVisible(true)}
+                style={[styles.shareButton, { backgroundColor: Colors.primary }]}
+                onPress={() => setPostComposerVisible(true)}
+                activeOpacity={0.8}
               >
-                <View style={{ flex: 1 }}>
-                  <Text style={{ color: Colors.text }}>
-                    {newPost.linkedArticleId
-                      ? `Linked to: ${articles.find((a) => a.id === newPost.linkedArticleId)?.title || "Article"}`
-                      : "Link to a related article (optional)"}
-                  </Text>
-                </View>
-                <Link2 size={16} color={Colors.lightText} />
+                <Plus size={18} color="#fff" />
               </TouchableOpacity>
-              <Button
-                title="Share"
-                onPress={handleCreatePost}
-                loading={creatingPost}
-                icon={<PlusCircle size={18} color="#fff" />}
-              />
             </Card>
 
             {communityLoading ? (
@@ -875,28 +1033,98 @@ export default function PremiumCommunityScreen() {
                 const commentDraft = commentDrafts[post.id] || "";
                 const isSubmitting = submittingComments[post.id];
                 const replyTarget = commentReplyTargets[post.id];
+                const reactions = postReactions[post.id] || { helpful: false, insightful: false };
                 return (
                   <Card key={post.id} style={[styles.postCard, { backgroundColor: Colors.card }]}>
-                    <View style={styles.postHeader}>
-                      <Text style={[styles.postTitle, { color: Colors.text }]}>{post.title}</Text>
-                      <Text style={[styles.postAuthor, { color: Colors.lightText }]}>
+                    <View style={styles.postHeaderRow}>
+                      <View style={styles.postTagRow}>
+                        <View style={[styles.postTag, { backgroundColor: Colors.lightBackground }]}>
+                          <Text style={{ color: Colors.lightText, fontSize: 12, fontWeight: "600" }}>
+                            {getPostTag(post)}
+                          </Text>
+                        </View>
+                        {post.linked_article_id && (
+                          <View style={[styles.postBadge, { backgroundColor: Colors.primary + "15" }]}>
+                            <Text style={{ color: Colors.primary, fontSize: 11, fontWeight: "600" }}>Linked</Text>
+                          </View>
+                        )}
+                      </View>
+                      <Text style={[styles.postMetaText, { color: Colors.lightText }]}>
+                        {formatRelativeTime(post.created_at)}
+                      </Text>
+                    </View>
+                    <Text style={[styles.postTitle, { color: Colors.text }]}>{post.title}</Text>
+                    <Text style={[styles.postBody, { color: Colors.lightText }]}>{getPostPreview(post)}</Text>
+                    <View style={styles.postMetaRow}>
+                      <Text style={[styles.postMetaText, { color: Colors.lightText }]}>
                         {post.anonymous
                           ? "Anonymous member"
                           : post.author?.display_name || post.author?.full_name || "Community member"}
                       </Text>
+                      <View style={[styles.metaDot, { backgroundColor: Colors.border }]} />
+                      <Text style={[styles.postMetaText, { color: Colors.lightText }]}>
+                        {countComments(post.comments)} comments
+                      </Text>
                     </View>
-                    <Text style={[styles.postBody, { color: Colors.lightText }]}>{post.body}</Text>
-                    <View style={styles.postMetaRow}>
-                      <View style={[styles.metaPill, { backgroundColor: Colors.lightBackground }]}>
-                        <Text style={{ color: Colors.lightText, fontSize: 12 }}>{formatDate(post.created_at)}</Text>
-                      </View>
-                      {post.article && (
-                        <TouchableOpacity
-                          onPress={() => setArticleModal(articles.find((a) => a.id === post.article?.id) || null)}
+                    {post.article && (
+                      <TouchableOpacity
+                        style={[styles.linkedArticlePill, { backgroundColor: Colors.lightBackground }]}
+                        onPress={() => setArticleModal(articles.find((a) => a.id === post.article?.id) || null)}
+                      >
+                        <Link2 size={12} color={Colors.primary} />
+                        <Text style={{ color: Colors.primary, fontSize: 12 }} numberOfLines={1}>
+                          Discussing: {post.article.title}
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+
+                    <View style={styles.reactionsRow}>
+                      <TouchableOpacity
+                        style={[
+                          styles.reactionButton,
+                          {
+                            borderColor: reactions.helpful ? Colors.primary : Colors.border,
+                            backgroundColor: reactions.helpful ? Colors.primary + "15" : "transparent",
+                          },
+                        ]}
+                        onPress={() => togglePostReaction(post.id, "helpful")}
+                      >
+                        <Check size={14} color={reactions.helpful ? Colors.primary : Colors.lightText} />
+                        <Text
+                          style={{
+                            color: reactions.helpful ? Colors.primary : Colors.text,
+                            fontWeight: "600",
+                            fontSize: 13,
+                          }}
                         >
-                          <Text style={{ color: Colors.primary, fontSize: 12 }}>View linked article</Text>
-                        </TouchableOpacity>
-                      )}
+                          Helpful
+                        </Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[
+                          styles.reactionButton,
+                          {
+                            borderColor: reactions.insightful ? Colors.primary : Colors.border,
+                            backgroundColor: reactions.insightful ? Colors.primary + "15" : "transparent",
+                          },
+                        ]}
+                        onPress={() => togglePostReaction(post.id, "insightful")}
+                      >
+                        <MessageSquare
+                          size={14}
+                          color={reactions.insightful ? Colors.primary : Colors.lightText}
+                          strokeWidth={2}
+                        />
+                        <Text
+                          style={{
+                            color: reactions.insightful ? Colors.primary : Colors.text,
+                            fontWeight: "600",
+                            fontSize: 13,
+                          }}
+                        >
+                          Insightful
+                        </Text>
+                      </TouchableOpacity>
                     </View>
 
                     {post.comments?.map((comment) => renderComment(comment))}
@@ -904,7 +1132,7 @@ export default function PremiumCommunityScreen() {
                     <View style={[styles.commentComposer, { borderColor: Colors.border }]}>
                       {replyTarget && (
                         <View style={styles.replyContext}>
-                          <Text style={{ color: Colors.lightText, flex: 1 }}>Replying to a comment</Text>
+                          <Text style={{ color: Colors.lightText, flex: 1 }}>Replying thoughtfully</Text>
                           <TouchableOpacity
                             onPress={() =>
                               setCommentReplyTargets((prev) => ({
@@ -919,7 +1147,7 @@ export default function PremiumCommunityScreen() {
                       )}
                       <TextInput
                         style={[styles.commentInput, { color: Colors.text }]}
-                        placeholder="Add a comment..."
+                        placeholder="Ask about any step of your journey..."
                         placeholderTextColor={Colors.lightText}
                         value={commentDraft}
                         onChangeText={(text) =>
@@ -942,7 +1170,7 @@ export default function PremiumCommunityScreen() {
                         />
                       </View>
                       <Button
-                        title="Send"
+                        title="Respond"
                         onPress={() => handleSubmitComment(post.id)}
                         loading={isSubmitting}
                         icon={<Send size={14} color="#fff" />}
@@ -955,9 +1183,72 @@ export default function PremiumCommunityScreen() {
           </View>
         )}
       </ScrollView>
+      )}
+
+      <Modal visible={postComposerVisible} animationType="slide" onRequestClose={() => setPostComposerVisible(false)}>
+        <SafeAreaView style={[styles.modalContainer, { backgroundColor: Colors.background }]} edges={['top']}>
+          <ScrollView
+            style={styles.container}
+            contentContainerStyle={styles.modalContent}
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={styles.modalHeader}>
+              <TouchableOpacity onPress={() => setPostComposerVisible(false)}>
+                <X size={20} color={Colors.lightText} />
+              </TouchableOpacity>
+              <Text style={[styles.modalTitle, { color: Colors.text }]}>Share your experience</Text>
+            </View>
+            <Input
+              label="Title"
+              placeholder="e.g. Visa interview timeline"
+              value={newPost.title}
+              onChangeText={(text) => setNewPost((prev) => ({ ...prev, title: text }))}
+            />
+            <Text style={[styles.inputLabel, { color: Colors.text }]}>Story</Text>
+            <TextInput
+              style={[
+                styles.textArea,
+                { borderColor: Colors.border, backgroundColor: Colors.lightBackground, color: Colors.text },
+              ]}
+              multiline
+              numberOfLines={4}
+              value={newPost.body}
+              onChangeText={(text) => setNewPost((prev) => ({ ...prev, body: text }))}
+              placeholder="Share what helped you or what to avoid..."
+              placeholderTextColor={Colors.lightText}
+            />
+            <View style={styles.toggleRow}>
+              <Text style={{ color: Colors.text }}>Post anonymously</Text>
+              <Switch
+                value={newPost.anonymous}
+                onValueChange={(value) => setNewPost((prev) => ({ ...prev, anonymous: value }))}
+              />
+            </View>
+            <TouchableOpacity
+              style={[styles.selectorButton, { borderColor: Colors.border }]}
+              onPress={() => setLinkArticleModalVisible(true)}
+            >
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: Colors.text }}>
+                  {newPost.linkedArticleId
+                    ? `Linked to: ${articles.find((a) => a.id === newPost.linkedArticleId)?.title || "Article"}`
+                    : "Link to a related article (optional)"}
+                </Text>
+              </View>
+              <Link2 size={16} color={Colors.lightText} />
+            </TouchableOpacity>
+            <Button
+              title="Share with community"
+              onPress={handleCreatePost}
+              loading={creatingPost}
+              icon={<PlusCircle size={18} color="#fff" />}
+            />
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
 
       <Modal visible={visaModalVisible} animationType="slide" onRequestClose={() => setVisaModalVisible(false)}>
-        <SafeAreaView style={[styles.modalContainer, { backgroundColor: Colors.background }]}>
+        <SafeAreaView style={[styles.modalContainer, { backgroundColor: Colors.background }]} edges={['top']}>
           <View style={styles.modalHeader}>
             <Text style={[styles.modalTitle, { color: Colors.text }]}>Select Visa Type</Text>
             <TouchableOpacity onPress={() => setVisaModalVisible(false)}>
@@ -1001,20 +1292,45 @@ export default function PremiumCommunityScreen() {
       </Modal>
 
       <Modal visible={!!articleModal} animationType="slide" onRequestClose={() => setArticleModal(null)}>
-        <SafeAreaView style={[styles.modalContainer, { backgroundColor: Colors.background }]}>
+        <SafeAreaView style={[styles.modalContainer, { backgroundColor: Colors.background }]} edges={['top']}>
           {articleModal && (
             <>
               <View style={styles.modalHeader}>
-                <Text style={[styles.modalTitle, { color: Colors.text }]}>{articleModal.title}</Text>
                 <TouchableOpacity onPress={() => setArticleModal(null)}>
                   <X size={20} color={Colors.text} />
                 </TouchableOpacity>
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                  <Text style={[styles.modalTitle, { color: Colors.text }]} numberOfLines={2}>
+                    {articleModal.title}
+                  </Text>
+                  <View style={styles.readingMetaRow}>
+                    <Text style={{ color: Colors.lightText, fontSize: 12 }}>
+                      {getArticleCategory(articleModal).toUpperCase()}
+                    </Text>
+                    <View style={[styles.metaDot, { backgroundColor: Colors.border }]} />
+                    <Text style={{ color: Colors.lightText, fontSize: 12 }}>{getArticleReadTime(articleModal)}</Text>
+                  </View>
+                </View>
               </View>
-              <ScrollView>
+              <View style={[styles.readingProgressTrack, { backgroundColor: Colors.border }]}>
+                <View
+                  style={[
+                    styles.readingProgressFill,
+                    { backgroundColor: Colors.primary, width: `${Math.round(readingProgress * 100)}%` },
+                  ]}
+                />
+              </View>
+              <ScrollView
+                style={styles.readingScroll}
+                contentContainerStyle={styles.readingBody}
+                onScroll={handleArticleScroll}
+                scrollEventThrottle={16}
+                showsVerticalScrollIndicator={false}
+              >
                 {articleModal.summary && (
-                  <Text style={{ color: Colors.lightText, marginBottom: 16 }}>{articleModal.summary}</Text>
+                  <Text style={[styles.readingSummary, { color: Colors.lightText }]}>{articleModal.summary}</Text>
                 )}
-                <Text style={{ color: Colors.text, lineHeight: 22 }}>{articleModal.content}</Text>
+                <Text style={[styles.readingContent, { color: Colors.text }]}>{articleModal.content}</Text>
               </ScrollView>
               <Button
                 title="Discuss with community"
@@ -1034,7 +1350,7 @@ export default function PremiumCommunityScreen() {
         animationType="slide"
         onRequestClose={() => setLinkArticleModalVisible(false)}
       >
-        <SafeAreaView style={[styles.modalContainer, { backgroundColor: Colors.background }]}>
+        <SafeAreaView style={[styles.modalContainer, { backgroundColor: Colors.background }]} edges={['top']}>
           <View style={styles.modalHeader}>
             <Text style={[styles.modalTitle, { color: Colors.text }]}>Link an article</Text>
             <TouchableOpacity onPress={() => setLinkArticleModalVisible(false)}>
@@ -1101,25 +1417,35 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 12,
   },
-  heroCard: {
-    padding: 20,
+  tabSliderWrapper: {
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    gap: 12,
   },
-  heroIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: "center",
+  sectionHint: {
+    fontSize: 12,
+    fontWeight: "600",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  tabSliderContainer: {
+    flexDirection: "row",
+    borderWidth: 1,
+    borderRadius: 999,
+    padding: 4,
+    gap: 4,
+  },
+  tabSliderOption: {
+    flex: 1,
+    flexDirection: "row",
     alignItems: "center",
-    marginBottom: 12,
-  },
-  heroTitle: {
-    fontSize: 20,
-    fontWeight: "700",
-    marginBottom: 4,
-  },
-  heroSubtitle: {
-    fontSize: 14,
-    lineHeight: 20,
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "transparent",
+    borderRadius: 999,
+    paddingVertical: 10,
+    gap: 6,
   },
   filterCard: {
     padding: 20,
@@ -1159,25 +1485,36 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginTop: 8,
   },
-  tabSwitch: {
-    flexDirection: "row",
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: 4,
-  },
-  tabButton: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingVertical: 10,
-    marginHorizontal: 4,
-    gap: 6,
-  },
   tabButtonText: {
     fontWeight: "600",
+  },
+  filterSummaryContainer: {
+    borderWidth: 1,
+    borderRadius: 16,
+    padding: 12,
+    gap: 12,
+  },
+  filterSummaryRow: {
+    flexDirection: "row",
+    gap: 8,
+    flexWrap: "wrap",
+  },
+  filterSummaryChip: {
+    flex: 1,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  filterSummaryLabel: {
+    fontSize: 12,
+    textTransform: "uppercase",
+    marginBottom: 4,
+  },
+  filterToggle: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
   loadingState: {
     alignItems: "center",
@@ -1203,36 +1540,70 @@ const styles = StyleSheet.create({
     padding: 20,
     marginBottom: 16,
   },
-  articleHeader: {
+  articleCardBody: {
+    gap: 12,
+  },
+  articleHeaderRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 8,
+  },
+  articleCategory: {
+    fontSize: 11,
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
+    fontWeight: "600",
+  },
+  articleHeaderMeta: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  articleContentRow: {
+    flexDirection: "row",
+    gap: 16,
   },
   articleTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: "700",
-    flex: 1,
-    marginRight: 8,
+    marginBottom: 8,
   },
-  statusBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
+  articleExcerpt: {
+    fontSize: 15,
+    lineHeight: 22,
+    marginBottom: 8,
   },
-  articleSummary: {
-    marginBottom: 12,
-    lineHeight: 20,
-  },
-  articleMeta: {
+  articleMetaRow: {
     flexDirection: "row",
+    alignItems: "center",
     gap: 8,
-    marginBottom: 12,
   },
-  metaPill: {
-    borderRadius: 12,
+  articleMetaText: {
+    fontSize: 12,
+  },
+  articleThumbnail: {
+    width: 64,
+    height: 64,
+    borderRadius: 16,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  articleFooterRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 4,
+  },
+  statusChip: {
+    borderRadius: 999,
     paddingHorizontal: 10,
     paddingVertical: 4,
+  },
+  metaDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
   },
   cardActions: {
     flexDirection: "row",
@@ -1285,32 +1656,85 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
   },
-  postComposer: {
-    padding: 20,
+  communityHeaderCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 16,
+    gap: 12,
+  },
+  shareButton: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    alignItems: "center",
+    justifyContent: "center",
   },
   postCard: {
     padding: 20,
     marginBottom: 16,
   },
-  postHeader: {
+  postHeaderRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 8,
   },
-  postTitle: {
-    fontSize: 16,
-    fontWeight: "700",
+  postTagRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
   },
-  postAuthor: {
-    fontSize: 13,
+  postTag: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+  },
+  postBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+  },
+  postTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    marginBottom: 6,
   },
   postBody: {
     lineHeight: 20,
     marginBottom: 12,
+  },
+  postMetaText: {
+    fontSize: 12,
   },
   postMetaRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 12,
+    gap: 8,
+  },
+  linkedArticlePill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    marginBottom: 12,
+  },
+  reactionsRow: {
+    flexDirection: "row",
+    gap: 12,
+    marginBottom: 12,
+  },
+  reactionButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    borderWidth: 1,
   },
   commentContainer: {
     marginTop: 8,
@@ -1357,6 +1781,11 @@ const styles = StyleSheet.create({
     padding: 16,
     gap: 12,
   },
+  modalContent: {
+    padding: 16,
+    gap: 16,
+    paddingBottom: 32,
+  },
   modalHeader: {
     flexDirection: "row",
     alignItems: "center",
@@ -1382,5 +1811,39 @@ const styles = StyleSheet.create({
     alignSelf: "flex-end",
     marginTop: -6,
     marginBottom: 4,
+  },
+  readingMetaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 4,
+  },
+  readingProgressTrack: {
+    height: 4,
+    borderRadius: 4,
+    marginBottom: 12,
+    overflow: "hidden",
+  },
+  readingProgressFill: {
+    height: "100%",
+  },
+  readingScroll: {
+    flex: 1,
+  },
+  readingBody: {
+    paddingBottom: 24,
+    gap: 12,
+    maxWidth: 720,
+    width: "100%",
+    alignSelf: "center",
+    paddingHorizontal: 4,
+  },
+  readingSummary: {
+    fontSize: 16,
+    lineHeight: 24,
+  },
+  readingContent: {
+    fontSize: 16,
+    lineHeight: 26,
   },
 });
