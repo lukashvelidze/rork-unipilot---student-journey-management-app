@@ -19,6 +19,7 @@ import { useColors } from "@/hooks/useColors";
 import Card from "@/components/Card";
 import Button from "@/components/Button";
 import { useUserStore } from "@/store/userStore";
+import { useAppStateStore } from "@/store/appStateStore";
 import { supabase } from "@/lib/supabase";
 import Constants from "expo-constants";
 
@@ -42,6 +43,7 @@ function InterviewContent() {
   const Colors = useColors();
   const navigation = useNavigation();
   const { user } = useUserStore();
+  const { setInCriticalFlow } = useAppStateStore();
   const scrollViewRef = useRef<ScrollView>(null);
 
   const [isConnecting, setIsConnecting] = useState(false);
@@ -277,6 +279,8 @@ function InterviewContent() {
   const startConversation = async () => {
     // Clear any previous errors
     setConnectionError(null);
+    // Block global redirects immediately when attempting to start
+    setInCriticalFlow(true);
 
     // Verify permission before starting
     if (!hasPermission) {
@@ -314,6 +318,7 @@ function InterviewContent() {
       setSessionActive(false);
       setConnectionError(error?.message || "Failed to connect");
       addMessage("system", `Failed to start: ${error?.message || "Connection error. Please try again."}`);
+      setInCriticalFlow(false);
     }
   };
 
@@ -331,9 +336,9 @@ function InterviewContent() {
 
   useEffect(() => {
     const unsubscribe = navigation.addListener("beforeRemove", (event) => {
-      if (!sessionActive && !isConnecting) {
-        return;
-      }
+      // Allow navigation while connecting; only guard active sessions
+      if (isConnecting) return;
+      if (!sessionActive) return;
 
       event.preventDefault();
       Alert.alert(
@@ -356,6 +361,17 @@ function InterviewContent() {
 
     return unsubscribe;
   }, [navigation, sessionActive, isConnecting, endConversation]);
+
+  useEffect(() => {
+    // Guard global redirects while an interview is starting or active
+    if (isConnecting || sessionActive) {
+      setInCriticalFlow(true);
+    } else {
+      setInCriticalFlow(false);
+    }
+
+    return () => setInCriticalFlow(false);
+  }, [isConnecting, sessionActive, setInCriticalFlow]);
 
   const toggleMute = () => {
     const newMutedState = !isMuted;

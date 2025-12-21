@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback, useRef } from "react";
 import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useFocusEffect } from "expo-router";
-import { Award, TrendingUp, BookOpen, Crown, Zap, Target, Calendar, UserCheck, BarChart3, Video, CheckSquare, Mic, MessageSquare } from "lucide-react-native";
+import { Award, TrendingUp, Crown, Zap, Target, Calendar, UserCheck, BarChart3, Video, CheckSquare, Mic, MessageSquare } from "lucide-react-native";
 import { useColors } from "@/hooks/useColors";
 import Card from "@/components/Card";
 import ProgressBar from "@/components/ProgressBar";
@@ -342,14 +342,6 @@ export default function HomeScreen() {
       icon: Mic,
       color: Colors.accent,
       onPress: () => handlePremiumFeature("Interview Simulator", "/premium/interview-simulator"),
-      isPremium: true,
-    },
-    {
-      title: "Curated Articles",
-      description: hasStandardAccess ? "Editorial visa guidance" : "Standard tier required",
-      icon: BookOpen,
-      color: Colors.accent,
-      onPress: () => handleStandardFeature("Articles", "/premium/articles"),
       isPremium: true,
     },
   ];
