@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { JourneyProgress, JourneyStage, Memory, MemoryMood } from "@/types/user";
 import { flattedStorage } from "@/utils/hermesStorage";
+import { createMemoryEntry, deleteMemoryEntry, fetchUserMemories, updateMemoryEntry } from "@/lib/memories";
 
 interface Milestone {
   type: "stage_complete" | "progress_milestone" | "confetti";
@@ -61,9 +62,10 @@ interface JourneyState {
   getStageById: (stageId: JourneyStage) => JourneyProgress | undefined;
   searchFlights: (params: FlightSearchParams) => Promise<void>;
   clearFlightResults: () => void;
-  addMemory: (memory: Omit<Memory, 'id'>) => void;
-  updateMemory: (id: string, memory: Partial<Memory>) => void;
-  deleteMemory: (id: string) => void;
+  loadMemories: () => Promise<void>;
+  addMemory: (memory: Omit<Memory, "id" | "date" | "storagePath" | "imageUrl"> & { mediaUri?: string | null }) => Promise<Memory>;
+  updateMemory: (id: string, memory: Partial<Memory> & { mediaUri?: string | null }) => Promise<Memory>;
+  deleteMemory: (id: string) => Promise<void>;
   getMemoriesByStage: (stage?: JourneyStage) => Memory[];
   getMemoriesByMood: (mood?: MemoryMood) => Memory[];
 }
@@ -109,6 +111,19 @@ export const useJourneyStore = create<JourneyState>()(
                 }
                 return task;
               });
+
+              const updatedChecklists = (stage.checklists || []).map((section) => ({
+                ...section,
+                items: section.items.map((item) =>
+                  item.id === taskId
+                    ? {
+                        ...item,
+                        completed,
+                        completedDate: completed ? new Date().toISOString() : undefined,
+                      }
+                    : item
+                ),
+              }));
               
               const completedTasks = updatedTasks.filter((task) => task.completed).length;
               const totalTasks = updatedTasks.length;
@@ -121,6 +136,7 @@ export const useJourneyStore = create<JourneyState>()(
                 progress,
                 completed: stageCompleted,
                 completedDate: stageCompleted && !stage.completed ? new Date().toISOString() : stage.completedDate,
+                checklists: updatedChecklists,
               };
             }
             return stage;
@@ -292,32 +308,63 @@ export const useJourneyStore = create<JourneyState>()(
         });
       },
 
-      addMemory: (memory) => {
-        const newMemory: Memory = {
-          ...memory,
-          id: Date.now().toString() + Math.random().toString(36).substring(2),
-        };
-        
-        set((state) => ({
-          memories: [newMemory, ...state.memories].sort((a, b) => 
-            new Date(b.date).getTime() - new Date(a.date).getTime()
-          ),
-          lastUpdated: Date.now()
-        }));
+      loadMemories: async () => {
+        try {
+          const fetched = await fetchUserMemories();
+          set({ memories: fetched, lastUpdated: Date.now() });
+        } catch (error) {
+          console.error("Failed to load memories:", error);
+        }
       },
 
-      updateMemory: (id, updatedMemory) => {
+      addMemory: async (memory) => {
+        const newMemory = await createMemoryEntry({
+          title: memory.title,
+          description: memory.description,
+          stage: memory.stage,
+          mood: memory.mood,
+          tags: memory.tags,
+          mediaUri: memory.mediaUri,
+        });
+
+        set((state) => ({
+          memories: [newMemory, ...state.memories].sort(
+            (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+          ),
+          lastUpdated: Date.now(),
+        }));
+
+        return newMemory;
+      },
+
+      updateMemory: async (id, updatedMemory) => {
+        const updated = await updateMemoryEntry(id, {
+          title: updatedMemory.title,
+          description: updatedMemory.description,
+          stage: updatedMemory.stage as JourneyStage | undefined,
+          mood: updatedMemory.mood as MemoryMood | undefined,
+          tags: updatedMemory.tags,
+          mediaUri: (updatedMemory as any).mediaUri,
+        });
+
         set((state) => ({
           memories: state.memories.map((memory) =>
-            memory.id === id ? { ...memory, ...updatedMemory } : memory
+            memory.id === id ? { ...memory, ...updated } : memory
           ),
-          lastUpdated: Date.now()
+          lastUpdated: Date.now(),
         }));
+
+        return updated;
       },
 
-      deleteMemory: (id) => {
-        set((state) => ({
-          memories: state.memories.filter((memory) => memory.id !== id),
+      deleteMemory: async (id) => {
+        const state = get();
+        const target = state.memories.find((m) => m.id === id);
+
+        await deleteMemoryEntry(id, target?.storagePath);
+
+        set((current) => ({
+          memories: current.memories.filter((memory) => memory.id !== id),
           lastUpdated: Date.now()
         }));
       },

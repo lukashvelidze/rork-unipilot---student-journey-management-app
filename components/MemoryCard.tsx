@@ -1,7 +1,7 @@
 import React from "react";
 import { StyleSheet, View, Text, TouchableOpacity, ImageBackground } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { Heart, MessageCircle, Share, Calendar, MapPin } from "lucide-react-native";
+import { Share, Calendar } from "lucide-react-native";
 import { useColors } from "@/hooks/useColors";
 import { Memory, MemoryMood } from "@/types/user";
 
@@ -174,24 +174,14 @@ export default function MemoryCard({ memory, onPress }: MemoryCardProps) {
             </View>
           )}
 
-          {/* Actions */}
+          {/* Minimal actions */}
           <View style={styles.actions}>
-            <View style={styles.leftActions}>
-              <TouchableOpacity style={styles.actionButton}>
-                <Heart size={16} color={Colors.lightText} />
-                <Text style={[styles.actionText, { color: Colors.lightText }]}>
-                  {Math.floor(Math.random() * 50) + 1}
-                </Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity style={styles.actionButton}>
-                <MessageCircle size={16} color={Colors.lightText} />
-                <Text style={[styles.actionText, { color: Colors.lightText }]}>
-                  {Math.floor(Math.random() * 20)}
-                </Text>
-              </TouchableOpacity>
+            <View style={styles.metaRow}>
+              <Calendar size={14} color={Colors.lightText} />
+              <Text style={[styles.actionText, { color: Colors.lightText }]}>
+                {new Date(memory.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+              </Text>
             </View>
-            
             <TouchableOpacity style={styles.shareButton}>
               <Share size={16} color={Colors.primary} />
             </TouchableOpacity>
@@ -309,21 +299,17 @@ const styles = StyleSheet.create({
   },
   actions: {
     flexDirection: "row",
+    alignItems: "center",
     justifyContent: "space-between",
-    alignItems: "center",
   },
-  leftActions: {
-    flexDirection: "row",
-  },
-  actionButton: {
+  metaRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginRight: 16,
+    gap: 6,
   },
   actionText: {
     fontSize: 12,
-    marginLeft: 4,
-    fontWeight: "500",
+    fontWeight: "600",
   },
   shareButton: {
     padding: 8,

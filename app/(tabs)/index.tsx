@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback, useRef } from "react";
 import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useFocusEffect } from "expo-router";
-import { Award, TrendingUp, Crown, Zap, Target, Calendar, UserCheck, BarChart3, Video, CheckSquare, Mic, MessageSquare } from "lucide-react-native";
+import { Award, TrendingUp, Crown, Zap, Target, Calendar, UserCheck, BarChart3, Video, CheckSquare, Mic, MessageSquare, BookOpen } from "lucide-react-native";
 import { useColors } from "@/hooks/useColors";
 import Card from "@/components/Card";
 import ProgressBar from "@/components/ProgressBar";
@@ -336,6 +336,14 @@ export default function HomeScreen() {
 
   // Premium quick actions (advertising)
   const premiumQuickActions = [
+    {
+      title: "Articles",
+      description: hasActiveSubscription ? "Read curated guides" : "Premium: curated guides",
+      icon: BookOpen,
+      color: Colors.primary,
+      onPress: () => handlePremiumFeature("Articles", "/premium/articles"),
+      isPremium: true,
+    },
     {
       title: "AI Assistant",
       description: hasActiveSubscription ? "Get personalized guidance" : "Premium: AI-powered help",

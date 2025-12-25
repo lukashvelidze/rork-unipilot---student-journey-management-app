@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Platform, Animated, Dimensions, Alert } from "react-native";
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Platform, Animated, Dimensions, Alert, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
@@ -35,6 +35,7 @@ export default function JourneyScreen() {
     memories,
     getMemoriesByStage,
     getMemoriesByMood,
+    loadMemories,
   } = useJourneyStore();
   const [activeTab, setActiveTab] = useState<"roadmap" | "map" | "timeline" | "memories">(params.tab === "memories" ? "memories" : "roadmap");
   const [showCelebration, setShowCelebration] = useState(false);
@@ -43,6 +44,7 @@ export default function JourneyScreen() {
   const [planeAnim] = useState(new Animated.Value(0));
   const [sparkleAnim] = useState(new Animated.Value(0));
   const [memoryFloatAnim] = useState(new Animated.Value(0));
+  const [memoriesLoading, setMemoriesLoading] = useState(false);
   
   // Memory filters - simplified
   const [selectedStageFilter, setSelectedStageFilter] = useState<JourneyStage | "all">("all");
@@ -53,6 +55,22 @@ export default function JourneyScreen() {
   useEffect(() => {
     fetchJourneyProgress();
   }, [user?.destinationCountry?.code, user?.id]);
+
+  useEffect(() => {
+    const fetchMemories = async () => {
+      if (!user) return;
+      setMemoriesLoading(true);
+      try {
+        await loadMemories();
+      } catch (error) {
+        console.error("Failed to load memories:", error);
+      } finally {
+        setMemoriesLoading(false);
+      }
+    };
+
+    fetchMemories();
+  }, [user?.id, loadMemories]);
 
   const fetchJourneyProgress = async () => {
     try {
@@ -743,7 +761,14 @@ export default function JourneyScreen() {
 
             {/* Memories Content */}
             <ScrollView style={styles.memoriesScroll} showsVerticalScrollIndicator={false}>
-              {memories.length === 0 ? (
+              {memoriesLoading ? (
+                <View style={styles.emptyState}>
+                  <ActivityIndicator size="large" color={Colors.primary} />
+                  <Text style={[styles.emptyStateTitle, { color: Colors.text, marginTop: 12 }]}>
+                    Loading your memories...
+                  </Text>
+                </View>
+              ) : memories.length === 0 ? (
                 <View style={styles.emptyState}>
                   <View style={[styles.emptyStateIcon, { backgroundColor: Colors.lightBackground }]}>
                     <Camera size={48} color={Colors.lightText} />
@@ -798,16 +823,7 @@ export default function JourneyScreen() {
                     >
                       <MemoryCard
                         memory={memory}
-                        onPress={() => {
-                          Alert.alert(
-                            memory.title,
-                            memory.description,
-                            [
-                              { text: "Share", onPress: () => Alert.alert("Share", "Sharing functionality coming soon!") },
-                              { text: "Close", style: "cancel" }
-                            ]
-                          );
-                        }}
+                        onPress={() => router.push(`/memories/${memory.id}`)}
                       />
                     </Animated.View>
                   ))}

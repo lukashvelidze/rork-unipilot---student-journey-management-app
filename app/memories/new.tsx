@@ -1,9 +1,9 @@
 import React, { useState } from "react";
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, TextInput, Alert, Platform, Image } from "react-native";
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity, TextInput, Alert, Image } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { LinearGradient } from "expo-linear-gradient";
-import { Camera, Image as ImageIcon, X, Check, Calendar, MapPin, Heart, Smile, Tag, ChevronDown } from "lucide-react-native";
+import { Camera, Image as ImageIcon, X, Check, ChevronDown } from "lucide-react-native";
+import * as ImagePicker from "expo-image-picker";
 import { useColors } from "@/hooks/useColors";
 import Card from "@/components/Card";
 import Button from "@/components/Button";
@@ -21,7 +21,7 @@ export default function NewMemoryScreen() {
   const [selectedMood, setSelectedMood] = useState<MemoryMood>("happy");
   const [tags, setTags] = useState<string[]>([]);
   const [newTag, setNewTag] = useState("");
-  const [imageUrl, setImageUrl] = useState("");
+  const [mediaUri, setMediaUri] = useState<string | null>(null);
   const [showStageSelector, setShowStageSelector] = useState(false);
   const [showMoodSelector, setShowMoodSelector] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -45,17 +45,6 @@ export default function NewMemoryScreen() {
     { value: "accomplished", label: "Accomplished", emoji: "🏆", color: "#FFA726" },
     { value: "hopeful", label: "Hopeful", emoji: "🌟", color: "#AB47BC" },
     { value: "determined", label: "Determined", emoji: "💪", color: "#EF5350" },
-  ];
-
-  const suggestedImages = [
-    "https://images.unsplash.com/photo-1562774053-701939374585?w=400&h=300&fit=crop",
-    "https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=400&h=300&fit=crop",
-    "https://images.unsplash.com/photo-1513475382585-d06e58bcb0e0?w=400&h=300&fit=crop",
-    "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=400&h=300&fit=crop",
-    "https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=400&h=300&fit=crop",
-    "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=400&h=300&fit=crop",
-    "https://images.unsplash.com/photo-1541339907198-e08756dedf3f?w=400&h=300&fit=crop",
-    "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=400&h=300&fit=crop",
   ];
 
   const addTag = () => {
@@ -83,17 +72,14 @@ export default function NewMemoryScreen() {
     setIsSubmitting(true);
 
     try {
-      const memory = {
+      await addMemory({
         title: title.trim(),
         description: description.trim(),
-        date: new Date().toISOString(),
         stage: selectedStage,
         mood: selectedMood,
-        tags: tags,
-        imageUrl: imageUrl || suggestedImages[Math.floor(Math.random() * suggestedImages.length)],
-      };
-
-      addMemory(memory);
+        tags,
+        mediaUri,
+      });
       
       // Show success message and navigate to memories page
       Alert.alert(
@@ -108,11 +94,45 @@ export default function NewMemoryScreen() {
           }
         ]
       );
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error creating memory:", error);
-      Alert.alert("Error", "Failed to create memory. Please try again.");
+      Alert.alert("Error", error?.message || "Failed to create memory. Please try again.");
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const pickImage = async (source: "camera" | "library") => {
+    try {
+      const permission =
+        source === "camera"
+          ? await ImagePicker.requestCameraPermissionsAsync()
+          : await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+      if (!permission.granted) {
+        Alert.alert("Permission needed", "Please allow access to your photos to add a memory image.");
+        return;
+      }
+
+      const result =
+        source === "camera"
+          ? await ImagePicker.launchCameraAsync({
+              mediaTypes: ImagePicker.MediaTypeOptions.Images,
+              allowsEditing: true,
+              quality: 0.8,
+            })
+          : await ImagePicker.launchImageLibraryAsync({
+              mediaTypes: ImagePicker.MediaTypeOptions.Images,
+              allowsEditing: true,
+              quality: 0.8,
+            });
+
+      if (!result.canceled && result.assets?.length > 0) {
+        setMediaUri(result.assets[0].uri);
+      }
+    } catch (err) {
+      console.error("Error selecting image:", err);
+      Alert.alert("Error", "Unable to select image. Please try again.");
     }
   };
 
@@ -141,50 +161,43 @@ export default function NewMemoryScreen() {
         <Card style={[styles.imageSection, { backgroundColor: Colors.card }]}>
           <Text style={[styles.sectionTitle, { color: Colors.text }]}>Add Photo</Text>
           
-          {imageUrl ? (
+          {mediaUri ? (
             <View style={styles.selectedImageContainer}>
-              <Image source={{ uri: imageUrl }} style={styles.selectedImage} />
+              <Image source={{ uri: mediaUri }} style={styles.selectedImage} />
               <TouchableOpacity 
                 style={[styles.removeImageButton, { backgroundColor: Colors.error }]}
-                onPress={() => setImageUrl("")}
+                onPress={() => setMediaUri(null)}
               >
                 <X size={16} color={Colors.white} />
               </TouchableOpacity>
             </View>
           ) : (
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.imagePlaceholder, { backgroundColor: Colors.lightBackground, borderColor: Colors.border }]}
-              onPress={() => {
-                Alert.alert(
-                  "Add Photo",
-                  "Choose how you want to add a photo",
-                  [
-                    { text: "Camera", onPress: () => Alert.alert("Camera", "Camera functionality coming soon!") },
-                    { text: "Gallery", onPress: () => Alert.alert("Gallery", "Gallery functionality coming soon!") },
-                    { text: "Use Suggested", onPress: () => setImageUrl(suggestedImages[Math.floor(Math.random() * suggestedImages.length)]) },
-                    { text: "Cancel", style: "cancel" }
-                  ]
-                );
-              }}
+              onPress={() => pickImage("library")}
+              activeOpacity={0.85}
             >
               <Camera size={32} color={Colors.lightText} />
-              <Text style={[styles.imagePlaceholderText, { color: Colors.lightText }]}>Tap to add photo</Text>
+              <Text style={[styles.imagePlaceholderText, { color: Colors.lightText }]}>Add a photo to capture the moment</Text>
             </TouchableOpacity>
           )}
 
-          {/* Suggested Images */}
-          <Text style={[styles.subsectionTitle, { color: Colors.text }]}>Suggested Photos</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.suggestedImagesScroll}>
-            {suggestedImages.map((url, index) => (
-              <TouchableOpacity
-                key={index}
-                style={styles.suggestedImageContainer}
-                onPress={() => setImageUrl(url)}
-              >
-                <Image source={{ uri: url }} style={styles.suggestedImage} />
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
+          <View style={styles.photoActionsRow}>
+            <TouchableOpacity
+              style={[styles.photoActionButton, { backgroundColor: Colors.lightBackground, borderColor: Colors.border }]}
+              onPress={() => pickImage("camera")}
+            >
+              <Camera size={18} color={Colors.text} />
+              <Text style={[styles.photoActionText, { color: Colors.text }]}>Camera</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.photoActionButton, { backgroundColor: Colors.lightBackground, borderColor: Colors.border }]}
+              onPress={() => pickImage("library")}
+            >
+              <ImageIcon size={18} color={Colors.text} />
+              <Text style={[styles.photoActionText, { color: Colors.text }]}>Gallery</Text>
+            </TouchableOpacity>
+          </View>
         </Card>
 
         {/* Title and Description */}
@@ -424,6 +437,25 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 8,
+  },
+  photoActionsRow: {
+    flexDirection: "row",
+    gap: 12,
+    marginTop: 12,
+  },
+  photoActionButton: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  photoActionText: {
+    fontSize: 14,
+    fontWeight: "600",
   },
   textSection: {
     marginBottom: 16,

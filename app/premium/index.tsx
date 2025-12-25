@@ -209,10 +209,11 @@ export default function PremiumScreen() {
     },
     {
       id: "articles",
-      title: "Articles & Webinars",
-      description: "Access detailed guides, webinars, and articles for each checklist item",
+      title: "Articles",
+      description: "Curated guides, webinars, and articles for your journey",
       icon: BookOpen,
-      comingSoon: true,
+      comingSoon: false,
+      route: "/premium/articles",
       proOnly: false,
     },
   ];

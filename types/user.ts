@@ -77,6 +77,7 @@ export interface Memory {
   imageUrl?: string;
   tags?: string[];
   mood?: MemoryMood;
+  storagePath?: string;
 }
 
 export interface TimelineEvent {

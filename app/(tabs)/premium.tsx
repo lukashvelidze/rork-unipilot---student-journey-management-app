@@ -86,11 +86,12 @@ export default function PremiumResourcesScreen() {
       proOnly: false,
     },
     {
-      id: "webinars-articles",
-      title: "Webinars & Articles",
-      description: "Access detailed guides, webinars, and articles for each checklist item",
+      id: "articles",
+      title: "Articles",
+      description: "Curated guides, webinars, and articles for your journey",
       icon: BookOpen,
-      comingSoon: true,
+      comingSoon: false,
+      route: "/premium/articles",
       proOnly: false,
     },
   ];
