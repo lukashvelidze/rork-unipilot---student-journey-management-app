@@ -13,24 +13,29 @@ export interface CreateMemoryInput {
 const MEMORY_BUCKET = "user-memories";
 const FALLBACK_MEMORY_IMAGE = "https://images.unsplash.com/photo-1513475382585-d06e58bcb0e0?auto=format&fit=crop&w=1200&q=60";
 
-const resolveMemoryImage = (mediaPath?: string | null) => {
-  if (!mediaPath) return FALLBACK_MEMORY_IMAGE;
+const mapMemoryWithSignedUrl = async (record: any): Promise<Memory> => {
+  let imageUrl = FALLBACK_MEMORY_IMAGE;
 
-  const { data } = supabase.storage.from(MEMORY_BUCKET).getPublicUrl(mediaPath);
-  return data?.publicUrl || FALLBACK_MEMORY_IMAGE;
+  if (record.media_path) {
+    const { data } = await supabase.storage
+      .from(MEMORY_BUCKET)
+      .createSignedUrl(record.media_path, 60 * 60); // 1 hour
+
+    imageUrl = data?.signedUrl || imageUrl;
+  }
+
+  return {
+    id: record.id,
+    title: record.title,
+    description: record.description || "",
+    date: record.created_at || new Date().toISOString(),
+    stage: record.journey_stage as JourneyStage,
+    mood: (record.feelings as MemoryMood) || undefined,
+    tags: (record.tags as string[]) || [],
+    imageUrl,
+    storagePath: record.media_path || undefined,
+  };
 };
-
-const mapMemory = (record: any): Memory => ({
-  id: record.id,
-  title: record.title,
-  description: record.description || "",
-  date: record.created_at || new Date().toISOString(),
-  stage: record.journey_stage as JourneyStage,
-  mood: (record.feelings as MemoryMood) || undefined,
-  tags: (record.tags as string[]) || [],
-  imageUrl: resolveMemoryImage(record.media_path),
-  storagePath: record.media_path || undefined,
-});
 
 export async function fetchUserMemories(): Promise<Memory[]> {
   const { data: { user } } = await supabase.auth.getUser();
@@ -49,7 +54,7 @@ export async function fetchUserMemories(): Promise<Memory[]> {
     throw error;
   }
 
-  return (data || []).map(mapMemory);
+  return Promise.all((data || []).map(mapMemoryWithSignedUrl));
 }
 
 async function uploadMemoryMedia(userId: string, uri: string) {
@@ -106,7 +111,7 @@ export async function createMemoryEntry(input: CreateMemoryInput): Promise<Memor
     throw error;
   }
 
-  return mapMemory(data);
+  return mapMemoryWithSignedUrl(data);
 }
 
 export async function updateMemoryEntry(
@@ -165,7 +170,7 @@ export async function updateMemoryEntry(
     throw error;
   }
 
-  return mapMemory(data);
+  return mapMemoryWithSignedUrl(data);
 }
 
 export async function deleteMemoryEntry(memoryId: string, storagePath?: string) {

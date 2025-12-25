@@ -15,6 +15,8 @@ import { Audio } from 'expo-av';
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Stack, useRouter, useNavigation } from "expo-router";
 import { Mic, MicOff, PhoneOff, Volume2, AlertCircle, Lock, Crown, ArrowRight, ChevronLeft } from "lucide-react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { Animated, Easing } from "react-native";
 import { useColors } from "@/hooks/useColors";
 import Card from "@/components/Card";
 import Button from "@/components/Button";
@@ -46,13 +48,14 @@ function InterviewContent() {
   const scrollViewRef = useRef<ScrollView>(null);
   const isMountedRef = useRef(true);
 
-  const [isConnecting, setIsConnecting] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [hasPermission, setHasPermission] = useState(false);
   const [isRequestingPermission, setIsRequestingPermission] = useState(false);
   const [messages, setMessages] = useState<Array<{ id: string; text: string; type: "user" | "agent" | "system" }>>([]);
   const [sessionActive, setSessionActive] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
+  const connectStartedAtRef = useRef<number | null>(null);
+  const pulseAnim = useRef(new Animated.Value(1)).current;
 
   // Get agent ID from environment variable or use placeholder
   const AGENT_ID = process.env.EXPO_PUBLIC_ELEVENLABS_AGENT_ID || "agent_7401k7a0wx3mfy2tmm361gsbh61a";
@@ -101,7 +104,6 @@ function InterviewContent() {
         if (!isMountedRef.current) return;
         console.log("Connected to conversation");
         setConnectionError(null);
-        setIsConnecting(false);
         setSessionActive(true);
         addMessage("system", "Connected! The interviewer is ready. Start speaking when you're ready.");
       } catch (e) {
@@ -112,7 +114,6 @@ function InterviewContent() {
       try {
         if (!isMountedRef.current) return;
         console.log("Disconnected from conversation");
-        setIsConnecting(false);
         setSessionActive(false);
         // Only add message if there was no error (normal disconnect)
         if (!connectionError) {
@@ -152,7 +153,6 @@ function InterviewContent() {
         console.error("Conversation error:", error);
         const errorMessage = error?.message || "Connection lost. Please try again.";
         setConnectionError(errorMessage);
-        setIsConnecting(false);
         setSessionActive(false);
         addMessage("system", `Connection error: ${errorMessage}`);
         // Don't show Alert here as it can cause issues - just update the UI
@@ -174,11 +174,9 @@ function InterviewContent() {
         console.log("Conversation status changed:", prop?.status);
         if (prop?.status === "connected") {
           setSessionActive(true);
-          setIsConnecting(false);
           setConnectionError(null);
         } else if (prop?.status === "disconnected") {
           setSessionActive(false);
-          setIsConnecting(false);
         }
       } catch (e) {
         console.error("Error in onStatusChange:", e);
@@ -187,7 +185,12 @@ function InterviewContent() {
   });
 
   // Derive connection state
-  const isConnected = sessionActive || conversation?.status === "connected";
+  const connectionStatus = conversation?.status;
+  const isConnected = sessionActive || connectionStatus === "connected";
+  const isConnecting =
+    !connectionError &&
+    !isConnected &&
+    (connectionStatus === "connecting" || connectionStatus === "initializing");
 
   const requestMicrophonePermission = async () => {
     setIsRequestingPermission(true);
@@ -282,6 +285,7 @@ function InterviewContent() {
           console.log("Cleanup: session already ended");
         }
       }
+      connectStartedAtRef.current = null;
     };
   }, []);
 
@@ -311,7 +315,7 @@ function InterviewContent() {
       await configureAudio();
 
       if (!isMountedRef.current) return;
-      setIsConnecting(true);
+      connectStartedAtRef.current = Date.now();
       setMessages([]);
       addMessage("system", "Connecting to interview simulator...");
 
@@ -320,11 +324,10 @@ function InterviewContent() {
         userId: user?.id || "anonymous",
       });
 
-      // Session started - state will be updated via onConnect callback
+      // Session started - state will be updated via onConnect/status callbacks
     } catch (error: any) {
       console.error("Failed to start conversation:", error);
       if (!isMountedRef.current) return;
-      setIsConnecting(false);
       setSessionActive(false);
       setConnectionError(error?.message || "Failed to connect");
       addMessage("system", `Failed to start: ${error?.message || "Connection error. Please try again."}`);
@@ -333,7 +336,6 @@ function InterviewContent() {
 
   const endConversation = useCallback(async () => {
     try {
-      setIsConnecting(false);
       if (conversation?.endSession) {
         await conversation.endSession();
       }
@@ -341,7 +343,6 @@ function InterviewContent() {
     } catch (error: any) {
       console.error("Failed to end conversation:", error);
       setSessionActive(false);
-      setIsConnecting(false);
     }
   }, [conversation]);
 
@@ -380,6 +381,40 @@ function InterviewContent() {
       conversation.setMicMuted(newMutedState);
     }
   };
+
+  // Mic pulse animation
+  useEffect(() => {
+    if (isConnecting || isConnected) {
+      const loop = Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, { toValue: 1.1, duration: 650, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+          Animated.timing(pulseAnim, { toValue: 0.95, duration: 650, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        ])
+      );
+      loop.start();
+      return () => loop.stop();
+    } else {
+      pulseAnim.setValue(1);
+    }
+  }, [isConnecting, isConnected, pulseAnim]);
+
+  // Connection timeout while status stays "connecting"
+  useEffect(() => {
+    if (!isConnecting) return;
+    const startedAt = connectStartedAtRef.current;
+    if (!startedAt) return;
+
+    const timeout = setTimeout(() => {
+      if (!isMountedRef.current) return;
+      if (conversation?.endSession) {
+        conversation.endSession().catch(() => {});
+      }
+      setSessionActive(false);
+      setConnectionError("Connection timed out. Please try again.");
+    }, 8000);
+
+    return () => clearTimeout(timeout);
+  }, [isConnecting, conversation]);
 
   const sendFeedback = async (liked: boolean) => {
     try {
@@ -424,30 +459,37 @@ function InterviewContent() {
           </Text>
         </View>
 
-        {/* Status Card */}
-        <Card style={[styles.statusCard, { backgroundColor: Colors.card }]}>
-          <View style={styles.statusRow}>
-            <View style={[
-              styles.statusIndicator,
-              {
-                backgroundColor: isConnected
-                  ? Colors.success
-                  : isConnecting
-                    ? Colors.warning || "#FFA500"
-                    : Colors.lightText + "40"
-              }
-            ]} />
-            <Text style={[styles.statusText, { color: Colors.text }]}>
-              {isConnected ? "Connected" : isConnecting ? "Connecting..." : "Ready to Start"}
-            </Text>
-            {conversation?.isSpeaking && (
-              <View style={styles.speakingIndicator}>
-                <Volume2 size={16} color={Colors.primary} />
-                <Text style={[styles.speakingText, { color: Colors.primary }]}>Speaking</Text>
-              </View>
-            )}
-          </View>
-        </Card>
+        {/* Mic Control */}
+        <View style={styles.micSection}>
+          <Animated.View style={[styles.pulseWrapper, { transform: [{ scale: pulseAnim }] }]}>
+            <LinearGradient
+              colors={isConnected ? [Colors.primary, Colors.secondary || Colors.primary] : [Colors.primary, Colors.primaryDark || Colors.primary]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.micButton}
+            >
+              <TouchableOpacity
+                activeOpacity={0.9}
+                onPress={isConnected ? endConversation : startConversation}
+                style={styles.micTouchable}
+              >
+                <Mic size={34} color="#FFFFFF" />
+              </TouchableOpacity>
+            </LinearGradient>
+          </Animated.View>
+          <Text style={[styles.micStatus, { color: Colors.text }]}>
+            {connectionError
+              ? connectionError
+              : isConnected
+                ? "Live - speak naturally"
+                : isConnecting
+                  ? "Connecting..."
+                  : "Tap to start interview"}
+          </Text>
+          <Text style={[styles.micHint, { color: Colors.lightText }]}>
+            {isConnected ? "You can mute or end anytime." : "We’ll start listening right after you tap."}
+          </Text>
+        </View>
 
         {/* Messages Area */}
         <Card style={[styles.messagesCard, { backgroundColor: Colors.card }]}>
@@ -516,56 +558,30 @@ function InterviewContent() {
 
         {/* Controls */}
         <View style={styles.controls}>
-          {isConnecting ? (
-            <TouchableOpacity
-              style={[styles.dangerButton, { backgroundColor: Colors.error || "#FF3B30" }]}
-              onPress={endConversation}
-            >
-              <ActivityIndicator color="#FFFFFF" size="small" style={{ marginRight: 8 }} />
-              <Text style={styles.dangerButtonText}>Cancel</Text>
-            </TouchableOpacity>
-          ) : !isConnected ? (
-            <TouchableOpacity
-              style={[styles.primaryButton, { backgroundColor: Colors.primary }]}
-              onPress={startConversation}
-              disabled={isRequestingPermission}
-            >
-              {isRequestingPermission ? (
-                <ActivityIndicator color="#FFFFFF" />
-              ) : (
-                <>
-                  <Mic size={20} color="#FFFFFF" />
-                  <Text style={styles.primaryButtonText}>{connectionError ? "Retry Interview" : "Start Interview"}</Text>
-                </>
-              )}
-            </TouchableOpacity>
-          ) : (
-            <>
-              <TouchableOpacity
-                style={[styles.secondaryButton, { backgroundColor: Colors.card, borderColor: Colors.primary }]}
-                onPress={toggleMute}
-              >
-                {isMuted ? (
-                  <>
-                    <MicOff size={20} color={Colors.primary} />
-                    <Text style={[styles.secondaryButtonText, { color: Colors.primary }]}>Unmute</Text>
-                  </>
-                ) : (
-                  <>
-                    <Mic size={20} color={Colors.primary} />
-                    <Text style={[styles.secondaryButtonText, { color: Colors.primary }]}>Mute</Text>
-                  </>
-                )}
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.dangerButton, { backgroundColor: Colors.error || "#FF3B30" }]}
-                onPress={endConversation}
-              >
-                <PhoneOff size={20} color="#FFFFFF" />
-                <Text style={styles.dangerButtonText}>End</Text>
-              </TouchableOpacity>
-            </>
-          )}
+          <TouchableOpacity
+            style={[styles.secondaryButton, { backgroundColor: Colors.card, borderColor: Colors.primary }]}
+            onPress={toggleMute}
+          >
+            {isMuted ? (
+              <>
+                <MicOff size={20} color={Colors.primary} />
+                <Text style={[styles.secondaryButtonText, { color: Colors.primary }]}>Unmute</Text>
+              </>
+            ) : (
+              <>
+                <Mic size={20} color={Colors.primary} />
+                <Text style={[styles.secondaryButtonText, { color: Colors.primary }]}>Mute</Text>
+              </>
+            )}
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.dangerButton, { backgroundColor: Colors.error || "#FF3B30" }]}
+            onPress={endConversation}
+            disabled={!isConnected && !isConnecting}
+          >
+            <PhoneOff size={20} color="#FFFFFF" />
+            <Text style={styles.dangerButtonText}>{isConnected ? "End" : "Cancel"}</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Feedback Section */}
@@ -604,6 +620,9 @@ export default function InterviewSimulatorScreen() {
   const [hasProAccess, setHasProAccess] = useState(false);
   const [accessError, setAccessError] = useState<string | null>(null);
   const isMountedRef = useRef(true);
+  const isCheckingRef = useRef(true);
+  const accessCheckStartedAtRef = useRef<number | null>(null);
+  const timeoutTriggeredRef = useRef(false);
 
   // Critical flow guard: run synchronously before paint
   useLayoutEffect(() => {
@@ -618,69 +637,72 @@ export default function InterviewSimulatorScreen() {
     };
   }, []);
 
-  // Check if user has Pro tier access
-  useEffect(() => {
-    // Only run when isCheckingAccess becomes true
-    if (!isCheckingAccess) return;
+  const resolveAccess = useCallback((allowed: boolean, error: string | null = null) => {
+    if (!isMountedRef.current) return;
+    console.log("[InterviewSimulator] Access resolved:", allowed ? "allowed" : "denied", error ? `(${error})` : "");
+    setHasProAccess(allowed);
+    setAccessError(error);
+    setIsCheckingAccess(false);
+    isCheckingRef.current = false;
+  }, []);
 
+  const runAccessCheck = useCallback(async () => {
+    timeoutTriggeredRef.current = false;
+    isCheckingRef.current = true;
+    setIsCheckingAccess(true);
+    setAccessError(null);
+    accessCheckStartedAtRef.current = Date.now();
     console.log("[InterviewSimulator] Access check started");
 
-    let cancelled = false;
-
-    const checkProAccess = async () => {
-      try {
-        const { data: { user: authUser } } = await supabase.auth.getUser();
-        if (cancelled || !isMountedRef.current) return;
-
-        if (!authUser) {
-          console.log("[InterviewSimulator] Access resolved: denied (no auth user)");
-          setHasProAccess(false);
-          setIsCheckingAccess(false);
-          setAccessError(null);
-          return;
-        }
-
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("subscription_tier")
-          .eq("id", authUser.id)
-          .single();
-
-        if (cancelled || !isMountedRef.current) return;
-
-        // Only Pro tier (or premium which maps to pro) has access to interview simulator
-        const tier = profile?.subscription_tier;
-        const isProTier = tier === "pro" || tier === "premium";
-        console.log("[InterviewSimulator] Access resolved: allowed =", isProTier);
-        setHasProAccess(isProTier);
-        setAccessError(null);
-        setIsCheckingAccess(false);
-      } catch (error) {
-        console.error("Error checking pro access:", error);
-        if (cancelled || !isMountedRef.current) return;
-        console.log("[InterviewSimulator] Access resolved: denied (error)");
-        setHasProAccess(false);
-        setAccessError("Unable to verify access. Please retry.");
-        setIsCheckingAccess(false);
+    try {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) {
+        resolveAccess(false, null);
+        return;
       }
-    };
 
-    checkProAccess();
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("subscription_tier")
+        .eq("id", authUser.id)
+        .single();
 
-    // Failsafe: stop loading if access check hangs
-    const failsafeTimeout = setTimeout(() => {
-      if (cancelled || !isMountedRef.current) return;
-      console.log("[InterviewSimulator] Access check timeout fallback");
-      setHasProAccess(false);
-      setAccessError("Timed out while checking access. Please retry.");
-      setIsCheckingAccess(false);
-    }, 6000);
+      if (profileError) {
+        console.error("Error checking pro access:", profileError);
+        resolveAccess(false, "Unable to verify access. Please retry.");
+        return;
+      }
+
+      const tier = profile?.subscription_tier;
+      const isProTier = tier === "pro" || tier === "premium";
+      resolveAccess(!!isProTier, null);
+    } catch (error) {
+      console.error("Error checking pro access:", error);
+      resolveAccess(false, "Unable to verify access. Please retry.");
+    }
+  }, [resolveAccess]);
+
+  // Check if user has Pro tier access once on mount
+  useEffect(() => {
+    runAccessCheck();
+
+    // Failsafe: stop loading if access check hangs (single, non-resetting)
+    const failsafeInterval = setInterval(() => {
+      if (timeoutTriggeredRef.current) return;
+      const startedAt = accessCheckStartedAtRef.current;
+      if (!startedAt) return;
+      const now = Date.now();
+      if (now - startedAt > 6000 && isCheckingRef.current) {
+        timeoutTriggeredRef.current = true;
+        console.log("[InterviewSimulator] Access check timeout fallback");
+        resolveAccess(false, "Timed out while checking access. Please retry.");
+      }
+    }, 500);
 
     return () => {
-      cancelled = true;
-      clearTimeout(failsafeTimeout);
+      clearInterval(failsafeInterval);
     };
-  }, [isCheckingAccess]);
+  }, [resolveAccess, runAccessCheck]);
 
   // Show loading while checking access
   if (isCheckingAccess) {
@@ -747,9 +769,7 @@ export default function InterviewSimulatorScreen() {
             title={accessError ? "Retry Access Check" : "Upgrade to Pro"}
             onPress={() => {
               if (accessError) {
-                // Retry in place without resetting timeout ref
-                setIsCheckingAccess(true);
-                setAccessError(null);
+                runAccessCheck();
               } else {
                 router.push("/premium");
               }
@@ -918,33 +938,43 @@ const styles = StyleSheet.create({
     textAlign: "center",
     lineHeight: 20,
   },
-  statusCard: {
-    padding: 16,
-    marginBottom: 16,
-  },
-  statusRow: {
-    flexDirection: "row",
+  micSection: {
     alignItems: "center",
-    gap: 12,
+    marginBottom: 24,
   },
-  statusIndicator: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
+  pulseWrapper: {
+    padding: 12,
+    borderRadius: 999,
   },
-  statusText: {
+  micButton: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 6,
+  },
+  micTouchable: {
+    width: 120,
+    height: 120,
+    justifyContent: "center",
+    alignItems: "center",
+    borderRadius: 60,
+  },
+  micStatus: {
     fontSize: 16,
-    fontWeight: "600",
-    flex: 1,
+    fontWeight: "700",
+    marginTop: 12,
+    textAlign: "center",
   },
-  speakingIndicator: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  speakingText: {
+  micHint: {
     fontSize: 14,
-    fontWeight: "500",
+    marginTop: 6,
+    textAlign: "center",
   },
   messagesCard: {
     padding: 16,
