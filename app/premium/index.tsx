@@ -28,7 +28,6 @@ interface PremiumResource {
   comingSoon: boolean;
   route?: string;
   proOnly?: boolean;
-  minTier?: "basic" | "standard" | "premium";
 }
 
 const subscriptionTiers: SubscriptionTier[] = [
@@ -188,9 +187,6 @@ export default function PremiumScreen() {
 
   // Check if user has Pro tier access
   const hasProAccess = currentTier === "pro" || currentTier === "premium";
-  const normalizedTier = currentTier ? currentTier.toLowerCase() : null;
-  const tierOrder: Record<string, number> = { free: 0, basic: 1, standard: 2, premium: 3, pro: 3 };
-  const hasStandardAccess = normalizedTier ? (tierOrder[normalizedTier] || 0) >= tierOrder["standard"] : false;
 
   // Premium resources that will be linked to checklist items later
   const premiumResources: PremiumResource[] = [
@@ -214,12 +210,10 @@ export default function PremiumScreen() {
     {
       id: "articles",
       title: "Articles & Webinars",
-      description: hasStandardAccess ? "Editorial guides tailored to your filters" : "Standard tier required",
+      description: "Access detailed guides, webinars, and articles for each checklist item",
       icon: BookOpen,
-      comingSoon: false,
-      route: "/premium/articles",
+      comingSoon: true,
       proOnly: false,
-      minTier: "standard" as const,
     },
   ];
 
@@ -233,22 +227,6 @@ export default function PremiumScreen() {
         `${resource.title} will be available soon. This feature will be linked to help icons in your checklist items.`
       );
     } else if (resource.route) {
-      if (resource.minTier) {
-        const required = resource.minTier.toLowerCase();
-        const currentRank = normalizedTier ? tierOrder[normalizedTier] || 0 : 0;
-        const requiredRank = tierOrder[required] || 0;
-        if (currentRank < requiredRank) {
-          Alert.alert(
-            "Upgrade required",
-            `${resource.title} is available on the Standard plan or higher.`,
-            [
-              { text: "Not now", style: "cancel" },
-              { text: "View plans", onPress: () => router.push("/premium") },
-            ]
-          );
-          return;
-        }
-      }
       router.push(resource.route as any);
     }
   };

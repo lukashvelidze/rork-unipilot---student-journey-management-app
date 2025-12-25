@@ -9,6 +9,7 @@ import ProgressBar from "@/components/ProgressBar";
 import QuoteCard from "@/components/QuoteCard";
 import { useUserStore } from "@/store/userStore";
 import { useJourneyStore } from "@/store/journeyStore";
+import { useAppStateStore } from "@/store/appStateStore";
 import { calculateOverallProgress } from "@/utils/helpers";
 import { getRandomQuote, generalQuotes } from "@/mocks/quotes";
 import { supabase, getCountries } from "@/lib/supabase";
@@ -43,6 +44,7 @@ export default function HomeScreen() {
   const Colors = useColors();
   const { user, setUser, updateUser } = useUserStore();
   const { journeyProgress, setJourneyProgress } = useJourneyStore();
+  const { inCriticalFlow } = useAppStateStore();
   const [hasActiveSubscription, setHasActiveSubscription] = useState(false);
   const [isCheckingSubscription, setIsCheckingSubscription] = useState(true);
 
@@ -231,7 +233,13 @@ export default function HomeScreen() {
   }, []); // Empty dependency array - only run once on mount
 
   // Redirect to onboarding if user is not set up
+  // Skip redirect if in a critical flow (e.g., interview simulator)
   useEffect(() => {
+    // Don't redirect during critical flows like interview simulator
+    if (inCriticalFlow) {
+      return;
+    }
+
     if (!user) {
       console.log("No user found, redirecting to onboarding");
       router.replace("/onboarding");
@@ -243,7 +251,7 @@ export default function HomeScreen() {
       router.replace("/onboarding");
       return;
     }
-  }, [user, router]);
+  }, [user, router, inCriticalFlow]);
   
   if (!user) {
     return (

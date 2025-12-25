@@ -8,26 +8,20 @@ import { useAppStateStore } from "@/store/appStateStore";
 export default function IndexScreen() {
   const router = useRouter();
   const Colors = useColors();
-  const { user, initializeUser } = useUserStore();
   const {
     inCriticalFlow,
     hasBootstrappedNavigation,
-    setHasBootstrappedNavigation,
   } = useAppStateStore();
-  
-  // Initialize user on mount
-  useEffect(() => {
-    initializeUser();
-  }, [initializeUser]);
 
   useEffect(() => {
-    // Prevent global redirects during critical flows (e.g., interview session)
-    if (inCriticalFlow) return;
+    // Only run redirect logic once, and not during critical flows
+    if (hasBootstrappedNavigation || inCriticalFlow) return;
 
     // Small delay to ensure store is properly initialized
     const timer = setTimeout(() => {
-      // Bail out if another part of the app marked a critical flow
-      if (useAppStateStore.getState().inCriticalFlow) return;
+      // Double-check conditions at execution time
+      const appState = useAppStateStore.getState();
+      if (appState.hasBootstrappedNavigation || appState.inCriticalFlow) return;
 
       const currentUser = useUserStore.getState().user;
       if (!currentUser || !currentUser.onboardingCompleted) {
@@ -38,12 +32,12 @@ export default function IndexScreen() {
         router.replace("/(tabs)");
       }
 
-      // Mark that we bootstrapped at least once (used elsewhere for logging)
-      setHasBootstrappedNavigation(true);
+      // Mark that we bootstrapped - prevents future redirects
+      appState.setHasBootstrappedNavigation(true);
     }, 800);
 
     return () => clearTimeout(timer);
-  }, [user, router, inCriticalFlow, hasBootstrappedNavigation, setHasBootstrappedNavigation]);
+  }, [router, inCriticalFlow, hasBootstrappedNavigation]);
 
   return (
     <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: Colors.background }}>

@@ -43,7 +43,6 @@ function InterviewContent() {
   const Colors = useColors();
   const navigation = useNavigation();
   const { user } = useUserStore();
-  const { setInCriticalFlow } = useAppStateStore();
   const scrollViewRef = useRef<ScrollView>(null);
 
   const [isConnecting, setIsConnecting] = useState(false);
@@ -279,8 +278,6 @@ function InterviewContent() {
   const startConversation = async () => {
     // Clear any previous errors
     setConnectionError(null);
-    // Block global redirects immediately when attempting to start
-    setInCriticalFlow(true);
 
     // Verify permission before starting
     if (!hasPermission) {
@@ -318,7 +315,6 @@ function InterviewContent() {
       setSessionActive(false);
       setConnectionError(error?.message || "Failed to connect");
       addMessage("system", `Failed to start: ${error?.message || "Connection error. Please try again."}`);
-      setInCriticalFlow(false);
     }
   };
 
@@ -361,17 +357,6 @@ function InterviewContent() {
 
     return unsubscribe;
   }, [navigation, sessionActive, isConnecting, endConversation]);
-
-  useEffect(() => {
-    // Guard global redirects while an interview is starting or active
-    if (isConnecting || sessionActive) {
-      setInCriticalFlow(true);
-    } else {
-      setInCriticalFlow(false);
-    }
-
-    return () => setInCriticalFlow(false);
-  }, [isConnecting, sessionActive, setInCriticalFlow]);
 
   const toggleMute = () => {
     const newMutedState = !isMuted;
@@ -598,9 +583,16 @@ export default function InterviewSimulatorScreen() {
   const Colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { setInCriticalFlow } = useAppStateStore();
 
   const [isCheckingAccess, setIsCheckingAccess] = useState(true);
   const [hasProAccess, setHasProAccess] = useState(false);
+
+  // Set critical flow immediately to prevent redirects while on this screen
+  useEffect(() => {
+    setInCriticalFlow(true);
+    return () => setInCriticalFlow(false);
+  }, [setInCriticalFlow]);
 
   // Check if user has Pro tier access
   useEffect(() => {
