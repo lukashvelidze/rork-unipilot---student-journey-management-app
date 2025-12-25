@@ -45,6 +45,7 @@ export default function HomeScreen() {
   const { user, setUser, updateUser } = useUserStore();
   const { journeyProgress, setJourneyProgress } = useJourneyStore();
   const { inCriticalFlow } = useAppStateStore();
+  const authInitializing = useUserStore((state) => state.authInitializing);
   const [hasActiveSubscription, setHasActiveSubscription] = useState(false);
   const [isCheckingSubscription, setIsCheckingSubscription] = useState(true);
 
@@ -236,7 +237,7 @@ export default function HomeScreen() {
   // Skip redirect if in a critical flow (e.g., interview simulator)
   useEffect(() => {
     // Don't redirect during critical flows like interview simulator
-    if (inCriticalFlow) {
+    if (inCriticalFlow || authInitializing) {
       return;
     }
 
@@ -251,7 +252,7 @@ export default function HomeScreen() {
       router.replace("/onboarding");
       return;
     }
-  }, [user, router, inCriticalFlow]);
+  }, [user, router, inCriticalFlow, authInitializing]);
   
   if (!user) {
     return (

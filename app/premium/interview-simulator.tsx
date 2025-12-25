@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useLayoutEffect } from "react";
 import {
   StyleSheet,
   View,
@@ -44,6 +44,7 @@ function InterviewContent() {
   const navigation = useNavigation();
   const { user } = useUserStore();
   const scrollViewRef = useRef<ScrollView>(null);
+  const isMountedRef = useRef(true);
 
   const [isConnecting, setIsConnecting] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
@@ -80,6 +81,7 @@ function InterviewContent() {
   }, []);
 
   const addMessage = useCallback((type: "user" | "agent" | "system", text: string) => {
+    if (!isMountedRef.current) return;
     setMessages((prev) => [
       ...prev,
       {
@@ -96,6 +98,7 @@ function InterviewContent() {
   const conversation = useConversation({
     onConnect: () => {
       try {
+        if (!isMountedRef.current) return;
         console.log("Connected to conversation");
         setConnectionError(null);
         setIsConnecting(false);
@@ -107,6 +110,7 @@ function InterviewContent() {
     },
     onDisconnect: () => {
       try {
+        if (!isMountedRef.current) return;
         console.log("Disconnected from conversation");
         setIsConnecting(false);
         setSessionActive(false);
@@ -120,6 +124,7 @@ function InterviewContent() {
     },
     onMessage: (message: any) => {
       try {
+        if (!isMountedRef.current) return;
         console.log("Message received:", message);
         const messageText = message.text || message.content || message.message || "";
         const messageType = message.type || message.role || "";
@@ -143,6 +148,7 @@ function InterviewContent() {
     },
     onError: (error: any) => {
       try {
+        if (!isMountedRef.current) return;
         console.error("Conversation error:", error);
         const errorMessage = error?.message || "Connection lost. Please try again.";
         setConnectionError(errorMessage);
@@ -156,6 +162,7 @@ function InterviewContent() {
     },
     onModeChange: (mode: any) => {
       try {
+        if (!isMountedRef.current) return;
         console.log("Conversation mode changed:", mode);
       } catch (e) {
         console.error("Error in onModeChange:", e);
@@ -163,6 +170,7 @@ function InterviewContent() {
     },
     onStatusChange: (prop: any) => {
       try {
+        if (!isMountedRef.current) return;
         console.log("Conversation status changed:", prop?.status);
         if (prop?.status === "connected") {
           setSessionActive(true);
@@ -232,6 +240,7 @@ function InterviewContent() {
   };
 
   useEffect(() => {
+    isMountedRef.current = true;
     // Configure audio on mount
     configureAudio();
 
@@ -265,6 +274,7 @@ function InterviewContent() {
 
     // Cleanup on unmount
     return () => {
+      isMountedRef.current = false;
       if (sessionActive && conversation) {
         try {
           conversation.endSession();
@@ -276,6 +286,7 @@ function InterviewContent() {
   }, []);
 
   const startConversation = async () => {
+    if (!isMountedRef.current) return;
     // Clear any previous errors
     setConnectionError(null);
 
@@ -299,6 +310,7 @@ function InterviewContent() {
       // Configure audio before starting
       await configureAudio();
 
+      if (!isMountedRef.current) return;
       setIsConnecting(true);
       setMessages([]);
       addMessage("system", "Connecting to interview simulator...");
@@ -311,6 +323,7 @@ function InterviewContent() {
       // Session started - state will be updated via onConnect callback
     } catch (error: any) {
       console.error("Failed to start conversation:", error);
+      if (!isMountedRef.current) return;
       setIsConnecting(false);
       setSessionActive(false);
       setConnectionError(error?.message || "Failed to connect");
@@ -321,7 +334,9 @@ function InterviewContent() {
   const endConversation = useCallback(async () => {
     try {
       setIsConnecting(false);
-      await conversation.endSession();
+      if (conversation?.endSession) {
+        await conversation.endSession();
+      }
       setSessionActive(false);
     } catch (error: any) {
       console.error("Failed to end conversation:", error);
@@ -587,21 +602,41 @@ export default function InterviewSimulatorScreen() {
 
   const [isCheckingAccess, setIsCheckingAccess] = useState(true);
   const [hasProAccess, setHasProAccess] = useState(false);
+  const [accessError, setAccessError] = useState<string | null>(null);
+  const isMountedRef = useRef(true);
 
-  // Set critical flow immediately to prevent redirects while on this screen
-  useEffect(() => {
+  // Critical flow guard: run synchronously before paint
+  useLayoutEffect(() => {
     setInCriticalFlow(true);
     return () => setInCriticalFlow(false);
   }, [setInCriticalFlow]);
 
+  // Cleanup mounted flag on unmount
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
   // Check if user has Pro tier access
   useEffect(() => {
+    // Only run when isCheckingAccess becomes true
+    if (!isCheckingAccess) return;
+
+    console.log("[InterviewSimulator] Access check started");
+
+    let cancelled = false;
+
     const checkProAccess = async () => {
       try {
         const { data: { user: authUser } } = await supabase.auth.getUser();
+        if (cancelled || !isMountedRef.current) return;
+
         if (!authUser) {
+          console.log("[InterviewSimulator] Access resolved: denied (no auth user)");
           setHasProAccess(false);
           setIsCheckingAccess(false);
+          setAccessError(null);
           return;
         }
 
@@ -611,20 +646,41 @@ export default function InterviewSimulatorScreen() {
           .eq("id", authUser.id)
           .single();
 
+        if (cancelled || !isMountedRef.current) return;
+
         // Only Pro tier (or premium which maps to pro) has access to interview simulator
         const tier = profile?.subscription_tier;
         const isProTier = tier === "pro" || tier === "premium";
+        console.log("[InterviewSimulator] Access resolved: allowed =", isProTier);
         setHasProAccess(isProTier);
+        setAccessError(null);
+        setIsCheckingAccess(false);
       } catch (error) {
         console.error("Error checking pro access:", error);
+        if (cancelled || !isMountedRef.current) return;
+        console.log("[InterviewSimulator] Access resolved: denied (error)");
         setHasProAccess(false);
-      } finally {
+        setAccessError("Unable to verify access. Please retry.");
         setIsCheckingAccess(false);
       }
     };
 
     checkProAccess();
-  }, []);
+
+    // Failsafe: stop loading if access check hangs
+    const failsafeTimeout = setTimeout(() => {
+      if (cancelled || !isMountedRef.current) return;
+      console.log("[InterviewSimulator] Access check timeout fallback");
+      setHasProAccess(false);
+      setAccessError("Timed out while checking access. Please retry.");
+      setIsCheckingAccess(false);
+    }, 6000);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(failsafeTimeout);
+    };
+  }, [isCheckingAccess]);
 
   // Show loading while checking access
   if (isCheckingAccess) {
@@ -646,7 +702,7 @@ export default function InterviewSimulatorScreen() {
     );
   }
 
-  // Show upgrade prompt if user doesn't have Pro access
+  // Show upgrade/error prompt if user doesn't have Pro access
   if (!hasProAccess) {
     return (
       <View style={[styles.container, { backgroundColor: Colors.background, paddingTop: insets.top }]}>
@@ -666,6 +722,11 @@ export default function InterviewSimulatorScreen() {
           <Text style={[styles.lockedDescription, { color: Colors.lightText }]}>
             The Interview Simulator is an exclusive Pro plan feature. Practice visa and university interviews with AI-powered voice conversations.
           </Text>
+          {accessError ? (
+            <Text style={[styles.lockedDescription, { color: Colors.error || Colors.primary }]}>
+              {accessError}
+            </Text>
+          ) : null}
 
           <Card style={[styles.featureCard, { backgroundColor: Colors.card }]} variant="elevated">
             <View style={styles.featureRow}>
@@ -683,8 +744,16 @@ export default function InterviewSimulatorScreen() {
           </Card>
 
           <Button
-            title="Upgrade to Pro"
-            onPress={() => router.push("/premium")}
+            title={accessError ? "Retry Access Check" : "Upgrade to Pro"}
+            onPress={() => {
+              if (accessError) {
+                // Retry in place without resetting timeout ref
+                setIsCheckingAccess(true);
+                setAccessError(null);
+              } else {
+                router.push("/premium");
+              }
+            }}
             icon={<ArrowRight size={20} color="#FFFFFF" />}
             fullWidth
             style={styles.upgradeButton}

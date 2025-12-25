@@ -6,6 +6,7 @@ import { flattedStorage } from "@/utils/hermesStorage";
 interface UserState {
   user: UserProfile | null;
   isLoading: boolean;
+  authInitializing: boolean;
   error: string | null;
   isPremium: boolean;
   setUser: (user: UserProfile) => void;
@@ -25,6 +26,7 @@ interface UserState {
   setPremium: (isPremium: boolean) => void;
   updateDestinationCountry: (country: Country) => void;
   updateHomeCountry: (country: Country) => void;
+  setAuthInitializing: (value: boolean) => void;
 }
 
 const normalizeTier = (tier?: string | null): SubscriptionTier => {
@@ -47,6 +49,7 @@ export const useUserStore = create<UserState>()(
     (set, get) => ({
       user: null,
       isLoading: false,
+      authInitializing: true,
       error: null,
       isPremium: false,
       
@@ -185,6 +188,8 @@ export const useUserStore = create<UserState>()(
               }
             : null,
         })),
+
+      setAuthInitializing: (value) => set({ authInitializing: value }),
     }),
     {
       name: "user-storage",

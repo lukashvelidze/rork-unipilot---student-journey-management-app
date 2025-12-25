@@ -8,6 +8,7 @@ import { useAppStateStore } from "@/store/appStateStore";
 export default function IndexScreen() {
   const router = useRouter();
   const Colors = useColors();
+  const authInitializing = useUserStore((state) => state.authInitializing);
   const {
     inCriticalFlow,
     hasBootstrappedNavigation,
@@ -15,7 +16,7 @@ export default function IndexScreen() {
 
   useEffect(() => {
     // Only run redirect logic once, and not during critical flows
-    if (hasBootstrappedNavigation || inCriticalFlow) return;
+    if (hasBootstrappedNavigation || inCriticalFlow || authInitializing) return;
 
     // Small delay to ensure store is properly initialized
     const timer = setTimeout(() => {
@@ -37,7 +38,7 @@ export default function IndexScreen() {
     }, 800);
 
     return () => clearTimeout(timer);
-  }, [router, inCriticalFlow, hasBootstrappedNavigation]);
+  }, [router, inCriticalFlow, hasBootstrappedNavigation, authInitializing]);
 
   return (
     <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: Colors.background }}>

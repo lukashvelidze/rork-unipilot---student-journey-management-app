@@ -13,6 +13,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useUserStore } from "@/store/userStore";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { preRehydrationCleanup } from "@/utils/hermesStorage";
+import { supabase } from "@/lib/supabase";
 
 // Import iOS crash prevention at module level (synchronous)
 // Wrapped in try/catch for Expo Go compatibility
@@ -119,6 +120,7 @@ function RootLayoutNav() {
   const Colors = useColors();
   const { isDarkMode } = useThemeStore();
   const initializeUser = useUserStore((state) => state.initializeUser);
+  const setAuthInitializing = useUserStore((state) => state.setAuthInitializing);
 
   useEffect(() => {
     // Initialize user when app starts
@@ -130,6 +132,33 @@ function RootLayoutNav() {
       }
     }
   }, [initializeUser]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const hydrateSession = async () => {
+      try {
+        await supabase.auth.getSession();
+      } catch (error) {
+        console.error("Error hydrating auth session:", error);
+      } finally {
+        if (isMounted) {
+          setAuthInitializing(false);
+        }
+      }
+    };
+
+    hydrateSession();
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, _session) => {
+      // No-op: we just want to ensure listener keeps session alive; hydration flag stays false
+    });
+
+    return () => {
+      isMounted = false;
+      authListener.subscription.unsubscribe();
+    };
+  }, [setAuthInitializing]);
 
   // Wrap with ElevenLabsProvider only if available (not in Expo Go)
   const AppContent = (
