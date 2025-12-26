@@ -42,7 +42,7 @@ const withTimeout = <T,>(
 export default function HomeScreen() {
   const router = useRouter();
   const Colors = useColors();
-  const { user, setUser, updateUser } = useUserStore();
+  const { user, setUser, updateUser, logout } = useUserStore();
   const { journeyProgress, setJourneyProgress } = useJourneyStore();
   const { inCriticalFlow } = useAppStateStore();
   const authInitializing = useUserStore((state) => state.authInitializing);
@@ -162,7 +162,7 @@ export default function HomeScreen() {
           .eq("id", authUser.id)
           .single();
 
-        const { data: profile } = await withTimeout(
+        const { data: profile, error: profileError } = await withTimeout(
           getProfilePromise,
           10000,
           'Failed to fetch profile - timeout'
@@ -221,6 +221,12 @@ export default function HomeScreen() {
 
           // Journey progress is now fetched from Supabase in the journey page
           // No need to initialize here with mock data
+        } else {
+          console.error("Error fetching profile:", profileError);
+          // If the profile is missing (e.g., deleted), sign out and reset to onboarding
+          await supabase.auth.signOut();
+          await logout();
+          router.replace("/onboarding/step1-account");
         }
       } catch (error) {
         console.error("Error fetching user data:", error);

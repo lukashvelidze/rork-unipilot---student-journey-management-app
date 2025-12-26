@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert, Switch } from "react-native";
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert, Switch, Linking } from "react-native";
 import { useRouter } from "expo-router";
 import {
   User,
@@ -40,6 +40,7 @@ export default function SettingsScreen() {
   const Colors = useColors();
   const { user, logout, isPremium } = useUserStore();
   const { isDarkMode, toggleDarkMode } = useThemeStore();
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
 
   const [notifications, setNotifications] = useState(true);
   const [autoDownload, setAutoDownload] = useState(false);
@@ -66,6 +67,8 @@ export default function SettingsScreen() {
   };
   
   const handleDeleteAccount = () => {
+    if (isDeletingAccount) return;
+
     Alert.alert(
       "Delete Account",
       "This action cannot be undone. All your data will be permanently deleted.",
@@ -74,9 +77,46 @@ export default function SettingsScreen() {
         {
           text: "Delete",
           style: "destructive",
-          onPress: () => {
-            // Handle account deletion
-            Alert.alert("Account Deleted", "Your account has been deleted.");
+          onPress: async () => {
+            if (isDeletingAccount) return;
+            setIsDeletingAccount(true);
+            try {
+              const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+              if (authError || !authUser) {
+                throw new Error(authError?.message || "Not authenticated");
+              }
+
+              const userId = authUser.id;
+
+              // Delete user-owned rows first
+              const deletions = [
+                supabase.from("memories").delete().eq("user_id", userId),
+                supabase.from("documents").delete().eq("user_id", userId),
+                supabase.from("user_progress").delete().eq("user_id", userId),
+                supabase.from("user_subscriptions").delete().eq("user_id", userId),
+                supabase.from("user_subscription_status").delete().eq("user_id", userId),
+              ];
+              await Promise.all(deletions);
+
+              // Remove profile entry last
+              await supabase.from("profiles").delete().eq("id", userId);
+
+              // Sign out and clear local state
+              await supabase.auth.signOut();
+              await logout();
+
+              Alert.alert("Account Deleted", "Your account has been deleted.", [
+                {
+                  text: "OK",
+                  onPress: () => router.replace("/onboarding/step1-account"),
+                },
+              ]);
+            } catch (error: any) {
+              console.error("Delete account error:", error);
+              Alert.alert("Error", error?.message || "Failed to delete account. Please try again.");
+            } finally {
+              setIsDeletingAccount(false);
+            }
           },
         },
       ]
@@ -95,14 +135,8 @@ export default function SettingsScreen() {
   };
   
   const handleContactSupport = () => {
-    Alert.alert(
-      "Contact Support",
-      "How would you like to contact our support team?",
-      [
-        { text: "Cancel", style: "cancel" },
-        { text: "Email", onPress: () => console.log("Open email") },
-        { text: "Chat", onPress: () => console.log("Open chat") },
-      ]
+    Linking.openURL("mailto:unipilotapp@gmail.com").catch(() =>
+      Alert.alert("Error", "Unable to open mail app.")
     );
   };
 
@@ -184,7 +218,9 @@ export default function SettingsScreen() {
           icon: HelpCircle,
           iconColor: Colors.info,
           type: "navigation",
-          onPress: () => Alert.alert("Coming Soon", "Help center will be available soon."),
+          onPress: () => Linking.openURL("https://unipilot.app/faqs").catch(() => 
+            Alert.alert("Error", "Unable to open link.")
+          ),
         },
         {
           id: "contact",

@@ -9,7 +9,7 @@ import { SubscriptionTier } from "@/types/user";
 
 export default function OnboardingIndex() {
   const router = useRouter();
-  const { user, setUser } = useUserStore();
+  const { user, setUser, logout } = useUserStore();
 
   useEffect(() => {
     checkAuthAndRedirect();
@@ -39,9 +39,11 @@ export default function OnboardingIndex() {
         .eq("id", authUser.id)
         .single();
 
-      if (profileError) {
+      if (profileError || !profile) {
         console.error("Error fetching profile:", profileError);
-        // If profile doesn't exist, start from step 1
+        // Clear any stale session so we don't loop between onboarding screens
+        await supabase.auth.signOut();
+        await logout();
         router.replace("/onboarding/step1-account");
         return;
       }

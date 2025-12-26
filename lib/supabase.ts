@@ -79,6 +79,7 @@ export async function updateProfile(updates: {
   level_of_study?: string;
   destination_country?: string;
   visa_type?: string;
+  bio?: string | null;
 }) {
   const { data: { user } } = await supabase.auth.getUser();
   

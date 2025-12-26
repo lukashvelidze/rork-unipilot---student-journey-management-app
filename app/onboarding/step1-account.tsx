@@ -13,7 +13,7 @@ import { SubscriptionTier } from "@/types/user";
 export default function Step1Account() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { user, setUser, updateOnboardingStep } = useUserStore();
+  const { user, setUser, updateOnboardingStep, logout } = useUserStore();
 
   // Cleanup tracking to prevent navigation after unmount
   const isMountedRef = useRef(true);
@@ -65,6 +65,19 @@ export default function Step1Account() {
       }
 
       if (authUser) {
+        // If the session exists but profile was deleted, sign out to avoid loops
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("id")
+          .eq("id", authUser.id)
+          .single();
+
+        if (!profile) {
+          await supabase.auth.signOut();
+          await logout();
+          return;
+        }
+
         // User is already authenticated, check if they need to continue onboarding
         // Use InteractionManager to prevent blocking
         InteractionManager.runAfterInteractions(() => {

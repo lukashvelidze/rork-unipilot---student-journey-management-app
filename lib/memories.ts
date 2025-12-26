@@ -1,4 +1,5 @@
 import { supabase } from "./supabase";
+import * as FileSystem from "expo-file-system/legacy";
 import { JourneyStage, Memory, MemoryMood } from "@/types/user";
 
 export interface CreateMemoryInput {
@@ -57,19 +58,65 @@ export async function fetchUserMemories(): Promise<Memory[]> {
   return Promise.all((data || []).map(mapMemoryWithSignedUrl));
 }
 
+function base64ToUint8Array(base64: string) {
+  let binaryString: string;
+  if (typeof atob === "function") {
+    binaryString = atob(base64);
+  } else {
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let output = "";
+    let buffer = 0;
+    let bits = 0;
+    for (const char of base64.replace(/=+$/, "")) {
+      const value = chars.indexOf(char);
+      if (value < 0) continue;
+      buffer = (buffer << 6) | value;
+      bits += 6;
+      if (bits >= 8) {
+        bits -= 8;
+        output += String.fromCharCode((buffer >> bits) & 0xff);
+      }
+    }
+    binaryString = output;
+  }
+
+  const bytes = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return bytes;
+}
+
 async function uploadMemoryMedia(userId: string, uri: string) {
   const ext = uri.split(".").pop() || "jpg";
   const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
   const filePath = `${userId}/${fileName}`;
 
-  const response = await fetch(uri);
-  const blob = await response.blob();
+  // Validate the file exists and has size before reading
+  const fileInfo = await FileSystem.getInfoAsync(uri, { size: true });
+  if (!fileInfo.exists || (fileInfo.size ?? 0) === 0) {
+    throw new Error("Could not read selected image. Please try again.");
+  }
+
+  // Read via FileSystem to avoid 0-byte blobs from fetch() on some platforms
+  const base64Data = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
+  const bytes = base64ToUint8Array(base64Data);
+
+  if (!bytes || bytes.length === 0) {
+    throw new Error("Could not read selected image. Please try again.");
+  }
+
+  // Use Blob to avoid the File constructor limitations on some RN runtimes/simulators
+  const blob = new Blob([bytes.buffer], { type: "image/jpeg" });
+  if (!blob || (blob as any).size === 0) {
+    throw new Error("Could not read selected image. Please try again.");
+  }
 
   const { error } = await supabase.storage
     .from(MEMORY_BUCKET)
     .upload(filePath, blob, {
       upsert: false,
-      contentType: blob.type || "image/jpeg",
+      contentType: "image/jpeg",
     });
 
   if (error) {
