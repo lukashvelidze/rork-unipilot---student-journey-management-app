@@ -52,8 +52,8 @@ function InterviewContent() {
  const [hasPermission, setHasPermission] = useState(false);
  const [isRequestingPermission, setIsRequestingPermission] = useState(false);
  const [messages, setMessages] = useState<Array<{ id: string; text: string; type: "user" | "agent" | "system" }>>([]);
- const [sessionActive, setSessionActive] = useState(false);
  const [connectionError, setConnectionError] = useState<string | null>(null);
+ const [hasEverConnected, setHasEverConnected] = useState(false);
  const connectStartedAtRef = useRef<number | null>(null);
  const pulseAnim = useRef(new Animated.Value(1)).current;
 
@@ -104,7 +104,7 @@ function InterviewContent() {
  if (!isMountedRef.current) return;
  console.log("Connected to conversation");
  setConnectionError(null);
- setSessionActive(true);
+ setHasEverConnected(true);
  addMessage("system", "Connected! The interviewer is ready. Start speaking when you're ready.");
  } catch (e) {
  console.error("Error in onConnect:", e);
@@ -129,6 +129,12 @@ function InterviewContent() {
  console.log("Message received:", message);
  const messageText = message.text || message.content || message.message || "";
  const messageType = message.type || message.role || "";
+
+ // Treat first agent response as authoritative connection signal
+ if (!hasEverConnected && (messageType === "agent" || messageType === "assistant")) {
+ setHasEverConnected(true);
+ setConnectionError(null);
+ }
 
  if (messageType === "user" || messageType === "user_transcript" || messageType === "user_message") {
  if (messageText) {
@@ -173,10 +179,7 @@ function InterviewContent() {
  if (!isMountedRef.current) return;
  console.log("Conversation status changed:", prop?.status);
  if (prop?.status === "connected") {
- setSessionActive(true);
  setConnectionError(null);
- } else if (prop?.status === "disconnected") {
- setSessionActive(false);
  }
  } catch (e) {
  console.error("Error in onStatusChange:", e);
@@ -186,11 +189,20 @@ function InterviewContent() {
 
  // Derive connection state
  const connectionStatus = conversation?.status;
- const isConnected = sessionActive || connectionStatus === "connected";
  const isConnecting =
- !connectionError &&
- !isConnected &&
- (connectionStatus === "connecting" || connectionStatus === "initializing");
+ !hasEverConnected &&
+ (connectionStatus === "connecting" ||
+ connectionStatus === "initializing");
+ const isConnected =
+ hasEverConnected || connectionStatus === "connected";
+
+ // Sync derived connection flag when status reports connected
+ useEffect(() => {
+ if (connectionStatus === "connected") {
+ setHasEverConnected(true);
+ setConnectionError(null);
+ }
+ }, [connectionStatus]);
 
  const requestMicrophonePermission = async () => {
  setIsRequestingPermission(true);
@@ -278,19 +290,33 @@ function InterviewContent() {
  // Cleanup on unmount
  return () => {
  isMountedRef.current = false;
- if (sessionActive && conversation) {
+ if (conversation?.status === "connected") {
  try {
  conversation.endSession();
  } catch (e) {
  console.log("Cleanup: session already ended");
  }
  }
+ setHasEverConnected(false);
  connectStartedAtRef.current = null;
  };
  }, []);
 
  const startConversation = async () => {
  if (!isMountedRef.current) return;
+ if (!conversation?.startSession) {
+ Alert.alert(
+ "Interview not available",
+ "Voice interview requires the ElevenLabs SDK. Please update to a development build."
+ );
+ return;
+ }
+
+ // Prevent duplicate starts while connecting/connected
+ if (conversation.status === "connecting" || conversation.status === "initializing" || conversation.status === "connected") {
+ return;
+ }
+ setHasEverConnected(false);
  // Clear any previous errors
  setConnectionError(null);
 
@@ -328,7 +354,6 @@ function InterviewContent() {
  } catch (error: any) {
  console.error("Failed to start conversation:", error);
  if (!isMountedRef.current) return;
- setSessionActive(false);
  setConnectionError(error?.message || "Failed to connect");
  addMessage("system", `Failed to start: ${error?.message || "Connection error. Please try again."}`);
  }
@@ -339,18 +364,16 @@ function InterviewContent() {
  if (conversation?.endSession) {
  await conversation.endSession();
  }
- setSessionActive(false);
+ setHasEverConnected(false);
  } catch (error: any) {
  console.error("Failed to end conversation:", error);
- setSessionActive(false);
  }
- }, [conversation]);
+ }, [connectionStatus, hasEverConnected, conversation]);
 
  useEffect(() => {
  const unsubscribe = navigation.addListener("beforeRemove", (event) => {
  // Allow navigation while connecting; only guard active sessions
- if (isConnecting) return;
- if (!sessionActive) return;
+ if (conversation?.status !== "connected") return;
 
  event.preventDefault();
  Alert.alert(
@@ -372,7 +395,7 @@ function InterviewContent() {
  });
 
  return unsubscribe;
- }, [navigation, sessionActive, isConnecting, endConversation]);
+ }, [navigation, conversation, endConversation]);
 
  const toggleMute = () => {
  const newMutedState = !isMuted;
@@ -400,7 +423,9 @@ function InterviewContent() {
 
  // Connection timeout while status stays "connecting"
  useEffect(() => {
- if (!isConnecting) return;
+ const status = connectionStatus;
+ if (hasEverConnected) return;
+ if (status !== "connecting" && status !== "initializing") return;
  const startedAt = connectStartedAtRef.current;
  if (!startedAt) return;
 
@@ -409,12 +434,12 @@ function InterviewContent() {
  if (conversation?.endSession) {
  conversation.endSession().catch(() => {});
  }
- setSessionActive(false);
+ setHasEverConnected(false);
  setConnectionError("Connection timed out. Please try again.");
  }, 8000);
 
  return () => clearTimeout(timeout);
- }, [isConnecting, conversation]);
+ }, [conversation]);
 
  const sendFeedback = async (liked: boolean) => {
  try {

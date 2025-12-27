@@ -14,13 +14,79 @@ export interface CreateMemoryInput {
 const MEMORY_BUCKET = "user-memories";
 const FALLBACK_MEMORY_IMAGE = "https://images.unsplash.com/photo-1513475382585-d06e58bcb0e0?auto=format&fit=crop&w=1200&q=60";
 
+function base64ToUint8Array(base64: string) {
+  let binaryString: string;
+  if (typeof atob === "function") {
+    binaryString = atob(base64);
+  } else {
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let output = "";
+    let buffer = 0;
+    let bits = 0;
+    for (const char of base64.replace(/=+$/, "")) {
+      const value = chars.indexOf(char);
+      if (value < 0) continue;
+      buffer = (buffer << 6) | value;
+      bits += 6;
+      if (bits >= 8) {
+        bits -= 8;
+        output += String.fromCharCode((buffer >> bits) & 0xff);
+      }
+    }
+    binaryString = output;
+  }
+
+  const bytes = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return bytes;
+}
+
+const MIME_BY_EXTENSION: Record<string, string> = {
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  png: "image/png",
+  heic: "image/heic",
+  heif: "image/heic",
+  webp: "image/webp",
+};
+
+const getFileExtension = (uri: string) => {
+  const clean = uri.split("?")[0];
+  return (clean.split(".").pop() || "jpg").toLowerCase();
+};
+
+const guessContentType = (uri: string) => MIME_BY_EXTENSION[getFileExtension(uri)] || "image/jpeg";
+
+async function uriToArrayBuffer(uri: string) {
+  const base64Data = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
+  if (!base64Data) {
+    throw new Error("Could not read selected image. Please try again.");
+  }
+
+  const bytes = base64ToUint8Array(base64Data);
+  if (!bytes || bytes.length === 0) {
+    throw new Error("Could not read selected image. Please try again.");
+  }
+
+  return {
+    arrayBuffer: bytes.buffer,
+    contentType: guessContentType(uri),
+  };
+}
+
 const mapMemoryWithSignedUrl = async (record: any): Promise<Memory> => {
   let imageUrl = FALLBACK_MEMORY_IMAGE;
 
   if (record.media_path) {
-    const { data } = await supabase.storage
+    const { data, error } = await supabase.storage
       .from(MEMORY_BUCKET)
       .createSignedUrl(record.media_path, 60 * 60); // 1 hour
+
+    if (error) {
+      console.warn("Failed to create signed URL for memory media:", error);
+    }
 
     imageUrl = data?.signedUrl || imageUrl;
   }
@@ -58,38 +124,9 @@ export async function fetchUserMemories(): Promise<Memory[]> {
   return Promise.all((data || []).map(mapMemoryWithSignedUrl));
 }
 
-function base64ToUint8Array(base64: string) {
-  let binaryString: string;
-  if (typeof atob === "function") {
-    binaryString = atob(base64);
-  } else {
-    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-    let output = "";
-    let buffer = 0;
-    let bits = 0;
-    for (const char of base64.replace(/=+$/, "")) {
-      const value = chars.indexOf(char);
-      if (value < 0) continue;
-      buffer = (buffer << 6) | value;
-      bits += 6;
-      if (bits >= 8) {
-        bits -= 8;
-        output += String.fromCharCode((buffer >> bits) & 0xff);
-      }
-    }
-    binaryString = output;
-  }
-
-  const bytes = new Uint8Array(binaryString.length);
-  for (let i = 0; i < binaryString.length; i++) {
-    bytes[i] = binaryString.charCodeAt(i);
-  }
-  return bytes;
-}
-
-async function uploadMemoryMedia(userId: string, uri: string) {
-  const ext = uri.split(".").pop() || "jpg";
-  const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+async function uploadMemoryMedia(userId: string, uri: string, memoryId?: string) {
+  const ext = getFileExtension(uri);
+  const fileName = memoryId ? `${memoryId}.${ext}` : `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
   const filePath = `${userId}/${fileName}`;
 
   // Validate the file exists and has size before reading
@@ -98,30 +135,18 @@ async function uploadMemoryMedia(userId: string, uri: string) {
     throw new Error("Could not read selected image. Please try again.");
   }
 
-  // Read via FileSystem to avoid 0-byte blobs from fetch() on some platforms
-  const base64Data = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
-  const bytes = base64ToUint8Array(base64Data);
-
-  if (!bytes || bytes.length === 0) {
-    throw new Error("Could not read selected image. Please try again.");
-  }
-
-  // Use Blob to avoid the File constructor limitations on some RN runtimes/simulators
-  const blob = new Blob([bytes.buffer], { type: "image/jpeg" });
-  if (!blob || (blob as any).size === 0) {
-    throw new Error("Could not read selected image. Please try again.");
-  }
+  const { arrayBuffer, contentType } = await uriToArrayBuffer(uri);
 
   const { error } = await supabase.storage
     .from(MEMORY_BUCKET)
-    .upload(filePath, blob, {
-      upsert: false,
-      contentType: "image/jpeg",
+    .upload(filePath, arrayBuffer, {
+      upsert: true,
+      contentType,
     });
 
   if (error) {
     console.error("Error uploading memory media:", error);
-    throw error;
+    throw new Error("Failed to upload image. Please try again.");
   }
 
   return filePath;
@@ -133,13 +158,7 @@ export async function createMemoryEntry(input: CreateMemoryInput): Promise<Memor
     throw new Error("User not authenticated");
   }
 
-  let mediaPath: string | null = null;
-
-  if (input.mediaUri) {
-    mediaPath = await uploadMemoryMedia(user.id, input.mediaUri);
-  }
-
-  const { data, error } = await supabase
+  const { data: created, error: createError } = await supabase
     .from("memories")
     .insert({
       user_id: user.id,
@@ -148,17 +167,52 @@ export async function createMemoryEntry(input: CreateMemoryInput): Promise<Memor
       journey_stage: input.stage,
       feelings: input.mood,
       tags: input.tags && input.tags.length > 0 ? input.tags : [],
-      media_path: mediaPath,
+      media_path: null,
     })
     .select()
     .single();
 
-  if (error) {
-    console.error("Error creating memory:", error);
-    throw error;
+  if (createError) {
+    console.error("Error creating memory:", createError);
+    throw createError;
   }
 
-  return mapMemoryWithSignedUrl(data);
+  let record = created;
+
+  if (input.mediaUri) {
+    let mediaPath: string | null = null;
+
+    try {
+      mediaPath = await uploadMemoryMedia(user.id, input.mediaUri, created.id);
+
+      const { data: updated, error: updateError } = await supabase
+        .from("memories")
+        .update({
+          media_path: mediaPath,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", created.id)
+        .eq("user_id", user.id)
+        .select()
+        .single();
+
+      if (updateError) {
+        console.error("Error updating memory with media path:", updateError);
+        throw updateError;
+      }
+
+      record = updated;
+    } catch (error) {
+      // Clean up partial data if upload fails
+      if (mediaPath) {
+        await supabase.storage.from(MEMORY_BUCKET).remove([mediaPath]);
+      }
+      await supabase.from("memories").delete().eq("id", created.id).eq("user_id", user.id);
+      throw error;
+    }
+  }
+
+  return mapMemoryWithSignedUrl(record);
 }
 
 export async function updateMemoryEntry(
@@ -188,12 +242,12 @@ export async function updateMemoryEntry(
   let mediaPath = existing?.media_path || null;
 
   if (updates.mediaUri) {
-    // Replace media
-    mediaPath = await uploadMemoryMedia(user.id, updates.mediaUri);
-    // Optionally clean old media
-    if (existing?.media_path && existing.media_path !== mediaPath) {
+    const newPath = await uploadMemoryMedia(user.id, updates.mediaUri, memoryId);
+    // Remove old media only after successful upload
+    if (existing?.media_path && existing.media_path !== newPath) {
       await supabase.storage.from(MEMORY_BUCKET).remove([existing.media_path]);
     }
+    mediaPath = newPath;
   }
 
   const { data, error } = await supabase

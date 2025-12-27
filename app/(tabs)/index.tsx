@@ -214,6 +214,7 @@ export default function HomeScreen() {
             educationBackground: {
               level: (profile.level_of_study as any) || user?.educationBackground?.level || "bachelors",
             },
+            bio: profile.bio ?? undefined,
             onboardingCompleted: !!profile.visa_type,
             subscriptionTier,
             isPremium: premiumPlan,

@@ -258,14 +258,6 @@ export default function PremiumArticlesScreen() {
         >
           <ArrowLeft size={22} color={Colors.text} />
         </TouchableOpacity>
-        <TouchableOpacity
-          onPress={() => router.push("/premium")}
-          style={[styles.iconButton, { borderColor: Colors.border }]}
-        >
-          <Text style={[styles.helperText, { color: Colors.lightText }]}>
-            {userTier === "premium" || userTier === "pro" ? "Premium" : userTier === "standard" ? "Standard" : "Basic"}
-          </Text>
-        </TouchableOpacity>
       </View>
 
       <Text style={[styles.title, { color: Colors.text }]}>Discover</Text>

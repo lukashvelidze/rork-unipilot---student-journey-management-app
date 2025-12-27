@@ -193,6 +193,9 @@ export default function MemoryDetailScreen() {
   }
 
   const memoryToDisplay = initialMemory;
+  const remoteImage = memoryToDisplay?.imageUrl && memoryToDisplay.imageUrl.startsWith("http")
+    ? memoryToDisplay.imageUrl
+    : null;
 
   if (!memoryToDisplay) {
     return (
@@ -234,9 +237,9 @@ export default function MemoryDetailScreen() {
                 <X size={16} color={Colors.white} />
               </TouchableOpacity>
             </View>
-          ) : memoryToDisplay.imageUrl ? (
+          ) : remoteImage ? (
             <View style={styles.selectedImageContainer}>
-              <Image source={{ uri: memoryToDisplay.imageUrl }} style={styles.selectedImage} />
+              <Image source={{ uri: remoteImage }} style={styles.selectedImage} />
             </View>
           ) : (
             <View style={[styles.imagePlaceholder, { backgroundColor: Colors.lightBackground, borderColor: Colors.border }]}>

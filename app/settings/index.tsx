@@ -218,7 +218,7 @@ export default function SettingsScreen() {
           icon: HelpCircle,
           iconColor: Colors.info,
           type: "navigation",
-          onPress: () => Linking.openURL("https://unipilot.app/faqs").catch(() => 
+          onPress: () => Linking.openURL("https://unipilot.app/").catch(() => 
             Alert.alert("Error", "Unable to open link.")
           ),
         },

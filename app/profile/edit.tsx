@@ -155,6 +155,7 @@ export default function EditProfileScreen() {
         email: formData.email,
         country_origin: formData.homeCountry?.code?.toUpperCase() || null,
         level_of_study: formData.educationLevel,
+        bio: formData.bio?.trim() || null,
         updated_at: new Date().toISOString(),
       };
 

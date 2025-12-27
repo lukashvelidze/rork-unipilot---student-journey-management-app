@@ -10,6 +10,8 @@ interface MemoryCardProps {
   onPress?: () => void;
 }
 
+const FALLBACK_IMAGE = "https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=400&h=300&fit=crop";
+
 const getMoodColor = (mood: MemoryMood | undefined): string => {
   switch (mood) {
     case "excited":
@@ -58,6 +60,9 @@ const getMoodEmoji = (mood: MemoryMood | undefined): string => {
 
 export default function MemoryCard({ memory, onPress }: MemoryCardProps) {
   const Colors = useColors();
+  const coverImage = memory.imageUrl && memory.imageUrl.startsWith("http")
+    ? memory.imageUrl
+    : FALLBACK_IMAGE;
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -116,7 +121,7 @@ export default function MemoryCard({ memory, onPress }: MemoryCardProps) {
         {/* Image Header */}
         <View style={styles.imageContainer}>
           <ImageBackground
-            source={{ uri: memory.imageUrl || "https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=400&h=300&fit=crop" }}
+            source={{ uri: coverImage }}
             style={styles.image}
             imageStyle={styles.imageStyle}
           >
