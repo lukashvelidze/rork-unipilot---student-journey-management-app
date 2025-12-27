@@ -159,7 +159,11 @@ function InterviewContent() {
  console.error("Conversation error:", error);
  const errorMessage = error?.message || "Connection lost. Please try again.";
  setConnectionError(errorMessage);
- setSessionActive(false);
+ setHasEverConnected(false);
+ connectStartedAtRef.current = null;
+ if (conversation?.endSession) {
+ conversation.endSession().catch(() => {});
+ }
  addMessage("system", `Connection error: ${errorMessage}`);
  // Don't show Alert here as it can cause issues - just update the UI
  } catch (e) {
@@ -189,10 +193,11 @@ function InterviewContent() {
 
  // Derive connection state
  const connectionStatus = conversation?.status;
- const isConnecting =
- !hasEverConnected &&
- (connectionStatus === "connecting" ||
- connectionStatus === "initializing");
+  const isConnecting =
+  !hasEverConnected &&
+  !connectionError &&
+  (connectionStatus === "connecting" ||
+  connectionStatus === "initializing");
  const isConnected =
  hasEverConnected || connectionStatus === "connected";
 
@@ -436,6 +441,7 @@ function InterviewContent() {
  }
  setHasEverConnected(false);
  setConnectionError("Connection timed out. Please try again.");
+ connectStartedAtRef.current = null;
  }, 8000);
 
  return () => clearTimeout(timeout);
