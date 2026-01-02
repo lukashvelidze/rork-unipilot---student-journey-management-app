@@ -9,6 +9,8 @@
 /* Begin PBXBuildFile section */
 		0885BF5AA973BB4621E67CCD /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = CBA79FA4F8DB816A7D5FAFE0 /* ExpoModulesProvider.swift */; };
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
+		21D622852F0731520027C09E /* StoreKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 21D622842F0731520027C09E /* StoreKit.framework */; };
+		21D622892F0740F40027C09E /* UniPilotStoreKit.storekit in Resources */ = {isa = PBXBuildFile; fileRef = 21D622882F0740F40027C09E /* UniPilotStoreKit.storekit */; };
 		3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
 		E1304EBA63E210BA5252BE64 /* libPods-UniPilot.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 823E0CC80F284E82032E38F2 /* libPods-UniPilot.a */; };
@@ -20,6 +22,8 @@
 		13B07F961A680F5B00A75B9A /* UniPilot.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = UniPilot.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = UniPilot/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = UniPilot/Info.plist; sourceTree = "<group>"; };
+		21D622842F0731520027C09E /* StoreKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = StoreKit.framework; path = System/Library/Frameworks/StoreKit.framework; sourceTree = SDKROOT; };
+		21D622882F0740F40027C09E /* UniPilotStoreKit.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = UniPilotStoreKit.storekit; sourceTree = "<group>"; };
 		312BCBE381B0C49E7EF1A54A /* Pods-UniPilot.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-UniPilot.release.xcconfig"; path = "Target Support Files/Pods-UniPilot/Pods-UniPilot.release.xcconfig"; sourceTree = "<group>"; };
 		823E0CC80F284E82032E38F2 /* libPods-UniPilot.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-UniPilot.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		96AFE5C21FD7358E7F5A38BC /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xml; name = PrivacyInfo.xcprivacy; path = UniPilot/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
@@ -38,6 +42,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				E1304EBA63E210BA5252BE64 /* libPods-UniPilot.a in Frameworks */,
+				21D622852F0731520027C09E /* StoreKit.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -54,6 +59,7 @@
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */,
 				96AFE5C21FD7358E7F5A38BC /* PrivacyInfo.xcprivacy */,
+				21D622882F0740F40027C09E /* UniPilotStoreKit.storekit */,
 			);
 			name = UniPilot;
 			sourceTree = "<group>";
@@ -70,6 +76,7 @@
 		2D16E6871FA4F8E400B85C8A /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				21D622842F0731520027C09E /* StoreKit.framework */,
 				ED297162215061F000B7C4FE /* JavaScriptCore.framework */,
 				823E0CC80F284E82032E38F2 /* libPods-UniPilot.a */,
 			);
@@ -194,6 +201,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				BB2F792D24A3F905000567C9 /* Expo.plist in Resources */,
+				21D622892F0740F40027C09E /* UniPilotStoreKit.storekit in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */,
 				F5DC2653F95FCAE180A27E66 /* PrivacyInfo.xcprivacy in Resources */,

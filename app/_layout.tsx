@@ -14,6 +14,7 @@ import { useUserStore } from "@/store/userStore";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { preRehydrationCleanup } from "@/utils/hermesStorage";
 import { supabase } from "@/lib/supabase";
+import { initializeBilling } from "@/lib/billing";
 
 // Import iOS crash prevention at module level (synchronous)
 // Wrapped in try/catch for Expo Go compatibility
@@ -121,6 +122,14 @@ function RootLayoutNav() {
   const { isDarkMode } = useThemeStore();
   const initializeUser = useUserStore((state) => state.initializeUser);
   const setAuthInitializing = useUserStore((state) => state.setAuthInitializing);
+
+  useEffect(() => {
+    if (Platform.OS === "ios") {
+      initializeBilling().catch((error) => {
+        console.error("Failed to initialize billing:", error);
+      });
+    }
+  }, []);
 
   useEffect(() => {
     // Initialize user when app starts

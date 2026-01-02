@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { StyleSheet, View, Text, ScrollView, ActivityIndicator } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Crown, Check, ArrowRight } from 'lucide-react-native';
@@ -7,32 +7,42 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useColors } from '@/hooks/useColors';
 import Card from '@/components/Card';
 import Button from '@/components/Button';
-import { useUserStore } from '@/store/userStore';
 import { supabase } from '@/lib/supabase';
 import { storePaddleCustomerId } from '@/lib/paddle-customer';
+import { getAvailablePlans } from '@/lib/billing';
 import CelebrationAnimation from '@/components/CelebrationAnimation';
 
 const TIER_NAMES: Record<string, string> = {
   basic: "Basic",
   standard: "Standard",
   pro: "Pro",
-};
-
-const TIER_PRICES: Record<string, string> = {
-  basic: "$4.99",
-  standard: "$9.99",
-  pro: "$19.99",
+  premium: "Premium",
 };
 
 export default function PaymentSuccessScreen() {
   const router = useRouter();
   const Colors = useColors();
   const params = useLocalSearchParams();
-  const { setPremium } = useUserStore();
   
   const [isUpdating, setIsUpdating] = useState(true);
   const [tier, setTier] = useState<string | null>(null);
+  const [priceText, setPriceText] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const loadPlanPrice = useCallback(async (tierValue: string) => {
+    try {
+      const plans = await getAvailablePlans();
+      const normalizedTier = tierValue === "pro" ? "premium" : tierValue;
+      const matchingPlan = plans.find((plan) => {
+        const planTier = plan.tier === "pro" ? "premium" : plan.tier;
+        return planTier === normalizedTier;
+      });
+      setPriceText(matchingPlan?.localizedPrice || null);
+    } catch (error) {
+      console.error("Failed to load plan price:", error);
+      setPriceText(null);
+    }
+  }, []);
 
   useEffect(() => {
     handlePaymentSuccess();
@@ -51,6 +61,7 @@ export default function PaymentSuccessScreen() {
       }
 
       setTier(tierParam);
+      loadPlanPrice(tierParam);
 
       // Get authenticated user
       const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
@@ -65,6 +76,7 @@ export default function PaymentSuccessScreen() {
         .from("profiles")
         .update({
           subscription_tier: tierParam,
+          subscription_platform: "paddle",
           updated_at: new Date().toISOString(),
         })
         .eq("id", authUser.id);
@@ -91,13 +103,6 @@ export default function PaymentSuccessScreen() {
         console.log("No customer_id in URL parameters. Will be set via Paddle webhook.");
       }
 
-      // Update local store
-      // Map tier to isPremium (pro and standard are premium, basic might be considered premium too)
-      const isPremiumTier = tierParam === "pro" || tierParam === "standard" || tierParam === "basic";
-      if (isPremiumTier) {
-        setPremium(true);
-      }
-
       setIsUpdating(false);
     } catch (error: any) {
       console.error("Error handling payment success:", error);
@@ -105,6 +110,16 @@ export default function PaymentSuccessScreen() {
       setIsUpdating(false);
     }
   };
+
+  useEffect(() => {
+    if (tier) {
+      loadPlanPrice(tier);
+    }
+  }, [tier, loadPlanPrice]);
+
+  const planName = tier ? (TIER_NAMES[tier] || "Premium") : "Premium";
+  const priceLabel = priceText ? `${priceText}/month` : null;
+  const priceDisplay = priceLabel ?? "Price confirmed at checkout";
 
   if (isUpdating) {
     return (
@@ -150,7 +165,7 @@ export default function PaymentSuccessScreen() {
         <Crown size={64} color={Colors.white} />
         <Text style={styles.title}>🎉 Payment Successful!</Text>
         <Text style={styles.subtitle}>
-          Welcome to UniPilot {tier ? TIER_NAMES[tier] : "Premium"} Plan ({tier ? TIER_PRICES[tier] : "$4.99"}/month). 
+          Welcome to UniPilot {planName} Plan{priceLabel ? ` (${priceLabel})` : ""}. 
           You've unlocked all premium features and journey roadmap modules.
         </Text>
       </LinearGradient>
@@ -169,13 +184,13 @@ export default function PaymentSuccessScreen() {
           <View style={styles.detailRow}>
             <Text style={[styles.detailLabel, { color: Colors.lightText }]}>Plan:</Text>
             <Text style={[styles.detailValue, { color: Colors.text }]}>
-              UniPilot {tier ? TIER_NAMES[tier] : "Premium"} Plan
+              UniPilot {planName} Plan
             </Text>
           </View>
           <View style={styles.detailRow}>
             <Text style={[styles.detailLabel, { color: Colors.lightText }]}>Price:</Text>
             <Text style={[styles.detailValue, { color: Colors.text }]}>
-              {tier ? TIER_PRICES[tier] : "$4.99"}/month
+              {priceDisplay}
             </Text>
           </View>
           <View style={styles.detailRow}>

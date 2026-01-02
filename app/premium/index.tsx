@@ -1,24 +1,13 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert, Linking, ActivityIndicator } from "react-native";
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter, Stack, useFocusEffect } from "expo-router";
 import { Crown, Check, Zap, Star, ArrowLeft, Mic, MessageSquare, BookOpen, Lock } from "lucide-react-native";
 import { useColors } from "@/hooks/useColors";
 import Button from "@/components/Button";
 import Card from "@/components/Card";
-import { useUserStore } from "@/store/userStore";
 import { supabase } from "@/lib/supabase";
-import { buildPaddleCheckoutUrl, PADDLE_PRICE_IDS, canMakePayments } from "@/lib/paddle";
-
-interface SubscriptionTier {
-  id: "basic" | "standard" | "pro";
-  name: string;
-  price: string;
-  priceId: string;
-  features: string[];
-  icon: any;
-  popular?: boolean;
-}
+import { BillingPlan, getAvailablePlans, purchasePlan, isAppleIapAvailable } from "@/lib/billing";
 
 interface PremiumResource {
   id: string;
@@ -30,157 +19,131 @@ interface PremiumResource {
   proOnly?: boolean;
 }
 
-const subscriptionTiers: SubscriptionTier[] = [
-  {
-    id: "basic",
-    name: "Basic",
-    price: "$4.99",
-    priceId: PADDLE_PRICE_IDS.basic,
-    features: [
-      "Access to basic journey modules",
-      "Document management",
-      "Basic checklist items",
-      "Email support",
-    ],
-    icon: Zap,
-  },
-  {
-    id: "standard",
-    name: "Standard",
-    price: "$9.99",
-    priceId: PADDLE_PRICE_IDS.standard,
-    features: [
-      "Everything in Basic",
-      "All journey roadmap modules",
-      "Advanced checklist items",
-      "Priority email support",
-      "Resource library access",
-    ],
-    icon: Star,
-    popular: true,
-  },
-  {
-    id: "pro",
-    name: "Pro",
-    price: "$19.99",
-    priceId: PADDLE_PRICE_IDS.pro,
-    features: [
-      "Everything in Standard",
-      "Unlimited AI assistance",
-      "1-on-1 consultation sessions",
-      "Premium document templates",
-      "Priority support",
-      "Early access to new features",
-    ],
-    icon: Crown,
-  },
-];
+const PLAN_ICONS: Record<string, any> = {
+  basic: Zap,
+  standard: Star,
+  premium: Crown,
+  pro: Crown,
+};
+
+const normalizeTierForUi = (tier?: string | null) => {
+  if (!tier) return null;
+  return tier === "premium" ? "pro" : tier;
+};
+
+const displayTierName = (tier: string) => {
+  if (tier === "premium" || tier === "pro") return "Pro";
+  return tier.charAt(0).toUpperCase() + tier.slice(1);
+};
 
 export default function PremiumScreen() {
   const Colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { user } = useUserStore();
   
   const [currentTier, setCurrentTier] = useState<string | null>(null);
+  const [subscriptionPlatform, setSubscriptionPlatform] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState<string | null>(null);
+  const [plans, setPlans] = useState<BillingPlan[]>([]);
+  const [isLoadingPlans, setIsLoadingPlans] = useState(true);
+  const [plansError, setPlansError] = useState<string | null>(null);
 
-  // Check subscription status on mount
-  useEffect(() => {
-    checkSubscriptionStatus();
-  }, []);
-
-  // Refresh subscription status when screen comes into focus
-  // This ensures the page updates when user returns from payment
-  useFocusEffect(
-    useCallback(() => {
-      checkSubscriptionStatus();
-    }, [])
-  );
-
-  const checkSubscriptionStatus = async () => {
+  const checkSubscriptionStatus = useCallback(async () => {
     try {
       const { data: { user: authUser } } = await supabase.auth.getUser();
       if (!authUser) {
         setIsLoading(false);
+        setSubscriptionPlatform(null);
         return;
       }
 
-      // Check current subscription from profile
-      const { data: profile } = await supabase
+      const { data: profile, error: profileError } = await supabase
         .from("profiles")
-        .select("subscription_tier")
+        .select("subscription_tier, subscription_platform")
         .eq("id", authUser.id)
         .single();
 
-      // Map "premium" to "pro" for consistency (premium is stored in DB, pro is used in UI)
-      const tier = profile?.subscription_tier === "premium" ? "pro" : profile?.subscription_tier;
-      if (tier && tier !== "free") {
+      if (profileError) {
+        console.error("Error fetching subscription profile:", profileError);
+        setCurrentTier(null);
+        setSubscriptionPlatform(null);
+        return;
+      }
+
+      const tier = normalizeTierForUi(profile?.subscription_tier);
+      const hasTier = tier && tier !== "free";
+      setSubscriptionPlatform(profile?.subscription_platform || null);
+
+      if (hasTier) {
         setCurrentTier(tier);
       } else {
-        // Reset to null if subscription is free or doesn't exist
         setCurrentTier(null);
       }
     } catch (error) {
       console.error("Error checking subscription:", error);
       setCurrentTier(null);
+      setSubscriptionPlatform(null);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  const openCheckout = async (tier: SubscriptionTier) => {
+  const loadPlans = useCallback(async () => {
     try {
-      setIsProcessing(tier.id);
-      
-      // Check if device can make payments
-      if (!canMakePayments()) {
-        Alert.alert("Error", "Payments are not available on this device.");
-        setIsProcessing(null);
+      setIsLoadingPlans(true);
+      setPlansError(null);
+      const availablePlans = await getAvailablePlans();
+      setPlans(availablePlans);
+    } catch (error) {
+      console.error("Error loading available plans:", error);
+      setPlansError("Unable to load plans right now. Please try again.");
+    } finally {
+      setIsLoadingPlans(false);
+    }
+  }, []);
+
+  const handlePurchase = async (plan: BillingPlan) => {
+    try {
+      setIsProcessing(plan.id);
+
+      const result = await purchasePlan(plan.id);
+
+      if (!result.success) {
+        Alert.alert("Purchase failed", result.error || "Please try again.");
         return;
       }
-      
-      // Get user information for prefill
-      const { data: { user: authUser } } = await supabase.auth.getUser();
-      if (!authUser) {
-        Alert.alert("Error", "You must be logged in to purchase a subscription.");
-        setIsProcessing(null);
-        return;
-      }
 
-      // Get user profile for prefill
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("email, country_origin, destination_country")
-        .eq("id", authUser.id)
-        .single();
-
-      // Build checkout URL using the utility function
-      const checkoutUrl = buildPaddleCheckoutUrl({
-        priceId: tier.priceId,
-        userEmail: profile?.email || authUser.email || undefined,
-        userId: authUser.id,
-        tier: tier.id,
-        countryCode: profile?.destination_country || undefined,
-      });
-
-      console.log("Opening Paddle checkout:", checkoutUrl);
-
-      // Open checkout in browser
-      const canOpen = await Linking.canOpenURL(checkoutUrl);
-      if (canOpen) {
-        await Linking.openURL(checkoutUrl);
+      if (result.platform === "apple") {
+        Alert.alert(
+          "Processing purchase",
+          "We're verifying your Apple subscription with Supabase. Your access will update once confirmed."
+        );
+        await checkSubscriptionStatus();
       } else {
-        Alert.alert("Error", "Unable to open checkout. Please try again.");
-        setIsProcessing(null);
+        Alert.alert(
+          "Checkout opened",
+          "Complete the Paddle checkout to activate your subscription."
+        );
       }
     } catch (error: any) {
-      console.error("Error opening checkout:", error);
-      Alert.alert("Error", "Failed to open checkout. Please try again.");
+      console.error("Error handling purchase:", error);
+      Alert.alert("Error", "Failed to start purchase. Please try again.");
+    } finally {
       setIsProcessing(null);
     }
   };
+
+  useEffect(() => {
+    checkSubscriptionStatus();
+    loadPlans();
+  }, [checkSubscriptionStatus, loadPlans]);
+
+  useFocusEffect(
+    useCallback(() => {
+      checkSubscriptionStatus();
+    }, [checkSubscriptionStatus])
+  );
 
   // Check if user has an active subscription (basic, standard, or pro/premium)
   const hasActiveSubscription = currentTier && ["basic", "standard", "pro", "premium"].includes(currentTier);
@@ -232,12 +195,13 @@ export default function PremiumScreen() {
     }
   };
 
-  if (isLoading) {
+  if (isLoading || isLoadingPlans) {
+    const loadingMessage = isLoading ? "Loading subscription status..." : "Loading plans...";
     return (
       <View style={[styles.container, { backgroundColor: Colors.background }]}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={Colors.primary} />
-          <Text style={[styles.loadingText, { color: Colors.lightText }]}>Loading subscription status...</Text>
+          <Text style={[styles.loadingText, { color: Colors.lightText }]}>{loadingMessage}</Text>
         </View>
       </View>
     );
@@ -279,6 +243,11 @@ export default function PremiumScreen() {
                 {currentTier.charAt(0).toUpperCase() + currentTier.slice(1)} Plan
               </Text>
             </View>
+          )}
+          {subscriptionPlatform && (
+            <Text style={[styles.subscriptionPlatformText, { color: Colors.lightText }]}>
+              Managed via {subscriptionPlatform === "apple" ? "Apple" : "Paddle"}
+            </Text>
           )}
         </View>
 
@@ -386,73 +355,97 @@ export default function PremiumScreen() {
 
       {/* Subscription Tiers */}
       <View style={styles.tiersContainer}>
-        {subscriptionTiers.map((tier) => {
-          const IconComponent = tier.icon;
-          const isCurrentTier = currentTier === tier.id;
-          const isProcessingTier = isProcessing === tier.id;
+        {plansError && (
+          <Text style={[styles.planErrorText, { color: Colors.error }]}>
+            {plansError}
+          </Text>
+        )}
+        {plans.length === 0 && !plansError ? (
+          <Text style={[styles.planErrorText, { color: Colors.lightText }]}>
+            No plans available right now. Please try again shortly.
+          </Text>
+        ) : (
+          plans.map((plan) => {
+            const IconComponent = PLAN_ICONS[plan.tier] || Crown;
+            const normalizedPlanTier = normalizeTierForUi(plan.tier) || plan.tier;
+            const normalizedCurrent = normalizeTierForUi(currentTier);
+            const isCurrentTier = normalizedCurrent === normalizedPlanTier;
+            const isProcessingTier = isProcessing === plan.id;
+            const displayName = plan.title || displayTierName(normalizedPlanTier);
+            const priceLabel = plan.localizedPrice || "Price at checkout";
+            const isPopular = normalizedPlanTier === "standard";
+            const appleUnavailable = plan.platform === "apple" && !isAppleIapAvailable();
 
-          return (
-            <Card
-              key={tier.id}
-              style={[
-                styles.tierCard,
-                { backgroundColor: Colors.card },
-                tier.popular && styles.popularTier,
-                tier.popular && { borderColor: Colors.primary, borderWidth: 2 },
-                isCurrentTier && { borderColor: Colors.success, borderWidth: 2 },
-              ]}
-              variant={tier.popular ? "elevated" : "default"}
-            >
-              {tier.popular && (
-                <View style={[styles.popularBadge, { backgroundColor: Colors.primary }]}>
-                  <Text style={styles.popularBadgeText}>Most Popular</Text>
-                </View>
-              )}
-              
-              {isCurrentTier && (
-                <View style={[styles.currentBadge, { backgroundColor: Colors.success }]}>
-                  <Text style={styles.currentBadgeText}>Current Plan</Text>
-                </View>
-              )}
-
-              <View style={styles.tierHeader}>
-                <IconComponent size={32} color={tier.popular ? Colors.primary : Colors.text} />
-                <Text style={[styles.tierName, { color: Colors.text }]}>
-                  {tier.name}
-                </Text>
-                <View style={styles.priceContainer}>
-                  <Text style={[styles.price, { color: Colors.text }]}>
-                    {tier.price}
-                  </Text>
-                  <Text style={[styles.pricePeriod, { color: Colors.lightText }]}>
-                    /month
-                  </Text>
-                </View>
-              </View>
-
-              <View style={styles.featuresList}>
-                {tier.features.map((feature, index) => (
-                  <View key={index} style={styles.featureItem}>
-                    <Check size={18} color={Colors.success} />
-                    <Text style={[styles.featureText, { color: Colors.text }]}>
-                      {feature}
-                    </Text>
+            return (
+              <Card
+                key={plan.id}
+                style={[
+                  styles.tierCard,
+                  { backgroundColor: Colors.card },
+                  isPopular && styles.popularTier,
+                  isPopular && { borderColor: Colors.primary, borderWidth: 2 },
+                  isCurrentTier && { borderColor: Colors.success, borderWidth: 2 },
+                ]}
+                variant={isPopular ? "elevated" : "default"}
+              >
+                {isPopular && (
+                  <View style={[styles.popularBadge, { backgroundColor: Colors.primary }]}>
+                    <Text style={styles.popularBadgeText}>Most Popular</Text>
                   </View>
-                ))}
-              </View>
+                )}
+                
+                {isCurrentTier && (
+                  <View style={[styles.currentBadge, { backgroundColor: Colors.success }]}>
+                    <Text style={styles.currentBadgeText}>Current Plan</Text>
+                  </View>
+                )}
 
-              <Button
-                title={isCurrentTier ? "Current Plan" : `Subscribe to ${tier.name}`}
-                onPress={() => openCheckout(tier)}
-                disabled={isCurrentTier || isProcessingTier}
-                loading={isProcessingTier}
-                fullWidth
-                variant={tier.popular ? "default" : "outline"}
-                style={styles.subscribeButton}
-              />
-            </Card>
-          );
-        })}
+                <View style={styles.tierHeader}>
+                  <IconComponent size={32} color={isPopular ? Colors.primary : Colors.text} />
+                  <Text style={[styles.tierName, { color: Colors.text }]}>
+                    {displayName}
+                  </Text>
+                  <View style={styles.priceContainer}>
+                    <Text style={[styles.price, { color: Colors.text }]}>
+                      {priceLabel}
+                    </Text>
+                    {plan.localizedPrice && (
+                      <Text style={[styles.pricePeriod, { color: Colors.lightText }]}>
+                        /month
+                      </Text>
+                    )}
+                  </View>
+                </View>
+
+                <View style={styles.featuresList}>
+                  {(plan.features || []).map((feature, index) => (
+                    <View key={`${plan.id}-feature-${index}`} style={styles.featureItem}>
+                      <Check size={18} color={Colors.success} />
+                      <Text style={[styles.featureText, { color: Colors.text }]}>
+                        {feature}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+
+                <Button
+                  title={isCurrentTier ? "Current Plan" : `Subscribe to ${displayName}`}
+                  onPress={() => handlePurchase(plan)}
+                  disabled={isCurrentTier || isProcessingTier || appleUnavailable}
+                  loading={isProcessingTier}
+                  fullWidth
+                  variant={isPopular ? "default" : "outline"}
+                  style={styles.subscribeButton}
+                />
+                {appleUnavailable && (
+                  <Text style={[styles.unavailableText, { color: Colors.lightText }]}>
+                    Available in iOS dev/TestFlight builds.
+                  </Text>
+                )}
+              </Card>
+            );
+          })
+        )}
       </View>
 
       {/* Footer Info */}
@@ -461,7 +454,7 @@ export default function PremiumScreen() {
           All plans include a 7-day free trial. Cancel anytime.
         </Text>
         <Text style={[styles.footerText, { color: Colors.lightText }]}>
-          Payments are processed securely by Paddle.
+          Payments are processed securely by {Platform.OS === "ios" ? "Apple" : "Paddle"}.
         </Text>
       </View>
     </ScrollView>
@@ -485,6 +478,10 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 16,
     fontSize: 16,
+  },
+  planErrorText: {
+    textAlign: "center",
+    marginBottom: 8,
   },
   header: {
     alignItems: "center",
@@ -512,6 +509,10 @@ const styles = StyleSheet.create({
   currentTierText: {
     fontSize: 14,
     fontWeight: "600",
+  },
+  subscriptionPlatformText: {
+    fontSize: 12,
+    marginTop: 6,
   },
   tiersContainer: {
     gap: 20,
@@ -594,6 +595,11 @@ const styles = StyleSheet.create({
   },
   subscribeButton: {
     marginTop: 8,
+  },
+  unavailableText: {
+    marginTop: 8,
+    fontSize: 12,
+    textAlign: "center",
   },
   footer: {
     alignItems: "center",
