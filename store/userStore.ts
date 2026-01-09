@@ -41,7 +41,7 @@ const normalizeTier = (tier?: string | null): SubscriptionTier => {
 const isPremiumTier = (tier?: string | null) => {
   if (!tier) return false;
   const lower = tier.toLowerCase();
-  return lower === "premium" || lower === "pro";
+  return lower === "basic" || lower === "standard" || lower === "premium" || lower === "pro";
 };
 
 export const useUserStore = create<UserState>()(

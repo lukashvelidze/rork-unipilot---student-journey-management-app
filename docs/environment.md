@@ -252,6 +252,22 @@ IOS_APP_STORE_CONNECT_API_KEY=your-api-key
 IOS_APP_STORE_CONNECT_ISSUER_ID=your-issuer-id
 ```
 
+### Apple In-App Purchases
+
+```env
+# Shared secret for auto-renewable subscription receipt validation
+APP_STORE_CONNECT_SHARED_SECRET=1ecd7d83522e4f8bb06a4f6bed760234
+
+# Product identifiers (must match App Store Connect)
+APP_STORE_PRODUCT_ID_BASIC=unipilot_basic_monthly
+APP_STORE_PRODUCT_ID_STANDARD=unipilot_standard_monthly
+APP_STORE_PRODUCT_ID_PRO=unipilot_premium_monthly
+```
+
+**Notes**:
+- These values are mirrored in `app.json` under `expo.extra.appStore` so the client can request products and validate receipts.
+- For production, prefer injecting the secret via environment-specific config and keep backend receipt validation in place.
+
 ### Android Configuration
 
 ```env

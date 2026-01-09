@@ -304,6 +304,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
+    marginTop: 8,
+    marginBottom: 16,
   },
   upgradeButtonText: {
     color: "#FFFFFF",
@@ -450,10 +452,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     flex: 1,
     color: "#2C3E50",
-  },
-  upgradeButton: {
-    marginTop: 8,
-    marginBottom: 16,
   },
   backButton: {
     paddingVertical: 12,

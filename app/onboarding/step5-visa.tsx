@@ -104,6 +104,12 @@ export default function Step5Visa() {
         countryCode = profile.destination_country;
       }
 
+      if (!countryCode) {
+        setError("Please set your destination country first.");
+        setIsLoading(false);
+        return;
+      }
+
       const sanitizedCode = countryCode.trim().toUpperCase();
       // Query visa types for the destination country or generic ones
       const { data, error: queryError } = await supabase

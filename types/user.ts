@@ -32,6 +32,11 @@ export interface JourneyProgress {
   completedDate?: string;
   tasks: Task[];
   hasAcceptance?: boolean; // Tracks if user has been accepted
+  checklists?: {
+    id: string;
+    title: string;
+    items: Task[];
+  }[];
 }
 
 export interface TestScore {

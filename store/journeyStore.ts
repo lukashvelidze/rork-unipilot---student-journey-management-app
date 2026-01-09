@@ -151,8 +151,10 @@ export const useJourneyStore = create<JourneyState>()(
       
       markAcceptance: (checklistId) => {
         set((state) => {
+          let milestoneStage: JourneyStage | undefined;
           const updatedProgress = state.journeyProgress.map((stage) => {
             if (stage.id === checklistId) {
+              milestoneStage = stage.stage;
               return {
                 ...stage,
                 hasAcceptance: true,
@@ -164,7 +166,7 @@ export const useJourneyStore = create<JourneyState>()(
           // Add celebration milestone
           const milestone: Milestone = {
             type: "stage_complete",
-            stage: stageId,
+            stage: milestoneStage,
             timestamp: Date.now()
           };
           

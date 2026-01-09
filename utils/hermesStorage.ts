@@ -11,15 +11,15 @@
  */
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { StateStorage } from "zustand/middleware";
+import { PersistStorage, StorageValue } from "zustand/middleware";
 import { parse, stringify } from "flatted";
 
 /**
  * Storage adapter using flatted for safe serialization of Map, Set, Date, etc.
  * This is the correct fix for Hermes enumeration crashes in 2025.
  */
-export const flattedStorage: StateStorage = {
-  getItem: async (key: string) => {
+export const flattedStorage: PersistStorage<unknown> = {
+  getItem: async (key: string): Promise<StorageValue<unknown> | null> => {
     try {
       const value = await AsyncStorage.getItem(key);
       if (!value) return null;
@@ -53,7 +53,7 @@ export const flattedStorage: StateStorage = {
       return null; // Safe fallback
     }
   },
-  setItem: async (key: string, value: any) => {
+  setItem: async (key: string, value: StorageValue<unknown>) => {
     try {
       await AsyncStorage.setItem(key, stringify(value));
     } catch (error) {

@@ -39,10 +39,10 @@ export default function ProfileScreen() {
         <Button
           title="Logout"
           onPress={logout}
-          variant="destructive"
-          size="medium"
+          variant="outline"
           fullWidth
-          style={styles.actionButton}
+          style={{ ...styles.actionButton, borderColor: Colors.error }}
+          textStyle={{ color: Colors.error }}
         />
       </SafeAreaView>
     );
@@ -245,7 +245,6 @@ export default function ProfileScreen() {
             router.replace("/onboarding/step1-account");
           }}
           variant="outline"
-          size="medium"
           fullWidth
           style={styles.signOutButton}
         />

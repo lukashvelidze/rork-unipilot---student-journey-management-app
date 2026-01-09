@@ -52,7 +52,8 @@
         {
           "origin": "https://rork.com/"
         }
-      ]
+      ],
+      "react-native-iap"
     ],
     "experiments": {
       "newArchEnabled": true,
@@ -66,7 +67,15 @@
         "projectId": "92561ac2-1983-4bb4-afe5-e34734d340b9"
       },
       "supabaseUrl": "https://yagdgijrdlifgcjkcnqe.supabase.co",
-      "supabaseAnonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlhZ2RnaWpyZGxpZmdjamtjbnFlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjMwMDA3MjMsImV4cCI6MjA3ODU3NjcyM30.4CsQTrlIac38iVLXkrUdxVoTJuPEBqKKjw0ohr56qwA"
+      "supabaseAnonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlhZ2RnaWpyZGxpZmdjamtjbnFlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjMwMDA3MjMsImV4cCI6MjA3ODU3NjcyM30.4CsQTrlIac38iVLXkrUdxVoTJuPEBqKKjw0ohr56qwA",
+      "appStore": {
+        "sharedSecret": "1ecd7d83522e4f8bb06a4f6bed760234",
+        "products": {
+          "basic": "unipilot_basic_monthly",
+          "standard": "unipilot_standard_monthly",
+          "pro": "unipilot_premium_monthly"
+        }
+      }
     }
   }
 }

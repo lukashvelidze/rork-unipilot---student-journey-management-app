@@ -21,7 +21,7 @@ interface Document {
     id: string;
     title: string;
     code: string;
-  } | null;
+  }[];
 }
 
 export default function DocumentsScreen() {
@@ -38,7 +38,18 @@ export default function DocumentsScreen() {
       // Small delay to ensure auth state is ready after navigation
       await new Promise(resolve => setTimeout(resolve, 100));
       const docs = await loadUserDocuments();
-      setDocuments(docs);
+      const normalizedDocs = (docs || []).map((doc: any) => {
+        const categories = Array.isArray(doc.document_categories)
+          ? doc.document_categories
+          : doc.document_categories
+            ? [doc.document_categories]
+            : [];
+        return {
+          ...doc,
+          document_categories: categories,
+        } as Document;
+      });
+      setDocuments(normalizedDocs);
     } catch (error: any) {
       console.error("Error loading documents:", error);
       
@@ -118,13 +129,13 @@ export default function DocumentsScreen() {
 
   // Get unique categories from documents
   const categories = Array.from(
-    new Set(documents.map((doc) => doc.document_categories?.code || "other"))
+    new Set(documents.map((doc) => doc.document_categories?.[0]?.code || "other"))
   );
 
   const filteredDocuments = selectedCategory === "all"
     ? documents
     : documents.filter(
-        (doc) => doc.document_categories?.code === selectedCategory
+        (doc) => doc.document_categories?.[0]?.code === selectedCategory
       );
   
   return (
@@ -191,7 +202,7 @@ export default function DocumentsScreen() {
                     {item.original_name}
                   </Text>
                   <Text style={[styles.documentCategory, { color: Colors.lightText }]}>
-                    {item.document_categories?.title || "Unknown Category"}
+                    {item.document_categories?.[0]?.title || "Unknown Category"}
                   </Text>
                   <Text style={[styles.documentDate, { color: Colors.lightText }]}>
                     Uploaded: {new Date(item.created_at).toLocaleDateString()}

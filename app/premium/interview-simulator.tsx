@@ -114,7 +114,6 @@ function InterviewContent() {
  try {
  if (!isMountedRef.current) return;
  console.log("Disconnected from conversation");
- setSessionActive(false);
  // Only add message if there was no error (normal disconnect)
  if (!connectionError) {
  addMessage("system", "Interview session ended.");

@@ -130,7 +130,7 @@ async function uploadMemoryMedia(userId: string, uri: string, memoryId?: string)
   const filePath = `${userId}/${fileName}`;
 
   // Validate the file exists and has size before reading
-  const fileInfo = await FileSystem.getInfoAsync(uri, { size: true });
+  const fileInfo = await FileSystem.getInfoAsync(uri);
   if (!fileInfo.exists || (fileInfo.size ?? 0) === 0) {
     throw new Error("Could not read selected image. Please try again.");
   }

@@ -15,7 +15,7 @@ interface State {
 }
 
 export class CrashProtectionBoundary extends Component<Props, State> {
-  private memoryCheckInterval: NodeJS.Timeout | null = null;
+  private memoryCheckInterval: ReturnType<typeof setInterval> | null = null;
   
   constructor(props: Props) {
     super(props);

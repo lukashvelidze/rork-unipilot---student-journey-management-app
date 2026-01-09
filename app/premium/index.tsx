@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert, Linking, ActivityIndicator } from "react-native";
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert, Linking, ActivityIndicator, Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter, Stack, useFocusEffect } from "expo-router";
 import { Crown, Check, Zap, Star, ArrowLeft, Mic, MessageSquare, BookOpen, Lock } from "lucide-react-native";
@@ -9,6 +9,27 @@ import Card from "@/components/Card";
 import { useUserStore } from "@/store/userStore";
 import { supabase } from "@/lib/supabase";
 import { buildPaddleCheckoutUrl, PADDLE_PRICE_IDS, canMakePayments } from "@/lib/paddle";
+import {
+  APPLE_SUBSCRIPTION_PRODUCTS,
+  addPurchaseErrorListener,
+  addPurchaseUpdatedListener,
+  closeIapConnection,
+  ensureIapConnection,
+  fetchAppleSubscriptions,
+  finishTransactionSafe,
+  formatAppleSubscriptionPeriod,
+  getActiveAppleSubscription,
+  getIapLoadError,
+  mapProductIdToTier,
+  openAppleSubscriptionManager,
+  requestAppleSubscription,
+  restoreApplePurchases,
+  validateAppleReceipt,
+  type AppleSubscriptionTier,
+  type Purchase,
+  type ProductSubscription,
+  type SubscriptionEntitlement,
+} from "@/lib/iap";
 
 interface SubscriptionTier {
   id: "basic" | "standard" | "pro";
@@ -80,11 +101,75 @@ export default function PremiumScreen() {
   const Colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { user } = useUserStore();
+  const { updateUser } = useUserStore();
+  const isIosDevice = Platform.OS === "ios";
+  const processedTransactions = useRef<Set<string>>(new Set());
   
   const [currentTier, setCurrentTier] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<"resources" | "plans">("plans");
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState<string | null>(null);
+  const [iapReady, setIapReady] = useState(false);
+  const [iapError, setIapError] = useState<string | null>(null);
+  const [appleProducts, setAppleProducts] = useState<Record<string, ProductSubscription | undefined>>({});
+  const [isRestoring, setIsRestoring] = useState(false);
+
+  const applyEntitlementState = useCallback(
+    (entitlement: SubscriptionEntitlement) => {
+      const nextTier = entitlement === "none" ? null : entitlement;
+      setCurrentTier(nextTier);
+      if (nextTier) {
+        updateUser({ subscriptionTier: nextTier, isPremium: true });
+      } else {
+        updateUser({ subscriptionTier: "free", isPremium: false });
+      }
+    },
+    [updateUser]
+  );
+
+  const syncEntitlementToProfile = useCallback(
+    async (entitlement: SubscriptionEntitlement) => {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) {
+        return;
+      }
+
+      const nextTier = entitlement === "none" ? "free" : entitlement;
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("subscription_tier")
+        .eq("id", authUser.id)
+        .single();
+
+      if (profile?.subscription_tier !== nextTier) {
+        const { error: updateError } = await supabase
+          .from("profiles")
+          .update({
+            subscription_tier: nextTier,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", authUser.id);
+
+        if (updateError) {
+          throw updateError;
+        }
+      }
+
+      applyEntitlementState(entitlement);
+    },
+    [applyEntitlementState]
+  );
+
+  const syncAppleSubscriptionState = useCallback(
+    async (fallbackTier?: AppleSubscriptionTier) => {
+      const entitlement = await getActiveAppleSubscription();
+      const resolved =
+        entitlement !== "none" ? entitlement : fallbackTier || "none";
+      await syncEntitlementToProfile(resolved);
+      return resolved;
+    },
+    [syncEntitlementToProfile]
+  );
 
   // Check subscription status on mount
   useEffect(() => {
@@ -130,7 +215,168 @@ export default function PremiumScreen() {
     }
   };
 
+  const handleApplePurchaseUpdate = useCallback(
+    async (purchase: Purchase) => {
+      const transactionId =
+        purchase?.transactionId || (purchase as any)?.originalTransactionIdentifierIOS;
+      if (transactionId && processedTransactions.current.has(transactionId)) {
+        return;
+      }
+      if (transactionId) {
+        processedTransactions.current.add(transactionId);
+      }
+
+      try {
+        const tierFromProduct = mapProductIdToTier(purchase.productId);
+        if (!tierFromProduct) {
+          setIsProcessing(null);
+          await finishTransactionSafe(purchase);
+          return;
+        }
+
+        const receiptData = purchase.transactionReceipt || purchase.purchaseToken;
+        const validation = await validateAppleReceipt(receiptData, purchase.productId);
+
+        if (
+          validation &&
+          validation.valid === false &&
+          validation.reason !== "missing_shared_secret" &&
+          validation.reason !== "missing_receipt"
+        ) {
+          throw new Error("Receipt validation failed");
+        }
+
+        const { data: { user: authUser } } = await supabase.auth.getUser();
+        if (!authUser) {
+          Alert.alert("Error", "You must be logged in to complete the purchase.");
+          setIsProcessing(null);
+          return;
+        }
+
+        await syncAppleSubscriptionState(tierFromProduct);
+        setIsProcessing(null);
+        Alert.alert("Success", "Your App Store subscription is active.");
+      } catch (error) {
+        console.error("Error handling iOS purchase:", error);
+        setIsProcessing(null);
+        Alert.alert(
+          "Error",
+          "We couldn't confirm your purchase. Please contact support if you were charged."
+        );
+      } finally {
+        await finishTransactionSafe(purchase);
+      }
+    },
+    [syncAppleSubscriptionState]
+  );
+
+  useEffect(() => {
+    if (!isIosDevice) {
+      return;
+    }
+
+    let isMounted = true;
+    let purchaseUpdateSub: ReturnType<typeof addPurchaseUpdatedListener> | undefined;
+    let purchaseErrorSub: ReturnType<typeof addPurchaseErrorListener> | undefined;
+
+    const initializeIap = async () => {
+      setIapError(null);
+
+      try {
+        const connected = await ensureIapConnection();
+        if (!connected) {
+          const loadError = getIapLoadError();
+          setIapError(loadError || "App Store billing is not available on this device.");
+          setIapReady(false);
+          return;
+        }
+        const subscriptions = await fetchAppleSubscriptions();
+
+        if (!isMounted) return;
+
+        const mapped = subscriptions.reduce((acc, sub) => {
+          const tierId = mapProductIdToTier(sub.productId ?? sub.id);
+          if (tierId) {
+            acc[tierId] = sub;
+          }
+          return acc;
+        }, {} as Record<string, ProductSubscription>);
+
+        setAppleProducts(mapped);
+        setIapReady(true);
+
+        purchaseUpdateSub = addPurchaseUpdatedListener(async (purchase) => {
+          if (!isMounted) return;
+          await handleApplePurchaseUpdate(purchase);
+        });
+
+        purchaseErrorSub = addPurchaseErrorListener((error) => {
+          if (!isMounted) return;
+          console.error("IAP purchase error:", error);
+          setIsProcessing(null);
+          Alert.alert("Purchase failed", error?.message || "Unable to complete the transaction.");
+        });
+      } catch (error) {
+        if (!isMounted) return;
+        console.error("Failed to initialize Apple IAP:", error);
+        const loadError = getIapLoadError();
+        setIapError(loadError || "Unable to connect to the App Store right now. Please try again.");
+        setIapReady(false);
+      }
+    };
+
+    initializeIap();
+
+    return () => {
+      isMounted = false;
+      purchaseUpdateSub?.remove();
+      purchaseErrorSub?.remove();
+      processedTransactions.current.clear();
+      closeIapConnection();
+    };
+  }, [handleApplePurchaseUpdate, isIosDevice]);
+
+  const openApplePurchase = async (tier: SubscriptionTier) => {
+    if (!iapReady) {
+      Alert.alert("App Store Unavailable", iapError || "Still connecting to the App Store. Please try again.");
+      return;
+    }
+
+    const appleProduct = APPLE_SUBSCRIPTION_PRODUCTS[tier.id];
+    if (!appleProduct) {
+      Alert.alert("Error", "Subscription is not available in the App Store.");
+      return;
+    }
+
+    if (!appleProducts[tier.id]) {
+      Alert.alert("App Store Unavailable", "Pricing is still loading from Apple. Please try again.");
+      return;
+    }
+
+    try {
+      setIsProcessing(tier.id);
+
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) {
+        Alert.alert("Error", "You must be logged in to purchase a subscription.");
+        setIsProcessing(null);
+        return;
+      }
+
+      await requestAppleSubscription(appleProduct.productId, authUser.id);
+    } catch (error: any) {
+      console.error("Error starting Apple IAP checkout:", error);
+      Alert.alert("Error", "Failed to start your App Store purchase. Please try again.");
+      setIsProcessing(null);
+    }
+  };
+
   const openCheckout = async (tier: SubscriptionTier) => {
+    if (isIosDevice) {
+      await openApplePurchase(tier);
+      return;
+    }
+
     try {
       setIsProcessing(tier.id);
       
@@ -182,8 +428,78 @@ export default function PremiumScreen() {
     }
   };
 
+  const handleRestorePurchases = async () => {
+    if (!isIosDevice || isRestoring) {
+      return;
+    }
+
+    setIsRestoring(true);
+    try {
+      const entitlement = await restoreApplePurchases();
+      await syncEntitlementToProfile(entitlement);
+
+      if (entitlement === "none") {
+        Alert.alert("No Purchases Found", "No active App Store subscriptions were found.");
+      } else {
+        Alert.alert("Restored", "Your App Store subscription has been restored.");
+      }
+    } catch (error) {
+      console.error("Restore purchases failed", error);
+      Alert.alert("Restore Failed", "Unable to restore purchases. Please try again.");
+    } finally {
+      setIsRestoring(false);
+    }
+  };
+
+  const handleManageSubscription = async () => {
+    if (!isIosDevice) {
+      return;
+    }
+
+    try {
+      await openAppleSubscriptionManager();
+    } catch (error) {
+      console.error("Open subscription manager failed", error);
+      Alert.alert("Unable to Open", "We couldn't open Apple subscription settings.");
+    }
+  };
+
+  const renderSubscriptionActions = () => {
+    if (!isIosDevice) {
+      return null;
+    }
+
+    return (
+      <View style={styles.subscriptionActions}>
+        <Button
+          title="Restore Purchases"
+          variant="outline"
+          onPress={handleRestorePurchases}
+          loading={isRestoring}
+          fullWidth
+        />
+        <Button
+          title="Manage Subscription"
+          onPress={handleManageSubscription}
+          fullWidth
+          variant="default"
+        />
+      </View>
+    );
+  };
+
   // Check if user has an active subscription (basic, standard, or pro/premium)
   const hasActiveSubscription = currentTier && ["basic", "standard", "pro", "premium"].includes(currentTier);
+
+  // Keep view in sync with subscription status so subscribed users can still switch to plans
+  useEffect(() => {
+    if (hasActiveSubscription && viewMode === "plans") {
+      setViewMode("resources");
+    }
+    if (!hasActiveSubscription && viewMode === "resources") {
+      setViewMode("plans");
+    }
+  }, [hasActiveSubscription, viewMode]);
 
   // Check if user has Pro tier access
   const hasProAccess = currentTier === "pro" || currentTier === "premium";
@@ -244,7 +560,7 @@ export default function PremiumScreen() {
   }
 
   // Show premium resources home page if user has active subscription
-  if (hasActiveSubscription) {
+  if (hasActiveSubscription && viewMode === "resources") {
     return (
       <ScrollView 
         style={[styles.container, { backgroundColor: Colors.background, paddingBottom: insets.bottom }]} 
@@ -273,6 +589,13 @@ export default function PremiumScreen() {
           <Text style={[styles.subtitle, { color: Colors.lightText }]}>
             Access exclusive resources to enhance your journey
           </Text>
+          <Button
+            title="Change plan"
+            variant="outline"
+            onPress={() => setViewMode("plans")}
+            fullWidth
+            style={{ marginTop: 12 }}
+          />
           {currentTier && (
             <View style={[styles.currentTierBadge, { backgroundColor: Colors.success + "20" }]}>
               <Text style={[styles.currentTierText, { color: Colors.success }]}>
@@ -280,6 +603,7 @@ export default function PremiumScreen() {
               </Text>
             </View>
           )}
+          {renderSubscriptionActions()}
         </View>
 
         {/* Premium Resources */}
@@ -382,6 +706,34 @@ export default function PremiumScreen() {
         <Text style={[styles.subtitle, { color: Colors.lightText }]}>
           Unlock premium features and accelerate your journey
         </Text>
+        {isIosDevice && !iapReady && !iapError && (
+          <View style={styles.iapStatusRow}>
+            <ActivityIndicator size="small" color={Colors.primary} />
+            <Text style={[styles.iapStatusText, { color: Colors.lightText }]}>
+              Connecting to the App Store for pricing...
+            </Text>
+          </View>
+        )}
+        {isIosDevice && iapError && (
+          <View style={styles.iapStatusRow}>
+            <Text style={[styles.iapErrorText, { color: Colors.error }]}>
+              {iapError}
+            </Text>
+          </View>
+        )}
+        {hasActiveSubscription && (
+          <View style={[styles.iapStatusRow, { marginTop: 8 }]}>
+            <Text style={[styles.iapStatusText, { color: Colors.lightText }]}>
+              Current plan: {currentTier?.charAt(0).toUpperCase() + (currentTier?.slice(1) || "")}
+            </Text>
+            <Button
+              title="Back to resources"
+              variant="outline"
+              onPress={() => setViewMode("resources")}
+              style={{ marginLeft: 8, height: 36, paddingHorizontal: 12 }}
+            />
+          </View>
+        )}
       </View>
 
       {/* Subscription Tiers */}
@@ -390,6 +742,17 @@ export default function PremiumScreen() {
           const IconComponent = tier.icon;
           const isCurrentTier = currentTier === tier.id;
           const isProcessingTier = isProcessing === tier.id;
+          const appleProduct = appleProducts[tier.id];
+          const priceLabel = isIosDevice
+            ? appleProduct?.displayPrice || "Fetching price..."
+            : tier.price;
+          const pricePeriod = isIosDevice
+            ? formatAppleSubscriptionPeriod(appleProduct)
+            : "/month";
+          const isButtonDisabled =
+            isCurrentTier ||
+            isProcessingTier ||
+            (isIosDevice && (!iapReady || !appleProduct));
 
           return (
             <Card
@@ -422,10 +785,10 @@ export default function PremiumScreen() {
                 </Text>
                 <View style={styles.priceContainer}>
                   <Text style={[styles.price, { color: Colors.text }]}>
-                    {tier.price}
+                    {priceLabel}
                   </Text>
                   <Text style={[styles.pricePeriod, { color: Colors.lightText }]}>
-                    /month
+                    {pricePeriod}
                   </Text>
                 </View>
               </View>
@@ -444,7 +807,7 @@ export default function PremiumScreen() {
               <Button
                 title={isCurrentTier ? "Current Plan" : `Subscribe to ${tier.name}`}
                 onPress={() => openCheckout(tier)}
-                disabled={isCurrentTier || isProcessingTier}
+                disabled={isButtonDisabled}
                 loading={isProcessingTier}
                 fullWidth
                 variant={tier.popular ? "default" : "outline"}
@@ -458,11 +821,12 @@ export default function PremiumScreen() {
       {/* Footer Info */}
       <View style={styles.footer}>
         <Text style={[styles.footerText, { color: Colors.lightText }]}>
-          All plans include a 7-day free trial. Cancel anytime.
+          Pricing is provided directly by the {isIosDevice ? "App Store" : "Paddle checkout"}.
         </Text>
         <Text style={[styles.footerText, { color: Colors.lightText }]}>
-          Payments are processed securely by Paddle.
+          Manage or cancel anytime from your {isIosDevice ? "Apple subscriptions" : "UniPilot account settings"}.
         </Text>
+        {renderSubscriptionActions()}
       </View>
     </ScrollView>
   );
@@ -503,6 +867,19 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     marginBottom: 16,
   },
+  iapStatusRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 4,
+  },
+  iapStatusText: {
+    fontSize: 14,
+  },
+  iapErrorText: {
+    fontSize: 14,
+    textAlign: "center",
+  },
   currentTierBadge: {
     paddingHorizontal: 16,
     paddingVertical: 8,
@@ -512,6 +889,11 @@ const styles = StyleSheet.create({
   currentTierText: {
     fontSize: 14,
     fontWeight: "600",
+  },
+  subscriptionActions: {
+    marginTop: 16,
+    gap: 12,
+    width: "100%",
   },
   tiersContainer: {
     gap: 20,

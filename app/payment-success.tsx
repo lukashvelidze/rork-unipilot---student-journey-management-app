@@ -28,7 +28,7 @@ export default function PaymentSuccessScreen() {
   const router = useRouter();
   const Colors = useColors();
   const params = useLocalSearchParams();
-  const { setPremium } = useUserStore();
+  const { updateUser } = useUserStore();
   
   const [isUpdating, setIsUpdating] = useState(true);
   const [tier, setTier] = useState<string | null>(null);
@@ -92,11 +92,11 @@ export default function PaymentSuccessScreen() {
       }
 
       // Update local store
-      // Map tier to isPremium (pro and standard are premium, basic might be considered premium too)
       const isPremiumTier = tierParam === "pro" || tierParam === "standard" || tierParam === "basic";
-      if (isPremiumTier) {
-        setPremium(true);
-      }
+      updateUser({
+        subscriptionTier: tierParam,
+        isPremium: isPremiumTier,
+      });
 
       setIsUpdating(false);
     } catch (error: any) {

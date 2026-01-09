@@ -5,7 +5,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useUserStore } from "@/store/userStore";
 import { supabase } from "@/lib/supabase";
 import Colors from "@/constants/colors";
-import { SubscriptionTier } from "@/types/user";
+import { SubscriptionTier, EducationLevel } from "@/types/user";
 
 export default function OnboardingIndex() {
   const router = useRouter();
@@ -125,7 +125,7 @@ export default function OnboardingIndex() {
         if (isOnboardingComplete) {
           router.replace("/(tabs)");
         } else {
-          router.replace(`/onboarding/step${onboardingStep}-${getStepName(onboardingStep)}`);
+          router.replace(`/onboarding/step${onboardingStep}-${getStepName(onboardingStep)}` as any);
         }
       } else {
         // No profile found, start from step 1

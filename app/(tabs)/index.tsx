@@ -14,11 +14,11 @@ import { calculateOverallProgress } from "@/utils/helpers";
 import { getRandomQuote, generalQuotes } from "@/mocks/quotes";
 import { supabase, getCountries } from "@/lib/supabase";
 import { formatEnumValue } from "@/utils/safeStringOps";
-import { SubscriptionTier } from "@/types/user";
+import { SubscriptionTier, Country } from "@/types/user";
 
 // Timeout wrapper for Supabase calls
 const withTimeout = <T,>(
-  promise: Promise<T>,
+  promise: PromiseLike<T>,
   timeoutMs: number = 10000,
   errorMessage: string = 'Operation timed out'
 ): Promise<T> => {
@@ -27,12 +27,12 @@ const withTimeout = <T,>(
       reject(new Error(errorMessage));
     }, timeoutMs);
 
-    promise
+    Promise.resolve(promise)
       .then((result) => {
         clearTimeout(timeoutId);
         resolve(result);
       })
-      .catch((error) => {
+      .catch((error: unknown) => {
         clearTimeout(timeoutId);
         reject(error);
       });
@@ -181,21 +181,27 @@ export default function HomeScreen() {
 
           if (!isMountedRef.current) return;
 
-          const homeCountry = profile.country_origin
-            ? (countries.origin.find((c: any) => c.code === profile.country_origin) || {
-                code: profile.country_origin,
-                name: profile.country_origin,
-                flag: "",
-              })
-            : null;
+          const homeCountryMatch = profile.country_origin
+            ? countries.origin.find((c: Country) => c.code === profile.country_origin)
+            : undefined;
 
-          const destinationCountry = profile.destination_country
-            ? (countries.destination.find((c: any) => c.code === profile.destination_country) || {
-                code: profile.destination_country,
-                name: profile.destination_country,
-                flag: "",
-              })
-            : null;
+          const destinationCountryMatch = profile.destination_country
+            ? countries.destination.find((c: Country) => c.code === profile.destination_country)
+            : undefined;
+
+          const resolvedHomeCountry: Country =
+            homeCountryMatch ??
+            user?.homeCountry ??
+            (profile.country_origin
+              ? { code: profile.country_origin, name: profile.country_origin, flag: "" }
+              : { code: "UNK", name: "Unknown", flag: "" });
+
+          const resolvedDestinationCountry: Country =
+            destinationCountryMatch ??
+            user?.destinationCountry ??
+            (profile.destination_country
+              ? { code: profile.destination_country, name: profile.destination_country, flag: "" }
+              : { code: "UNK", name: "Unknown", flag: "" });
 
           // Final check before state update
           if (!isMountedRef.current) return;
@@ -209,8 +215,8 @@ export default function HomeScreen() {
             id: authUser.id,
             name: profile.full_name || "",
             email: profile.email || authUser.email || "",
-            homeCountry: homeCountry || user?.homeCountry,
-            destinationCountry: destinationCountry || user?.destinationCountry,
+            homeCountry: resolvedHomeCountry,
+            destinationCountry: resolvedDestinationCountry,
             educationBackground: {
               level: (profile.level_of_study as any) || user?.educationBackground?.level || "bachelors",
             },
@@ -547,19 +553,6 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     textTransform: "uppercase",
   },
-  premiumBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    borderWidth: 1,
-  },
-  premiumText: {
-    fontSize: 12,
-    fontWeight: "600",
-    marginLeft: 4,
-  },
   progressCard: {
     marginBottom: 20,
   },
@@ -653,6 +646,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 2,
+    opacity: 0.9,
   },
   tasksCard: {
     marginBottom: 20,
@@ -740,9 +734,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderWidth: 2,
     borderColor: "#FFFFFF",
-  },
-  premiumActionCard: {
-    opacity: 0.9,
   },
   upgradeCard: {
     borderWidth: 1,

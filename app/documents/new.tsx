@@ -76,11 +76,11 @@ export default function NewDocumentScreen() {
         Alert.alert(
           "Premium Feature",
           "This document category is available for premium users only. Upgrade to unlock premium features.",
-          [
-            { text: "Cancel", style: "cancel" },
-            { text: "Upgrade", onPress: () => router.push("/subscription") },
-          ]
-        );
+            [
+              { text: "Cancel", style: "cancel" },
+              { text: "Upgrade", onPress: () => router.push("/premium") },
+            ]
+          );
         return;
       }
     }
@@ -213,11 +213,11 @@ export default function NewDocumentScreen() {
         Alert.alert(
           "Premium Feature",
           "This document category is available for premium users only.",
-          [
-            { text: "Cancel", style: "cancel" },
-            { text: "Upgrade", onPress: () => router.push("/subscription") },
-          ]
-        );
+            [
+              { text: "Cancel", style: "cancel" },
+              { text: "Upgrade", onPress: () => router.push("/premium") },
+            ]
+          );
       } else {
         Alert.alert("Error", error.message || "Failed to upload document. Please try again.");
       }
