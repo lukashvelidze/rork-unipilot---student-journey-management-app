@@ -128,7 +128,7 @@ export default function HomeScreen() {
         setIsCheckingSubscription(false);
       }
     }
-  }, []);
+  }, [updateUser]);
 
   // Check subscription on mount and when screen comes into focus
   useEffect(() => {

@@ -40,6 +40,25 @@ const DEFAULT_APPLE_PRODUCTS = {
 const APP_STORE_SHARED_SECRET =
   appStoreConfig.sharedSecret || process.env.EXPO_PUBLIC_APP_STORE_SHARED_SECRET;
 
+const toDateMs = (value: unknown) => {
+  if (value == null) return 0;
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : 0;
+  }
+  if (typeof value === "string") {
+    const numeric = Number(value);
+    if (Number.isFinite(numeric)) {
+      return numeric;
+    }
+    const parsed = Date.parse(value);
+    return Number.isNaN(parsed) ? 0 : parsed;
+  }
+  if (value instanceof Date) {
+    return Number.isFinite(value.getTime()) ? value.getTime() : 0;
+  }
+  return 0;
+};
+
 export const APPLE_PRODUCT_IDS = [
   appStoreProducts.basic ||
     process.env.EXPO_PUBLIC_APP_STORE_PRODUCT_ID_BASIC ||
@@ -143,8 +162,7 @@ const getPurchaseTimestamp = (purchase: Purchase) => {
     (purchase as any).transactionDate ||
     (purchase as any).originalTransactionDateIOS ||
     (purchase as any).purchaseDate;
-  const value = raw ? Number(raw) : 0;
-  return Number.isFinite(value) ? value : 0;
+  return toDateMs(raw);
 };
 
 const getPurchaseExpiration = (purchase: Purchase) => {
@@ -152,8 +170,7 @@ const getPurchaseExpiration = (purchase: Purchase) => {
     (purchase as any).expirationDate ||
     (purchase as any).expiresDate ||
     (purchase as any).expiresDateMs;
-  const value = raw ? Number(raw) : 0;
-  return Number.isFinite(value) ? value : 0;
+  return toDateMs(raw);
 };
 
 export async function getActiveAppleSubscription(): Promise<SubscriptionEntitlement> {

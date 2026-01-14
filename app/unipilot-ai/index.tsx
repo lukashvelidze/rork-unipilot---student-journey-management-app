@@ -14,7 +14,6 @@ import {
 import { useRouter } from "expo-router";
 import { Send, Crown, Lock } from "lucide-react-native";
 import { useColors } from "@/hooks/useColors";
-import { useUserStore } from "@/store/userStore";
 import { supabase } from "@/lib/supabase";
 import Button from "@/components/Button";
 import Card from "@/components/Card";
@@ -29,7 +28,6 @@ interface Message {
 export default function UniPilotAIScreen() {
   const router = useRouter();
   const Colors = useColors();
-  const { user } = useUserStore();
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -37,7 +35,6 @@ export default function UniPilotAIScreen() {
   const [isCheckingSubscription, setIsCheckingSubscription] = useState(true);
   const flatListRef = useRef<FlatList>(null);
 
-  // Check subscription status
   useEffect(() => {
     const checkSubscription = async () => {
       try {

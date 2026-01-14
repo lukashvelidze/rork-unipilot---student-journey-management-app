@@ -154,6 +154,7 @@ function RootLayoutNav() {
     };
   }, [setAuthInitializing]);
 
+
   // Wrap with ElevenLabsProvider only if available (not in Expo Go)
   const AppContent = (
     <QueryClientProvider client={queryClient}>

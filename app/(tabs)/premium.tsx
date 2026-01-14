@@ -6,13 +6,11 @@ import { Crown, Mic, MessageSquare, BookOpen, ArrowRight, Lock } from "lucide-re
 import { useColors } from "@/hooks/useColors";
 import Card from "@/components/Card";
 import Button from "@/components/Button";
-import { useUserStore } from "@/store/userStore";
 import { supabase } from "@/lib/supabase";
 
 export default function PremiumResourcesScreen() {
   const Colors = useColors();
   const router = useRouter();
-  const { user } = useUserStore();
   
   const [currentTier, setCurrentTier] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);

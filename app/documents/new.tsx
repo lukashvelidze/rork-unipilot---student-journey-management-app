@@ -80,7 +80,7 @@ export default function NewDocumentScreen() {
               { text: "Cancel", style: "cancel" },
               { text: "Upgrade", onPress: () => router.push("/premium") },
             ]
-          );
+        );
         return;
       }
     }

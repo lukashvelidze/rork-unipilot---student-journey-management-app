@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert, Switch, Linking } from "react-native";
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert, Switch, Linking, Platform } from "react-native";
 import { useRouter } from "expo-router";
 import {
   User,
@@ -13,7 +13,9 @@ import {
   Globe,
   Download,
   Trash2,
-  Crown
+  Crown,
+  CreditCard,
+  RefreshCw
 } from "lucide-react-native";
 import { useColors } from "@/hooks/useColors";
 import { useThemeStore } from "@/store/themeStore";
@@ -21,6 +23,7 @@ import Theme from "@/constants/theme";
 import Card from "@/components/Card";
 import { useUserStore } from "@/store/userStore";
 import { supabase } from "@/lib/supabase";
+import { openAppleSubscriptionManager } from "@/lib/iap";
 
 interface SettingItem {
   id: string;
@@ -33,17 +36,20 @@ interface SettingItem {
   onPress?: () => void;
   onToggle?: (value: boolean) => void;
   destructive?: boolean;
+  disabled?: boolean;
 }
 
 export default function SettingsScreen() {
   const router = useRouter();
   const Colors = useColors();
-  const { user, logout, isPremium } = useUserStore();
+  const { user, logout, isPremium, updateUser } = useUserStore();
   const { isDarkMode, toggleDarkMode } = useThemeStore();
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+  const [isRestoringPurchases, setIsRestoringPurchases] = useState(false);
 
   const [notifications, setNotifications] = useState(true);
   const [autoDownload, setAutoDownload] = useState(false);
+  const isIosDevice = Platform.OS === "ios";
   
   const handleLogout = async () => {
     Alert.alert(
@@ -140,6 +146,58 @@ export default function SettingsScreen() {
     );
   };
 
+  const handleManageSubscription = async () => {
+    if (!isIosDevice) {
+      return;
+    }
+
+    try {
+      await openAppleSubscriptionManager();
+    } catch (error) {
+      console.error("Open subscription manager failed", error);
+      Alert.alert("Unable to Open", "We couldn't open Apple subscription settings.");
+    }
+  };
+
+  const handleRestorePurchases = async () => {
+    if (!isIosDevice || isRestoringPurchases) {
+      return;
+    }
+
+    setIsRestoringPurchases(true);
+    try {
+      const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+      if (authError || !authUser) {
+        throw new Error(authError?.message || "Not authenticated");
+      }
+
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("subscription_tier")
+        .eq("id", authUser.id)
+        .single();
+
+      if (profileError) {
+        throw profileError;
+      }
+
+      const tier = profile?.subscription_tier === "premium" ? "pro" : profile?.subscription_tier;
+
+      if (!tier || tier === "free") {
+        Alert.alert("No Purchases Found", "No active App Store subscriptions were found.");
+        return;
+      }
+
+      updateUser({ subscriptionTier: tier });
+      Alert.alert("Restored", "Your App Store subscription has been restored.");
+    } catch (error: any) {
+      console.error("Restore purchases failed", error);
+      Alert.alert("Restore Failed", error?.message || "Unable to restore purchases. Please try again.");
+    } finally {
+      setIsRestoringPurchases(false);
+    }
+  };
+
   const settingSections = [
     {
       title: "Account",
@@ -162,6 +220,31 @@ export default function SettingsScreen() {
           type: "navigation",
           onPress: () => router.push("/premium"),
         },
+        ...(isIosDevice
+          ? [
+              {
+                id: "manageSubscription",
+                title: "Manage Subscription",
+                subtitle: "Update or cancel your App Store plan",
+                icon: CreditCard,
+                iconColor: Colors.secondary,
+                type: "navigation",
+                onPress: handleManageSubscription,
+              },
+              {
+                id: "restorePurchases",
+                title: "Restore Purchases",
+                subtitle: isRestoringPurchases
+                  ? "Restoring your App Store purchases..."
+                  : "Recover an existing App Store subscription",
+                icon: RefreshCw,
+                iconColor: Colors.info,
+                type: "action",
+                onPress: handleRestorePurchases,
+                disabled: isRestoringPurchases,
+              },
+            ]
+          : []),
       ] as SettingItem[],
     },
     {
@@ -276,9 +359,10 @@ export default function SettingsScreen() {
         style={[
           styles.settingItem,
           item.destructive && styles.settingItemDestructive,
+          item.disabled && styles.settingItemDisabled,
         ]}
         onPress={item.onPress}
-        disabled={item.type === "toggle"}
+        disabled={item.type === "toggle" || item.disabled}
       >
         <View style={styles.settingItemLeft}>
           <View style={[styles.settingIcon, { backgroundColor: `${item.iconColor}15` }]}>
@@ -439,6 +523,9 @@ const styles = StyleSheet.create({
   },
   settingItemDestructive: {
     // No special styling needed, handled by text color
+  },
+  settingItemDisabled: {
+    opacity: 0.6,
   },
   settingItemLeft: {
     flexDirection: "row",
