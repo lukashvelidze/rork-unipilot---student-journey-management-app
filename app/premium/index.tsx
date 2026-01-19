@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert, Linking, ActivityIndicator, Platform } from "react-native";
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert, Linking, ActivityIndicator, Platform, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter, Stack, useFocusEffect } from "expo-router";
 import { Crown, Check, Zap, Star, ArrowLeft, Mic, MessageSquare, BookOpen, Lock } from "lucide-react-native";
@@ -44,7 +44,7 @@ interface PremiumResource {
   proOnly?: boolean;
 }
 
-const PRIVACY_POLICY_URL = "https://unipilot.app/privacy";
+const PRIVACY_POLICY_URL = "https://unipilot.app/privacy/";
 const TERMS_OF_USE_URL = "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/";
 
 const subscriptionTiers: SubscriptionTier[] = [
@@ -93,18 +93,15 @@ const subscriptionTiers: SubscriptionTier[] = [
   },
 ];
 
-const DISCLOSURE_PLANS = subscriptionTiers.map((tier) => ({
-  id: tier.id,
-  title: `${APPLE_SUBSCRIPTION_PRODUCTS[tier.id].referenceName} - Monthly`,
-  price: `${tier.price} / month (auto-renewable)`,
-}));
-
 export default function PremiumScreen() {
   const Colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const isIosDevice = Platform.OS === "ios";
   const processedTransactions = useRef<Set<string>>(new Set());
+  const { width: windowWidth } = useWindowDimensions();
+  const planCardWidth = Math.min(windowWidth - 64, 360);
+  const planCardSpacing = 16;
   
   const [currentTier, setCurrentTier] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<"resources" | "plans">("plans");
@@ -113,6 +110,18 @@ export default function PremiumScreen() {
   const [iapReady, setIapReady] = useState(false);
   const [iapError, setIapError] = useState<string | null>(null);
   const [appleProducts, setAppleProducts] = useState<Record<string, ProductSubscription | undefined>>({});
+
+  const disclosurePlans = subscriptionTiers.map((tier) => {
+    const appleProduct = appleProducts[tier.id];
+    const priceLabel = isIosDevice ? appleProduct?.displayPrice || tier.price : tier.price;
+    const pricePeriod = isIosDevice ? formatAppleSubscriptionPeriod(appleProduct) : "/month";
+
+    return {
+      id: tier.id,
+      title: `${APPLE_SUBSCRIPTION_PRODUCTS[tier.id].referenceName} - Monthly`,
+      price: `${priceLabel} ${pricePeriod} (auto-renewable)`,
+    };
+  });
 
   const handleOpenLink = useCallback(async (url: string) => {
     try {
@@ -622,8 +631,15 @@ export default function PremiumScreen() {
       </View>
 
       {/* Subscription Tiers */}
-      <View style={styles.tiersContainer}>
-        {subscriptionTiers.map((tier) => {
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.tiersContainer}
+        snapToInterval={planCardWidth + planCardSpacing}
+        decelerationRate="fast"
+        snapToAlignment="start"
+      >
+        {subscriptionTiers.map((tier, index) => {
           const IconComponent = tier.icon;
           const isCurrentTier = currentTier === tier.id;
           const isProcessingTier = isProcessing === tier.id;
@@ -633,18 +649,23 @@ export default function PremiumScreen() {
             : tier.price;
           const pricePeriod = isIosDevice
             ? formatAppleSubscriptionPeriod(appleProduct)
-            : "/month";
+            : "/ monthly";
           const isButtonDisabled =
             isCurrentTier ||
             isProcessingTier ||
             (isIosDevice && (!iapReady || !appleProduct));
+          const isLastTier = index === subscriptionTiers.length - 1;
 
           return (
             <Card
               key={tier.id}
               style={[
                 styles.tierCard,
-                { backgroundColor: Colors.card },
+                {
+                  backgroundColor: Colors.card,
+                  width: planCardWidth,
+                  marginRight: isLastTier ? 0 : planCardSpacing,
+                },
                 tier.popular && styles.popularTier,
                 tier.popular && { borderColor: Colors.primary, borderWidth: 2 },
                 isCurrentTier && { borderColor: Colors.success, borderWidth: 2 },
@@ -701,7 +722,7 @@ export default function PremiumScreen() {
             </Card>
           );
         })}
-      </View>
+      </ScrollView>
 
       {/* Footer Info */}
       <View style={styles.footer}>
@@ -709,7 +730,7 @@ export default function PremiumScreen() {
           <Text style={[styles.disclosureTitle, { color: Colors.text }]}>
             Subscription Terms
           </Text>
-          {DISCLOSURE_PLANS.map((plan) => (
+          {disclosurePlans.map((plan) => (
             <View key={plan.id} style={styles.disclosurePlan}>
               <Text style={[styles.disclosurePlanTitle, { color: Colors.text }]}>
                 {plan.title}
@@ -815,7 +836,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   tiersContainer: {
-    gap: 20,
+    flexDirection: "row",
     marginBottom: 24,
   },
   tierCard: {

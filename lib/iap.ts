@@ -250,7 +250,7 @@ export async function changeApplePlan(
 
 export function formatAppleSubscriptionPeriod(product?: ProductSubscription) {
   if (!product || product.type !== "subs") {
-    return "/month";
+    return "/ monthly";
   }
 
   const unit =
@@ -261,10 +261,13 @@ export function formatAppleSubscriptionPeriod(product?: ProductSubscription) {
     (product as any).subscriptionPeriodNumberIOS;
 
   if (!unit) {
-    return "/month";
+    return "/ monthly";
   }
 
   const count = countRaw ? Number(countRaw) : 1;
+  if (unit.toLowerCase() === "month" && count === 1) {
+    return "/ monthly";
+  }
   const suffix = count > 1 ? `${unit.toLowerCase()}s` : unit.toLowerCase();
   return `/${count} ${suffix}`;
 }
