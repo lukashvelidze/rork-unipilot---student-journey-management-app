@@ -12,7 +12,6 @@ export type AppleSubscriptionTier = "basic" | "standard" | "pro";
 export type SubscriptionEntitlement = "none" | AppleSubscriptionTier;
 
 type AppStoreConfig = {
-  sharedSecret?: string;
   products?: {
     basic?: string;
     standard?: string;
@@ -36,9 +35,6 @@ const DEFAULT_APPLE_PRODUCTS = {
   standard: "unipilot_standard_monthly",
   pro: "unipilot_premium_monthly",
 } as const;
-
-const APP_STORE_SHARED_SECRET =
-  appStoreConfig.sharedSecret || process.env.EXPO_PUBLIC_APP_STORE_SHARED_SECRET;
 
 const toDateMs = (value: unknown) => {
   if (value == null) return 0;
@@ -98,14 +94,6 @@ const PRODUCT_ID_TO_TIER: Record<string, AppleSubscriptionTier> = Object.entries
   return acc;
 }, {} as Record<string, AppleSubscriptionTier>);
 
-const shouldUseSandbox = (): boolean => {
-  const env = process.env.EXPO_PUBLIC_APP_ENV;
-  if (env) {
-    return env !== "production";
-  }
-  return __DEV__;
-};
-
 let connectionReady = false;
 
 export const getIapLoadError = () => null;
@@ -145,9 +133,8 @@ export async function fetchAppleSubscriptions(): Promise<ProductSubscription[]> 
 
   await ensureIapConnection();
   await new Promise<void>((resolve) => InteractionManager.runAfterInteractions(resolve));
-  const products = await IAP.fetchProducts({
+  const products = await IAP.getSubscriptions({
     skus: Object.values(APPLE_SUBSCRIPTION_PRODUCTS).map((product) => product.productId),
-    type: "subs",
   });
 
   return products as ProductSubscription[];
@@ -267,121 +254,6 @@ export function formatAppleSubscriptionPeriod(product?: ProductSubscription) {
   const count = countRaw ? Number(countRaw) : 1;
   const suffix = count > 1 ? `${unit.toLowerCase()}s` : unit.toLowerCase();
   return `/${count} ${suffix}`;
-}
-
-type ReceiptValidationResult = {
-  valid: boolean;
-  productId?: string;
-  expiresAt?: string;
-  environment?: string;
-  status?: number;
-  reason?: "missing_receipt" | "missing_shared_secret";
-};
-
-type AppleReceiptInfo = {
-  product_id?: string;
-  productId?: string;
-  expires_date_ms?: string;
-  purchase_date_ms?: string;
-};
-
-const APPLE_RECEIPT_PRODUCTION_URL = "https://buy.itunes.apple.com/verifyReceipt";
-const APPLE_RECEIPT_SANDBOX_URL = "https://sandbox.itunes.apple.com/verifyReceipt";
-
-const selectLatestReceiptInfo = (payload: any): AppleReceiptInfo | null => {
-  const latestInfo = Array.isArray(payload?.latest_receipt_info)
-    ? payload.latest_receipt_info
-    : Array.isArray(payload?.receipt?.in_app)
-      ? payload.receipt.in_app
-      : [];
-
-  if (!latestInfo.length) {
-    return null;
-  }
-
-  return latestInfo.reduce((current: AppleReceiptInfo, entry: AppleReceiptInfo) => {
-    const currentMs = Number(current?.expires_date_ms || current?.purchase_date_ms || 0);
-    const entryMs = Number(entry?.expires_date_ms || entry?.purchase_date_ms || 0);
-    return entryMs >= currentMs ? entry : current;
-  }, latestInfo[0]);
-};
-
-const postReceiptValidation = async (
-  endpoint: string,
-  receiptData: string
-) => {
-  const response = await fetch(endpoint, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      "receipt-data": receiptData,
-      password: APP_STORE_SHARED_SECRET,
-      "exclude-old-transactions": true,
-    }),
-  });
-
-  return response.json();
-};
-
-export async function validateAppleReceipt(
-  receiptData: string | undefined,
-  productId?: string
-): Promise<ReceiptValidationResult> {
-  const receipt = receiptData?.trim();
-  if (!receipt) {
-    return { valid: false, productId, reason: "missing_receipt" };
-  }
-
-  if (!APP_STORE_SHARED_SECRET) {
-    return { valid: false, productId, reason: "missing_shared_secret" };
-  }
-
-  let environment = shouldUseSandbox() ? "Sandbox" : "Production";
-  const initialUrl =
-    environment === "Sandbox" ? APPLE_RECEIPT_SANDBOX_URL : APPLE_RECEIPT_PRODUCTION_URL;
-
-  try {
-    let payload = await postReceiptValidation(initialUrl, receipt);
-
-    if (payload?.status === 21007 && environment === "Production") {
-      payload = await postReceiptValidation(APPLE_RECEIPT_SANDBOX_URL, receipt);
-      environment = "Sandbox";
-    } else if (payload?.status === 21008 && environment === "Sandbox") {
-      payload = await postReceiptValidation(APPLE_RECEIPT_PRODUCTION_URL, receipt);
-      environment = "Production";
-    }
-
-    if (!payload || typeof payload.status !== "number") {
-      return { valid: false, productId, environment };
-    }
-
-    if (payload.status !== 0) {
-      return { valid: false, productId, environment, status: payload.status };
-    }
-
-    const latestInfo = selectLatestReceiptInfo(payload);
-    const expiresMs = latestInfo?.expires_date_ms
-      ? Number(latestInfo.expires_date_ms)
-      : undefined;
-    const expiresAt = typeof expiresMs === "number" ? new Date(expiresMs).toISOString() : undefined;
-    const isExpired = typeof expiresMs === "number" ? expiresMs <= Date.now() : false;
-    const resolvedProductId = productId || latestInfo?.product_id || latestInfo?.productId;
-
-    return {
-      valid: !isExpired,
-      productId: resolvedProductId,
-      expiresAt,
-      environment,
-      status: payload.status,
-    };
-  } catch (error) {
-    console.warn("Apple receipt validation failed", error);
-    return {
-      valid: false,
-      productId,
-      environment,
-    };
-  }
 }
 
 // Event helpers to keep react-native-iap dynamic

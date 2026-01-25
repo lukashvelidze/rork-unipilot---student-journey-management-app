@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert, Modal, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter, Stack } from "expo-router";
+import { Stack } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
-import { CheckSquare, Square, Clock, AlertCircle, Star, Trophy, ChevronDown, ChevronUp, Filter, Target, Crown, X, ChevronLeft } from "lucide-react-native";
+import { CheckSquare, Square, Clock, AlertCircle, Star, Trophy, ChevronDown, ChevronUp, Filter, Target, Crown, X } from "lucide-react-native";
 import { useColors } from "@/hooks/useColors";
 import Card from "@/components/Card";
 import Button from "@/components/Button";
@@ -38,7 +38,6 @@ interface UserProgress {
 }
 
 export default function ApplicationChecklistScreen() {
-  const router = useRouter();
   const Colors = useColors();
   const { user } = useUserStore();
   
@@ -322,7 +321,7 @@ export default function ApplicationChecklistScreen() {
   const progressPercentage = filteredItems.length > 0 ? Math.round((completedCount / filteredItems.length) * 100) : 0;
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: Colors.background }]} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: Colors.background }]} edges={['bottom']}>
       <Stack.Screen 
         options={{ 
           title: "Application Checklist",
@@ -340,13 +339,6 @@ export default function ApplicationChecklistScreen() {
           end={{ x: 1, y: 1 }}
           style={styles.headerGradient}
         >
-          <TouchableOpacity
-            onPress={() => router.back()}
-            style={styles.backButton}
-            activeOpacity={0.8}
-          >
-            <ChevronLeft size={20} color="#FFFFFF" />
-          </TouchableOpacity>
           <View style={styles.headerContent}>
             <Target size={24} color="#FFFFFF" />
             <Text style={styles.headerTitle}>University Application Checklist</Text>
@@ -552,14 +544,6 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingTop: 20,
     position: "relative",
-  },
-  backButton: {
-    position: "absolute",
-    top: 16,
-    left: 16,
-    padding: 6,
-    borderRadius: 16,
-    backgroundColor: "rgba(0, 0, 0, 0.25)",
   },
   headerContent: {
     alignItems: "center",

@@ -340,7 +340,9 @@ export default function HomeScreen() {
     },
     {
       title: "Continue Journey",
-      description: `${formatEnumValue(currentStage?.stage || '').toUpperCase()} stage`,
+      description: currentStage?.stage
+        ? `${formatEnumValue(currentStage.stage)} stage`
+        : "Continue your journey",
       icon: TrendingUp,
       color: Colors.secondary,
       onPress: () => router.push("/(tabs)/journey"),

@@ -3,6 +3,7 @@
   "main": "expo-router/entry",
   "version": "1.0.1",
   "scripts": {
+    "generate:icon": "python3 scripts/generate_app_icon.py",
     "start": "expo start",
     "android": "expo run:android",
     "ios": "expo run:ios",
