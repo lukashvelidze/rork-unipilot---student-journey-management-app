@@ -1,16 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { StyleSheet, View, Text, ScrollView, Alert, ActivityIndicator, TouchableOpacity } from "react-native";
 import { useRouter } from "expo-router";
-import { Upload, File, X, Lock, Crown } from "lucide-react-native";
+import { Crown } from "lucide-react-native";
 import { useColors } from "@/hooks/useColors";
 import { useAppBack } from "@/hooks/useAppBack";
 import Input from "@/components/Input";
 import Button from "@/components/Button";
-import Card from "@/components/Card";
-import { loadDocumentCategories, uploadDocument } from "@/lib/supabase";
+import { loadDocumentCategories, createDocumentEntry } from "@/lib/supabase";
 import { supabase } from "@/lib/supabase";
-import * as ImagePicker from "expo-image-picker";
-import { useUserStore } from "@/store/userStore";
 
 interface DocumentCategory {
   id: string;
@@ -35,12 +32,11 @@ export default function NewDocumentScreen() {
   const router = useRouter();
   const Colors = useColors();
   const handleBack = useAppBack("/(tabs)/documents");
-  const { user } = useUserStore();
   
   const [categories, setCategories] = useState<DocumentCategory[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<DocumentCategory | null>(null);
-  const [selectedFile, setSelectedFile] = useState<{ uri: string; name: string; type: string; ext?: string } | null>(null);
-  const [fieldValues, setFieldValues] = useState<Record<string, any>>({});
+  const [documentName, setDocumentName] = useState("");
+  const [expirationDate, setExpirationDate] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -88,59 +84,18 @@ export default function NewDocumentScreen() {
     }
 
     setSelectedCategory(category);
-    setFieldValues({});
-    setSelectedFile(null);
+    setDocumentName("");
+    setExpirationDate("");
     setErrors({});
   };
 
-  const handlePickFile = async () => {
-    try {
-      // Request permissions
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== "granted") {
-        Alert.alert("Permission Required", "Please grant access to your photo library to upload documents.");
-        return;
-      }
-
-      // Pick document (using image picker for now, but expo-document-picker is recommended)
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ["images"] as any, // Using string to avoid deprecation warning
-        allowsEditing: true,
-        quality: 0.8,
-      });
-
-      if (!result.canceled && result.assets[0]) {
-        const asset = result.assets[0];
-        // Detect file extension from mimeType or URI
-        let ext = "jpg";
-        if (asset.mimeType) {
-          if (asset.mimeType.includes("png")) ext = "png";
-          else if (asset.mimeType.includes("jpeg") || asset.mimeType.includes("jpg")) ext = "jpg";
-          else if (asset.mimeType.includes("gif")) ext = "gif";
-          else if (asset.mimeType.includes("webp")) ext = "webp";
-        } else {
-          const uriExt = asset.uri.split('.').pop()?.toLowerCase();
-          if (uriExt && ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(uriExt)) {
-            ext = uriExt === 'jpeg' ? 'jpg' : uriExt;
-          }
-        }
-        
-        setSelectedFile({
-          uri: asset.uri,
-          name: asset.fileName || `document_${Date.now()}.${ext}`,
-          type: asset.mimeType || "image/jpeg",
-          ext: ext, // Store extension for upload
-        });
-        setErrors({ ...errors, file: "" });
-      }
-    } catch (error) {
-      console.error("Error picking file:", error);
-      Alert.alert("Error", "Failed to pick file. Please try again.");
-    }
-  };
-
   const handleFieldChange = (fieldName: string, value: any) => {
-    setFieldValues({ ...fieldValues, [fieldName]: value });
+    if (fieldName === "documentName") {
+      setDocumentName(value);
+    }
+    if (fieldName === "expirationDate") {
+      setExpirationDate(value);
+    }
     if (errors[fieldName]) {
       setErrors({ ...errors, [fieldName]: "" });
     }
@@ -153,19 +108,14 @@ export default function NewDocumentScreen() {
       newErrors.category = "Please select a document category";
     }
 
-    if (!selectedFile) {
-      newErrors.file = "Please select a file to upload";
+    if (!documentName.trim()) {
+      newErrors.documentName = "Document name is required";
     }
 
-    // Validate required fields
-    if (selectedCategory) {
-      selectedCategory.document_category_fields
-        .filter((field) => field.is_required)
-        .forEach((field) => {
-          if (!fieldValues[field.field_name]) {
-            newErrors[field.field_name] = `${field.label} is required`;
-          }
-        });
+    if (!expirationDate.trim()) {
+      newErrors.expirationDate = "Expiration date is required";
+    } else if (isNaN(Date.parse(expirationDate))) {
+      newErrors.expirationDate = "Use a valid date (YYYY-MM-DD)";
     }
 
     setErrors(newErrors);
@@ -173,7 +123,7 @@ export default function NewDocumentScreen() {
   };
 
   const handleSubmit = async () => {
-    if (!validateForm() || !selectedCategory || !selectedFile) {
+    if (!validateForm() || !selectedCategory) {
       return;
     }
 
@@ -186,14 +136,17 @@ export default function NewDocumentScreen() {
         throw new Error("User not authenticated");
       }
 
-      // Upload document using URI (function handles Blob conversion internally)
-      // Pass the detected extension if available
-      const fileExt = selectedFile.ext || "jpg";
-      await uploadDocument(user.id, selectedCategory.id, selectedFile.uri, selectedFile.name, fileExt);
+      const normalizedExpiration = new Date(expirationDate).toISOString();
+      await createDocumentEntry(
+        user.id,
+        selectedCategory.id,
+        documentName.trim(),
+        normalizedExpiration
+      );
 
       Alert.alert(
         "Success",
-        "Document uploaded successfully",
+        "Document added successfully",
         [
           {
             text: "OK",
@@ -245,7 +198,7 @@ export default function NewDocumentScreen() {
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
     >
-      <Text style={[styles.title, { color: Colors.text }]}>Upload Document</Text>
+      <Text style={[styles.title, { color: Colors.text }]}>Add Document</Text>
 
       {/* Category Selection */}
       <View style={styles.section}>
@@ -281,69 +234,38 @@ export default function NewDocumentScreen() {
         )}
       </View>
 
-      {/* File Picker */}
+      {/* Document Details */}
       {selectedCategory && (
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: Colors.text }]}>Select File</Text>
-          {selectedFile ? (
-            <Card style={[styles.fileCard, { backgroundColor: Colors.card }]}>
-              <View style={styles.fileInfo}>
-                <File size={24} color={Colors.primary} />
-                <View style={styles.fileDetails}>
-                  <Text style={[styles.fileName, { color: Colors.text }]} numberOfLines={1}>
-                    {selectedFile.name}
-                  </Text>
-                  <Text style={[styles.fileType, { color: Colors.lightText }]}>
-                    {selectedFile.type}
-                  </Text>
-                </View>
-                <TouchableOpacity onPress={() => setSelectedFile(null)}>
-                  <X size={20} color={Colors.lightText} />
-                </TouchableOpacity>
-              </View>
-            </Card>
-          ) : (
-            <TouchableOpacity
-              style={[styles.filePicker, { backgroundColor: Colors.lightBackground, borderColor: Colors.border }]}
-              onPress={handlePickFile}
-            >
-              <Upload size={24} color={Colors.primary} />
-              <Text style={[styles.filePickerText, { color: Colors.text }]}>Tap to select file</Text>
-            </TouchableOpacity>
-          )}
-          {errors.file && (
-            <Text style={[styles.errorText, { color: "#ff4444" }]}>{errors.file}</Text>
-          )}
-        </View>
-      )}
-
-      {/* Dynamic Fields */}
-      {selectedCategory && selectedCategory.document_category_fields.length > 0 && (
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: Colors.text }]}>Additional Information</Text>
-          {selectedCategory.document_category_fields
-            .sort((a, b) => a.sort_order - b.sort_order)
-            .map((field) => (
-              <View key={field.id} style={styles.fieldContainer}>
-                <Input
-                  label={field.label + (field.is_required ? " *" : "")}
-                  placeholder={`Enter ${field.label.toLowerCase()}`}
-                  value={fieldValues[field.field_name] || ""}
-                  onChangeText={(value) => handleFieldChange(field.field_name, value)}
-                  error={errors[field.field_name]}
-                />
-              </View>
-            ))}
+          <Text style={[styles.sectionTitle, { color: Colors.text }]}>Document Details</Text>
+          <View style={styles.fieldContainer}>
+            <Input
+              label="Document Name *"
+              placeholder="Enter document name"
+              value={documentName}
+              onChangeText={(value) => handleFieldChange("documentName", value)}
+              error={errors.documentName}
+            />
+          </View>
+          <View style={styles.fieldContainer}>
+            <Input
+              label="Expiration Date *"
+              placeholder="YYYY-MM-DD"
+              value={expirationDate}
+              onChangeText={(value) => handleFieldChange("expirationDate", value)}
+              error={errors.expirationDate}
+            />
+          </View>
         </View>
       )}
 
       {/* Submit Button */}
       <Button
-        title={isUploading ? "Uploading..." : "Upload Document"}
+        title={isUploading ? "Saving..." : "Save Document"}
         onPress={handleSubmit}
         style={styles.submitButton}
         fullWidth
-        disabled={isUploading || !selectedCategory || !selectedFile}
+        disabled={isUploading || !selectedCategory}
       />
     </ScrollView>
   );
@@ -403,38 +325,6 @@ const styles = StyleSheet.create({
   categoryDescription: {
     fontSize: 14,
     lineHeight: 20,
-  },
-  filePicker: {
-    borderWidth: 2,
-    borderStyle: "dashed",
-    borderRadius: 12,
-    padding: 32,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  filePickerText: {
-    marginTop: 8,
-    fontSize: 14,
-    fontWeight: "500",
-  },
-  fileCard: {
-    padding: 16,
-  },
-  fileInfo: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
-  fileDetails: {
-    flex: 1,
-  },
-  fileName: {
-    fontSize: 14,
-    fontWeight: "600",
-    marginBottom: 4,
-  },
-  fileType: {
-    fontSize: 12,
   },
   fieldContainer: {
     marginBottom: 16,

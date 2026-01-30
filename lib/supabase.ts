@@ -269,6 +269,62 @@ export async function uploadDocument(userId: string, categoryId: string, fileUri
 }
 
 /**
+ * Create a document entry without uploading a file.
+ * Stores expiration date in metadata for now.
+ */
+export async function createDocumentEntry(
+  userId: string,
+  categoryId: string,
+  originalName: string,
+  expirationDate: string
+) {
+  if (!userId) throw new Error("User not authenticated");
+
+  try {
+    const { data: category } = await supabase
+      .from("document_categories")
+      .select("is_premium")
+      .eq("id", categoryId)
+      .single();
+
+    if (category?.is_premium) {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("subscription_tier")
+        .eq("id", userId)
+        .single();
+
+      if (profile?.subscription_tier === "free") {
+        throw new Error("Premium feature");
+      }
+    }
+
+    const filePath = `manual/${userId}/${categoryId}/${Date.now()}`;
+
+    const { data, error } = await supabase
+      .from("documents")
+      .insert({
+        user_id: userId,
+        category_id: categoryId,
+        file_path: filePath,
+        original_name: originalName,
+        metadata: {
+          expiration_date: expirationDate,
+          has_file: false,
+        },
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error("Error creating document entry:", error);
+    throw error;
+  }
+}
+
+/**
  * Load document categories with their fields
  * @returns Array of document categories with nested fields
  */
@@ -330,6 +386,7 @@ export async function loadUserDocuments() {
       is_rejected,
       admin_notes,
       created_at,
+      metadata,
       document_categories (
         id,
         title,
@@ -344,6 +401,13 @@ export async function loadUserDocuments() {
   // Generate signed URLs for each document
   const documentsWithUrls = await Promise.all(
     (documents || []).map(async (doc) => {
+      if (doc.file_path?.startsWith("manual/")) {
+        return {
+          ...doc,
+          preview_url: null,
+        };
+      }
+
       const { data: signedUrlData } = await supabase.storage
         .from("documents")
         .createSignedUrl(doc.file_path, 60 * 60); // 1 hour expiry
@@ -370,13 +434,15 @@ export async function deleteDocument(documentId: string, filePath: string) {
     throw new Error('User not authenticated');
   }
 
-  // Delete file from storage
-  const { error: storageError } = await supabase.storage
-    .from("documents")
-    .remove([filePath]);
+  // Delete file from storage when it exists
+  if (!filePath.startsWith("manual/")) {
+    const { error: storageError } = await supabase.storage
+      .from("documents")
+      .remove([filePath]);
 
-  if (storageError) {
-    throw storageError;
+    if (storageError) {
+      throw storageError;
+    }
   }
 
   // Delete DB row (RLS will ensure user can only delete their own documents)

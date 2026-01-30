@@ -17,6 +17,10 @@ interface Document {
   admin_notes: string | null;
   created_at: string;
   preview_url: string | null;
+  metadata?: {
+    expiration_date?: string;
+    [key: string]: any;
+  } | null;
   document_categories: {
     id: string;
     title: string;
@@ -207,6 +211,11 @@ export default function DocumentsScreen() {
                   <Text style={[styles.documentDate, { color: Colors.lightText }]}>
                     Uploaded: {new Date(item.created_at).toLocaleDateString()}
                   </Text>
+                  {item.metadata?.expiration_date && (
+                    <Text style={[styles.documentDate, { color: Colors.lightText }]}>
+                      Expires: {new Date(item.metadata.expiration_date).toLocaleDateString()}
+                    </Text>
+                  )}
                   <View style={styles.statusRow}>
                     <View
                       style={[
