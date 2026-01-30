@@ -9,9 +9,10 @@ interface StageProgressProps {
   stage: JourneyProgress;
   onPress?: () => void;
   isLocked?: boolean;
+  lockedLabel?: string;
 }
 
-const StageProgress: React.FC<StageProgressProps> = ({ stage, onPress, isLocked = false }) => {
+const StageProgress: React.FC<StageProgressProps> = ({ stage, onPress, isLocked = false, lockedLabel }) => {
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const opacityAnim = useRef(new Animated.Value(0.9)).current;
   
@@ -152,7 +153,9 @@ const StageProgress: React.FC<StageProgressProps> = ({ stage, onPress, isLocked 
             {isLocked ? (
               <View style={[styles.completedBadge, { backgroundColor: Colors.lightBackground }]}>
                 <Lock size={14} color={Colors.lightText} />
-                <Text style={[styles.completedText, { color: Colors.lightText }]}>Premium</Text>
+                <Text style={[styles.completedText, { color: Colors.lightText }]}>
+                  {lockedLabel || "Premium"}
+                </Text>
               </View>
             ) : stage.completed && (
               <View style={styles.completedBadge}>
@@ -173,7 +176,7 @@ const StageProgress: React.FC<StageProgressProps> = ({ stage, onPress, isLocked 
           />
           <View style={styles.progressTextRow}>
             <Text style={styles.progressText}>
-              {isLocked ? "Premium required" : `${completedTasks}/${totalTasks} tasks`}
+              {isLocked ? `${lockedLabel || "Premium"} required` : `${completedTasks}/${totalTasks} tasks`}
             </Text>
             <Text style={[styles.progressPercent, { color: isLocked ? Colors.lightText : stageColor }]}>
               {isLocked ? "🔒" : `${stage.progress}%`}

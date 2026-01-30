@@ -7,7 +7,9 @@ import { CheckSquare, Square, Award, Clock, Calendar, Star, Trophy, Sparkles, Ta
 import { useColors } from "@/hooks/useColors";
 import Card from "@/components/Card";
 import ProgressBar from "@/components/ProgressBar";
+import Button from "@/components/Button";
 import { useJourneyStore } from "@/store/journeyStore";
+import { useUserStore } from "@/store/userStore";
 import { JourneyStage, Task } from "@/types/user";
 import { supabase } from "@/lib/supabase";
 
@@ -73,6 +75,7 @@ export default function StageDetailScreen() {
     markAcceptance,
     addRecentMilestone 
   } = useJourneyStore();
+  const { user } = useUserStore();
 
   const checklistId = id as string;
   const stage =
@@ -89,10 +92,45 @@ export default function StageDetailScreen() {
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
   const [acceptanceLetterChecked, setAcceptanceLetterChecked] = useState<boolean>(false);
 
+  const allowedTiers: Record<string, string[]> = {
+    free: ["free"],
+    basic: ["free", "basic"],
+    standard: ["free", "basic", "standard"],
+    premium: ["free", "basic", "standard", "premium"],
+    pro: ["free", "basic", "standard", "premium"],
+  };
+
+  const resolvedUserTier = (user?.subscriptionTier === "pro" ? "premium" : (user?.subscriptionTier || "free"));
+  const canAccessStage = (tier?: string) => {
+    if (!tier) return true;
+    const normalizedTier = tier === "pro" ? "premium" : tier;
+    return (allowedTiers[resolvedUserTier] || allowedTiers.free).includes(normalizedTier);
+  };
+
+  const isLocked = stage?.subscriptionTier ? !canAccessStage(stage.subscriptionTier) : false;
+
   if (!stage) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: Colors.background }]} edges={['top']}>
         <Text style={[styles.errorText, { color: Colors.text }]}>Stage not found</Text>
+      </SafeAreaView>
+    );
+  }
+
+  if (isLocked) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: Colors.background }]} edges={['top']}>
+        <View style={styles.lockedContainer}>
+          <Text style={[styles.lockedTitle, { color: Colors.text }]}>Upgrade Required</Text>
+          <Text style={[styles.lockedDescription, { color: Colors.lightText }]}>
+            This checklist is available on a higher plan. Upgrade to unlock these tasks.
+          </Text>
+          <Button
+            title="View Plans"
+            onPress={() => router.push("/premium")}
+            fullWidth
+          />
+        </View>
       </SafeAreaView>
     );
   }
@@ -438,6 +476,23 @@ const styles = StyleSheet.create({
     fontSize: 16,
     textAlign: "center",
     marginTop: 50,
+  },
+  lockedContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 24,
+  },
+  lockedTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    marginBottom: 8,
+    textAlign: "center",
+  },
+  lockedDescription: {
+    fontSize: 14,
+    textAlign: "center",
+    marginBottom: 16,
   },
   header: {
     marginBottom: 8,

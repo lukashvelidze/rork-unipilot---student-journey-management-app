@@ -27,6 +27,7 @@ export interface JourneyProgress {
   stage: JourneyStage;
   title: string;
   description?: string;
+  subscriptionTier?: string;
   progress: number; // 0-100
   completed: boolean;
   completedDate?: string;
@@ -35,6 +36,7 @@ export interface JourneyProgress {
   checklists?: {
     id: string;
     title: string;
+    subscriptionTier?: string;
     items: Task[];
   }[];
 }

@@ -27,6 +27,7 @@ export default function JourneyScreen() {
   const params = useLocalSearchParams();
   const Colors = useColors();
   const { user } = useUserStore();
+  const [userTier, setUserTier] = useState<string>("free");
   const { 
     journeyProgress, 
     recentMilestone, 
@@ -38,6 +39,39 @@ export default function JourneyScreen() {
     loadMemories,
   } = useJourneyStore();
   const [activeTab, setActiveTab] = useState<"roadmap" | "map" | "timeline" | "memories">(params.tab === "memories" ? "memories" : "roadmap");
+
+  const allowedTiers: Record<string, string[]> = {
+    free: ["free"],
+    basic: ["free", "basic"],
+    standard: ["free", "basic", "standard"],
+    premium: ["free", "basic", "standard", "premium"],
+    pro: ["free", "basic", "standard", "premium"],
+  };
+
+  const resolvedUserTier = userTier === "pro" ? "premium" : userTier;
+  const canAccessTier = (tier?: string) => {
+    if (!tier) return true;
+    const normalizedTier = tier === "pro" ? "premium" : tier;
+    return (allowedTiers[resolvedUserTier] || allowedTiers.free).includes(normalizedTier);
+  };
+
+  const promptUpgrade = (tierLabel?: string) => {
+    const label = tierLabel ? `${tierLabel} ` : "";
+    Alert.alert(
+      "Upgrade Required",
+      `${label}tasks are available on a higher plan. Upgrade to unlock this checklist.`,
+      [
+        { text: "Not now", style: "cancel" },
+        { text: "View Plans", onPress: () => router.push("/premium") },
+      ]
+    );
+  };
+
+  const formatTierLabel = (tier?: string) => {
+    if (!tier) return "Premium";
+    const normalized = tier === "pro" ? "premium" : tier;
+    return normalized.charAt(0).toUpperCase() + normalized.slice(1);
+  };
   const [showCelebration, setShowCelebration] = useState(false);
   const [dailyQuote, setDailyQuote] = useState(() => getRandomQuote(generalQuotes));
   const [fadeAnim] = useState(new Animated.Value(0));
@@ -115,8 +149,11 @@ export default function JourneyScreen() {
       
       // Normalize tier: map "pro" to "premium" for lookup
       const normalizedTier = profile.subscription_tier === "pro" ? "premium" : (profile.subscription_tier || "free");
-      const userTier = normalizedTier;
-      const tiersToShow = allowedTiers[userTier] || allowedTiers.free;
+      const resolvedTier = normalizedTier;
+      setUserTier(resolvedTier);
+      const tiersToShow = resolvedTier === "free"
+        ? ["free", "basic", "standard", "premium"]
+        : (allowedTiers[resolvedTier] || allowedTiers.free);
       
       // Build the OR filter string - ensure country code is properly formatted
       const countryCode = profile.destination_country.trim().toUpperCase();
@@ -250,6 +287,7 @@ export default function JourneyScreen() {
           stage: determineStage(checklist.title),
           title: checklist.title,
           description: checklist.description || undefined,
+          subscriptionTier: checklist.subscription_tier,
           progress: progressPercent,
           completed: progressPercent === 100,
           completedDate: progressPercent === 100 ? new Date().toISOString() : undefined,
@@ -259,6 +297,7 @@ export default function JourneyScreen() {
             {
               id: checklist.id,
               title: checklist.title,
+              subscriptionTier: checklist.subscription_tier,
               items: tasks,
             },
           ],
@@ -508,14 +547,20 @@ export default function JourneyScreen() {
             <View style={styles.stagesContainer}>
               {journeyProgress.map((stage) => {
                 const checklistId = stage.id || stage.stage;
+                const isLocked = !canAccessTier(stage.subscriptionTier);
                 return (
                   <StageProgress
                     key={checklistId}
                     stage={stage}
                     onPress={() => {
+                      if (isLocked) {
+                        promptUpgrade(formatTierLabel(stage.subscriptionTier));
+                        return;
+                      }
                       router.push(`/journey/${checklistId}`);
                     }}
-                    isLocked={false}
+                    isLocked={isLocked}
+                    lockedLabel={formatTierLabel(stage.subscriptionTier)}
                   />
                 );
               })}

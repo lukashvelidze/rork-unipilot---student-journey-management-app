@@ -16,6 +16,7 @@ interface Checklist {
   visa_type: string;
   title: string;
   sort_order: number;
+  subscription_tier?: string;
 }
 
 interface ChecklistItem {
@@ -43,15 +44,57 @@ export default function ApplicationChecklistScreen() {
   const { user } = useUserStore();
   
   const [checklists, setChecklists] = useState<ChecklistWithItems[]>([]);
+  const [userTier, setUserTier] = useState<string>("free");
   const [userProgress, setUserProgress] = useState<Record<string, UserProgress>>({});
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [isLoading, setIsLoading] = useState(true);
 
+  const allowedTiers: Record<string, string[]> = {
+    free: ["free"],
+    basic: ["free", "basic"],
+    standard: ["free", "basic", "standard"],
+    premium: ["free", "basic", "standard", "premium"],
+    pro: ["free", "basic", "standard", "premium"],
+  };
+
+  const resolvedUserTier = userTier === "pro" ? "premium" : userTier;
+  const canAccessTier = (tier?: string) => {
+    if (!tier) return true;
+    const normalizedTier = tier === "pro" ? "premium" : tier;
+    return (allowedTiers[resolvedUserTier] || allowedTiers.free).includes(normalizedTier);
+  };
+
+  const formatTierLabel = (tier?: string) => {
+    if (!tier) return "Premium";
+    const normalized = tier === "pro" ? "premium" : tier;
+    return normalized.charAt(0).toUpperCase() + normalized.slice(1);
+  };
+
+  const promptUpgrade = (tierLabel?: string) => {
+    const label = tierLabel ? `${formatTierLabel(tierLabel)} ` : "";
+    Alert.alert(
+      "Upgrade Required",
+      `${label}checklists are available on a higher plan. Upgrade to unlock them.`,
+      [
+        { text: "Not now", style: "cancel" },
+        { text: "View Plans", onPress: () => router.push("/premium") },
+      ]
+    );
+  };
+
   // Fetch checklists and items from Supabase
   useEffect(() => {
     loadChecklistsForUser();
   }, [user?.destinationCountry?.code, user?.id]);
+
+  useEffect(() => {
+    if (selectedCategory === "all") return;
+    const selectedChecklist = checklists.find((checklist) => checklist.id === selectedCategory);
+    if (selectedChecklist && !canAccessTier(selectedChecklist.subscription_tier)) {
+      setSelectedCategory("all");
+    }
+  }, [checklists, selectedCategory, userTier]);
 
   /**
    * Load checklists for the current user based on their subscription tier, country, and visa type
@@ -102,8 +145,11 @@ export default function ApplicationChecklistScreen() {
       
       // Normalize tier: map "pro" to "premium" for lookup
       const normalizedTier = profile.subscription_tier === "pro" ? "premium" : (profile.subscription_tier || "free");
-      const userTier = normalizedTier;
-      const tiersToShow = allowedTiers[userTier] || allowedTiers.free;
+      const resolvedTier = normalizedTier;
+      setUserTier(resolvedTier);
+      const tiersToShow = resolvedTier === "free"
+        ? ["free", "basic", "standard", "premium"]
+        : (allowedTiers[resolvedTier] || allowedTiers.free);
       
       // Normalize country code and visa type
       const countryCode = profile.destination_country.trim().toUpperCase();
@@ -228,21 +274,25 @@ export default function ApplicationChecklistScreen() {
   }
 
   // Get all items from all checklists
-  const allItems = checklists.flatMap(checklist => 
+  const allItems = checklists.flatMap(checklist =>
     checklist.items.map(item => ({
       ...item,
       checklistTitle: checklist.title,
       checklistId: checklist.id,
+      checklistTier: checklist.subscription_tier || "free",
+      isLocked: !canAccessTier(checklist.subscription_tier),
     }))
   );
 
   // Categories based on checklist titles
   const categories = [
-    { key: "all", title: "All Tasks", count: allItems.length },
+    { key: "all", title: "All Tasks", count: allItems.length, isLocked: false, tier: "free" },
     ...checklists.map(checklist => ({
       key: checklist.id,
       title: checklist.title,
       count: checklist.items.length,
+      tier: checklist.subscription_tier || "free",
+      isLocked: !canAccessTier(checklist.subscription_tier),
     })),
   ];
 
@@ -384,17 +434,26 @@ export default function ApplicationChecklistScreen() {
               style={[
                 styles.categoryButton,
                 selectedCategory === category.key && { backgroundColor: Colors.primary },
-                { borderColor: Colors.border }
+                { borderColor: Colors.border },
+                category.isLocked && styles.categoryButtonLocked,
+                category.isLocked && { backgroundColor: Colors.lightBackground }
               ]}
-              onPress={() => setSelectedCategory(category.key)}
+              onPress={() => {
+                if (category.isLocked) {
+                  promptUpgrade(category.tier);
+                  return;
+                }
+                setSelectedCategory(category.key);
+              }}
             >
               <Text
                 style={[
                   styles.categoryButtonText,
-                  { color: selectedCategory === category.key ? Colors.white : Colors.text }
+                  { color: selectedCategory === category.key ? Colors.white : Colors.text },
+                  category.isLocked && { color: Colors.lightText }
                 ]}
               >
-                {category.title}
+                {category.isLocked ? `🔒 ${category.title}` : category.title}
               </Text>
               <View style={[
                 styles.categoryCount,
@@ -404,7 +463,8 @@ export default function ApplicationChecklistScreen() {
               ]}>
                 <Text style={[
                   styles.categoryCountText,
-                  { color: selectedCategory === category.key ? Colors.white : Colors.text }
+                  { color: selectedCategory === category.key ? Colors.white : Colors.text },
+                  category.isLocked && { color: Colors.lightText }
                 ]}>
                   {category.count}
                 </Text>
@@ -434,21 +494,37 @@ export default function ApplicationChecklistScreen() {
           <View style={styles.tasksContainer}>
             {filteredItems.map((item) => {
               const isCompleted = userProgress[item.id]?.is_completed || false;
+              const isLocked = !!item.isLocked;
               return (
-                <Card key={item.id} style={[styles.taskCard, { backgroundColor: Colors.card }]}>
+                <Card
+                  key={item.id}
+                  style={[
+                    styles.taskCard,
+                    { backgroundColor: Colors.card },
+                    isLocked && styles.taskCardLocked,
+                  ]}
+                >
                   <TouchableOpacity
                     style={styles.taskHeader}
                     onPress={() => {
+                      if (isLocked) {
+                        promptUpgrade(item.checklistTier);
+                        return;
+                      }
                       handleTaskToggle(item.id);
                     }}
                     activeOpacity={0.7}
                   >
                     <View style={styles.taskLeft}>
-                      <View style={[styles.taskCheckbox, { borderColor: isCompleted ? Colors.success : Colors.border }]}>
+                      <View style={[
+                        styles.taskCheckbox,
+                        { borderColor: isCompleted ? Colors.success : Colors.border },
+                        isLocked && { borderColor: Colors.lightText }
+                      ]}>
                         {isCompleted ? (
                           <CheckSquare size={20} color={Colors.success} />
                         ) : (
-                          <Square size={20} color={Colors.lightText} />
+                          <Square size={20} color={isLocked ? Colors.lightText : Colors.lightText} />
                         )}
                       </View>
                       <View style={styles.taskContent}>
@@ -457,6 +533,7 @@ export default function ApplicationChecklistScreen() {
                             styles.taskTitle, 
                             { color: isCompleted ? Colors.lightText : Colors.text },
                             isCompleted && styles.taskTitleCompleted
+                            , isLocked && { color: Colors.lightText }
                           ]}>
                             {item.label}
                           </Text>
@@ -466,6 +543,13 @@ export default function ApplicationChecklistScreen() {
                                 {item.field_type.toUpperCase()}
                               </Text>
                             </View>
+                            {isLocked && (
+                              <View style={[styles.lockedBadge, { backgroundColor: Colors.lightBackground }]}>
+                                <Text style={[styles.lockedBadgeText, { color: Colors.lightText }]}>
+                                  🔒 {formatTierLabel(item.checklistTier)}
+                                </Text>
+                              </View>
+                            )}
                           </View>
                         </View>
                         {item.checklistTitle && (
@@ -476,7 +560,13 @@ export default function ApplicationChecklistScreen() {
                       </View>
                     </View>
                     <TouchableOpacity
-                      onPress={() => toggleTaskExpansion(item.id)}
+                      onPress={() => {
+                        if (isLocked) {
+                          promptUpgrade(item.checklistTier);
+                          return;
+                        }
+                        toggleTaskExpansion(item.id);
+                      }}
                       style={styles.expandButton}
                     >
                       {expandedTasks.has(item.id) ? (
@@ -624,6 +714,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     marginRight: 8,
   },
+  categoryButtonLocked: {
+    opacity: 0.6,
+  },
   categoryButtonText: {
     fontSize: 14,
     fontWeight: "500",
@@ -667,6 +760,9 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     borderRadius: 12,
     position: "relative",
+  },
+  taskCardLocked: {
+    opacity: 0.6,
   },
   taskHeader: {
     flexDirection: "row",
@@ -737,6 +833,15 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   typeText: {
+    fontSize: 10,
+    fontWeight: "600",
+  },
+  lockedBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  lockedBadgeText: {
     fontSize: 10,
     fontWeight: "600",
   },
