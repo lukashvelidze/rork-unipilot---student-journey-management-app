@@ -2,10 +2,11 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert, Linking, ActivityIndicator, Platform, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter, Stack, useFocusEffect } from "expo-router";
-import { Crown, Check, Zap, Star, ArrowLeft, Mic, MessageSquare, BookOpen, Lock } from "lucide-react-native";
+import { Crown, Check, Zap, Star, Mic, MessageSquare, BookOpen, Lock } from "lucide-react-native";
 import { useColors } from "@/hooks/useColors";
 import Button from "@/components/Button";
 import Card from "@/components/Card";
+import BackButton from "@/components/BackButton";
 import { supabase } from "@/lib/supabase";
 import { buildPaddleCheckoutUrl, PADDLE_PRICE_IDS, canMakePayments } from "@/lib/paddle";
 import {
@@ -465,14 +466,7 @@ export default function PremiumScreen() {
         <Stack.Screen
           options={{
             title: "Premium Resources",
-            headerLeft: () => (
-              <TouchableOpacity
-                onPress={() => router.replace("/(tabs)")}
-                style={{ marginLeft: 8 }}
-              >
-                <ArrowLeft size={24} color={Colors.text} />
-              </TouchableOpacity>
-            ),
+            headerLeft: () => <BackButton onPress={() => router.replace("/(tabs)")} />,
           }}
         />
         {/* Header */}
@@ -581,14 +575,7 @@ export default function PremiumScreen() {
       <Stack.Screen
         options={{
           title: "UniPilot Premium",
-          headerLeft: () => (
-            <TouchableOpacity
-              onPress={() => router.replace("/(tabs)")}
-              style={{ marginLeft: 8 }}
-            >
-              <ArrowLeft size={24} color={Colors.text} />
-            </TouchableOpacity>
-          ),
+          headerLeft: () => <BackButton onPress={() => router.replace("/(tabs)")} />,
         }}
       />
       {/* Header */}

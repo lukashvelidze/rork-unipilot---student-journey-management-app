@@ -3,11 +3,12 @@ import { StyleSheet, View, Platform, Text, ActivityIndicator } from 'react-nativ
 import { WebView } from 'react-native-webview';
 import { useLocalSearchParams } from 'expo-router';
 import { Stack } from 'expo-router';
-import { ArrowLeft, AlertCircle } from 'lucide-react-native';
+import { AlertCircle } from 'lucide-react-native';
 import { TouchableOpacity } from 'react-native';
 import { useColors } from '@/hooks/useColors';
 import { useAppBack } from '@/hooks/useAppBack';
 import { WebViewErrorBoundary } from '@/components/ErrorBoundary';
+import BackButton from "@/components/BackButton";
 
 export default function WebViewScreen() {
   const { url, title } = useLocalSearchParams<{ url: string; title?: string }>();
@@ -31,11 +32,7 @@ export default function WebViewScreen() {
         <Stack.Screen
           options={{
             title: screenTitle,
-            headerLeft: () => (
-              <TouchableOpacity onPress={handleBack}>
-                <ArrowLeft size={24} color={Colors.text} />
-              </TouchableOpacity>
-            ),
+            headerLeft: () => <BackButton onPress={handleBack} />,
           }}
         />
       </View>
@@ -48,11 +45,7 @@ export default function WebViewScreen() {
         <Stack.Screen
           options={{
             title: screenTitle,
-            headerLeft: () => (
-              <TouchableOpacity onPress={handleBack}>
-                <ArrowLeft size={24} color={Colors.text} />
-              </TouchableOpacity>
-            ),
+            headerLeft: () => <BackButton onPress={handleBack} />,
           }}
         />
         {error ? (

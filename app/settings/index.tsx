@@ -23,7 +23,9 @@ import Theme from "@/constants/theme";
 import Card from "@/components/Card";
 import { useUserStore } from "@/store/userStore";
 import { supabase } from "@/lib/supabase";
-import { openAppleSubscriptionManager } from "@/lib/iap";
+import { openAppleSubscriptionManager, restoreApplePurchases } from "@/lib/iap";
+import { getPaddleCustomerId } from "@/lib/paddle-customer";
+import { buildPaddleCustomerPortalUrl } from "@/lib/paddle";
 
 interface SettingItem {
   id: string;
@@ -148,6 +150,45 @@ export default function SettingsScreen() {
 
   const handleManageSubscription = async () => {
     if (!isIosDevice) {
+      try {
+        const customerId = await getPaddleCustomerId();
+        if (!customerId) {
+          Alert.alert(
+            "Manage Subscription",
+            "We couldn't find a subscription linked to your account. You can view plans or contact support.",
+            [
+              { text: "Cancel", style: "cancel" },
+              { text: "View Plans", onPress: () => router.push("/premium") },
+              { text: "Contact Support", onPress: handleContactSupport },
+            ]
+          );
+          return;
+        }
+
+        const portalUrl = buildPaddleCustomerPortalUrl(customerId);
+        if (!portalUrl) {
+          Alert.alert(
+            "Manage Subscription",
+            "Subscription management isn't configured yet. Please contact support for assistance.",
+            [
+              { text: "Cancel", style: "cancel" },
+              { text: "Contact Support", onPress: handleContactSupport },
+            ]
+          );
+          return;
+        }
+
+        const supported = await Linking.canOpenURL(portalUrl);
+        if (!supported) {
+          Alert.alert("Unable to Open", "We couldn't open the subscription portal.");
+          return;
+        }
+        await Linking.openURL(portalUrl);
+      } catch (error) {
+        console.error("Open Paddle portal failed", error);
+        Alert.alert("Unable to Open", "We couldn't open the subscription portal.");
+      }
+
       return;
     }
 
@@ -171,24 +212,32 @@ export default function SettingsScreen() {
         throw new Error(authError?.message || "Not authenticated");
       }
 
-      const { data: profile, error: profileError } = await supabase
-        .from("profiles")
-        .select("subscription_tier")
-        .eq("id", authUser.id)
-        .single();
+      const entitlement = await restoreApplePurchases();
 
-      if (profileError) {
-        throw profileError;
-      }
+      if (!entitlement || entitlement === "none") {
+        await supabase
+          .from("profiles")
+          .update({ subscription_tier: "free", updated_at: new Date().toISOString() })
+          .eq("id", authUser.id);
 
-      const tier = profile?.subscription_tier === "premium" ? "pro" : profile?.subscription_tier;
-
-      if (!tier || tier === "free") {
+        updateUser({ subscriptionTier: "free", isPremium: false });
         Alert.alert("No Purchases Found", "No active App Store subscriptions were found.");
         return;
       }
 
-      updateUser({ subscriptionTier: tier });
+      const tier = entitlement === "pro" ? "pro" : entitlement;
+      const isPremiumTier = tier !== "free";
+
+      const { error: updateError } = await supabase
+        .from("profiles")
+        .update({ subscription_tier: tier, updated_at: new Date().toISOString() })
+        .eq("id", authUser.id);
+
+      if (updateError) {
+        throw updateError;
+      }
+
+      updateUser({ subscriptionTier: tier, isPremium: isPremiumTier });
       Alert.alert("Restored", "Your App Store subscription has been restored.");
     } catch (error: any) {
       console.error("Restore purchases failed", error);
@@ -244,7 +293,17 @@ export default function SettingsScreen() {
                 disabled: isRestoringPurchases,
               },
             ]
-          : []),
+          : [
+              {
+                id: "manageSubscription",
+                title: "Manage Subscription",
+                subtitle: "Update or cancel your plan",
+                icon: CreditCard,
+                iconColor: Colors.secondary,
+                type: "navigation",
+                onPress: handleManageSubscription,
+              },
+            ]),
       ] as SettingItem[],
     },
     {
