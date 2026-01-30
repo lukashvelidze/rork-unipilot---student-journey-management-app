@@ -691,8 +691,8 @@ export default function JourneyScreen() {
                   <View style={styles.timelineRight}>
                     <Card style={[
                       styles.timelineCard,
-                      { backgroundColor: Colors.card },
-                      event.completed && { backgroundColor: Colors.lightBackground }
+                      { backgroundColor: Colors.card, borderColor: Colors.border, borderWidth: 1, borderLeftColor: Colors.border },
+                      event.completed && { borderColor: Colors.success, borderLeftColor: Colors.success }
                     ]}>
                       <View style={styles.timelineCardHeader}>
                         <Text style={[

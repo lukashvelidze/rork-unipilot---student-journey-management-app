@@ -190,7 +190,7 @@ const StageProgress: React.FC<StageProgressProps> = ({ stage, onPress, isLocked 
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: Colors.white,
+    backgroundColor: Colors.card,
     borderRadius: 12,
     marginBottom: 8,
     ...Platform.select({

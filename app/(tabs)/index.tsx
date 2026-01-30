@@ -478,7 +478,7 @@ export default function HomeScreen() {
                 key={index}
                 style={[
                   styles.actionCard, 
-                  { backgroundColor: Colors.white, borderLeftColor: action.color },
+                  { backgroundColor: Colors.card, borderLeftColor: action.color, borderColor: Colors.border, borderWidth: 1 },
                   action.isPremium && !hasActiveSubscription && styles.premiumActionCard
                 ]}
                 onPress={action.onPress}
