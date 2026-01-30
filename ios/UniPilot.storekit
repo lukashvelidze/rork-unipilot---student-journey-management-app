@@ -1,0 +1,135 @@
+{
+  "appPolicies" : {
+    "eula" : "",
+    "policies" : [
+      {
+        "locale" : "en_US",
+        "policyText" : "",
+        "policyURL" : ""
+      }
+    ]
+  },
+  "identifier" : "219F8CB2",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+
+  ],
+  "settings" : {
+    "_applicationInternalID" : "6748587544",
+    "_askToBuyEnabled" : false,
+    "_billingGracePeriodEnabled" : false,
+    "_billingIssuesEnabled" : false,
+    "_developerTeamID" : "Z6Q85V4FNW",
+    "_disableDialogs" : false,
+    "_failTransactionsEnabled" : false,
+    "_lastSynchronizedDate" : 791341186.25585198,
+    "_locale" : "en_US",
+    "_renewalBillingIssuesEnabled" : false,
+    "_storefront" : "USA",
+    "_storeKitErrors" : [
+
+    ],
+    "_timeRate" : 0
+  },
+  "subscriptionGroups" : [
+    {
+      "id" : "21873706",
+      "localizations" : [
+
+      ],
+      "name" : "UniPilot Premium",
+      "subscriptions" : [
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "4.99",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "6757202344",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "Essential tools to plan your university journey.",
+              "displayName" : "UniPilot Basic",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "unipilot_basic_monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "UniPilot Basic",
+          "subscriptionGroupID" : "21873706",
+          "type" : "RecurringSubscription",
+          "winbackOffers" : [
+
+          ]
+        },
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "19.99",
+          "familyShareable" : false,
+          "groupNumber" : 3,
+          "internalID" : "6757199467",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "Full access with guidance and priority support.",
+              "displayName" : "UniPilot Premium",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "unipilot_premium_monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "UniPilot Premium",
+          "subscriptionGroupID" : "21873706",
+          "type" : "RecurringSubscription",
+          "winbackOffers" : [
+
+          ]
+        },
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "9.99",
+          "familyShareable" : false,
+          "groupNumber" : 2,
+          "internalID" : "6757201719",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "Advanced planning tools with personalized guidance.",
+              "displayName" : "UniPilot Standard",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "unipilot_standard_monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "UniPilot Standard",
+          "subscriptionGroupID" : "21873706",
+          "type" : "RecurringSubscription",
+          "winbackOffers" : [
+
+          ]
+        }
+      ]
+    }
+  ],
+  "version" : {
+    "major" : 4,
+    "minor" : 0
+  }
+}

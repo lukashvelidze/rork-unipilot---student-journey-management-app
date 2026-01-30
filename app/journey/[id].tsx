@@ -3,7 +3,7 @@ import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert, Platform }
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams, Stack } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
-import { CheckSquare, Square, ChevronLeft, Award, Clock, Calendar, Star, Trophy, Sparkles, Target, BookOpen, Plane, GraduationCap, Briefcase, Crown } from "lucide-react-native";
+import { CheckSquare, Square, Award, Clock, Calendar, Star, Trophy, Sparkles, Target, BookOpen, Plane, GraduationCap, Briefcase, Crown } from "lucide-react-native";
 import { useColors } from "@/hooks/useColors";
 import Card from "@/components/Card";
 import ProgressBar from "@/components/ProgressBar";
@@ -263,13 +263,14 @@ export default function StageDetailScreen() {
   const hasVisibleTasks = checklistSections.length > 0;
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: Colors.background }]} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: Colors.background }]} edges={['bottom']}>
       <Stack.Screen 
         options={{ 
           title: info.title,
-          headerStyle: { backgroundColor: Colors.card },
-          headerTintColor: Colors.text,
-          headerTitleStyle: { fontWeight: '600' },
+          headerTransparent: true,
+          headerShadowVisible: false,
+          headerTintColor: "#FFFFFF",
+          headerTitleStyle: { fontWeight: '600', color: "#FFFFFF" },
         }} 
       />
       
@@ -281,13 +282,6 @@ export default function StageDetailScreen() {
           end={{ x: 1, y: 1 }}
           style={styles.headerGradient}
         >
-          <TouchableOpacity
-            onPress={() => router.back()}
-            style={styles.backButton}
-            activeOpacity={0.8}
-          >
-            <ChevronLeft size={20} color="#FFFFFF" />
-          </TouchableOpacity>
           <View style={styles.headerContent}>
             <View style={styles.headerIcon}>
               <info.icon size={24} color="#FFFFFF" />
@@ -450,17 +444,9 @@ const styles = StyleSheet.create({
   },
   headerGradient: {
     padding: 16,
-    paddingTop: 12,
+    paddingTop: 56,
     paddingBottom: 16,
     position: "relative",
-  },
-  backButton: {
-    position: "absolute",
-    top: 12,
-    left: 12,
-    padding: 6,
-    borderRadius: 16,
-    backgroundColor: "rgba(0, 0, 0, 0.2)",
   },
   headerContent: {
     alignItems: "center",
