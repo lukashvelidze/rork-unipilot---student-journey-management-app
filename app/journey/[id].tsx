@@ -267,9 +267,10 @@ export default function StageDetailScreen() {
       <Stack.Screen 
         options={{ 
           title: info.title,
-          headerStyle: { backgroundColor: Colors.card },
-          headerTintColor: Colors.text,
-          headerTitleStyle: { fontWeight: '600' },
+          headerTransparent: true,
+          headerShadowVisible: false,
+          headerTintColor: "#FFFFFF",
+          headerTitleStyle: { fontWeight: '600', color: "#FFFFFF" },
         }} 
       />
       
@@ -450,7 +451,7 @@ const styles = StyleSheet.create({
   },
   headerGradient: {
     padding: 16,
-    paddingTop: 12,
+    paddingTop: 56,
     paddingBottom: 16,
     position: "relative",
   },

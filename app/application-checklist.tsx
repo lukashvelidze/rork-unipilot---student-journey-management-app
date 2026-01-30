@@ -326,9 +326,10 @@ export default function ApplicationChecklistScreen() {
       <Stack.Screen 
         options={{ 
           title: "Application Checklist",
-          headerStyle: { backgroundColor: Colors.card },
-          headerTintColor: Colors.text,
-          headerTitleStyle: { fontWeight: '600' },
+          headerTransparent: true,
+          headerShadowVisible: false,
+          headerTintColor: "#FFFFFF",
+          headerTitleStyle: { fontWeight: '600', color: "#FFFFFF" },
         }} 
       />
 
@@ -550,7 +551,7 @@ const styles = StyleSheet.create({
   },
   headerGradient: {
     padding: 16,
-    paddingTop: 20,
+    paddingTop: 64,
     position: "relative",
   },
   backButton: {
