@@ -13,6 +13,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { ArrowLeft, BookmarkPlus, Clock3, Globe2 } from "lucide-react-native";
 import { useColors } from "@/hooks/useColors";
+import { useAppBack } from "@/hooks/useAppBack";
 import {
   fetchArticleBySlug,
   canAccessArticle,
@@ -47,6 +48,7 @@ export default function ArticleDetailScreen() {
   const Colors = useColors();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const handleBack = useAppBack("/premium/articles");
   const { slug } = useLocalSearchParams<{ slug?: string }>();
 
   const [article, setArticle] = useState<Article | null>(null);
@@ -118,7 +120,7 @@ export default function ArticleDetailScreen() {
     return (
       <View style={[styles.loadingContainer, { backgroundColor: Colors.background }]}>
         <Text style={[styles.errorTitle, { color: Colors.text }]}>{errorMessage || "Article not found."}</Text>
-        <Button title="Go back" onPress={() => router.back()} />
+        <Button title="Go back" onPress={handleBack} />
       </View>
     );
   }
@@ -146,7 +148,7 @@ export default function ArticleDetailScreen() {
             >
               <View style={[styles.heroTopRow, { marginTop: insets.top + 10 }]}>
                 <TouchableOpacity
-                  onPress={() => router.back()}
+                  onPress={handleBack}
                   style={[styles.iconButton, { borderColor: Colors.white + "30" }]}
                   hitSlop={{ top: 8, left: 8, right: 8, bottom: 8 }}
                 >

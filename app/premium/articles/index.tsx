@@ -14,6 +14,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { ArrowLeft, BookmarkPlus, Clock3, Flame } from "lucide-react-native";
 import { useColors } from "@/hooks/useColors";
+import { useAppBack } from "@/hooks/useAppBack";
 import {
   fetchArticleCategories,
   fetchArticles,
@@ -170,6 +171,7 @@ const ArticleListCard = ({
 export default function PremiumArticlesScreen() {
   const Colors = useColors();
   const router = useRouter();
+  const handleBack = useAppBack("/premium");
   const insets = useSafeAreaInsets();
 
   const [categories, setCategories] = useState<ArticleCategory[]>([]);
@@ -252,7 +254,7 @@ export default function PremiumArticlesScreen() {
     <View style={[styles.pageHeader, { paddingTop: insets.top + 8 }]}>
       <View style={styles.topBar}>
         <TouchableOpacity
-          onPress={() => router.back()}
+          onPress={handleBack}
           style={[styles.iconButton, { borderColor: Colors.border }]}
           hitSlop={{ top: 8, left: 8, right: 8, bottom: 8 }}
         >

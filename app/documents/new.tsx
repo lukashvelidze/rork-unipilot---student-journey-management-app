@@ -3,6 +3,7 @@ import { StyleSheet, View, Text, ScrollView, Alert, ActivityIndicator, Touchable
 import { useRouter } from "expo-router";
 import { Upload, File, X, Lock, Crown } from "lucide-react-native";
 import { useColors } from "@/hooks/useColors";
+import { useAppBack } from "@/hooks/useAppBack";
 import Input from "@/components/Input";
 import Button from "@/components/Button";
 import Card from "@/components/Card";
@@ -33,6 +34,7 @@ interface DocumentCategory {
 export default function NewDocumentScreen() {
   const router = useRouter();
   const Colors = useColors();
+  const handleBack = useAppBack("/(tabs)/documents");
   const { user } = useUserStore();
   
   const [categories, setCategories] = useState<DocumentCategory[]>([]);
@@ -195,7 +197,7 @@ export default function NewDocumentScreen() {
         [
           {
             text: "OK",
-            onPress: () => router.back(),
+            onPress: handleBack,
           },
         ]
       );

@@ -5,6 +5,7 @@ import { useRouter } from "expo-router";
 import { Camera, Image as ImageIcon, X, Check, ChevronDown } from "lucide-react-native";
 import * as ImagePicker from "expo-image-picker";
 import { useColors } from "@/hooks/useColors";
+import { useAppBack } from "@/hooks/useAppBack";
 import Card from "@/components/Card";
 import Button from "@/components/Button";
 import { useJourneyStore } from "@/store/journeyStore";
@@ -13,6 +14,7 @@ import { JourneyStage, MemoryMood } from "@/types/user";
 export default function NewMemoryScreen() {
   const router = useRouter();
   const Colors = useColors();
+  const handleBack = useAppBack("/(tabs)/journey");
   const { addMemory } = useJourneyStore();
   
   const [title, setTitle] = useState("");
@@ -143,7 +145,7 @@ export default function NewMemoryScreen() {
     <SafeAreaView style={[styles.container, { backgroundColor: Colors.background }]} edges={['top']}>
       {/* Header */}
       <View style={[styles.header, { backgroundColor: Colors.card, borderBottomColor: Colors.border }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.headerButton}>
+        <TouchableOpacity onPress={handleBack} style={styles.headerButton}>
           <X size={24} color={Colors.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: Colors.text }]}>Create Memory</Text>

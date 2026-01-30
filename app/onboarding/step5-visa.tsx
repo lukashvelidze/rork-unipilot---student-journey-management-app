@@ -3,6 +3,7 @@ import { StyleSheet, View, Text, ScrollView, TouchableOpacity, ActivityIndicator
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { ChevronRight } from "lucide-react-native";
+import { useAppBack } from "@/hooks/useAppBack";
 import Colors from "@/constants/colors";
 import Button from "@/components/Button";
 import { useUserStore } from "@/store/userStore";
@@ -21,6 +22,7 @@ interface VisaType {
 export default function Step5Visa() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const handleBack = useAppBack("/(tabs)");
   const params = useLocalSearchParams<{
     pendingCountryCode?: string;
     pendingCountryName?: string;
@@ -388,10 +390,10 @@ export default function Step5Visa() {
           onPress={() => {
             if (isFromEditProfile) {
               // Go back to edit profile without saving
-              router.back();
+              handleBack();
             } else if (user?.onboardingCompleted) {
               // Go back to previous screen
-              router.back();
+              handleBack();
             } else {
               router.push("/onboarding/step6-finish");
             }

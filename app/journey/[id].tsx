@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert, Platform } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert } from "react-native";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams, Stack } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { CheckSquare, Square, Award, Clock, Calendar, Star, Trophy, Sparkles, Target, BookOpen, Plane, GraduationCap, Briefcase, Crown } from "lucide-react-native";
@@ -67,6 +67,7 @@ export default function StageDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
   const Colors = useColors();
+  const insets = useSafeAreaInsets();
   const { 
     journeyProgress, 
     updateTaskCompletion, 
@@ -280,7 +281,7 @@ export default function StageDetailScreen() {
           colors={info.gradient}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={styles.headerGradient}
+          style={[styles.headerGradient, { paddingTop: insets.top + 16 }]}
         >
           <View style={styles.headerContent}>
             <View style={styles.headerIcon}>

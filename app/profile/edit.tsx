@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { StyleSheet, View, Text, ScrollView, Alert, TouchableOpacity, ActivityIndicator } from "react-native";
 import { useRouter } from "expo-router";
 import { Save, User, Mail, MapPin, GraduationCap, Calendar, Target } from "lucide-react-native";
+import { useAppBack } from "@/hooks/useAppBack";
 import Colors from "@/constants/colors";
 import Theme from "@/constants/theme";
 import Card from "@/components/Card";
@@ -34,6 +35,7 @@ const careerGoals = [
 
 export default function EditProfileScreen() {
   const router = useRouter();
+  const handleBack = useAppBack("/(tabs)/profile");
   const { user, updateUser } = useUserStore();
 
   const [formData, setFormData] = useState({
@@ -226,7 +228,7 @@ export default function EditProfileScreen() {
           [
             {
               text: "OK",
-              onPress: () => router.back(),
+              onPress: handleBack,
             },
           ]
         );

@@ -18,6 +18,7 @@ import { Mic, MicOff, PhoneOff, Volume2, AlertCircle, Lock, Crown, ArrowRight, C
 import { LinearGradient } from "expo-linear-gradient";
 import { Animated, Easing } from "react-native";
 import { useColors } from "@/hooks/useColors";
+import { useAppBack } from "@/hooks/useAppBack";
 import Card from "@/components/Card";
 import Button from "@/components/Button";
 import { useUserStore } from "@/store/userStore";
@@ -44,6 +45,7 @@ const isExpoGo = Constants.executionEnvironment === "storeClient";
 function InterviewContent() {
  const Colors = useColors();
  const navigation = useNavigation();
+ const handleBack = useAppBack("/premium");
  const { user } = useUserStore();
  const scrollViewRef = useRef<ScrollView>(null);
  const isMountedRef = useRef(true);
@@ -474,7 +476,7 @@ function InterviewContent() {
  {/* Header Section */}
  <View style={styles.header}>
  <TouchableOpacity
- onPress={() => navigation.goBack()}
+ onPress={handleBack}
  style={[styles.inlineBackButton, { backgroundColor: Colors.lightBackground }]}
  activeOpacity={0.8}
  >
@@ -644,6 +646,7 @@ export default function InterviewSimulatorScreen() {
  const Colors = useColors();
  const insets = useSafeAreaInsets();
  const router = useRouter();
+ const handleBack = useAppBack("/premium");
  const { setInCriticalFlow } = useAppStateStore();
 
  const [isCheckingAccess, setIsCheckingAccess] = useState(true);
@@ -809,7 +812,7 @@ export default function InterviewSimulatorScreen() {
  style={styles.upgradeButton}
  />
 
- <TouchableOpacity onPress={() => router.back()} style={styles.backLink}>
+ <TouchableOpacity onPress={handleBack} style={styles.backLink}>
  <Text style={[styles.backLinkText, { color: Colors.primary }]}>
  Go Back
  </Text>

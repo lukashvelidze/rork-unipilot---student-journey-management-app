@@ -4,6 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { ArrowLeft } from "lucide-react-native";
 import { useColors } from "@/hooks/useColors";
+import { useAppBack } from "@/hooks/useAppBack";
 import Button from "@/components/Button";
 import Input from "@/components/Input";
 import { useUserStore } from "@/store/userStore";
@@ -13,6 +14,7 @@ import { SubscriptionTier } from "@/types/user";
 export default function SignInScreen() {
   const router = useRouter();
   const Colors = useColors();
+  const handleBack = useAppBack("/onboarding");
   const { user, setUser } = useUserStore();
   
   const [email, setEmail] = useState("");
@@ -121,7 +123,7 @@ export default function SignInScreen() {
           {/* Header */}
           <View style={styles.header}>
             <TouchableOpacity
-              onPress={() => router.back()}
+              onPress={handleBack}
               style={styles.backButton}
             >
               <ArrowLeft size={24} color={Colors.text} />

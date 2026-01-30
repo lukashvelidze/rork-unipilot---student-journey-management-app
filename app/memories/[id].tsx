@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { StyleSheet, View, Text, ScrollView, TouchableOpacity, TextInput, Alert, Image, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import { ArrowLeft, Trash2, Check, X, ChevronDown, Camera, Image as ImageIcon } from "lucide-react-native";
 import { useColors } from "@/hooks/useColors";
+import { useAppBack } from "@/hooks/useAppBack";
 import Card from "@/components/Card";
 import Button from "@/components/Button";
 import { JourneyStage, MemoryMood } from "@/types/user";
@@ -33,8 +34,8 @@ const moodOptions: { value: MemoryMood; label: string; emoji: string; color: str
 
 export default function MemoryDetailScreen() {
   const { id } = useLocalSearchParams<{ id?: string }>();
-  const router = useRouter();
   const Colors = useColors();
+  const handleBack = useAppBack("/(tabs)/journey");
 
   const { memories, loadMemories, updateMemory, deleteMemory } = useJourneyStore();
 
@@ -144,7 +145,7 @@ export default function MemoryDetailScreen() {
         mediaUri,
       });
       Alert.alert("Saved", "Your memory has been updated.", [
-        { text: "OK", onPress: () => router.back() },
+        { text: "OK", onPress: handleBack },
       ]);
     } catch (error: any) {
       console.error("Failed to update memory:", error);
@@ -166,7 +167,7 @@ export default function MemoryDetailScreen() {
           setIsDeleting(true);
           try {
             await deleteMemory(initialMemory.id);
-            router.back();
+            handleBack();
           } catch (error: any) {
             console.error("Failed to delete memory:", error);
             Alert.alert("Error", error?.message || "Could not delete memory.");
@@ -202,7 +203,7 @@ export default function MemoryDetailScreen() {
       <SafeAreaView style={[styles.container, { backgroundColor: Colors.background }]} edges={["top"]}>
         <View style={styles.loadingContainer}>
           <Text style={[styles.loadingText, { color: Colors.text }]}>Memory not found</Text>
-          <Button title="Go back" onPress={() => router.back()} />
+          <Button title="Go back" onPress={handleBack} />
         </View>
       </SafeAreaView>
     );
@@ -211,7 +212,7 @@ export default function MemoryDetailScreen() {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: Colors.background }]} edges={["top"]}>
       <View style={[styles.header, { borderBottomColor: Colors.border }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.headerButton}>
+        <TouchableOpacity onPress={handleBack} style={styles.headerButton}>
           <ArrowLeft size={22} color={Colors.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: Colors.text }]} numberOfLines={1}>

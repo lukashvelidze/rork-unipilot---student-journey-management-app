@@ -14,6 +14,7 @@ import {
 import { useRouter } from "expo-router";
 import { Send, Crown, Lock } from "lucide-react-native";
 import { useColors } from "@/hooks/useColors";
+import { useAppBack } from "@/hooks/useAppBack";
 import { supabase } from "@/lib/supabase";
 import Button from "@/components/Button";
 import Card from "@/components/Card";
@@ -28,6 +29,7 @@ interface Message {
 export default function UniPilotAIScreen() {
   const router = useRouter();
   const Colors = useColors();
+  const handleBack = useAppBack();
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -122,7 +124,7 @@ export default function UniPilotAIScreen() {
               style={styles.upgradeButton}
             />
             <TouchableOpacity
-              onPress={() => router.back()}
+              onPress={handleBack}
               style={styles.backButton}
             >
               <Text style={[styles.backButtonText, { color: Colors.lightText }]}>

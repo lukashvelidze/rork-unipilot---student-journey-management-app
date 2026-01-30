@@ -4,11 +4,12 @@ import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect } from "react";
 import { StatusBar } from "expo-status-bar";
-import { Platform } from "react-native";
+import { Platform, TouchableOpacity } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import Constants from "expo-constants";
 import { useColors } from "@/hooks/useColors";
 import { useThemeStore } from "@/store/themeStore";
+import { useAppBack } from "@/hooks/useAppBack";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useUserStore } from "@/store/userStore";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -113,6 +114,7 @@ export default function RootLayout() {
 function RootLayoutNav() {
   const Colors = useColors();
   const { isDarkMode } = useThemeStore();
+  const handleBack = useAppBack();
   const initializeUser = useUserStore((state) => state.initializeUser);
   const setAuthInitializing = useUserStore((state) => state.setAuthInitializing);
 
@@ -169,6 +171,12 @@ function RootLayoutNav() {
               color: Colors.text,
             },
             headerBackTitle: "Back",
+            headerLeft: ({ tintColor, canGoBack }) =>
+              canGoBack ? (
+                <TouchableOpacity onPress={handleBack} style={{ paddingHorizontal: 8, paddingVertical: 6 }}>
+                  <FontAwesome name="chevron-left" size={20} color={tintColor || Colors.text} />
+                </TouchableOpacity>
+              ) : null,
             contentStyle: {
               backgroundColor: Colors.background,
             },

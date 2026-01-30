@@ -1,17 +1,18 @@
 import React from 'react';
 import { StyleSheet, View, Platform, Text, ActivityIndicator } from 'react-native';
 import { WebView } from 'react-native-webview';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { Stack } from 'expo-router';
 import { ArrowLeft, AlertCircle } from 'lucide-react-native';
 import { TouchableOpacity } from 'react-native';
 import { useColors } from '@/hooks/useColors';
+import { useAppBack } from '@/hooks/useAppBack';
 import { WebViewErrorBoundary } from '@/components/ErrorBoundary';
 
 export default function WebViewScreen() {
-  const router = useRouter();
   const { url, title } = useLocalSearchParams<{ url: string; title?: string }>();
   const Colors = useColors();
+  const handleBack = useAppBack();
   const [error, setError] = React.useState<string | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
 
@@ -22,8 +23,8 @@ export default function WebViewScreen() {
     // On web, open in a new tab/window
     React.useEffect(() => {
       window.open(webViewUrl, '_blank');
-      router.back();
-    }, [webViewUrl]);
+      handleBack();
+    }, [webViewUrl, handleBack]);
 
     return (
       <View style={[styles.container, { backgroundColor: Colors.background }]}>
@@ -31,7 +32,7 @@ export default function WebViewScreen() {
           options={{
             title: screenTitle,
             headerLeft: () => (
-              <TouchableOpacity onPress={() => router.back()}>
+              <TouchableOpacity onPress={handleBack}>
                 <ArrowLeft size={24} color={Colors.text} />
               </TouchableOpacity>
             ),
@@ -48,7 +49,7 @@ export default function WebViewScreen() {
           options={{
             title: screenTitle,
             headerLeft: () => (
-              <TouchableOpacity onPress={() => router.back()}>
+              <TouchableOpacity onPress={handleBack}>
                 <ArrowLeft size={24} color={Colors.text} />
               </TouchableOpacity>
             ),
