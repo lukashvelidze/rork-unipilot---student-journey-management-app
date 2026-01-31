@@ -15,7 +15,6 @@ import {
   getCustomerInfo,
   getOfferings,
   getActiveSubscriptionTier,
-  openCustomerCenter,
   purchasePackage,
   type CustomerInfo,
   type PurchasesOfferings,
@@ -343,6 +342,15 @@ const styles = StyleSheet.create({
   },
 });
 
+const normalizeProfileTier = (tier?: string | null): SubscriptionTier => {
+  if (!tier) return "free";
+  const normalized = tier.toLowerCase();
+  if (normalized === "basic") return "basic";
+  if (normalized === "standard") return "standard";
+  if (normalized === "premium") return "premium";
+  if (normalized === "pro") return "premium";
+  return "free";
+};
 
 export default function PremiumScreen() {
   const Colors = useColors();
@@ -350,18 +358,15 @@ export default function PremiumScreen() {
   const router = useRouter();
   const isWeb = Platform.OS === "web";
   const lastSyncedTier = useRef<SubscriptionTier | null>(null);
-  const viewModeLocked = useRef(false);
   const { width: windowWidth } = useWindowDimensions();
   const planCardWidth = Math.min(windowWidth - 64, 360);
   const planCardSpacing = 16;
   
   const [currentTier, setCurrentTier] = useState<SubscriptionTier>("free");
-  const [viewMode, setViewMode] = useState<"resources" | "plans">("plans");
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState<Exclude<SubscriptionTier, "free"> | null>(null);
   const [rcError, setRcError] = useState<string | null>(null);
   const [offerings, setOfferings] = useState<PurchasesOfferings | null>(null);
-  const [customerInfo, setCustomerInfo] = useState<CustomerInfo | null>(null);
   const currentOffering =
     (offerings?.all && offerings.all[DEFAULT_OFFERING_ID]) || offerings?.current || null;
   const availablePackages = currentOffering?.availablePackages ?? [];
@@ -439,16 +444,6 @@ export default function PremiumScreen() {
     }
   }, []);
 
-  const handleViewPlans = useCallback(() => {
-    viewModeLocked.current = true;
-    setViewMode("plans");
-  }, []);
-
-  const handleViewResources = useCallback(() => {
-    viewModeLocked.current = true;
-    setViewMode("resources");
-  }, []);
-
   const syncProfileTier = useCallback(async (info: CustomerInfo | null) => {
     const { data: { user: authUser } } = await supabase.auth.getUser();
     if (!authUser) {
@@ -471,16 +466,37 @@ export default function PremiumScreen() {
     }
   }, []);
 
-  const resolveCurrentTier = useCallback((info: CustomerInfo | null) => {
-    return getActiveSubscriptionTier(info);
+  const refreshProfileTier = useCallback(async () => {
+    try {
+      const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+      if (authError || !authUser) {
+        setCurrentTier("free");
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("subscription_tier")
+        .eq("id", authUser.id)
+        .single();
+
+      if (error) {
+        console.warn("Failed to load profile tier:", error);
+        setCurrentTier("free");
+        return;
+      }
+
+      setCurrentTier(normalizeProfileTier(data?.subscription_tier));
+    } catch (error) {
+      console.error("Error loading profile tier:", error);
+      setCurrentTier("free");
+    }
   }, []);
 
   const refreshRevenueCatState = useCallback(async () => {
     if (isWeb) {
-      setIsLoading(false);
       return;
     }
-    setIsLoading(true);
     setRcError(null);
     try {
       const { data: { user: authUser } } = await supabase.auth.getUser();
@@ -501,43 +517,50 @@ export default function PremiumScreen() {
           "No subscription packages found. Please finish configuring your RevenueCat offerings."
         );
       }
-      setCustomerInfo(info);
-      setCurrentTier(resolveCurrentTier(info));
       await syncProfileTier(info);
     } catch (error: any) {
       console.error("RevenueCat init failed:", error);
       setRcError(error?.message || "Unable to connect to RevenueCat.");
+    }
+  }, [isWeb, syncProfileTier]);
+
+  const refreshSubscriptionState = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      await refreshProfileTier();
+      setIsLoading(false);
+      await refreshRevenueCatState();
+      await refreshProfileTier();
     } finally {
       setIsLoading(false);
     }
-  }, [isWeb, resolveCurrentTier, syncProfileTier]);
+  }, [refreshProfileTier, refreshRevenueCatState]);
 
   // Check subscription status on mount
   useEffect(() => {
-    refreshRevenueCatState();
-  }, [refreshRevenueCatState]);
+    refreshSubscriptionState();
+  }, [refreshSubscriptionState]);
 
   // Refresh subscription status when screen comes into focus
   // This ensures the page updates when user returns from payment
   useFocusEffect(
     useCallback(() => {
-      refreshRevenueCatState();
-    }, [refreshRevenueCatState])
+      refreshSubscriptionState();
+    }, [refreshSubscriptionState])
   );
   useEffect(() => {
     if (isWeb) {
       return;
     }
     const removeListener = addCustomerInfoUpdateListener(async (info) => {
-      setCustomerInfo(info);
-      setCurrentTier(resolveCurrentTier(info));
       await syncProfileTier(info);
+      await refreshProfileTier();
     });
 
     return () => {
       removeListener();
     };
-  }, [isWeb, resolveCurrentTier, syncProfileTier]);
+  }, [isWeb, refreshProfileTier, syncProfileTier]);
 
   const handleSubscribe = useCallback(async (tier: PlanTier) => {
     if (isWeb) {
@@ -562,9 +585,8 @@ export default function PremiumScreen() {
       if (!info) {
         return;
       }
-      setCustomerInfo(info);
-      setCurrentTier(resolveCurrentTier(info));
       await syncProfileTier(info);
+      await refreshProfileTier();
       Alert.alert("Success", "Your UniPilot Pro subscription is active.");
     } catch (error: any) {
       if (error?.userCancelled || error?.code === PURCHASES_ERROR_CODE.PURCHASE_CANCELLED_ERROR) {
@@ -575,16 +597,7 @@ export default function PremiumScreen() {
     } finally {
       setIsProcessing(null);
     }
-  }, [configureRevenueCat, isWeb, purchasePackage, resolveCurrentTier, syncProfileTier]);
-
-  const handleOpenCustomerCenter = useCallback(async () => {
-    try {
-      await openCustomerCenter();
-    } catch (error: any) {
-      console.error("Customer center failed:", error);
-      Alert.alert("Unable to Open", error?.message || "Unable to open subscription settings.");
-    }
-  }, []);
+  }, [configureRevenueCat, isWeb, purchasePackage, refreshProfileTier, syncProfileTier]);
 
   const hasActiveSubscription = currentTier !== "free";
   const hasPremiumAccess = currentTier === "premium";
@@ -596,17 +609,6 @@ export default function PremiumScreen() {
         : currentTier === "premium"
           ? "Premium"
           : "Free";
-
-  // Keep view in sync with subscription status so subscribed users can still switch to plans
-  useEffect(() => {
-    if (viewModeLocked.current) {
-      if (!hasActiveSubscription && viewMode !== "plans") {
-        setViewMode("plans");
-      }
-      return;
-    }
-    setViewMode(hasActiveSubscription ? "resources" : "plans");
-  }, [hasActiveSubscription, viewMode]);
 
 
   // Premium resources that will be linked to checklist items later
@@ -665,7 +667,7 @@ export default function PremiumScreen() {
   }
 
   // Show premium resources home page if user has active subscription
-  if (hasActiveSubscription && viewMode === "resources") {
+  if (hasActiveSubscription) {
     return (
       <ScrollView 
         style={[styles.container, { backgroundColor: Colors.background, paddingBottom: insets.bottom }]} 
@@ -687,20 +689,6 @@ export default function PremiumScreen() {
           <Text style={[styles.subtitle, { color: Colors.lightText }]}>
             Access exclusive resources to enhance your journey
           </Text>
-          <Button
-            title="Change plan"
-            variant="outline"
-            onPress={handleViewPlans}
-            fullWidth
-            style={{ marginTop: 12 }}
-          />
-          <Button
-            title="Manage subscription"
-            variant="outline"
-            onPress={handleOpenCustomerCenter}
-            fullWidth
-            style={{ marginTop: 8 }}
-          />
           {hasActiveSubscription && (
             <View style={[styles.currentTierBadge, { backgroundColor: Colors.success + "20" }]}>
               <Text style={[styles.currentTierText, { color: Colors.success }]}>
@@ -823,19 +811,6 @@ export default function PremiumScreen() {
             <Text style={[styles.iapStatusText, { color: Colors.lightText }]}>
               Subscriptions are available on iOS and Android.
             </Text>
-          </View>
-        )}
-        {hasActiveSubscription && (
-          <View style={[styles.iapStatusRow, { marginTop: 8 }]}>
-            <Text style={[styles.iapStatusText, { color: Colors.lightText }]}>
-              Current plan: {currentTierLabel}
-            </Text>
-            <Button
-              title="Back to resources"
-              variant="outline"
-              onPress={handleViewResources}
-              style={{ marginLeft: 8, height: 36, paddingHorizontal: 12 }}
-            />
           </View>
         )}
       </View>
