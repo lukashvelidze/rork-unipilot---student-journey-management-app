@@ -17,8 +17,6 @@ import {
   getActiveSubscriptionTier,
   openCustomerCenter,
   purchasePackage,
-  presentPaywall,
-  PAYWALL_RESULT,
   type CustomerInfo,
   type PurchasesOfferings,
   type PurchasesPackage,
@@ -352,6 +350,7 @@ export default function PremiumScreen() {
   const router = useRouter();
   const isWeb = Platform.OS === "web";
   const lastSyncedTier = useRef<SubscriptionTier | null>(null);
+  const viewModeLocked = useRef(false);
   const { width: windowWidth } = useWindowDimensions();
   const planCardWidth = Math.min(windowWidth - 64, 360);
   const planCardSpacing = 16;
@@ -359,13 +358,14 @@ export default function PremiumScreen() {
   const [currentTier, setCurrentTier] = useState<SubscriptionTier>("free");
   const [viewMode, setViewMode] = useState<"resources" | "plans">("plans");
   const [isLoading, setIsLoading] = useState(true);
-  const [isProcessing, setIsProcessing] = useState<Exclude<SubscriptionTier, "free"> | "paywall" | null>(null);
+  const [isProcessing, setIsProcessing] = useState<Exclude<SubscriptionTier, "free"> | null>(null);
   const [rcError, setRcError] = useState<string | null>(null);
   const [offerings, setOfferings] = useState<PurchasesOfferings | null>(null);
   const [customerInfo, setCustomerInfo] = useState<CustomerInfo | null>(null);
   const currentOffering =
     (offerings?.all && offerings.all[DEFAULT_OFFERING_ID]) || offerings?.current || null;
   const availablePackages = currentOffering?.availablePackages ?? [];
+  const hasOfferingsPackages = availablePackages.length > 0;
 
   const getPackageForTier = useCallback(
     (tierId: Exclude<SubscriptionTier, "free">): PurchasesPackage | null => {
@@ -439,6 +439,16 @@ export default function PremiumScreen() {
     }
   }, []);
 
+  const handleViewPlans = useCallback(() => {
+    viewModeLocked.current = true;
+    setViewMode("plans");
+  }, []);
+
+  const handleViewResources = useCallback(() => {
+    viewModeLocked.current = true;
+    setViewMode("resources");
+  }, []);
+
   const syncProfileTier = useCallback(async (info: CustomerInfo | null) => {
     const { data: { user: authUser } } = await supabase.auth.getUser();
     if (!authUser) {
@@ -482,6 +492,15 @@ export default function PremiumScreen() {
       ]);
 
       setOfferings(freshOfferings);
+      const nextOffering =
+        (freshOfferings.all && freshOfferings.all[DEFAULT_OFFERING_ID]) ||
+        freshOfferings.current ||
+        null;
+      if (!nextOffering || nextOffering.availablePackages.length === 0) {
+        setRcError(
+          "No subscription packages found. Please finish configuring your RevenueCat offerings."
+        );
+      }
       setCustomerInfo(info);
       setCurrentTier(resolveCurrentTier(info));
       await syncProfileTier(info);
@@ -518,37 +537,7 @@ export default function PremiumScreen() {
     return () => {
       removeListener();
     };
-  }, [isWeb, currentOffering, resolveCurrentTier, syncProfileTier]);
-
-  const openPaywall = useCallback(async () => {
-    if (isWeb) {
-      Alert.alert("Not Supported", "Subscriptions are available on iOS and Android.");
-      return;
-    }
-
-    setIsProcessing("paywall");
-    try {
-      const { data: { user: authUser } } = await supabase.auth.getUser();
-      await configureRevenueCat(authUser?.id);
-
-      const result = await presentPaywall({
-        offering: currentOffering ?? undefined,
-        displayCloseButton: true,
-      });
-
-      if (result === PAYWALL_RESULT.PURCHASED || result === PAYWALL_RESULT.RESTORED) {
-        const info = await getCustomerInfo();
-        setCustomerInfo(info);
-        setCurrentTier(resolveCurrentTier(info));
-        await syncProfileTier(info);
-      }
-    } catch (error: any) {
-      console.error("Paywall failed:", error);
-      Alert.alert("Error", error?.message || "Unable to show the paywall right now.");
-    } finally {
-      setIsProcessing(null);
-    }
-  }, [configureRevenueCat, getCustomerInfo, currentOffering, isWeb, presentPaywall, resolveCurrentTier, syncProfileTier]);
+  }, [isWeb, resolveCurrentTier, syncProfileTier]);
 
   const handleSubscribe = useCallback(async (tier: PlanTier) => {
     if (isWeb) {
@@ -557,7 +546,10 @@ export default function PremiumScreen() {
     }
 
     if (!tier.rcPackage) {
-      await openPaywall();
+      Alert.alert(
+        "Unavailable",
+        "This subscription is not available right now. Please try again later."
+      );
       return;
     }
 
@@ -575,12 +567,15 @@ export default function PremiumScreen() {
       await syncProfileTier(info);
       Alert.alert("Success", "Your UniPilot Pro subscription is active.");
     } catch (error: any) {
+      if (error?.userCancelled || error?.code === PURCHASES_ERROR_CODE.PURCHASE_CANCELLED_ERROR) {
+        return;
+      }
       console.error("Purchase failed:", error);
       Alert.alert("Error", error?.message || "Unable to complete purchase.");
     } finally {
       setIsProcessing(null);
     }
-  }, [configureRevenueCat, isWeb, openPaywall, purchasePackage, resolveCurrentTier, syncProfileTier]);
+  }, [configureRevenueCat, isWeb, purchasePackage, resolveCurrentTier, syncProfileTier]);
 
   const handleOpenCustomerCenter = useCallback(async () => {
     try {
@@ -604,12 +599,13 @@ export default function PremiumScreen() {
 
   // Keep view in sync with subscription status so subscribed users can still switch to plans
   useEffect(() => {
-    if (hasActiveSubscription && viewMode === "plans") {
-      setViewMode("resources");
+    if (viewModeLocked.current) {
+      if (!hasActiveSubscription && viewMode !== "plans") {
+        setViewMode("plans");
+      }
+      return;
     }
-    if (!hasActiveSubscription && viewMode === "resources") {
-      setViewMode("plans");
-    }
+    setViewMode(hasActiveSubscription ? "resources" : "plans");
   }, [hasActiveSubscription, viewMode]);
 
 
@@ -694,10 +690,9 @@ export default function PremiumScreen() {
           <Button
             title="Change plan"
             variant="outline"
-            onPress={openPaywall}
+            onPress={handleViewPlans}
             fullWidth
             style={{ marginTop: 12 }}
-            loading={isProcessing === "paywall"}
           />
           <Button
             title="Manage subscription"
@@ -808,17 +803,7 @@ export default function PremiumScreen() {
         <Text style={[styles.subtitle, { color: Colors.lightText }]}>
           Unlock premium features and accelerate your journey
         </Text>
-        {!isWeb && (
-          <Button
-            title="View Paywall"
-            variant="outline"
-            onPress={openPaywall}
-            fullWidth
-            style={{ marginTop: 12 }}
-            loading={isProcessing === "paywall"}
-          />
-        )}
-        {!isWeb && !offerings?.current && !rcError && (
+        {!isWeb && !hasOfferingsPackages && !rcError && (
           <View style={styles.iapStatusRow}>
             <ActivityIndicator size="small" color={Colors.primary} />
             <Text style={[styles.iapStatusText, { color: Colors.lightText }]}>
@@ -848,7 +833,7 @@ export default function PremiumScreen() {
             <Button
               title="Back to resources"
               variant="outline"
-              onPress={() => setViewMode("resources")}
+              onPress={handleViewResources}
               style={{ marginLeft: 8, height: 36, paddingHorizontal: 12 }}
             />
           </View>

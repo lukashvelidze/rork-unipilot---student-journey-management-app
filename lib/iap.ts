@@ -23,8 +23,25 @@ const IOS_API_KEY =
   process.env.EXPO_PUBLIC_REVENUECAT_IOS_API_KEY || "appl_LSCLUounvoWbAulvkjXMvSrXuVy";
 const ANDROID_API_KEY = process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY || "";
 
-let configuringPromise: Promise<void> | null = null;
-let configuredUserId: string | null = null;
+type RevenueCatState = {
+  configuringPromise: Promise<void> | null;
+  configuredUserId: string | null;
+  configured: boolean;
+};
+
+const getRevenueCatState = (): RevenueCatState => {
+  const globalState = globalThis as typeof globalThis & {
+    __unipilotRevenueCatState?: RevenueCatState;
+  };
+  if (!globalState.__unipilotRevenueCatState) {
+    globalState.__unipilotRevenueCatState = {
+      configuringPromise: null,
+      configuredUserId: null,
+      configured: false,
+    };
+  }
+  return globalState.__unipilotRevenueCatState;
+};
 
 const getApiKeyForPlatform = () => {
   if (Platform.OS === "ios") {
@@ -42,24 +59,22 @@ const ensureConfigured = async (appUserId?: string) => {
     throw new Error(`Missing RevenueCat API key for ${Platform.OS}.`);
   }
 
-  if (!configuringPromise) {
-    configuringPromise = (async () => {
+  const state = getRevenueCatState();
+
+  if (!state.configured && !state.configuringPromise) {
+    state.configuringPromise = (async () => {
       Purchases.setLogLevel(LOG_LEVEL.INFO);
       Purchases.configure({ apiKey, appUserID: appUserId });
-      configuredUserId = appUserId ?? null;
+      state.configuredUserId = appUserId ?? null;
+      state.configured = true;
     })();
   }
 
-  await configuringPromise;
+  await state.configuringPromise;
 
-  if (!appUserId && configuredUserId) {
-    await Purchases.logOut();
-    configuredUserId = null;
-  }
-
-  if (appUserId && appUserId !== configuredUserId) {
+  if (appUserId && appUserId !== state.configuredUserId) {
     await Purchases.logIn(appUserId);
-    configuredUserId = appUserId;
+    state.configuredUserId = appUserId;
   }
 };
 
@@ -159,6 +174,16 @@ export async function restorePurchases(): Promise<CustomerInfo> {
 export async function openCustomerCenter() {
   await ensureConfigured();
   return RevenueCatUI.presentCustomerCenter();
+}
+
+export async function logOutRevenueCatIfNeeded() {
+  const state = getRevenueCatState();
+  if (!state.configuredUserId) {
+    return;
+  }
+  await ensureConfigured();
+  await Purchases.logOut();
+  state.configuredUserId = null;
 }
 
 export async function restoreApplePurchases(): Promise<SubscriptionEntitlement> {
