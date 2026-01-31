@@ -10,7 +10,7 @@
     "newArchEnabled": true,
     "jsEngine": "hermes",
     "splash": {
-      "image": "./assets/Unipilot-iOS-Default-1024x1024@1x.png",
+      "image": "./assets/images/splash-icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },

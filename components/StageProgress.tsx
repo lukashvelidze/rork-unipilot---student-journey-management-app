@@ -1,7 +1,7 @@
 import React, { useRef, useEffect } from "react";
 import { StyleSheet, View, Text, TouchableOpacity, Platform, Animated } from "react-native";
 import { ChevronRight, CheckCircle, Lock } from "lucide-react-native";
-import Colors from "@/constants/colors";
+import { useColors } from "@/hooks/useColors";
 import ProgressBar from "./ProgressBar";
 import { JourneyProgress } from "@/types/user";
 
@@ -13,6 +13,7 @@ interface StageProgressProps {
 }
 
 const StageProgress: React.FC<StageProgressProps> = ({ stage, onPress, isLocked = false, lockedLabel }) => {
+  const Colors = useColors();
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const opacityAnim = useRef(new Animated.Value(0.9)).current;
   
@@ -98,7 +99,7 @@ const StageProgress: React.FC<StageProgressProps> = ({ stage, onPress, isLocked 
       return [
         styles.container,
         styles.lockedContainer,
-        { borderLeftColor: Colors.lightText }
+        { borderLeftColor: Colors.lightText, backgroundColor: Colors.card }
       ];
     }
     
@@ -106,7 +107,7 @@ const StageProgress: React.FC<StageProgressProps> = ({ stage, onPress, isLocked 
       return [
         styles.container, 
         styles.completedContainer,
-        { borderColor: stageColor }
+        { borderColor: stageColor, backgroundColor: Colors.card }
       ];
     }
     
@@ -114,11 +115,11 @@ const StageProgress: React.FC<StageProgressProps> = ({ stage, onPress, isLocked 
       return [
         styles.container, 
         styles.activeContainer,
-        { borderLeftColor: stageColor }
+        { borderLeftColor: stageColor, backgroundColor: Colors.card }
       ];
     }
     
-    return styles.container;
+    return [styles.container, { backgroundColor: Colors.card }];
   };
 
   return (
@@ -146,7 +147,7 @@ const StageProgress: React.FC<StageProgressProps> = ({ stage, onPress, isLocked 
                 { backgroundColor: isLocked ? Colors.lightText : stageColor },
               ]}
             />
-            <Text style={[styles.title, isLocked && { color: Colors.lightText }]}>
+            <Text style={[styles.title, { color: Colors.text }, isLocked && { color: Colors.lightText }]}>
               {isLocked ? "🔒 " : ""}{stage.title || getStageTitle(stage.stage)}
             </Text>
             
@@ -158,9 +159,9 @@ const StageProgress: React.FC<StageProgressProps> = ({ stage, onPress, isLocked 
                 </Text>
               </View>
             ) : stage.completed && (
-              <View style={styles.completedBadge}>
+              <View style={[styles.completedBadge, { backgroundColor: Colors.successBackground }]}>
                 <CheckCircle size={14} color={Colors.success} fill={Colors.success} />
-                <Text style={styles.completedText}>Completed</Text>
+                <Text style={[styles.completedText, { color: Colors.success }]}>Completed</Text>
               </View>
             )}
           </View>
@@ -175,7 +176,7 @@ const StageProgress: React.FC<StageProgressProps> = ({ stage, onPress, isLocked 
             backgroundColor={`${isLocked ? Colors.lightText : stageColor}20`}
           />
           <View style={styles.progressTextRow}>
-            <Text style={styles.progressText}>
+            <Text style={[styles.progressText, { color: Colors.lightText }]}>
               {isLocked ? `${lockedLabel || "Premium"} required` : `${completedTasks}/${totalTasks} tasks`}
             </Text>
             <Text style={[styles.progressPercent, { color: isLocked ? Colors.lightText : stageColor }]}>
@@ -190,7 +191,6 @@ const StageProgress: React.FC<StageProgressProps> = ({ stage, onPress, isLocked 
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: Colors.card,
     borderRadius: 12,
     marginBottom: 8,
     ...Platform.select({
@@ -239,13 +239,11 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 15,
     fontWeight: "600",
-    color: Colors.text,
     flex: 1,
   },
   completedBadge: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#E8F5E9",
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
@@ -253,7 +251,6 @@ const styles = StyleSheet.create({
   },
   completedText: {
     fontSize: 10,
-    color: Colors.success,
     fontWeight: "600",
     marginLeft: 4,
   },
@@ -268,7 +265,6 @@ const styles = StyleSheet.create({
   },
   progressText: {
     fontSize: 13,
-    color: Colors.lightText,
   },
   progressPercent: {
     fontSize: 13,
