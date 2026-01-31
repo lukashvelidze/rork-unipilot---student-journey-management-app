@@ -15,6 +15,7 @@ import { useUserStore } from "@/store/userStore";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { preRehydrationCleanup } from "@/utils/hermesStorage";
 import { supabase } from "@/lib/supabase";
+import { ElevenLabsProvider } from "@elevenlabs/react-native";
 
 // Import iOS crash prevention at module level (synchronous)
 // Wrapped in try/catch for Expo Go compatibility
@@ -26,15 +27,6 @@ try {
   }
 } catch (error) {
   console.log("iOS crash prevention not available (likely Expo Go or web)");
-}
-
-// Conditionally import ElevenLabsProvider - it requires native modules and won't work in Expo Go
-let ElevenLabsProvider: any = null;
-try {
-  const elevenLabsModule = require("@elevenlabs/react-native");
-  ElevenLabsProvider = elevenLabsModule.ElevenLabsProvider;
-} catch (error) {
-  console.log("ElevenLabs SDK not available (likely running in Expo Go)");
 }
 
 // Check if running in Expo Go
@@ -156,7 +148,6 @@ function RootLayoutNav() {
   }, [setAuthInitializing]);
 
 
-  // Wrap with ElevenLabsProvider only if available (not in Expo Go)
   const AppContent = (
     <QueryClientProvider client={queryClient}>
       <Stack
@@ -225,13 +216,9 @@ function RootLayoutNav() {
           style={isDarkMode ? "light" : "dark"}
           backgroundColor={Colors.background}
         />
-        {ElevenLabsProvider && !isExpoGo ? (
-          <ElevenLabsProvider>
-            {AppContent}
-          </ElevenLabsProvider>
-        ) : (
-          AppContent
-        )}
+        <ElevenLabsProvider>
+          {AppContent}
+        </ElevenLabsProvider>
       </SafeAreaProvider>
     </ErrorBoundary>
   );
