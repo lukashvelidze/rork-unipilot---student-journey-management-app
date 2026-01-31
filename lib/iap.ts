@@ -1,424 +1,181 @@
-import { InteractionManager, Linking, Platform } from "react-native";
-import Constants from "expo-constants";
-import * as IAP from "react-native-iap";
-import type {
-  Purchase,
-  PurchaseError,
-  ProductSubscription,
-} from "react-native-iap";
+import { Platform } from "react-native";
+import Purchases, {
+  LOG_LEVEL,
+  PURCHASES_ERROR_CODE,
+  type CustomerInfo,
+  type PurchasesError,
+  type PurchasesOffering,
+  type PurchasesOfferings,
+  type PurchasesPackage,
+} from "react-native-purchases";
+import RevenueCatUI, { PAYWALL_RESULT } from "react-native-purchases-ui";
 
-
-export type AppleSubscriptionTier = "basic" | "standard" | "pro";
-export type SubscriptionEntitlement = "none" | AppleSubscriptionTier;
-
-type AppStoreConfig = {
-  sharedSecret?: string;
-  products?: {
-    basic?: string;
-    standard?: string;
-    pro?: string;
-  };
-};
-
-const getAppStoreConfig = (): AppStoreConfig => {
-  const extra =
-    Constants.expoConfig?.extra ??
-    (Constants.manifest as { extra?: Record<string, any> } | null)?.extra ??
-    {};
-  return (extra.appStore ?? {}) as AppStoreConfig;
-};
-
-const appStoreConfig = getAppStoreConfig();
-const appStoreProducts = appStoreConfig.products ?? {};
-
-const DEFAULT_APPLE_PRODUCTS = {
-  basic: "unipilot_basic_monthly",
-  standard: "unipilot_standard_monthly",
-  pro: "unipilot_premium_monthly",
+export type SubscriptionTier = "free" | "basic" | "standard" | "premium";
+export type SubscriptionEntitlement = "none" | Exclude<SubscriptionTier, "free">;
+export const ENTITLEMENT_IDS = {
+  basic: "basic",
+  standard: "standard",
+  premium: "premium",
 } as const;
+export const DEFAULT_OFFERING_ID = "unipilot_default";
 
-const APP_STORE_SHARED_SECRET =
-  appStoreConfig.sharedSecret || process.env.EXPO_PUBLIC_APP_STORE_SHARED_SECRET;
+const IOS_API_KEY =
+  process.env.EXPO_PUBLIC_REVENUECAT_IOS_API_KEY || "appl_LSCLUounvoWbAulvkjXMvSrXuVy";
+const ANDROID_API_KEY = process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY || "";
 
-const toDateMs = (value: unknown) => {
-  if (value == null) return 0;
-  if (typeof value === "number") {
-    return Number.isFinite(value) ? value : 0;
+let configuringPromise: Promise<void> | null = null;
+let configuredUserId: string | null = null;
+
+const getApiKeyForPlatform = () => {
+  if (Platform.OS === "ios") {
+    return IOS_API_KEY;
   }
-  if (typeof value === "string") {
-    const numeric = Number(value);
-    if (Number.isFinite(numeric)) {
-      return numeric;
-    }
-    const parsed = Date.parse(value);
-    return Number.isNaN(parsed) ? 0 : parsed;
+  if (Platform.OS === "android") {
+    return ANDROID_API_KEY;
   }
-  if (value instanceof Date) {
-    return Number.isFinite(value.getTime()) ? value.getTime() : 0;
-  }
-  return 0;
+  return null;
 };
 
-export const APPLE_PRODUCT_IDS = [
-  appStoreProducts.basic ||
-    process.env.EXPO_PUBLIC_APP_STORE_PRODUCT_ID_BASIC ||
-    DEFAULT_APPLE_PRODUCTS.basic,
-  appStoreProducts.standard ||
-    process.env.EXPO_PUBLIC_APP_STORE_PRODUCT_ID_STANDARD ||
-    DEFAULT_APPLE_PRODUCTS.standard,
-  appStoreProducts.pro ||
-    process.env.EXPO_PUBLIC_APP_STORE_PRODUCT_ID_PRO ||
-    DEFAULT_APPLE_PRODUCTS.pro,
-] as const;
-
-type AppleProductConfig = {
-  productId: (typeof APPLE_PRODUCT_IDS)[number];
-  referenceName: string;
-};
-
-export const APPLE_SUBSCRIPTION_PRODUCTS: Record<AppleSubscriptionTier, AppleProductConfig> = {
-  basic: {
-    productId: APPLE_PRODUCT_IDS[0],
-    referenceName: "UniPilot Basic",
-  },
-  standard: {
-    productId: APPLE_PRODUCT_IDS[1],
-    referenceName: "UniPilot Standard",
-  },
-  pro: {
-    productId: APPLE_PRODUCT_IDS[2],
-    referenceName: "UniPilot Premium",
-  },
-};
-
-const PRODUCT_ID_TO_TIER: Record<string, AppleSubscriptionTier> = Object.entries(
-  APPLE_SUBSCRIPTION_PRODUCTS
-).reduce((acc, [tier, config]) => {
-  acc[config.productId] = tier as AppleSubscriptionTier;
-  return acc;
-}, {} as Record<string, AppleSubscriptionTier>);
-
-const shouldUseSandbox = (): boolean => {
-  const env = process.env.EXPO_PUBLIC_APP_ENV;
-  if (env) {
-    return env !== "production";
-  }
-  return __DEV__;
-};
-
-let connectionReady = false;
-
-export const getIapLoadError = () => null;
-
-export const isIosIapAvailable = () => Platform.OS === "ios";
-
-export async function ensureIapConnection(): Promise<boolean> {
-  if (!isIosIapAvailable()) {
-    return false;
+const ensureConfigured = async (appUserId?: string) => {
+  const apiKey = getApiKeyForPlatform();
+  if (!apiKey) {
+    throw new Error(`Missing RevenueCat API key for ${Platform.OS}.`);
   }
 
-  if (connectionReady) {
-    return true;
+  if (!configuringPromise) {
+    configuringPromise = (async () => {
+      Purchases.setLogLevel(LOG_LEVEL.INFO);
+      Purchases.configure({ apiKey, appUserID: appUserId });
+      configuredUserId = appUserId ?? null;
+    })();
   }
 
-  const ready = await IAP.initConnection();
-  connectionReady = ready;
-  return ready;
+  await configuringPromise;
+
+  if (!appUserId && configuredUserId) {
+    await Purchases.logOut();
+    configuredUserId = null;
+  }
+
+  if (appUserId && appUserId !== configuredUserId) {
+    await Purchases.logIn(appUserId);
+    configuredUserId = appUserId;
+  }
+};
+
+export async function configureRevenueCat(appUserId?: string) {
+  await ensureConfigured(appUserId);
 }
 
-export async function closeIapConnection() {
-  if (!connectionReady) {
-    return;
+export function addCustomerInfoUpdateListener(listener: (info: CustomerInfo) => void) {
+  Purchases.addCustomerInfoUpdateListener(listener);
+  return () => Purchases.removeCustomerInfoUpdateListener(listener);
+}
+
+export async function getOfferings(): Promise<PurchasesOfferings> {
+  await ensureConfigured();
+  return Purchases.getOfferings();
+}
+
+export async function getCustomerInfo(): Promise<CustomerInfo> {
+  await ensureConfigured();
+  return Purchases.getCustomerInfo();
+}
+
+export function getActiveSubscriptionTier(info?: CustomerInfo | null): SubscriptionTier {
+  if (!info) {
+    return "free";
   }
 
+  if (info.entitlements.active?.[ENTITLEMENT_IDS.premium]) {
+    return "premium";
+  }
+  if (info.entitlements.active?.[ENTITLEMENT_IDS.standard]) {
+    return "standard";
+  }
+  if (info.entitlements.active?.[ENTITLEMENT_IDS.basic]) {
+    return "basic";
+  }
+  return "free";
+}
+
+export function hasTierAccess(
+  info: CustomerInfo | null | undefined,
+  requiredTier: Exclude<SubscriptionTier, "free">
+): boolean {
+  const rank: Record<SubscriptionTier, number> = {
+    free: 0,
+    basic: 1,
+    standard: 2,
+    premium: 3,
+  };
+  return rank[getActiveSubscriptionTier(info)] >= rank[requiredTier];
+}
+
+export async function purchasePackage(pkg: PurchasesPackage): Promise<CustomerInfo | null> {
+  await ensureConfigured();
   try {
-    await IAP.endConnection();
-  } finally {
-    connectionReady = false;
-  }
-}
-
-export async function fetchAppleSubscriptions(): Promise<ProductSubscription[]> {
-  if (!isIosIapAvailable()) {
-    return [];
-  }
-
-  await ensureIapConnection();
-  await new Promise<void>((resolve) => InteractionManager.runAfterInteractions(resolve));
-  const products = await IAP.fetchProducts({
-    skus: Object.values(APPLE_SUBSCRIPTION_PRODUCTS).map((product) => product.productId),
-    type: "subs",
-  });
-
-  return products as ProductSubscription[];
-}
-
-export function mapProductIdToTier(productId: string): AppleSubscriptionTier | null {
-  return PRODUCT_ID_TO_TIER[productId] || null;
-}
-
-const getPurchaseTimestamp = (purchase: Purchase) => {
-  const raw =
-    (purchase as any).transactionDate ||
-    (purchase as any).originalTransactionDateIOS ||
-    (purchase as any).purchaseDate;
-  return toDateMs(raw);
-};
-
-const getPurchaseExpiration = (purchase: Purchase) => {
-  const raw =
-    (purchase as any).expirationDate ||
-    (purchase as any).expiresDate ||
-    (purchase as any).expiresDateMs;
-  return toDateMs(raw);
-};
-
-export async function getActiveAppleSubscription(): Promise<SubscriptionEntitlement> {
-  if (!isIosIapAvailable()) {
-    return "none";
-  }
-
-  await ensureIapConnection();
-
-  const getAvailablePurchases = (IAP as any).getAvailablePurchases as
-    | ((options?: Record<string, unknown>) => Promise<Purchase[]>)
-    | undefined;
-
-  if (!getAvailablePurchases) {
-    console.warn("IAP.getAvailablePurchases is not available.");
-    return "none";
-  }
-
-  const purchases = await getAvailablePurchases();
-  const activeSubs = (purchases || []).filter((purchase) => {
-    if (!purchase.productId || !PRODUCT_ID_TO_TIER[purchase.productId]) {
-      return false;
+    const { customerInfo } = await Purchases.purchasePackage(pkg);
+    return customerInfo;
+  } catch (error) {
+    const purchasesError = error as PurchasesError;
+    if (purchasesError.code === PURCHASES_ERROR_CODE.PURCHASE_CANCELLED_ERROR) {
+      return null;
     }
-
-    const expiresAt = getPurchaseExpiration(purchase);
-    if (expiresAt > 0) {
-      return expiresAt > Date.now();
-    }
-
-    return true;
-  });
-
-  if (!activeSubs.length) {
-    return "none";
+    throw purchasesError;
   }
+}
 
-  const latest = activeSubs.sort(
-    (a, b) => getPurchaseTimestamp(b) - getPurchaseTimestamp(a)
-  )[0];
+export async function presentPaywall(params?: {
+  offering?: PurchasesOffering;
+  displayCloseButton?: boolean;
+  fontFamily?: string | null;
+}): Promise<PAYWALL_RESULT> {
+  await ensureConfigured();
+  return RevenueCatUI.presentPaywall(params);
+}
 
-  return PRODUCT_ID_TO_TIER[latest.productId] || "none";
+export async function presentPaywallIfNeeded(params?: {
+  offering?: PurchasesOffering;
+  displayCloseButton?: boolean;
+  fontFamily?: string | null;
+  requiredEntitlementIdentifier?: string;
+}): Promise<PAYWALL_RESULT> {
+  await ensureConfigured();
+  return RevenueCatUI.presentPaywallIfNeeded({
+    requiredEntitlementIdentifier:
+      params?.requiredEntitlementIdentifier || ENTITLEMENT_IDS.premium,
+    offering: params?.offering,
+    displayCloseButton: params?.displayCloseButton,
+    fontFamily: params?.fontFamily,
+  });
+}
+
+export async function restorePurchases(): Promise<CustomerInfo> {
+  await ensureConfigured();
+  return Purchases.restorePurchases();
+}
+
+export async function openCustomerCenter() {
+  await ensureConfigured();
+  return RevenueCatUI.presentCustomerCenter();
 }
 
 export async function restoreApplePurchases(): Promise<SubscriptionEntitlement> {
-  if (!isIosIapAvailable()) {
-    return "none";
-  }
-
-  const restorePurchases = (IAP as any).restorePurchases as (() => Promise<void>) | undefined;
-  if (restorePurchases) {
-    await restorePurchases();
-  }
-
-  return getActiveAppleSubscription();
+  const info = await restorePurchases();
+  const tier = getActiveSubscriptionTier(info);
+  return tier === "free" ? "none" : tier;
 }
 
-export function openAppleSubscriptionManager() {
-  if (!isIosIapAvailable()) {
-    return;
-  }
-
-  const deepLink = (IAP as any).deepLinkToSubscriptionsIOS as (() => Promise<void>) | undefined;
-  if (deepLink) {
-    return deepLink();
-  }
-
-  return Linking.openURL("https://apps.apple.com/account/subscriptions");
+export async function openAppleSubscriptionManager() {
+  return openCustomerCenter();
 }
 
-export async function changeApplePlan(
-  targetTier: AppleSubscriptionTier,
-  appAccountToken?: string
-) {
-  const productId = APPLE_SUBSCRIPTION_PRODUCTS[targetTier].productId;
-  return requestAppleSubscription(productId, appAccountToken);
-}
-
-export function formatAppleSubscriptionPeriod(product?: ProductSubscription) {
-  if (!product || product.type !== "subs") {
-    return "/ monthly";
-  }
-
-  const unit =
-    (product as any).subscriptionInfoIOS?.subscriptionPeriod?.unit ||
-    (product as any).subscriptionPeriodUnitIOS;
-  const countRaw =
-    (product as any).subscriptionInfoIOS?.subscriptionPeriod?.value ||
-    (product as any).subscriptionPeriodNumberIOS;
-
-  if (!unit) {
-    return "/ monthly";
-  }
-
-  const count = countRaw ? Number(countRaw) : 1;
-  if (unit.toLowerCase() === "month" && count === 1) {
-    return "/ monthly";
-  }
-  const suffix = count > 1 ? `${unit.toLowerCase()}s` : unit.toLowerCase();
-  return `/${count} ${suffix}`;
-}
-
-type ReceiptValidationResult = {
-  valid: boolean;
-  productId?: string;
-  expiresAt?: string;
-  environment?: string;
-  status?: number;
-  reason?: "missing_receipt" | "missing_shared_secret";
+export { PAYWALL_RESULT, PURCHASES_ERROR_CODE };
+export type {
+  CustomerInfo,
+  PurchasesError,
+  PurchasesOffering,
+  PurchasesOfferings,
+  PurchasesPackage,
 };
-
-type AppleReceiptInfo = {
-  product_id?: string;
-  productId?: string;
-  expires_date_ms?: string;
-  purchase_date_ms?: string;
-};
-
-const APPLE_RECEIPT_PRODUCTION_URL = "https://buy.itunes.apple.com/verifyReceipt";
-const APPLE_RECEIPT_SANDBOX_URL = "https://sandbox.itunes.apple.com/verifyReceipt";
-
-const selectLatestReceiptInfo = (payload: any): AppleReceiptInfo | null => {
-  const latestInfo = Array.isArray(payload?.latest_receipt_info)
-    ? payload.latest_receipt_info
-    : Array.isArray(payload?.receipt?.in_app)
-      ? payload.receipt.in_app
-      : [];
-
-  if (!latestInfo.length) {
-    return null;
-  }
-
-  return latestInfo.reduce((current: AppleReceiptInfo, entry: AppleReceiptInfo) => {
-    const currentMs = Number(current?.expires_date_ms || current?.purchase_date_ms || 0);
-    const entryMs = Number(entry?.expires_date_ms || entry?.purchase_date_ms || 0);
-    return entryMs >= currentMs ? entry : current;
-  }, latestInfo[0]);
-};
-
-const postReceiptValidation = async (
-  endpoint: string,
-  receiptData: string
-) => {
-  const response = await fetch(endpoint, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      "receipt-data": receiptData,
-      password: APP_STORE_SHARED_SECRET,
-      "exclude-old-transactions": true,
-    }),
-  });
-
-  return response.json();
-};
-
-export async function validateAppleReceipt(
-  receiptData: string | undefined,
-  productId?: string
-): Promise<ReceiptValidationResult> {
-  const receipt = receiptData?.trim();
-  if (!receipt) {
-    return { valid: false, productId, reason: "missing_receipt" };
-  }
-
-  if (!APP_STORE_SHARED_SECRET) {
-    return { valid: false, productId, reason: "missing_shared_secret" };
-  }
-
-  let environment = shouldUseSandbox() ? "Sandbox" : "Production";
-  const initialUrl =
-    environment === "Sandbox" ? APPLE_RECEIPT_SANDBOX_URL : APPLE_RECEIPT_PRODUCTION_URL;
-
-  try {
-    let payload = await postReceiptValidation(initialUrl, receipt);
-
-    if (payload?.status === 21007 && environment === "Production") {
-      payload = await postReceiptValidation(APPLE_RECEIPT_SANDBOX_URL, receipt);
-      environment = "Sandbox";
-    } else if (payload?.status === 21008 && environment === "Sandbox") {
-      payload = await postReceiptValidation(APPLE_RECEIPT_PRODUCTION_URL, receipt);
-      environment = "Production";
-    }
-
-    if (!payload || typeof payload.status !== "number") {
-      return { valid: false, productId, environment };
-    }
-
-    if (payload.status !== 0) {
-      return { valid: false, productId, environment, status: payload.status };
-    }
-
-    const latestInfo = selectLatestReceiptInfo(payload);
-    const expiresMs = latestInfo?.expires_date_ms
-      ? Number(latestInfo.expires_date_ms)
-      : undefined;
-    const expiresAt = typeof expiresMs === "number" ? new Date(expiresMs).toISOString() : undefined;
-    const isExpired = typeof expiresMs === "number" ? expiresMs <= Date.now() : false;
-    const resolvedProductId = productId || latestInfo?.product_id || latestInfo?.productId;
-
-    return {
-      valid: !isExpired,
-      productId: resolvedProductId,
-      expiresAt,
-      environment,
-      status: payload.status,
-    };
-  } catch (error) {
-    console.warn("Apple receipt validation failed", error);
-    return {
-      valid: false,
-      productId,
-      environment,
-    };
-  }
-}
-
-// Event helpers to keep react-native-iap dynamic
-export const addPurchaseUpdatedListener = (
-  listener: (purchase: Purchase) => void
-) => {
-  return IAP.purchaseUpdatedListener(listener);
-};
-
-export const addPurchaseErrorListener = (
-  listener: (error: PurchaseError) => void
-) => {
-  return IAP.purchaseErrorListener(listener);
-};
-
-export const finishTransactionSafe = async (purchase: Purchase) => {
-  try {
-    await IAP.finishTransaction({ purchase, isConsumable: false });
-  } catch (error) {
-    console.warn("finishTransaction failed", error);
-  }
-};
-
-export const requestAppleSubscription = async (productId: string, appAccountToken?: string) => {
-  return IAP.requestPurchase({
-    type: "subs",
-    request: {
-      apple: {
-        sku: productId,
-        andDangerouslyFinishTransactionAutomatically: false,
-        appAccountToken,
-      },
-    },
-  });
-};
-
-export type { Purchase, PurchaseError, ProductSubscription };

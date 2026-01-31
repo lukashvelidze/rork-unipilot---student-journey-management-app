@@ -706,9 +706,9 @@ export default function InterviewSimulatorScreen() {
  return;
  }
 
- const tier = profile?.subscription_tier;
- const isProTier = tier === "pro" || tier === "premium";
- resolveAccess(!!isProTier, null);
+   const tier = profile?.subscription_tier;
+   const isPremiumTier = tier === "premium";
+   resolveAccess(!!isPremiumTier, null);
  } catch (error) {
  console.error("Error checking pro access:", error);
  resolveAccess(false, "Unable to verify access. Please retry.");

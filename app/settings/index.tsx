@@ -225,8 +225,8 @@ export default function SettingsScreen() {
         return;
       }
 
-      const tier = entitlement === "pro" ? "pro" : entitlement;
-      const isPremiumTier = tier !== "free";
+      const tier = entitlement;
+      const isPremiumTier = true;
 
       const { error: updateError } = await supabase
         .from("profiles")
