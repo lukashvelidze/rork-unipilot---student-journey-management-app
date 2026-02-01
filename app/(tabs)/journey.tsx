@@ -19,6 +19,7 @@ import { getRandomQuote, generalQuotes } from "@/mocks/quotes";
 import { TimelineEvent } from "@/types/user";
 import { JourneyStage, MemoryMood, JourneyProgress, Task } from "@/types/user";
 import { supabase } from "@/lib/supabase";
+import { openManageSubscription } from "@/lib/subscriptionManager";
 
 const { width, height } = Dimensions.get("window");
 
@@ -59,10 +60,16 @@ export default function JourneyScreen() {
     const label = tierLabel ? `${tierLabel} ` : "";
     Alert.alert(
       "Upgrade Required",
-      `${label}tasks are available on a higher plan. Upgrade to unlock this checklist.`,
+      `${label}tasks are available on a higher plan. Manage your plan to upgrade.`,
       [
         { text: "Not now", style: "cancel" },
-        { text: "View Plans", onPress: () => router.push("/premium") },
+        { text: "Manage Subscription", onPress: () => {
+          openManageSubscription()
+            .catch((error) => {
+              console.error("Open subscription manager failed", error);
+              router.push("/settings/index");
+            });
+        }},
       ]
     );
   };

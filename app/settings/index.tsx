@@ -21,6 +21,7 @@ import { useThemeStore } from "@/store/themeStore";
 import Theme from "@/constants/theme";
 import Card from "@/components/Card";
 import { useUserStore } from "@/store/userStore";
+import { useAppStateStore } from "@/store/appStateStore";
 import { supabase } from "@/lib/supabase";
 import { openAppleSubscriptionManager } from "@/lib/iap";
 import { getPaddleCustomerId } from "@/lib/paddle-customer";
@@ -44,11 +45,23 @@ export default function SettingsScreen() {
   const router = useRouter();
   const Colors = useColors();
   const { user, logout, isPremium } = useUserStore();
+  const { setHasBootstrappedNavigation } = useAppStateStore();
   const { isDarkMode, toggleDarkMode } = useThemeStore();
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const [notifications, setNotifications] = useState(true);
   const [autoDownload, setAutoDownload] = useState(false);
   const isIosDevice = Platform.OS === "ios";
+
+  const performSignOut = async () => {
+    try {
+      await supabase.auth.signOut();
+    } catch (error) {
+      console.error("Sign out failed:", error);
+    } finally {
+      await logout();
+      setHasBootstrappedNavigation(false);
+    }
+  };
   
   const handleLogout = async () => {
     Alert.alert(
@@ -60,10 +73,7 @@ export default function SettingsScreen() {
           text: "Sign Out",
           style: "destructive",
           onPress: async () => {
-            await logout();
-            // Sign out from Supabase
-            const { signOut } = await import("@/lib/supabase");
-            await signOut();
+            await performSignOut();
             router.replace("/onboarding/step1-account");
           },
         },
@@ -101,14 +111,36 @@ export default function SettingsScreen() {
                 supabase.from("user_subscriptions").delete().eq("user_id", userId),
                 supabase.from("user_subscription_status").delete().eq("user_id", userId),
               ];
-              await Promise.all(deletions);
+              const deletionResults = await Promise.allSettled(deletions);
+              deletionResults.forEach((result) => {
+                if (result.status === "rejected") {
+                  console.warn("Failed to delete user data:", result.reason);
+                }
+              });
 
               // Remove profile entry last
               await supabase.from("profiles").delete().eq("id", userId);
 
+              const { data: { session } } = await supabase.auth.getSession();
+
+              if (!session) {
+                throw new Error("Missing auth session");
+              }
+
+              if (session.expires_at && session.expires_at * 1000 < Date.now() + 60000) {
+                const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
+                if (refreshError || !refreshed?.session) {
+                  throw refreshError || new Error("Failed to refresh auth session");
+                }
+              }
+
+              const { error: deleteError } = await supabase.functions.invoke("delete-user");
+              if (deleteError) {
+                throw deleteError;
+              }
+
               // Sign out and clear local state
-              await supabase.auth.signOut();
-              await logout();
+              await performSignOut();
 
               Alert.alert("Account Deleted", "Your account has been deleted.", [
                 {

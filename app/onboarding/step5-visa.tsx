@@ -243,7 +243,14 @@ export default function Step5Visa() {
 
       // Clear old journey data and refresh
       journeyStore.setJourneyProgress([]);
-      await journeyStore.refreshJourney();
+      try {
+        await Promise.race([
+          journeyStore.refreshJourney(),
+          new Promise((resolve) => setTimeout(resolve, 6000)),
+        ]);
+      } catch (refreshError) {
+        console.warn("Journey refresh failed:", refreshError);
+      }
 
       // Navigate based on where user came from
       if (isFromEditProfile) {

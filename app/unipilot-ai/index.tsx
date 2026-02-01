@@ -16,6 +16,7 @@ import { Send, Crown, Lock } from "lucide-react-native";
 import { useColors } from "@/hooks/useColors";
 import { useAppBack } from "@/hooks/useAppBack";
 import { supabase } from "@/lib/supabase";
+import { openManageSubscription } from "@/lib/subscriptionManager";
 import Button from "@/components/Button";
 import Card from "@/components/Card";
 
@@ -117,8 +118,14 @@ export default function UniPilotAIScreen() {
               </View>
             </View>
             <Button
-              title="View Premium Plans"
-              onPress={() => router.push("/premium")}
+              title="Manage Subscription"
+              onPress={() => {
+                openManageSubscription()
+                  .catch((error) => {
+                    console.error("Open subscription manager failed", error);
+                    router.push("/settings/index");
+                  });
+              }}
               icon={<Crown size={20} color="#FFFFFF" />}
               fullWidth
               style={styles.upgradeButton}

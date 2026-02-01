@@ -21,6 +21,7 @@ import {
   resolveArticleImageUrl,
 } from "@/lib/articles";
 import { supabase } from "@/lib/supabase";
+import { openManageSubscription } from "@/lib/subscriptionManager";
 import { Article } from "@/types/articles";
 import { SubscriptionTier } from "@/types/user";
 import Button from "@/components/Button";
@@ -200,7 +201,17 @@ export default function ArticleDetailScreen() {
               <Text style={[styles.lockedText, { color: Colors.lightText }]}>
                 Upgrade your plan to read the full article and unlock more premium resources.
               </Text>
-              <Button title="View plans" onPress={() => router.push("/premium")} fullWidth />
+              <Button
+                title="Manage Subscription"
+                onPress={() => {
+                  openManageSubscription()
+                    .catch((error) => {
+                      console.error("Open subscription manager failed", error);
+                      router.push("/settings/index");
+                    });
+                }}
+                fullWidth
+              />
             </View>
           ) : (
             <View style={styles.contentBlock}>

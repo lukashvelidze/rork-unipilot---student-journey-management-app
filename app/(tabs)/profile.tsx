@@ -9,8 +9,10 @@ import Card from "@/components/Card";
 import Button from "@/components/Button";
 import Avatar from "@/components/Avatar";
 import { useUserStore } from "@/store/userStore";
+import { useAppStateStore } from "@/store/appStateStore";
 import { useJourneyStore } from "@/store/journeyStore";
 import { useDocumentStore } from "@/store/documentStore";
+import { supabase } from "@/lib/supabase";
 import { EducationLevel } from "@/types/user";
 
 const formatEducationLevel = (level: EducationLevel | undefined): string => {
@@ -29,8 +31,20 @@ export default function ProfileScreen() {
   const router = useRouter();
   const Colors = useColors();
   const { user, isPremium, logout } = useUserStore();
+  const { setHasBootstrappedNavigation } = useAppStateStore();
   const { journeyProgress } = useJourneyStore();
   const { documents } = useDocumentStore();
+
+  const performSignOut = async () => {
+    try {
+      await supabase.auth.signOut();
+    } catch (error) {
+      console.error("Sign out failed:", error);
+    } finally {
+      await logout();
+      setHasBootstrappedNavigation(false);
+    }
+  };
   
   if (!user) {
     return (
@@ -38,7 +52,7 @@ export default function ProfileScreen() {
         <Text style={[styles.errorText, { color: Colors.text }]}>User data not available. Please log in.</Text>
         <Button
           title="Logout"
-          onPress={logout}
+          onPress={performSignOut}
           variant="outline"
           fullWidth
           style={{ ...styles.actionButton, borderColor: Colors.error }}
@@ -241,7 +255,7 @@ export default function ProfileScreen() {
         <Button
           title="Sign Out"
           onPress={async () => {
-            await logout();
+            await performSignOut();
             router.replace("/onboarding/step1-account");
           }}
           variant="outline"

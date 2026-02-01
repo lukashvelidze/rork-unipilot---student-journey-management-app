@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 import { useRouter } from "expo-router";
 import { View, ActivityIndicator, Text, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -10,9 +10,25 @@ import { SubscriptionTier, EducationLevel } from "@/types/user";
 export default function OnboardingIndex() {
   const router = useRouter();
   const { user, setUser, logout } = useUserStore();
+  const hasRedirectedRef = useRef(false);
 
   useEffect(() => {
-    checkAuthAndRedirect();
+    let isMounted = true;
+    const timeoutId = setTimeout(() => {
+      if (!isMounted || hasRedirectedRef.current) return;
+      hasRedirectedRef.current = true;
+      console.warn("Onboarding setup timed out, returning to account step.");
+      router.replace("/onboarding/step1-account");
+    }, 8000);
+
+    checkAuthAndRedirect()
+      .catch((error) => console.error("Onboarding check failed:", error))
+      .finally(() => clearTimeout(timeoutId));
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timeoutId);
+    };
   }, []);
 
   const checkAuthAndRedirect = async () => {
@@ -22,13 +38,19 @@ export default function OnboardingIndex() {
 
       if (authError || !authUser) {
         // Not authenticated, start from welcome
-        router.replace("/onboarding/step0-welcome");
+        if (!hasRedirectedRef.current) {
+          hasRedirectedRef.current = true;
+          router.replace("/onboarding/step0-welcome");
+        }
         return;
       }
 
       // Check if user has completed onboarding
       if (user?.onboardingCompleted) {
-        router.replace("/(tabs)");
+        if (!hasRedirectedRef.current) {
+          hasRedirectedRef.current = true;
+          router.replace("/(tabs)");
+        }
         return;
       }
 
@@ -44,7 +66,10 @@ export default function OnboardingIndex() {
         // Clear any stale session so we don't loop between onboarding screens
         await supabase.auth.signOut();
         await logout();
-        router.replace("/onboarding/step1-account");
+        if (!hasRedirectedRef.current) {
+          hasRedirectedRef.current = true;
+          router.replace("/onboarding/step1-account");
+        }
         return;
       }
 
@@ -122,18 +147,27 @@ export default function OnboardingIndex() {
         setUser(updatedUser);
 
         // Redirect based on onboarding step
-        if (isOnboardingComplete) {
-          router.replace("/(tabs)");
-        } else {
-          router.replace(`/onboarding/step${onboardingStep}-${getStepName(onboardingStep)}` as any);
+        if (!hasRedirectedRef.current) {
+          hasRedirectedRef.current = true;
+          if (isOnboardingComplete) {
+            router.replace("/(tabs)");
+          } else {
+            router.replace(`/onboarding/step${onboardingStep}-${getStepName(onboardingStep)}` as any);
+          }
         }
       } else {
         // No profile found, start from step 1
-        router.replace("/onboarding/step1-account");
+        if (!hasRedirectedRef.current) {
+          hasRedirectedRef.current = true;
+          router.replace("/onboarding/step1-account");
+        }
       }
     } catch (error) {
       console.error("Error in onboarding check:", error);
-      router.replace("/onboarding/step0-welcome");
+      if (!hasRedirectedRef.current) {
+        hasRedirectedRef.current = true;
+        router.replace("/onboarding/step0-welcome");
+      }
     }
   };
 

@@ -8,6 +8,7 @@ import Input from "@/components/Input";
 import Button from "@/components/Button";
 import { loadDocumentCategories, createDocumentEntry } from "@/lib/supabase";
 import { supabase } from "@/lib/supabase";
+import { openManageSubscription } from "@/lib/subscriptionManager";
 
 interface DocumentCategory {
   id: string;
@@ -76,7 +77,13 @@ export default function NewDocumentScreen() {
           "This document category is available for premium users only. Upgrade to unlock premium features.",
             [
               { text: "Cancel", style: "cancel" },
-              { text: "Upgrade", onPress: () => router.push("/premium") },
+              { text: "Manage Subscription", onPress: () => {
+                openManageSubscription()
+                  .catch((error) => {
+                    console.error("Open subscription manager failed", error);
+                    router.push("/settings/index");
+                  });
+              }},
             ]
         );
         return;
@@ -170,7 +177,13 @@ export default function NewDocumentScreen() {
           "This document category is available for premium users only.",
             [
               { text: "Cancel", style: "cancel" },
-              { text: "Upgrade", onPress: () => router.push("/premium") },
+              { text: "Manage Subscription", onPress: () => {
+                openManageSubscription()
+                  .catch((error) => {
+                    console.error("Open subscription manager failed", error);
+                    router.push("/settings/index");
+                  });
+              }},
             ]
           );
       } else {

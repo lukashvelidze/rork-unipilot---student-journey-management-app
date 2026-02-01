@@ -14,6 +14,7 @@ import { calculateOverallProgress } from "@/utils/helpers";
 import { getRandomQuote, generalQuotes } from "@/mocks/quotes";
 import { supabase, getCountries } from "@/lib/supabase";
 import { formatEnumValue } from "@/utils/safeStringOps";
+import { openManageSubscription } from "@/lib/subscriptionManager";
 import { SubscriptionTier, Country } from "@/types/user";
 
 // Timeout wrapper for Supabase calls
@@ -304,10 +305,16 @@ export default function HomeScreen() {
     } else {
       Alert.alert(
         "Premium Feature",
-        `${featureName} is available with a premium subscription. Upgrade to unlock this feature and more!`,
+        `${featureName} is available with a premium subscription. Manage your plan to upgrade.`,
         [
           { text: "Cancel", style: "cancel" },
-          { text: "View Plans", onPress: () => router.push("/premium") },
+          { text: "Manage Subscription", onPress: () => {
+            openManageSubscription()
+              .catch((error) => {
+                console.error("Open subscription manager failed", error);
+                router.push("/settings/index");
+              });
+          }},
         ]
       );
     }
@@ -319,10 +326,16 @@ export default function HomeScreen() {
     } else {
       Alert.alert(
         "Upgrade required",
-        `${featureName} is available on the Standard plan or higher.`,
+        `${featureName} is available on the Standard plan or higher. Manage your plan to upgrade.`,
         [
           { text: "Cancel", style: "cancel" },
-          { text: "View Plans", onPress: () => router.push("/premium") },
+          { text: "Manage Subscription", onPress: () => {
+            openManageSubscription()
+              .catch((error) => {
+                console.error("Open subscription manager failed", error);
+                router.push("/settings/index");
+              });
+          }},
         ]
       );
     }

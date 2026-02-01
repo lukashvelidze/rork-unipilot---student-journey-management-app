@@ -1,8 +1,12 @@
 import { ElevenLabsProvider, useConversation } from '@elevenlabs/react-native';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { useRouter } from 'expo-router';
 import { Audio } from 'expo-av';
 import { useColors } from '@/hooks/useColors';
+import { supabase } from '@/lib/supabase';
+import Card from '@/components/Card';
+import { openManageSubscription } from '@/lib/subscriptionManager';
 function ConversationScreen() {
   const Colors = useColors();
   const [isConnected, setIsConnected] = useState(false);
@@ -120,10 +124,120 @@ function ConversationScreen() {
     </View>
   );
 }
+
+function InterviewAccessGate() {
+  const Colors = useColors();
+  const router = useRouter();
+  const [isCheckingAccess, setIsCheckingAccess] = useState(true);
+  const [hasPremiumAccess, setHasPremiumAccess] = useState(false);
+  const [tierLabel, setTierLabel] = useState("Free");
+
+  useEffect(() => {
+    let isActive = true;
+
+    const checkAccess = async () => {
+      try {
+        const { data: { user: authUser } } = await supabase.auth.getUser();
+        if (!authUser) {
+          if (isActive) {
+            setHasPremiumAccess(false);
+            setTierLabel("Free");
+          }
+          return;
+        }
+
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("subscription_tier")
+          .eq("id", authUser.id)
+          .single();
+
+        const rawTier = (profile?.subscription_tier || "free").toLowerCase();
+        const normalizedTier = rawTier === "pro" ? "premium" : rawTier;
+        const premiumAccess = normalizedTier === "premium";
+
+        if (isActive) {
+          setHasPremiumAccess(premiumAccess);
+          setTierLabel(normalizedTier.charAt(0).toUpperCase() + normalizedTier.slice(1));
+        }
+      } catch (error) {
+        console.error("Failed to check access:", error);
+        if (isActive) {
+          setHasPremiumAccess(false);
+          setTierLabel("Free");
+        }
+      } finally {
+        if (isActive) {
+          setIsCheckingAccess(false);
+        }
+      }
+    };
+
+    checkAccess();
+
+    return () => {
+      isActive = false;
+    };
+  }, []);
+
+  if (isCheckingAccess) {
+    return (
+      <View style={[styles.container, { backgroundColor: Colors.background, justifyContent: "center" }]}>
+        <Text style={[styles.subtitle, { color: Colors.lightText, textAlign: "center" }]}>
+          Checking access...
+        </Text>
+      </View>
+    );
+  }
+
+  if (!hasPremiumAccess) {
+    return (
+      <View style={[styles.container, { backgroundColor: Colors.background }]}>
+        <View style={styles.header}>
+          <View style={[styles.headerIcon, { backgroundColor: Colors.primary + '20' }]}>
+            <Text style={styles.headerIconText}>🔒</Text>
+          </View>
+          <Text style={[styles.title, { color: Colors.text }]}>Premium Feature</Text>
+          <Text style={[styles.subtitle, { color: Colors.lightText }]}>
+            Interview Simulator is available on the Premium plan.
+          </Text>
+        </View>
+
+        <Card style={[styles.statusCard, { backgroundColor: Colors.card, borderColor: Colors.border }]}>
+          <Text style={[styles.speaking, { color: Colors.text }]}>Current plan: {tierLabel}</Text>
+          <Text style={[styles.helperText, { color: Colors.lightText }]}>
+            Upgrade to Premium to unlock live interview practice.
+          </Text>
+        </Card>
+
+        <View style={[styles.actionCard, { backgroundColor: Colors.card, borderColor: Colors.border }]}>
+          <TouchableOpacity
+            style={[styles.button, { backgroundColor: Colors.primary }]}
+            onPress={() => {
+              openManageSubscription()
+                .catch((error) => {
+                  console.error("Open subscription manager failed", error);
+                  router.push("/settings/index");
+                });
+            }}
+          >
+            <Text style={styles.buttonText}>Manage Subscription</Text>
+          </TouchableOpacity>
+          <Text style={[styles.helperText, { color: Colors.lightText }]}>
+            Cancel anytime from Settings → Manage Subscription.
+          </Text>
+        </View>
+      </View>
+    );
+  }
+
+  return <ConversationScreen />;
+}
+
 function App() {
   return (
     <ElevenLabsProvider>
-      <ConversationScreen />
+      <InterviewAccessGate />
     </ElevenLabsProvider>
   );
 }

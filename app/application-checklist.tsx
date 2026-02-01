@@ -9,6 +9,7 @@ import Card from "@/components/Card";
 import Button from "@/components/Button";
 import { useUserStore } from "@/store/userStore";
 import { supabase } from "@/lib/supabase";
+import { openManageSubscription } from "@/lib/subscriptionManager";
 
 interface Checklist {
   id: string;
@@ -75,10 +76,16 @@ export default function ApplicationChecklistScreen() {
     const label = tierLabel ? `${formatTierLabel(tierLabel)} ` : "";
     Alert.alert(
       "Upgrade Required",
-      `${label}checklists are available on a higher plan. Upgrade to unlock them.`,
+      `${label}checklists are available on a higher plan. Manage your plan to upgrade.`,
       [
         { text: "Not now", style: "cancel" },
-        { text: "View Plans", onPress: () => router.push("/premium") },
+        { text: "Manage Subscription", onPress: () => {
+          openManageSubscription()
+            .catch((error) => {
+              console.error("Open subscription manager failed", error);
+              router.push("/settings/index");
+            });
+        }},
       ]
     );
   };

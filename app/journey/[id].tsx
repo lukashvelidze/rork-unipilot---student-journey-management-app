@@ -12,6 +12,7 @@ import { useJourneyStore } from "@/store/journeyStore";
 import { useUserStore } from "@/store/userStore";
 import { JourneyStage, Task } from "@/types/user";
 import { supabase } from "@/lib/supabase";
+import { openManageSubscription } from "@/lib/subscriptionManager";
 
 const stageInfo = {
   research: {
@@ -126,8 +127,14 @@ export default function StageDetailScreen() {
             This checklist is available on a higher plan. Upgrade to unlock these tasks.
           </Text>
           <Button
-            title="View Plans"
-            onPress={() => router.push("/premium")}
+            title="Manage Subscription"
+            onPress={() => {
+              openManageSubscription()
+                .catch((error) => {
+                  console.error("Open subscription manager failed", error);
+                  router.push("/settings/index");
+                });
+            }}
             fullWidth
           />
         </View>

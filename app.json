@@ -16,7 +16,7 @@
     },
     "ios": {
       "newArchEnabled": true,
-      "supportsTablet": true,
+      "supportsTablet": false,
       "bundleIdentifier": "dev.lukashvelidze.unipilot",
       "buildNumber": "2",
       "entitlements": {

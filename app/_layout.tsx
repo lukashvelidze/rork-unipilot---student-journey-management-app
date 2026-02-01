@@ -12,10 +12,12 @@ import { useThemeStore } from "@/store/themeStore";
 import BackButton from "@/components/BackButton";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useUserStore } from "@/store/userStore";
+import { useAppStateStore } from "@/store/appStateStore";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { preRehydrationCleanup } from "@/utils/hermesStorage";
 import { supabase } from "@/lib/supabase";
 import { ElevenLabsProvider } from "@elevenlabs/react-native";
+import { useRevenueCatSync } from "@/hooks/useRevenueCatSync";
 
 // Import iOS crash prevention at module level (synchronous)
 // Wrapped in try/catch for Expo Go compatibility
@@ -108,6 +110,8 @@ function RootLayoutNav() {
   const { isDarkMode } = useThemeStore();
   const initializeUser = useUserStore((state) => state.initializeUser);
   const setAuthInitializing = useUserStore((state) => state.setAuthInitializing);
+  const { syncForUser } = useRevenueCatSync();
+  const setHasBootstrappedNavigation = useAppStateStore((state) => state.setHasBootstrappedNavigation);
 
   useEffect(() => {
     // Initialize user when app starts
@@ -125,7 +129,8 @@ function RootLayoutNav() {
 
     const hydrateSession = async () => {
       try {
-        await supabase.auth.getSession();
+        const { data } = await supabase.auth.getSession();
+        await syncForUser(data?.session?.user ?? null);
       } catch (error) {
         console.error("Error hydrating auth session:", error);
       } finally {
@@ -137,15 +142,22 @@ function RootLayoutNav() {
 
     hydrateSession();
 
-    const { data: authListener } = supabase.auth.onAuthStateChange((_event, _session) => {
-      // No-op: we just want to ensure listener keeps session alive; hydration flag stays false
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!session) {
+        useUserStore.getState().logout();
+        setHasBootstrappedNavigation(false);
+      }
+
+      syncForUser(session?.user ?? null).catch((error) => {
+        console.error("RevenueCat sync failed:", error);
+      });
     });
 
     return () => {
       isMounted = false;
       authListener.subscription.unsubscribe();
     };
-  }, [setAuthInitializing]);
+  }, [setAuthInitializing, syncForUser]);
 
 
   const AppContent = (
