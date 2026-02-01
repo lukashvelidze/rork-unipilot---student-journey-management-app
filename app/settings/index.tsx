@@ -14,8 +14,7 @@ import {
   Download,
   Trash2,
   Crown,
-  CreditCard,
-  RefreshCw
+  CreditCard
 } from "lucide-react-native";
 import { useColors } from "@/hooks/useColors";
 import { useThemeStore } from "@/store/themeStore";
@@ -23,7 +22,7 @@ import Theme from "@/constants/theme";
 import Card from "@/components/Card";
 import { useUserStore } from "@/store/userStore";
 import { supabase } from "@/lib/supabase";
-import { openAppleSubscriptionManager, restoreApplePurchases } from "@/lib/iap";
+import { openAppleSubscriptionManager } from "@/lib/iap";
 import { getPaddleCustomerId } from "@/lib/paddle-customer";
 import { buildPaddleCustomerPortalUrl } from "@/lib/paddle";
 
@@ -44,11 +43,9 @@ interface SettingItem {
 export default function SettingsScreen() {
   const router = useRouter();
   const Colors = useColors();
-  const { user, logout, isPremium, updateUser } = useUserStore();
+  const { user, logout, isPremium } = useUserStore();
   const { isDarkMode, toggleDarkMode } = useThemeStore();
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
-  const [isRestoringPurchases, setIsRestoringPurchases] = useState(false);
-
   const [notifications, setNotifications] = useState(true);
   const [autoDownload, setAutoDownload] = useState(false);
   const isIosDevice = Platform.OS === "ios";
@@ -131,15 +128,19 @@ export default function SettingsScreen() {
     );
   };
   
-  const handleRateApp = () => {
-    Alert.alert(
-      "Rate UniPilot",
-      "Would you like to rate UniPilot on the App Store?",
-      [
-        { text: "Not Now", style: "cancel" },
-        { text: "Rate App", onPress: () => console.log("Open app store") },
-      ]
-    );
+  const handleRateApp = async () => {
+    const reviewUrl = "https://apps.apple.com/app/id6748587544?action=write-review";
+    try {
+      const supported = await Linking.canOpenURL(reviewUrl);
+      if (!supported) {
+        Alert.alert("Unable to Open", "We couldn't open the App Store review page.");
+        return;
+      }
+      await Linking.openURL(reviewUrl);
+    } catch (error) {
+      console.error("Open review failed:", error);
+      Alert.alert("Unable to Open", "We couldn't open the App Store review page.");
+    }
   };
   
   const handleContactSupport = () => {
@@ -200,53 +201,6 @@ export default function SettingsScreen() {
     }
   };
 
-  const handleRestorePurchases = async () => {
-    if (!isIosDevice || isRestoringPurchases) {
-      return;
-    }
-
-    setIsRestoringPurchases(true);
-    try {
-      const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
-      if (authError || !authUser) {
-        throw new Error(authError?.message || "Not authenticated");
-      }
-
-      const entitlement = await restoreApplePurchases();
-
-      if (!entitlement || entitlement === "none") {
-        await supabase
-          .from("profiles")
-          .update({ subscription_tier: "free", updated_at: new Date().toISOString() })
-          .eq("id", authUser.id);
-
-        updateUser({ subscriptionTier: "free", isPremium: false });
-        Alert.alert("No Purchases Found", "No active App Store subscriptions were found.");
-        return;
-      }
-
-      const tier = entitlement;
-      const isPremiumTier = true;
-
-      const { error: updateError } = await supabase
-        .from("profiles")
-        .update({ subscription_tier: tier, updated_at: new Date().toISOString() })
-        .eq("id", authUser.id);
-
-      if (updateError) {
-        throw updateError;
-      }
-
-      updateUser({ subscriptionTier: tier, isPremium: isPremiumTier });
-      Alert.alert("Restored", "Your App Store subscription has been restored.");
-    } catch (error: any) {
-      console.error("Restore purchases failed", error);
-      Alert.alert("Restore Failed", error?.message || "Unable to restore purchases. Please try again.");
-    } finally {
-      setIsRestoringPurchases(false);
-    }
-  };
-
   const settingSections = [
     {
       title: "Account",
@@ -279,18 +233,6 @@ export default function SettingsScreen() {
                 iconColor: Colors.secondary,
                 type: "navigation",
                 onPress: handleManageSubscription,
-              },
-              {
-                id: "restorePurchases",
-                title: "Restore Purchases",
-                subtitle: isRestoringPurchases
-                  ? "Restoring your App Store purchases..."
-                  : "Recover an existing App Store subscription",
-                icon: RefreshCw,
-                iconColor: Colors.info,
-                type: "action",
-                onPress: handleRestorePurchases,
-                disabled: isRestoringPurchases,
               },
             ]
           : [
