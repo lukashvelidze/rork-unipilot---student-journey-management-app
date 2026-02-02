@@ -7,6 +7,7 @@ import { useColors } from "@/hooks/useColors";
 import Card from "@/components/Card";
 import Button from "@/components/Button";
 import { supabase } from "@/lib/supabase";
+import { openManageSubscription } from "@/lib/subscriptionManager";
 
 export default function PremiumResourcesScreen() {
   const Colors = useColors();
@@ -102,6 +103,23 @@ export default function PremiumResourcesScreen() {
       Alert.alert(
         "Coming Soon",
         `${resource.title} will be available soon. This feature will be linked to help icons in your checklist items.`
+      );
+    } else if (resource.proOnly && !hasProAccess) {
+      Alert.alert(
+        "Upgrade Required",
+        `${resource.title} is available on the Premium plan. Manage your subscription to upgrade.`,
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Manage Subscription",
+            onPress: () => {
+              openManageSubscription().catch((error) => {
+                console.error("Open subscription manager failed", error);
+                router.push("/settings");
+              });
+            },
+          },
+        ]
       );
     } else if (resource.route) {
       // Navigate to the resource route

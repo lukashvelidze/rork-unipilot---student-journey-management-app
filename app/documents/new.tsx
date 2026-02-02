@@ -81,7 +81,7 @@ export default function NewDocumentScreen() {
                 openManageSubscription()
                   .catch((error) => {
                     console.error("Open subscription manager failed", error);
-                    router.push("/settings/index");
+                    router.push("/settings");
                   });
               }},
             ]
@@ -181,7 +181,7 @@ export default function NewDocumentScreen() {
                 openManageSubscription()
                   .catch((error) => {
                     console.error("Open subscription manager failed", error);
-                    router.push("/settings/index");
+                    router.push("/settings");
                   });
               }},
             ]

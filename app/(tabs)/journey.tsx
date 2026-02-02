@@ -67,7 +67,7 @@ export default function JourneyScreen() {
           openManageSubscription()
             .catch((error) => {
               console.error("Open subscription manager failed", error);
-              router.push("/settings/index");
+              router.push("/settings");
             });
         }},
       ]

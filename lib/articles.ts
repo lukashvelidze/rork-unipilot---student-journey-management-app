@@ -80,7 +80,7 @@ const mapArticle = (article: any): Article => {
     created_at: article.created_at,
     updated_at: article.updated_at,
     reading_time_minutes: article.reading_time_minutes,
-    access_tier: (articleTier === "premium" || articleTier === "standard" || articleTier === "free"
+    access_tier: (articleTier === "premium" || articleTier === "standard" || articleTier === "basic" || articleTier === "free"
       ? articleTier
       : "free") as ArticleAccessTier,
     destination_country_code: article.destination_country_code,

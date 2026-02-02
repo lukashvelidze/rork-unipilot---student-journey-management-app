@@ -289,7 +289,8 @@ export default function HomeScreen() {
   const subscriptionLabel = tierLabels[effectiveTier] || "Free";
   const isTopTier = effectiveTier === "premium" || effectiveTier === "pro";
   const tierOrder: Record<string, number> = { free: 0, basic: 1, standard: 2, premium: 3, pro: 3 };
-  const hasStandardAccess = (tierOrder[effectiveTier] || 0) >= tierOrder["standard"];
+  const hasTierAccess = (requiredTier: "basic" | "standard" | "premium") =>
+    (tierOrder[effectiveTier] || 0) >= tierOrder[requiredTier];
   
   // Get current active stage (first incomplete stage)
   const currentStage = journeyProgress.find(stage => !stage.completed) || journeyProgress[0];
@@ -299,41 +300,25 @@ export default function HomeScreen() {
   const upcomingTasks = currentStage?.tasks.filter(task => !task.completed).slice(0, 3) || [];
   
   // Handle premium feature access
-  const handlePremiumFeature = (featureName: string, route: string) => {
-    if (hasActiveSubscription) {
+  const handlePremiumFeature = (
+    featureName: string,
+    route: string,
+    requiredTier: "basic" | "standard" | "premium" = "basic"
+  ) => {
+    if (hasTierAccess(requiredTier)) {
       router.push(route as any);
     } else {
+      const requiredLabel = requiredTier.charAt(0).toUpperCase() + requiredTier.slice(1);
       Alert.alert(
         "Premium Feature",
-        `${featureName} is available with a premium subscription. Manage your plan to upgrade.`,
+        `${featureName} is available on the ${requiredLabel} plan or higher. Manage your plan to upgrade.`,
         [
           { text: "Cancel", style: "cancel" },
           { text: "Manage Subscription", onPress: () => {
             openManageSubscription()
               .catch((error) => {
                 console.error("Open subscription manager failed", error);
-                router.push("/settings/index");
-              });
-          }},
-        ]
-      );
-    }
-  };
-
-  const handleStandardFeature = (featureName: string, route: string) => {
-    if (hasStandardAccess) {
-      router.push(route as any);
-    } else {
-      Alert.alert(
-        "Upgrade required",
-        `${featureName} is available on the Standard plan or higher. Manage your plan to upgrade.`,
-        [
-          { text: "Cancel", style: "cancel" },
-          { text: "Manage Subscription", onPress: () => {
-            openManageSubscription()
-              .catch((error) => {
-                console.error("Open subscription manager failed", error);
-                router.push("/settings/index");
+                router.push("/settings");
               });
           }},
         ]
@@ -384,7 +369,7 @@ export default function HomeScreen() {
       description: hasActiveSubscription ? "Practice visa interviews" : "Premium: Practice interviews",
       icon: Mic,
       color: Colors.accent,
-      onPress: () => handlePremiumFeature("Interview Simulator", "/premium/interview-simulator"),
+      onPress: () => handlePremiumFeature("Interview Simulator", "/premium/interview-simulator", "premium"),
       isPremium: true,
     },
   ];

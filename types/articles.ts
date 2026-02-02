@@ -1,6 +1,6 @@
 import { SubscriptionTier } from "./user";
 
-export type ArticleAccessTier = "free" | "standard" | "premium";
+export type ArticleAccessTier = "free" | "basic" | "standard" | "premium";
 
 export interface ArticleCategory {
   id: string;

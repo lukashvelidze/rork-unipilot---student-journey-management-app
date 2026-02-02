@@ -83,7 +83,7 @@ export default function ApplicationChecklistScreen() {
           openManageSubscription()
             .catch((error) => {
               console.error("Open subscription manager failed", error);
-              router.push("/settings/index");
+              router.push("/settings");
             });
         }},
       ]
@@ -249,6 +249,7 @@ export default function ApplicationChecklistScreen() {
         visa_type: cl.visa_type || profile.visa_type, // Use actual visa_type from DB or fallback
         title: cl.title,
         sort_order: cl.sort_order,
+        subscription_tier: cl.subscription_tier || "free",
         items: cl.items.map((item: any) => ({
           id: item.id,
           checklist_id: cl.id,
