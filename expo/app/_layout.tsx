@@ -1,12 +1,14 @@
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { useFonts } from "expo-font";
-import { Stack } from "expo-router";
+import { Stack, usePathname, useGlobalSearchParams } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { StatusBar } from "expo-status-bar";
 import { Platform } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import Constants from "expo-constants";
+import { PostHogProvider } from "posthog-react-native";
+import { posthog } from "@/src/config/posthog";
 import { useColors } from "@/hooks/useColors";
 import { useThemeStore } from "@/store/themeStore";
 import BackButton from "@/components/BackButton";
@@ -112,6 +114,19 @@ function RootLayoutNav() {
   const setAuthInitializing = useUserStore((state) => state.setAuthInitializing);
   const { syncForUser } = useRevenueCatSync();
   const setHasBootstrappedNavigation = useAppStateStore((state) => state.setHasBootstrappedNavigation);
+  const pathname = usePathname();
+  const params = useGlobalSearchParams();
+  const previousPathname = useRef<string | undefined>(undefined);
+
+  useEffect(() => {
+    if (previousPathname.current !== pathname) {
+      posthog.screen(pathname, {
+        previous_screen: previousPathname.current ?? null,
+        ...params,
+      });
+      previousPathname.current = pathname;
+    }
+  }, [pathname, params]);
 
   useEffect(() => {
     // Initialize user when app starts
@@ -218,9 +233,7 @@ function RootLayoutNav() {
       onError={(error, errorInfo) => {
         console.error('Root error boundary caught error:', error);
         console.error('Error info:', errorInfo);
-
-        // Log to analytics or crash reporting service here
-        console.log('Error logged for analytics');
+        posthog.captureException(error instanceof Error ? error : new Error(String(error)));
       }}
     >
       <SafeAreaProvider>
@@ -228,9 +241,18 @@ function RootLayoutNav() {
           style={isDarkMode ? "light" : "dark"}
           backgroundColor={Colors.background}
         />
-        <ElevenLabsProvider>
-          {AppContent}
-        </ElevenLabsProvider>
+        <PostHogProvider
+          client={posthog}
+          autocapture={{
+            captureScreens: false,
+            captureTouches: true,
+            propsToCapture: ['testID'],
+          }}
+        >
+          <ElevenLabsProvider>
+            {AppContent}
+          </ElevenLabsProvider>
+        </PostHogProvider>
       </SafeAreaProvider>
     </ErrorBoundary>
   );

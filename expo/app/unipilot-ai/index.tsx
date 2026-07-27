@@ -19,6 +19,7 @@ import { supabase } from "@/lib/supabase";
 import { openManageSubscription } from "@/lib/subscriptionManager";
 import Button from "@/components/Button";
 import Card from "@/components/Card";
+import { posthog } from "@/src/config/posthog";
 
 interface Message {
   id: string;
@@ -146,6 +147,10 @@ export default function UniPilotAIScreen() {
 
   const handleSend = async () => {
     if (!message.trim()) return;
+
+    if (messages.length === 0) {
+      posthog.capture('ai_assistant_started');
+    }
 
     const userMessage: Message = {
       id: `user-${Date.now()}`,

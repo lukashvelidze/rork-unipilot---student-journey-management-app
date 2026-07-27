@@ -6,6 +6,8 @@ module.exports = ({ config }) => {
     ...config,
     extra: {
       ...config.extra,
+      posthogProjectToken: process.env.POSTHOG_PROJECT_TOKEN,
+      posthogHost: process.env.POSTHOG_HOST || 'https://eu.i.posthog.com',
       appStore: {
         sharedSecret:
           process.env.APP_STORE_CONNECT_SHARED_SECRET || appStoreConfig.sharedSecret,

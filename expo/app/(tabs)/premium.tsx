@@ -8,6 +8,7 @@ import Card from "@/components/Card";
 import Button from "@/components/Button";
 import { supabase } from "@/lib/supabase";
 import { openManageSubscription } from "@/lib/subscriptionManager";
+import { posthog } from "@/src/config/posthog";
 
 export default function PremiumResourcesScreen() {
   const Colors = useColors();
@@ -98,6 +99,13 @@ export default function PremiumResourcesScreen() {
   const handleResourcePress = (resourceId: string) => {
     const resource = premiumResources.find(r => r.id === resourceId);
     if (!resource) return;
+
+    posthog.capture('premium_resource_viewed', {
+      resource_id: resourceId,
+      resource_title: resource.title,
+      is_coming_soon: resource.comingSoon,
+      is_pro_only: resource.proOnly,
+    });
 
     if (resource.comingSoon) {
       Alert.alert(

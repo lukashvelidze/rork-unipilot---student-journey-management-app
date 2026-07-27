@@ -11,6 +11,7 @@ import { useUserStore } from '@/store/userStore';
 import { supabase } from '@/lib/supabase';
 import { storePaddleCustomerId } from '@/lib/paddle-customer';
 import CelebrationAnimation from '@/components/CelebrationAnimation';
+import { posthog } from '@/src/config/posthog';
 
 const TIER_NAMES: Record<string, string> = {
   basic: "Basic",
@@ -96,6 +97,11 @@ export default function PaymentSuccessScreen() {
       updateUser({
         subscriptionTier: tierParam,
         isPremium: isPremiumTier,
+      });
+
+      posthog.capture('subscription_activated', {
+        subscription_tier: tierParam,
+        price: TIER_PRICES[tierParam] ?? null,
       });
 
       setIsUpdating(false);

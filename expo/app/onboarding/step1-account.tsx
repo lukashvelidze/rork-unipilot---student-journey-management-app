@@ -9,6 +9,7 @@ import Input from "@/components/Input";
 import { useUserStore } from "@/store/userStore";
 import { supabase } from "@/lib/supabase";
 import { SubscriptionTier } from "@/types/user";
+import { posthog } from "@/src/config/posthog";
 
 export default function Step1Account() {
   const router = useRouter();
@@ -210,6 +211,12 @@ export default function Step1Account() {
           isPremium: user?.isPremium || false,
         });
 
+        posthog.identify(data.user.id, {
+          $set: { name },
+          $set_once: { first_signup_date: new Date().toISOString() },
+        });
+        posthog.capture('user_signed_up', { subscription_tier: 'free' });
+
         // Navigate to next step
         if (isMountedRef.current) {
           router.push("/onboarding/step2-home-country");
@@ -271,6 +278,11 @@ export default function Step1Account() {
           subscriptionTier,
           isPremium: premiumPlan,
         });
+
+        posthog.identify(data.user.id, {
+          $set: { subscription_tier: subscriptionTier },
+        });
+        posthog.capture('user_signed_in', { subscription_tier: subscriptionTier });
 
         // Navigate to onboarding index to determine next step
         if (isMountedRef.current) {
