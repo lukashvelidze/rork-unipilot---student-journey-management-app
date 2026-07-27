@@ -7,6 +7,7 @@ import Button from "@/components/Button";
 import { useUserStore } from "@/store/userStore";
 import { supabase } from "@/lib/supabase";
 import { formatEnumValue } from "@/utils/safeStringOps";
+import { posthog } from "@/src/config/posthog";
 
 export default function Step6Finish() {
   const router = useRouter();
@@ -108,6 +109,12 @@ export default function Step6Finish() {
           onboardingCompleted: true,
         });
         completeOnboarding();
+
+        posthog.capture('onboarding_completed', {
+          home_country: user.homeCountry?.name,
+          destination_country: user.destinationCountry?.name,
+          education_level: user.educationBackground?.level,
+        });
       }
 
       // Navigate to main app

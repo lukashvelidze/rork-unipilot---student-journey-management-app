@@ -10,6 +10,7 @@ import Input from "@/components/Input";
 import { useUserStore } from "@/store/userStore";
 import { supabase } from "@/lib/supabase";
 import { SubscriptionTier } from "@/types/user";
+import { posthog } from "@/src/config/posthog";
 
 export default function SignInScreen() {
   const router = useRouter();
@@ -93,6 +94,14 @@ export default function SignInScreen() {
         };
 
         setUser(updatedUser);
+
+        posthog.identify(data.user.id, {
+          $set: { subscription_tier: subscriptionTier },
+        });
+        posthog.capture('user_signed_in', {
+          subscription_tier: subscriptionTier,
+          onboarding_completed: !!profile?.visa_type,
+        });
 
         // Redirect to main app (tabs) or onboarding if not completed
         if (profile?.visa_type) {

@@ -12,7 +12,11 @@
       "distribution": "internal"
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "env": {
+        "POSTHOG_PROJECT_TOKEN": "phc_nHPJ7XqUVMBP94xX4dSTyvmk67oRkDJC7KYAwsAvpauy",
+        "POSTHOG_HOST": "https://eu.i.posthog.com"
+      }
     }
   },
   "submit": {

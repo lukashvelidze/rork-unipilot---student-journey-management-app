@@ -10,6 +10,7 @@ import Button from "@/components/Button";
 import { useUserStore } from "@/store/userStore";
 import { supabase } from "@/lib/supabase";
 import { openManageSubscription } from "@/lib/subscriptionManager";
+import { posthog } from "@/src/config/posthog";
 
 interface Checklist {
   id: string;
@@ -360,8 +361,16 @@ export default function ApplicationChecklistScreen() {
         value: newCompleted ? {} : null,
       };
       setUserProgress(newProgress);
+
+      const item = allItems.find(i => i.id === itemId);
+      posthog.capture(newCompleted ? 'journey_task_completed' : 'journey_task_uncompleted', {
+        task_label: item?.label ?? null,
+        checklist_title: item?.checklistTitle ?? null,
+        checklist_tier: item?.checklistTier ?? null,
+      });
     } catch (error) {
       console.error("Error toggling task:", error);
+      posthog.captureException(error instanceof Error ? error : new Error(String(error)));
       Alert.alert("Error", "Something went wrong. Please try again.");
     }
   };

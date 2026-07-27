@@ -20,6 +20,7 @@ import { TimelineEvent } from "@/types/user";
 import { JourneyStage, MemoryMood, JourneyProgress, Task } from "@/types/user";
 import { supabase } from "@/lib/supabase";
 import { openManageSubscription } from "@/lib/subscriptionManager";
+import { posthog } from "@/src/config/posthog";
 
 const { width, height } = Dimensions.get("window");
 
@@ -58,6 +59,7 @@ export default function JourneyScreen() {
 
   const promptUpgrade = (tierLabel?: string) => {
     const label = tierLabel ? `${tierLabel} ` : "";
+    posthog.capture('upgrade_prompted', { required_tier: tierLabel ?? null, source: 'journey_roadmap' });
     Alert.alert(
       "Upgrade Required",
       `${label}tasks are available on a higher plan. Manage your plan to upgrade.`,

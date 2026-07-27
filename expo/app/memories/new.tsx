@@ -10,6 +10,7 @@ import Card from "@/components/Card";
 import Button from "@/components/Button";
 import { useJourneyStore } from "@/store/journeyStore";
 import { JourneyStage, MemoryMood } from "@/types/user";
+import { posthog } from "@/src/config/posthog";
 
 export default function NewMemoryScreen() {
   const router = useRouter();
@@ -82,7 +83,14 @@ export default function NewMemoryScreen() {
         tags,
         mediaUri,
       });
-      
+
+      posthog.capture('memory_created', {
+        stage: selectedStage,
+        mood: selectedMood,
+        has_photo: !!mediaUri,
+        tag_count: tags.length,
+      });
+
       // Show success message and navigate to memories page
       Alert.alert(
         "Memory Created! 🎉",
