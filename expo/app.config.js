@@ -9,8 +9,6 @@ module.exports = ({ config }) => {
       posthogProjectToken: process.env.POSTHOG_PROJECT_TOKEN,
       posthogHost: process.env.POSTHOG_HOST || 'https://eu.i.posthog.com',
       appStore: {
-        sharedSecret:
-          process.env.APP_STORE_CONNECT_SHARED_SECRET || appStoreConfig.sharedSecret,
         products: {
           basic: process.env.APP_STORE_PRODUCT_ID_BASIC || appStoreProducts.basic,
           standard: process.env.APP_STORE_PRODUCT_ID_STANDARD || appStoreProducts.standard,

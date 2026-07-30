@@ -10,6 +10,7 @@ import BackButton from "@/components/BackButton";
 import { supabase } from "@/lib/supabase";
 import {
   DEFAULT_OFFERING_ID,
+  PURCHASES_ERROR_CODE,
   addCustomerInfoUpdateListener,
   configureRevenueCat,
   getCustomerInfo,
@@ -826,7 +827,7 @@ export default function PremiumScreen() {
       >
         {subscriptionTiers.map((tier, index) => {
           const IconComponent = tier.icon;
-          const isCurrentTier = currentTier === tier.id;
+          const isCurrentTier = false;
           const isProcessingTier = isProcessing === tier.id;
           const hasPackage = Boolean(tier.rcPackage);
           const priceLabel = hasPackage ? tier.price : "Loading...";

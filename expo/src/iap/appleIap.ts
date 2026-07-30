@@ -127,7 +127,7 @@ export async function fetchAppleSubscriptions(): Promise<ProductSubscription[]> 
   try {
     products = await (IAP as any).getSubscriptions(skus);
   } catch (error) {
-    products = await IAP.getSubscriptions({ skus });
+    products = (await IAP.fetchProducts({ skus, type: "subs" })) as ProductSubscription[];
   }
 
   if (!products || products.length === 0) {

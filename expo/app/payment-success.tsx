@@ -12,6 +12,7 @@ import { supabase } from '@/lib/supabase';
 import { storePaddleCustomerId } from '@/lib/paddle-customer';
 import CelebrationAnimation from '@/components/CelebrationAnimation';
 import { posthog } from '@/src/config/posthog';
+import type { SubscriptionTier } from '@/types/user';
 
 const TIER_NAMES: Record<string, string> = {
   basic: "Basic",
@@ -23,6 +24,19 @@ const TIER_PRICES: Record<string, string> = {
   basic: "$4.99",
   standard: "$9.99",
   pro: "$19.99",
+};
+
+const normalizeSubscriptionTier = (tier?: string | string[] | null): SubscriptionTier | null => {
+  if (typeof tier !== "string") {
+    return null;
+  }
+
+  const normalized = tier.toLowerCase();
+  if (normalized === "basic" || normalized === "standard" || normalized === "premium" || normalized === "pro") {
+    return normalized as SubscriptionTier;
+  }
+
+  return null;
 };
 
 export default function PaymentSuccessScreen() {
@@ -42,7 +56,7 @@ export default function PaymentSuccessScreen() {
   const handlePaymentSuccess = async () => {
     try {
       // Get tier and customer_id from URL parameters
-      const tierParam = params.tier as string;
+      const tierParam = normalizeSubscriptionTier(params.tier);
       const customerId = params.customer_id as string | undefined;
       
       if (!tierParam) {
