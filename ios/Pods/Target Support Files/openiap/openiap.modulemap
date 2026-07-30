@@ -1,0 +1,6 @@
+module OpenIAP {
+  umbrella header "openiap-umbrella.h"
+
+  export *
+  module * { export * }
+}

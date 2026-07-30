@@ -1,0 +1,29 @@
+{
+  "name": "LiveKitExpoPlugin",
+  "version": "1.0.2",
+  "summary": "Expo Plugin for LiveKit React Native SDK",
+  "description": "Expo Plugin for LiveKit React Native SDK",
+  "license": "Apache-2.0",
+  "authors": "LiveKit <hello@livekit.io> (https://github.com/livekit)",
+  "homepage": "https://github.com/livekit/client-sdk-react-native-expo-plugin#readme",
+  "platforms": {
+    "ios": "13.4",
+    "tvos": "13.4"
+  },
+  "swift_versions": "5.4",
+  "source": {
+    "git": "https://github.com/livekit/client-sdk-react-native-expo-plugin"
+  },
+  "static_framework": true,
+  "dependencies": {
+    "ExpoModulesCore": [],
+    "livekit-react-native": [],
+    "livekit-react-native-webrtc": []
+  },
+  "pod_target_xcconfig": {
+    "DEFINES_MODULE": "YES",
+    "SWIFT_COMPILATION_MODE": "wholemodule"
+  },
+  "source_files": "**/*.{h,m,swift}",
+  "swift_version": "5.4"
+}

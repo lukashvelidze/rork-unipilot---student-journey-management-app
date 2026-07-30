@@ -1,0 +1,6 @@
+module LiveKitExpoPlugin {
+  umbrella header "LiveKitExpoPlugin-umbrella.h"
+
+  export *
+  module * { export * }
+}
