@@ -1,41 +1,87 @@
-import React, { useState, useEffect } from "react";
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, KeyboardAvoidingView, Platform, InteractionManager } from "react-native";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import React, { useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  InteractionManager,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { ChevronRight, GraduationCap } from "lucide-react-native";
-import Colors from "@/constants/colors";
+import {
+  BookOpen,
+  ChevronRight,
+  FlaskConical,
+  GraduationCap,
+  School,
+  type LucideIcon,
+} from "lucide-react-native";
 import Button from "@/components/Button";
-import { useUserStore } from "@/store/userStore";
+import OnboardingChoiceCard from "@/components/onboarding/OnboardingChoiceCard";
+import OnboardingProgressHeader from "@/components/onboarding/OnboardingProgressHeader";
+import { useAppBack } from "@/hooks/useAppBack";
 import { supabase } from "@/lib/supabase";
+import { useUserStore } from "@/store/userStore";
 import { EducationLevel } from "@/types/user";
 
-const educationLevels: { value: EducationLevel; label: string; description: string }[] = [
-  { value: "high_school", label: "High School", description: "Currently in or completed high school" },
-  { value: "bachelors", label: "Bachelor's Degree", description: "Pursuing or completed undergraduate studies" },
-  { value: "masters", label: "Master's Degree", description: "Pursuing or completed graduate studies" },
-  { value: "phd", label: "PhD", description: "Pursuing or completed doctoral studies" },
+const CORAL = "#FF6B6B";
+
+const educationLevels: {
+  description: string;
+  icon: LucideIcon;
+  label: string;
+  value: EducationLevel;
+}[] = [
+  {
+    description: "Currently in or completed high school",
+    icon: School,
+    label: "High School",
+    value: "high_school",
+  },
+  {
+    description: "Pursuing or completed undergraduate studies",
+    icon: BookOpen,
+    label: "Bachelor’s Degree",
+    value: "bachelors",
+  },
+  {
+    description: "Pursuing or completed graduate studies",
+    icon: GraduationCap,
+    label: "Master’s Degree",
+    value: "masters",
+  },
+  {
+    description: "Pursuing or completed doctoral studies",
+    icon: FlaskConical,
+    label: "PhD",
+    value: "phd",
+  },
 ];
 
 export default function Step3Education() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
-  const { user, setUser, updateOnboardingStep } = useUserStore();
-  
-  const [selectedLevel, setSelectedLevel] = useState<EducationLevel | null>(null);
+  const handleBack = useAppBack("/onboarding/step2-home-country");
+  const { user, setUser } = useUserStore();
+  const [selectedLevel, setSelectedLevel] = useState<EducationLevel | null>(
+    null,
+  );
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState("");
   const [isReady, setIsReady] = useState(false);
 
-  // Initialize component - check auth and pre-fill data
   useEffect(() => {
     let isMounted = true;
-    
+
     async function initialize() {
       try {
-        // Check authentication first
-        const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+        const {
+          data: { user: authUser },
+          error: authError,
+        } = await supabase.auth.getUser();
+
         if (authError || !authUser) {
-          // User not authenticated, redirect after a delay to prevent blocking
           if (isMounted) {
             InteractionManager.runAfterInteractions(() => {
               setTimeout(() => {
@@ -45,31 +91,33 @@ export default function Step3Education() {
           }
           return;
         }
-        
-        // Small delay to ensure user store is ready (especially when coming from settings)
-        await new Promise(resolve => setTimeout(resolve, 150));
-        
+
         if (isMounted) {
-          // Pre-fill education level if available
           if (user?.educationBackground?.level) {
             setSelectedLevel(user.educationBackground.level);
           }
           setIsReady(true);
         }
-      } catch (error) {
-        console.error("Error initializing step3:", error);
-        if (isMounted) {
-          setIsReady(true); // Still allow component to render
-        }
+      } catch (initializationError) {
+        console.error("Error initializing step3:", initializationError);
+        if (isMounted) setIsReady(true);
       }
     }
-    
+
     initialize();
-    
+
     return () => {
       isMounted = false;
     };
-  }, [user]);
+  }, [router, user?.educationBackground?.level]);
+
+  const navigateForward = () => {
+    if (user?.destinationCountry) {
+      router.replace("/onboarding/step5-visa");
+    } else {
+      router.replace("/onboarding/step4-destination");
+    }
+  };
 
   const handleContinue = async () => {
     if (!selectedLevel) {
@@ -77,21 +125,20 @@ export default function Step3Education() {
       return;
     }
 
-    if (isProcessing) {
-      return;
-    }
+    if (isProcessing) return;
 
     setIsProcessing(true);
     setError("");
 
     try {
-      const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
-      
+      const {
+        data: { user: authUser },
+        error: authError,
+      } = await supabase.auth.getUser();
+
       if (authError || !authUser) {
         console.error("Auth error in handleContinue:", authError);
         setError("Authentication error. Please try again.");
-        setIsProcessing(false);
-        // Use InteractionManager to prevent blocking
         InteractionManager.runAfterInteractions(() => {
           setTimeout(() => {
             router.replace("/onboarding/step1-account");
@@ -100,7 +147,6 @@ export default function Step3Education() {
         return;
       }
 
-      // Update profile in Supabase
       const { error: updateError } = await supabase
         .from("profiles")
         .update({
@@ -112,11 +158,9 @@ export default function Step3Education() {
       if (updateError) {
         console.error("Error updating profile:", updateError);
         setError("Failed to save. Please try again.");
-        setIsProcessing(false);
         return;
       }
 
-      // Update local store
       if (user) {
         setUser({
           ...user,
@@ -124,292 +168,193 @@ export default function Step3Education() {
             ...user.educationBackground,
             level: selectedLevel,
           },
-          onboardingStep: user.destinationCountry ? 5 : 4, // Skip step4 if destination is already set
+          onboardingStep: user.destinationCountry ? 5 : 4,
         });
       }
 
-      // Use InteractionManager to ensure UI is ready before navigation
-      InteractionManager.runAfterInteractions(() => {
-        // Small delay to ensure state updates are processed
-        setTimeout(() => {
-          // Navigate to next step
-          // If destination is already set (e.g., from settings), skip to visa step
-          if (user?.destinationCountry) {
-            router.replace("/onboarding/step5-visa");
-          } else {
-            router.replace("/onboarding/step4-destination");
-          }
-        }, 100);
-      });
-    } catch (error: any) {
-      console.error("Error saving education level:", error);
+      navigateForward();
+    } catch (saveError) {
+      console.error("Error saving education level:", saveError);
       setError("Something went wrong. Please try again.");
     } finally {
       setIsProcessing(false);
     }
   };
 
-  // Show loading state while initializing
   if (!isReady) {
     return (
-      <SafeAreaView style={styles.container} edges={[]}>
+      <SafeAreaView edges={["top", "bottom"]} style={styles.container}>
+        <OnboardingProgressHeader onBack={handleBack} progress={0.6} />
         <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Loading...</Text>
+          <ActivityIndicator color={CORAL} size="large" />
+          <Text style={styles.loadingText}>Preparing your options...</Text>
         </View>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={[]}>
-      <KeyboardAvoidingView
-        style={styles.keyboardView}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
+    <SafeAreaView edges={["top", "bottom"]} style={styles.container}>
+      <OnboardingProgressHeader onBack={handleBack} progress={0.6} />
+
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
       >
-        {/* Progress bar */}
-        <View style={styles.progressContainer}>
-          <View style={styles.progressBar}>
-            <View style={[styles.progressFill, { width: "60%" }]} />
+        <View style={styles.header}>
+          <View style={styles.heroIcon}>
+            <GraduationCap color={CORAL} size={28} strokeWidth={1.8} />
           </View>
-          <Text style={styles.progressText}>Step 3 of 6</Text>
+          <Text style={styles.title}>What’s your education level?</Text>
+          <Text style={styles.subtitle}>
+            This helps us personalize your journey and show the most relevant
+            guidance.
+          </Text>
         </View>
 
-        {/* Main content */}
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-        <View style={styles.stepContainer}>
-          <View style={styles.iconContainer}>
-            <GraduationCap size={48} color={Colors.primary} />
-          </View>
-          <Text style={styles.stepTitle}>What's your education level?</Text>
-          <Text style={styles.stepDescription}>
-            This helps us personalize your journey and provide relevant guidance
-          </Text>
-
-          {error && (
+        {error ? (
+          <View accessibilityRole="alert" style={styles.errorBanner}>
             <Text style={styles.errorText}>{error}</Text>
-          )}
+          </View>
+        ) : null}
 
-          <View style={styles.optionsList}>
-            {educationLevels.map((level) => (
-              <TouchableOpacity
+        <View accessibilityRole="radiogroup" style={styles.optionsList}>
+          {educationLevels.map((level) => {
+            const Icon = level.icon;
+            const selected = selectedLevel === level.value;
+
+            return (
+              <OnboardingChoiceCard
+                description={level.description}
+                disabled={isProcessing}
+                icon={
+                  <Icon
+                    color={selected ? CORAL : "#64748B"}
+                    size={23}
+                    strokeWidth={1.8}
+                  />
+                }
                 key={level.value}
-                style={[
-                  styles.optionCard,
-                  selectedLevel === level.value && styles.selectedOptionCard
-                ]}
                 onPress={() => {
                   setSelectedLevel(level.value);
                   setError("");
                 }}
-              >
-                <View style={styles.optionContent}>
-                  <Text style={[
-                    styles.optionTitle,
-                    selectedLevel === level.value && styles.selectedOptionTitle
-                  ]}>
-                    {level.label}
-                  </Text>
-                  <Text style={[
-                    styles.optionDescription,
-                    selectedLevel === level.value && styles.selectedOptionDescription
-                  ]}>
-                    {level.description}
-                  </Text>
-                </View>
-                {selectedLevel === level.value && (
-                  <View style={styles.checkmark}>
-                    <Text style={styles.checkmarkText}>✓</Text>
-                  </View>
-                )}
-              </TouchableOpacity>
-            ))}
-          </View>
+                selected={selected}
+                testID={`education-level-${level.value}`}
+                title={level.label}
+              />
+            );
+          })}
         </View>
       </ScrollView>
 
-      {/* Fixed footer with buttons */}
       <View style={styles.footer}>
         <Button
-          title="Continue"
-          onPress={handleContinue}
-          loading={isProcessing}
+          disabled={!selectedLevel}
           fullWidth
-          icon={<ChevronRight size={20} color={Colors.white} />}
+          icon={<ChevronRight color="#FFFFFF" size={20} />}
+          loading={isProcessing}
+          onPress={handleContinue}
+          style={styles.continueButton}
+          testID="education-continue"
+          title="Continue"
         />
-        
         <TouchableOpacity
-          style={styles.skipButton}
-          onPress={() => {
-            if (isProcessing) return;
-            // Use InteractionManager to ensure UI is ready
-            InteractionManager.runAfterInteractions(() => {
-              setTimeout(() => {
-                // Skip to appropriate step based on whether destination is set
-                if (user?.destinationCountry) {
-                  router.replace("/onboarding/step5-visa");
-                } else {
-                  router.replace("/onboarding/step4-destination");
-                }
-              }, 100);
-            });
-          }}
-          disabled={isProcessing}
           activeOpacity={0.7}
+          disabled={isProcessing}
+          onPress={navigateForward}
+          style={styles.skipButton}
         >
           <Text style={styles.skipText}>Skip for now</Text>
         </TouchableOpacity>
-        </View>
-      </KeyboardAvoidingView>
+      </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
-  keyboardView: {
+    backgroundColor: "#FFFFFF",
     flex: 1,
   },
-  progressContainer: {
-    paddingHorizontal: 24,
-    paddingTop: 16,
-    paddingBottom: 16,
-    backgroundColor: Colors.background,
-  },
-  progressBar: {
-    height: 4,
-    backgroundColor: Colors.lightBackground,
-    borderRadius: 2,
-    marginBottom: 8,
-  },
-  progressFill: {
-    height: "100%",
-    backgroundColor: Colors.primary,
-    borderRadius: 2,
-  },
-  progressText: {
-    fontSize: 14,
-    color: Colors.lightText,
-    textAlign: "right",
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
-    paddingHorizontal: 24,
-    paddingBottom: 24,
-  },
-  stepContainer: {
+  loadingContainer: {
+    alignItems: "center",
     flex: 1,
     justifyContent: "center",
-    paddingVertical: 40,
   },
-  iconContainer: {
+  loadingText: {
+    color: "#64748B",
+    fontSize: 14,
+    marginTop: 14,
+  },
+  scrollContent: {
+    paddingBottom: 20,
+    paddingHorizontal: 24,
+  },
+  header: {
     alignItems: "center",
-    marginBottom: 24,
+    marginBottom: 26,
+    paddingTop: 34,
   },
-  stepTitle: {
-    fontSize: 24,
+  heroIcon: {
+    alignItems: "center",
+    backgroundColor: "#FFF0F0",
+    borderRadius: 22,
+    height: 54,
+    justifyContent: "center",
+    marginBottom: 18,
+    width: 54,
+  },
+  title: {
+    color: "#111827",
+    fontSize: 28,
     fontWeight: "700",
-    color: Colors.text,
-    marginBottom: 8,
+    letterSpacing: -0.55,
     textAlign: "center",
   },
-  stepDescription: {
-    fontSize: 16,
-    color: Colors.lightText,
-    marginBottom: 32,
-    lineHeight: 24,
+  subtitle: {
+    color: "#64748B",
+    fontSize: 14,
+    lineHeight: 20,
+    marginTop: 10,
+    maxWidth: 340,
     textAlign: "center",
+  },
+  errorBanner: {
+    backgroundColor: "#FFF1F2",
+    borderRadius: 14,
+    marginBottom: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
   },
   errorText: {
-    fontSize: 14,
-    color: Colors.error,
-    marginBottom: 16,
+    color: "#BE123C",
+    fontSize: 13,
+    lineHeight: 18,
     textAlign: "center",
   },
   optionsList: {
-    gap: 12,
-  },
-  optionCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: Colors.lightBackground,
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: Colors.border,
-  },
-  selectedOptionCard: {
-    backgroundColor: Colors.primary + "20",
-    borderColor: Colors.primary,
-  },
-  optionContent: {
-    flex: 1,
-  },
-  optionTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: Colors.text,
-    marginBottom: 4,
-  },
-  selectedOptionTitle: {
-    color: Colors.primary,
-  },
-  optionDescription: {
-    fontSize: 14,
-    color: Colors.lightText,
-    lineHeight: 20,
-  },
-  selectedOptionDescription: {
-    color: Colors.text,
-  },
-  checkmark: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: Colors.primary,
-    justifyContent: "center",
-    alignItems: "center",
-    marginLeft: 12,
-  },
-  checkmarkText: {
-    color: Colors.white,
-    fontSize: 16,
-    fontWeight: "600",
+    gap: 10,
   },
   footer: {
-    padding: 24,
-    backgroundColor: Colors.background,
+    backgroundColor: "#FFFFFF",
+    borderTopColor: "#F1F5F9",
     borderTopWidth: 1,
-    borderTopColor: Colors.border,
+    paddingBottom: 8,
+    paddingHorizontal: 16,
+    paddingTop: 14,
+  },
+  continueButton: {
+    borderRadius: 28,
+    height: 56,
   },
   skipButton: {
-    paddingVertical: 12,
     alignItems: "center",
-    marginTop: 12,
+    paddingVertical: 12,
   },
   skipText: {
+    color: "#64748B",
     fontSize: 14,
-    color: Colors.lightText,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  loadingText: {
-    fontSize: 16,
-    color: Colors.lightText,
+    fontWeight: "500",
   },
 });
-

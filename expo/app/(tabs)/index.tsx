@@ -1,499 +1,326 @@
-import React, { useEffect, useState, useCallback, useRef } from "react";
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert } from "react-native";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  Image,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  useWindowDimensions,
+} from "react-native";
+import { BlurView } from "expo-blur";
+import { useFocusEffect, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter, useFocusEffect } from "expo-router";
-import { Award, TrendingUp, Crown, Zap, Target, Calendar, UserCheck, BarChart3, Video, CheckSquare, Mic, MessageSquare, BookOpen } from "lucide-react-native";
+import Svg, { Path } from "react-native-svg";
+import {
+  ArrowRight,
+  BookOpen,
+  Briefcase,
+  Check,
+  FileText,
+  GraduationCap,
+  Home as HomeIcon,
+  Lock,
+  Plane,
+  Target,
+} from "lucide-react-native";
 import { useColors } from "@/hooks/useColors";
-import Card from "@/components/Card";
-import ProgressBar from "@/components/ProgressBar";
-import QuoteCard from "@/components/QuoteCard";
-import { useUserStore } from "@/store/userStore";
-import { useJourneyStore } from "@/store/journeyStore";
 import { useAppStateStore } from "@/store/appStateStore";
+import { useJourneyStore } from "@/store/journeyStore";
+import { useUserStore } from "@/store/userStore";
+import { JourneyProgress, JourneyStage, SubscriptionTier } from "@/types/user";
 import { calculateOverallProgress } from "@/utils/helpers";
-import { getRandomQuote, generalQuotes } from "@/mocks/quotes";
-import { supabase, getCountries } from "@/lib/supabase";
-import { formatEnumValue } from "@/utils/safeStringOps";
+import {
+  canAccessJourneyTier,
+  fetchJourneyProgressFromSupabase,
+  formatJourneyTierLabel,
+} from "@/lib/journeyProgress";
 import { openManageSubscription } from "@/lib/subscriptionManager";
-import { SubscriptionTier, Country } from "@/types/user";
 
-// Timeout wrapper for Supabase calls
-const withTimeout = <T,>(
-  promise: PromiseLike<T>,
-  timeoutMs: number = 10000,
-  errorMessage: string = 'Operation timed out'
-): Promise<T> => {
-  return new Promise((resolve, reject) => {
-    const timeoutId = setTimeout(() => {
-      reject(new Error(errorMessage));
-    }, timeoutMs);
+const worldMapImage = require("@/assets/images/journey/world-map-figma.png");
 
-    Promise.resolve(promise)
-      .then((result) => {
-        clearTimeout(timeoutId);
-        resolve(result);
-      })
-      .catch((error: unknown) => {
-        clearTimeout(timeoutId);
-        reject(error);
-      });
-  });
+const PRIMARY = "#FF6B6B";
+const SUCCESS = "#2EC4B6";
+const TEXT = "#1A1A1A";
+const MUTED = "#8888A0";
+const SOFT_MUTED = "#A0A0B0";
+const BORDER = "#EEEEF2";
+
+const BASE_CANVAS_WIDTH = 402;
+const BASE_NODE_SLOTS = [
+  { left: 24, top: 500, width: 150 },
+  { left: 193, top: 318, width: 168 },
+  { left: 28, top: 184, width: 148 },
+  { left: 208, top: 62, width: 148 },
+];
+
+type NodeSlot = {
+  left: number;
+  top: number;
+  width: number;
+};
+
+type NodeState = "done" | "active" | "locked";
+
+const stageIcons: Record<JourneyStage, React.ComponentType<{ size?: number; color?: string; strokeWidth?: number }>> = {
+  research: BookOpen,
+  application: Target,
+  visa: Plane,
+  pre_departure: FileText,
+  arrival: HomeIcon,
+  academic: GraduationCap,
+  career: Briefcase,
 };
 
 export default function HomeScreen() {
   const router = useRouter();
   const Colors = useColors();
-  const { user, setUser, updateUser, logout } = useUserStore();
-  const { journeyProgress, setJourneyProgress } = useJourneyStore();
-  const { inCriticalFlow } = useAppStateStore();
+  const { width, height } = useWindowDimensions();
+  const { user, updateUser } = useUserStore();
   const authInitializing = useUserStore((state) => state.authInitializing);
-  const [hasActiveSubscription, setHasActiveSubscription] = useState(false);
-  const [isCheckingSubscription, setIsCheckingSubscription] = useState(true);
-
-  // Cleanup tracking
-  const isMountedRef = useRef(true);
-  const abortControllerRef = useRef<AbortController | null>(null);
+  const { inCriticalFlow } = useAppStateStore();
+  const { journeyProgress, setJourneyProgress } = useJourneyStore();
+  const [userTier, setUserTier] = useState<string>(user?.subscriptionTier || "free");
+  const [isJourneyLoading, setIsJourneyLoading] = useState(false);
+  const scrollRef = useRef<ScrollView | null>(null);
+  const shouldStartAtBottomRef = useRef(true);
+  const userId = user?.id;
+  const userSubscriptionTier = user?.subscriptionTier || "free";
+  const userIsPremium = user?.isPremium || false;
 
   useEffect(() => {
-    return () => {
-      isMountedRef.current = false;
-      // Abort any ongoing requests
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-    };
-  }, []);
+    if (inCriticalFlow || authInitializing) return;
 
-  // Check subscription status
-  const checkSubscriptionStatus = useCallback(async () => {
-    // Create new abort controller for this request
-    abortControllerRef.current = new AbortController();
-
-    try {
-      const getUserPromise = supabase.auth.getUser();
-      const { data: { user: authUser } } = await withTimeout(
-        getUserPromise,
-        10000,
-        'Failed to get user - timeout'
-      );
-
-      // Check if component unmounted during async operation
-      if (!isMountedRef.current) {
-        console.log('Component unmounted, skipping subscription update');
-        return;
-      }
-
-      if (!authUser) {
-        if (isMountedRef.current) {
-          setHasActiveSubscription(false);
-          setIsCheckingSubscription(false);
-        }
-        return;
-      }
-
-      const getProfilePromise = supabase
-        .from("profiles")
-        .select("subscription_tier")
-        .eq("id", authUser.id)
-        .single();
-
-      const { data: profile } = await withTimeout(
-        getProfilePromise,
-        10000,
-        'Failed to fetch profile - timeout'
-      );
-
-      // Check again after second async operation
-      if (!isMountedRef.current) {
-        console.log('Component unmounted, skipping subscription update');
-        return;
-      }
-
-      const tier = (profile?.subscription_tier || "free").toLowerCase();
-      const isSubscribed = ["basic", "standard", "pro", "premium"].includes(tier);
-
-      if (isMountedRef.current) {
-        setHasActiveSubscription(isSubscribed);
-        updateUser({
-          subscriptionTier: tier as SubscriptionTier,
-          isPremium: tier === "premium" || tier === "pro",
-        });
-      }
-    } catch (error) {
-      console.error("Error checking subscription:", error);
-      if (isMountedRef.current) {
-        setHasActiveSubscription(false);
-      }
-    } finally {
-      if (isMountedRef.current) {
-        setIsCheckingSubscription(false);
-      }
+    if (!user || !user.onboardingCompleted) {
+      router.replace("/onboarding");
     }
-  }, [updateUser]);
-
-  // Check subscription on mount and when screen comes into focus
-  useEffect(() => {
-    checkSubscriptionStatus();
-  }, [checkSubscriptionStatus]);
+  }, [authInitializing, inCriticalFlow, router, user]);
 
   useFocusEffect(
     useCallback(() => {
-      checkSubscriptionStatus();
-    }, [checkSubscriptionStatus])
-  );
-  
-  // Fetch user data from database on mount
-  useEffect(() => {
-    async function fetchUserData() {
-      try {
-        const getUserPromise = supabase.auth.getUser();
-        const { data: { user: authUser } } = await withTimeout(
-          getUserPromise,
-          10000,
-          'Failed to get user - timeout'
-        );
+      let isActive = true;
 
-        if (!isMountedRef.current) return;
-        if (!authUser) return;
+      const refreshJourney = async () => {
+        if (!userId) return;
 
-        // Fetch profile from database
-        const getProfilePromise = supabase
-          .from("profiles")
-          .select("*")
-          .eq("id", authUser.id)
-          .single();
+        setIsJourneyLoading(true);
+        try {
+          const result = await fetchJourneyProgressFromSupabase();
+          if (!isActive) return;
 
-        const { data: profile, error: profileError } = await withTimeout(
-          getProfilePromise,
-          10000,
-          'Failed to fetch profile - timeout'
-        );
-
-        if (!isMountedRef.current) return;
-
-        if (profile) {
-          // Fetch countries - using top-level import
-          const getCountriesPromise = getCountries();
-          const countries = await withTimeout(
-            getCountriesPromise,
-            10000,
-            'Failed to fetch countries - timeout'
-          );
-
-          if (!isMountedRef.current) return;
-
-          const homeCountryMatch = profile.country_origin
-            ? countries.origin.find((c: Country) => c.code === profile.country_origin)
-            : undefined;
-
-          const destinationCountryMatch = profile.destination_country
-            ? countries.destination.find((c: Country) => c.code === profile.destination_country)
-            : undefined;
-
-          const resolvedHomeCountry: Country =
-            homeCountryMatch ??
-            user?.homeCountry ??
-            (profile.country_origin
-              ? { code: profile.country_origin, name: profile.country_origin, flag: "" }
-              : { code: "UNK", name: "Unknown", flag: "" });
-
-          const resolvedDestinationCountry: Country =
-            destinationCountryMatch ??
-            user?.destinationCountry ??
-            (profile.destination_country
-              ? { code: profile.destination_country, name: profile.destination_country, flag: "" }
-              : { code: "UNK", name: "Unknown", flag: "" });
-
-          // Final check before state update
-          if (!isMountedRef.current) return;
-
-          const subscriptionTier = (profile.subscription_tier || user?.subscriptionTier || "free").toLowerCase() as SubscriptionTier;
-          const premiumPlan = subscriptionTier === "premium" || subscriptionTier === "pro";
-
-          // Update user store with database data
-          setUser({
-            ...user!,
-            id: authUser.id,
-            name: profile.full_name || "",
-            email: profile.email || authUser.email || "",
-            homeCountry: resolvedHomeCountry,
-            destinationCountry: resolvedDestinationCountry,
-            educationBackground: {
-              level: (profile.level_of_study as any) || user?.educationBackground?.level || "bachelors",
-            },
-            bio: profile.bio ?? undefined,
-            onboardingCompleted: !!profile.visa_type,
-            subscriptionTier,
-            isPremium: premiumPlan,
-          });
-
-          // Journey progress is now fetched from Supabase in the journey page
-          // No need to initialize here with mock data
-        } else {
-          console.error("Error fetching profile:", profileError);
-          // If the profile is missing (e.g., deleted), sign out and reset to onboarding
-          await supabase.auth.signOut();
-          await logout();
-          router.replace("/onboarding/step1-account");
+          setUserTier(result.userTier);
+          setJourneyProgress(result.progress);
+          if (userSubscriptionTier !== result.userTier || userIsPremium !== (result.userTier !== "free")) {
+            updateUser({
+              subscriptionTier: result.userTier as SubscriptionTier,
+              isPremium: result.userTier !== "free",
+            });
+          }
+        } catch (error) {
+          console.error("Failed to load homepage journey:", error);
+        } finally {
+          if (isActive) {
+            setIsJourneyLoading(false);
+          }
         }
-      } catch (error) {
-        console.error("Error fetching user data:", error);
-        // Don't update state on error if unmounted
-      }
-    }
+      };
 
-    if (user && isMountedRef.current) {
-      fetchUserData();
-    }
-  }, []); // Empty dependency array - only run once on mount
+      refreshJourney();
 
-  // Redirect to onboarding if user is not set up
-  // Skip redirect if in a critical flow (e.g., interview simulator)
+      return () => {
+        isActive = false;
+      };
+    }, [setJourneyProgress, updateUser, userId, userIsPremium, userSubscriptionTier])
+  );
+
+  const stages = journeyProgress;
+  const contentWidth = Math.min(width, 430);
+  const horizontalOffset = Math.max((width - contentWidth) / 2, 0);
+  const scale = contentWidth / BASE_CANVAS_WIDTH;
+  const extraStageCount = Math.max(0, stages.length - BASE_NODE_SLOTS.length);
+  const baseCanvasHeight = 650 + extraStageCount * 156;
+  const canvasHeight = baseCanvasHeight * scale;
+
+  const currentStageIndex = useMemo(() => {
+    const accessibleIncompleteIndex = stages.findIndex((stage) => {
+      return !stage.completed && canAccessJourneyTier(userTier, stage.subscriptionTier);
+    });
+    if (accessibleIncompleteIndex >= 0) return accessibleIncompleteIndex;
+
+    const incompleteIndex = stages.findIndex((stage) => !stage.completed);
+    if (incompleteIndex >= 0) return incompleteIndex;
+
+    return Math.max(stages.length - 1, 0);
+  }, [stages, userTier]);
+
+  const currentStage = stages[currentStageIndex];
+  const firstName = user?.name?.trim().split(" ")[0] || "there";
+  const overallProgress = calculateOverallProgress(stages);
+
   useEffect(() => {
-    // Don't redirect during critical flows like interview simulator
-    if (inCriticalFlow || authInitializing) {
+    shouldStartAtBottomRef.current = true;
+  }, [stages.length]);
+
+  const getNodeSlot = useCallback((index: number): NodeSlot => {
+    const topOffset = extraStageCount * 156;
+
+    if (index < BASE_NODE_SLOTS.length) {
+      const slot = BASE_NODE_SLOTS[index];
+      return {
+        left: horizontalOffset + slot.left * scale,
+        top: (slot.top + topOffset) * scale,
+        width: slot.width,
+      };
+    }
+
+    const extraIndex = index - BASE_NODE_SLOTS.length;
+    const isLeft = index % 2 === 0;
+    const top = 62 + (extraStageCount - extraIndex - 1) * 156;
+    return {
+      left: horizontalOffset + (isLeft ? 26 * scale : 202 * scale),
+      top: top * scale,
+      width: isLeft ? 150 : 168,
+    };
+  }, [extraStageCount, horizontalOffset, scale]);
+
+  const promptUpgrade = useCallback((tier?: string) => {
+    const label = formatJourneyTierLabel(tier);
+    Alert.alert(
+      "Upgrade Required",
+      `${label} tasks are available on a higher plan. Manage your plan to unlock them.`,
+      [
+        { text: "Not now", style: "cancel" },
+        {
+          text: "Manage Subscription",
+          onPress: () => {
+            openManageSubscription().catch((error) => {
+              console.error("Open subscription manager failed", error);
+              router.push("/settings");
+            });
+          },
+        },
+      ]
+    );
+  }, [router]);
+
+  const openStage = useCallback((stage: JourneyProgress) => {
+    if (!canAccessJourneyTier(userTier, stage.subscriptionTier)) {
+      promptUpgrade(stage.subscriptionTier);
       return;
     }
 
-    if (!user) {
-      console.log("No user found, redirecting to onboarding");
-      router.replace("/onboarding");
-      return;
-    }
+    router.push(`/journey/${stage.id}` as any);
+  }, [promptUpgrade, router, userTier]);
 
-    if (!user.onboardingCompleted) {
-      console.log("Onboarding not completed, redirecting");
-      router.replace("/onboarding");
-      return;
-    }
-  }, [user, router, inCriticalFlow, authInitializing]);
-  
   if (!user) {
     return (
       <SafeAreaView style={[styles.loadingContainer, { backgroundColor: Colors.background }]}>
-        <Text style={[styles.loadingText, { color: Colors.lightText }]}>Setting up your journey...</Text>
+        <ActivityIndicator color={PRIMARY} />
+        <Text style={styles.loadingText}>Setting up your journey...</Text>
       </SafeAreaView>
     );
   }
-  
-  const overallProgress = calculateOverallProgress(journeyProgress);
-  const dailyQuote = getRandomQuote(generalQuotes);
-  const tierLabels: Record<string, string> = {
-    free: "Free",
-    basic: "Basic",
-    standard: "Standard",
-    premium: "Premium",
-    pro: "Premium",
-  };
-  const effectiveTier = (user.subscriptionTier || (hasActiveSubscription ? "standard" : "free")).toLowerCase();
-  const subscriptionLabel = tierLabels[effectiveTier] || "Free";
-  const isTopTier = effectiveTier === "premium" || effectiveTier === "pro";
-  const tierOrder: Record<string, number> = { free: 0, basic: 1, standard: 2, premium: 3, pro: 3 };
-  const hasTierAccess = (requiredTier: "basic" | "standard" | "premium") =>
-    (tierOrder[effectiveTier] || 0) >= tierOrder[requiredTier];
-  
-  // Get current active stage (first incomplete stage)
-  const currentStage = journeyProgress.find(stage => !stage.completed) || journeyProgress[0];
-  const completedStages = journeyProgress.filter(stage => stage.completed).length;
-  
-  // Get next few tasks from current stage
-  const upcomingTasks = currentStage?.tasks.filter(task => !task.completed).slice(0, 3) || [];
-  
-  // Handle premium feature access
-  const handlePremiumFeature = (
-    featureName: string,
-    route: string,
-    requiredTier: "basic" | "standard" | "premium" = "basic"
-  ) => {
-    if (hasTierAccess(requiredTier)) {
-      router.push(route as any);
-    } else {
-      const requiredLabel = requiredTier.charAt(0).toUpperCase() + requiredTier.slice(1);
-      Alert.alert(
-        "Premium Feature",
-        `${featureName} is available on the ${requiredLabel} plan or higher. Manage your plan to upgrade.`,
-        [
-          { text: "Cancel", style: "cancel" },
-          { text: "Manage Subscription", onPress: () => {
-            openManageSubscription()
-              .catch((error) => {
-                console.error("Open subscription manager failed", error);
-                router.push("/settings");
-              });
-          }},
-        ]
-      );
-    }
-  };
 
-  // Base quick actions (always available)
-  const baseQuickActions = [
-    {
-      title: "Application Checklist",
-      description: "Complete guide to applications",
-      icon: CheckSquare,
-      color: Colors.primary,
-      onPress: () => router.push("/application-checklist"),
-      isPremium: false,
-    },
-    {
-      title: "Continue Journey",
-      description: `${formatEnumValue(currentStage?.stage || '')} stage`,
-      icon: TrendingUp,
-      color: Colors.secondary,
-      onPress: () => router.push("/(tabs)/journey"),
-      isPremium: false,
-    },
-  ];
-
-  // Premium quick actions (advertising)
-  const premiumQuickActions = [
-    {
-      title: "Articles",
-      description: hasActiveSubscription ? "Read curated guides" : "Premium: curated guides",
-      icon: BookOpen,
-      color: Colors.primary,
-      onPress: () => handlePremiumFeature("Articles", "/premium/articles"),
-      isPremium: true,
-    },
-    {
-      title: "AI Assistant",
-      description: hasActiveSubscription ? "Get personalized guidance" : "Premium: AI-powered help",
-      icon: MessageSquare,
-      color: Colors.accent,
-      onPress: () => handlePremiumFeature("AI Assistant", "/(tabs)/premium"),
-      isPremium: true,
-    },
-    {
-      title: "Interview Simulator",
-      description: hasActiveSubscription ? "Practice visa interviews" : "Premium: Practice interviews",
-      icon: Mic,
-      color: Colors.accent,
-      onPress: () => handlePremiumFeature("Interview Simulator", "/premium/interview-simulator", "premium"),
-      isPremium: true,
-    },
-  ];
-
-  // Combine actions - show premium actions for advertising
-  const quickActions = [...baseQuickActions, ...premiumQuickActions];
-  
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: Colors.background }]} edges={['top']}>
-      <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent}>
-        <View style={styles.header}>
-          <View style={styles.headerTop}>
-            <View>
-              <Text style={[styles.greeting, { color: Colors.lightText }]}>
-                Welcome back,
-              </Text>
-              <Text style={[styles.name, { color: Colors.text }]}>
-                {user.name?.split(' ')[0] || user.name}!
-              </Text>
-              <View style={[
-                styles.subscriptionBadge,
-                { backgroundColor: Colors.lightBackground }
-              ]}>
-                <Crown size={14} color={Colors.primary} />
-                <Text style={[
-                  styles.subscriptionBadgeText,
-                  { color: isTopTier ? Colors.primary : Colors.lightText }
-                ]}>
-                  {subscriptionLabel} Plan
-                </Text>
-              </View>
-            </View>
+    <SafeAreaView style={styles.container} edges={["top"]}>
+      <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+        <Image
+          accessibilityIgnoresInvertColors
+          resizeMode="cover"
+          source={worldMapImage}
+          style={[
+            styles.fixedMapImage,
+            {
+              left: horizontalOffset - contentWidth * 0.74,
+              width: contentWidth * 2.78,
+              height: Math.max(height * 1.42, 930),
+            },
+          ]}
+        />
+      </View>
+      <View style={[styles.header, { width: contentWidth, marginLeft: horizontalOffset }]}>
+        <View style={styles.headerTop}>
+          <View style={styles.headerText}>
+            <Text style={styles.title} numberOfLines={1}>Welcome, {firstName}</Text>
+            <Text style={styles.subtitle}>Your UniPilot Journey</Text>
+          </View>
+          <View style={styles.stepBadge}>
+            <Text style={styles.stepBadgeText}>
+              Step {stages.length ? currentStageIndex + 1 : 0} of {stages.length || 0}
+            </Text>
           </View>
         </View>
-        
-        <QuoteCard 
-          quote={dailyQuote.text} 
-          author={dailyQuote.author} 
-          variant="highlight"
-        />
-        
-        <Card style={[styles.progressCard, { backgroundColor: Colors.card }]}>
-          <View style={styles.progressHeader}>
-            <View>
-              <Text style={[styles.progressTitle, { color: Colors.text }]}>Your Journey Progress</Text>
-              <Text style={[styles.progressSubtitle, { color: Colors.lightText }]}>
-                {completedStages} of {journeyProgress.length} stages completed
+
+        <View style={styles.progressBlock}>
+          <View style={styles.progressTrack}>
+            <View style={[styles.progressFill, { width: `${overallProgress}%` }]} />
+          </View>
+          <Text style={styles.milestoneText} numberOfLines={1}>
+            {currentStage
+              ? `Milestone ${currentStageIndex + 1} of ${stages.length}: ${currentStage.title}`
+              : "Milestones will appear after your profile is ready"}
+          </Text>
+        </View>
+      </View>
+
+      <ScrollView
+        ref={scrollRef}
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        onContentSizeChange={() => {
+          if (!shouldStartAtBottomRef.current) return;
+          shouldStartAtBottomRef.current = false;
+          requestAnimationFrame(() => {
+            scrollRef.current?.scrollToEnd({ animated: false });
+          });
+        }}
+      >
+        <View style={[styles.mapCanvas, { height: canvasHeight }]}>
+          {stages.length > 1 && (
+            <JourneyPathLayer
+              stages={stages}
+              activeIndex={currentStageIndex}
+              getNodeSlot={getNodeSlot}
+              width={width}
+              height={canvasHeight}
+            />
+          )}
+
+          {isJourneyLoading && stages.length === 0 ? (
+            <View style={[styles.emptyState, { width: contentWidth - 48, marginLeft: horizontalOffset + 24 }]}>
+              <ActivityIndicator color={PRIMARY} />
+              <Text style={styles.emptyTitle}>Loading your roadmap...</Text>
+            </View>
+          ) : stages.length === 0 ? (
+            <View style={[styles.emptyState, { width: contentWidth - 48, marginLeft: horizontalOffset + 24 }]}>
+              <Text style={styles.emptyTitle}>No checklist yet</Text>
+              <Text style={styles.emptyDescription}>
+                Complete your visa and destination profile to generate your personalized journey.
               </Text>
             </View>
-            <View style={[styles.progressBadge, { backgroundColor: Colors.lightBackground }]}>
-              <Award size={20} color={Colors.primary} />
-              <Text style={[styles.progressPercent, { color: Colors.primary }]}>{overallProgress}%</Text>
-            </View>
-          </View>
-          
-          <ProgressBar 
-            progress={overallProgress} 
-            height={8} 
-            animated={true}
-          />
-          
-          <TouchableOpacity 
-            style={[styles.viewJourneyButton, { backgroundColor: Colors.lightBackground }]}
-            onPress={() => router.push("/(tabs)/journey")}
-          >
-            <Text style={[styles.viewJourneyText, { color: Colors.primary }]}>View Full Journey</Text>
-          </TouchableOpacity>
-        </Card>
-        
-        {upcomingTasks.length > 0 && (
-          <Card style={[styles.tasksCard, { backgroundColor: Colors.card }]}>
-            <View style={styles.sectionHeader}>
-              <Text style={[styles.sectionTitle, { color: Colors.text }]}>Upcoming Tasks</Text>
-              <TouchableOpacity onPress={() => router.push(`/journey/${currentStage?.stage}`)}>
-                <Text style={[styles.viewAllText, { color: Colors.primary }]}>View All</Text>
-              </TouchableOpacity>
-            </View>
-            
-            {upcomingTasks.map((task, index) => (
-              <TouchableOpacity 
-                key={task.id} 
-                style={styles.taskItem}
-                onPress={() => router.push(`/journey/${currentStage?.stage}`)}
-              >
-                <View style={[styles.taskIndicator, { backgroundColor: task.completed ? Colors.success : Colors.primary }]} />
-                <Text style={[styles.taskTitle, { color: Colors.text, textDecorationLine: task.completed ? 'line-through' : 'none' }]}>
-                  {task.title}
-                </Text>
-                {task.completed && (
-                  <View style={[styles.taskCompleted, { backgroundColor: Colors.success }]}>
-                    <Text style={styles.taskCompletedText}>✓</Text>
-                  </View>
-                )}
-              </TouchableOpacity>
-            ))}
-          </Card>
-        )}
-        
-        <View style={styles.quickActions}>
-          <Text style={[styles.sectionTitle, { color: Colors.text }]}>Quick Actions</Text>
-          <View style={styles.actionsGrid}>
-            {quickActions.map((action, index) => (
-              <TouchableOpacity
-                key={index}
-                style={[
-                  styles.actionCard, 
-                  { backgroundColor: Colors.card, borderLeftColor: action.color, borderColor: Colors.border, borderWidth: 1 },
-                  action.isPremium && !hasActiveSubscription && styles.premiumActionCard
-                ]}
-                onPress={action.onPress}
-              >
-                <View style={styles.actionIconContainer}>
-                  <action.icon size={24} color={action.color} />
-                  {action.isPremium && !hasActiveSubscription && (
-                    <View style={[styles.premiumBadge, { backgroundColor: Colors.primary }]}>
-                      <Crown size={12} color="#FFFFFF" />
-                    </View>
-                  )}
-                </View>
-                <Text style={[styles.actionTitle, { color: Colors.text }]}>{action.title}</Text>
-                <Text style={[styles.actionDescription, { color: Colors.lightText }]}>{action.description}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+          ) : (
+            stages.map((stage, index) => {
+              const tierLocked = !canAccessJourneyTier(userTier, stage.subscriptionTier);
+              const state: NodeState = stage.completed
+                ? "done"
+                : (index === currentStageIndex && !tierLocked ? "active" : "locked");
+
+              return (
+                <JourneyNode
+                  key={stage.id}
+                  index={index}
+                  slot={getNodeSlot(index)}
+                  stage={stage}
+                  state={state}
+                  onPress={() => openStage(stage)}
+                />
+              );
+            })
+          )}
         </View>
 
       </ScrollView>
@@ -501,268 +328,376 @@ export default function HomeScreen() {
   );
 }
 
+function JourneyPathLayer({
+  stages,
+  activeIndex,
+  getNodeSlot,
+  width,
+  height,
+}: {
+  stages: JourneyProgress[];
+  activeIndex: number;
+  getNodeSlot: (index: number) => NodeSlot;
+  width: number;
+  height: number;
+}) {
+  const points = stages.map((_, index) => getDotPoint(getNodeSlot(index), index));
+
+  return (
+    <Svg width={width} height={height} style={StyleSheet.absoluteFill} pointerEvents="none">
+      {points.slice(0, -1).map((point, index) => {
+        const nextPoint = points[index + 1];
+        const controlX = index % 2 === 0
+          ? Math.max(point.x, nextPoint.x) + 98
+          : Math.min(point.x, nextPoint.x) - 76;
+        const controlY = (point.y + nextPoint.y) / 2;
+
+        return (
+          <Path
+            key={`${point.x}-${point.y}-${nextPoint.x}-${nextPoint.y}`}
+            d={`M ${point.x} ${point.y} Q ${controlX} ${controlY} ${nextPoint.x} ${nextPoint.y}`}
+            stroke={index < activeIndex ? PRIMARY : "#DADAE4"}
+            strokeWidth={1}
+            strokeDasharray="8 10"
+            strokeLinecap="round"
+            fill="none"
+          />
+        );
+      })}
+    </Svg>
+  );
+}
+
+function getDotPoint(slot: NodeSlot, index: number) {
+  const pointOffsets = [
+    { x: slot.width - 6, y: 68 },
+    { x: slot.width - 2, y: 50 },
+    { x: slot.width + 2, y: 58 },
+    { x: slot.width - 6, y: 38 },
+  ];
+  const offset = pointOffsets[index % pointOffsets.length];
+
+  return {
+    x: slot.left + offset.x,
+    y: slot.top + offset.y,
+  };
+}
+
+function JourneyNode({
+  stage,
+  index,
+  slot,
+  state,
+  onPress,
+}: {
+  stage: JourneyProgress;
+  index: number;
+  slot: NodeSlot;
+  state: NodeState;
+  onPress: () => void;
+}) {
+  const Icon = state === "done"
+    ? Check
+    : (state === "locked" ? Lock : (stageIcons[stage.stage] || FileText));
+  const completedTasks = stage.tasks.filter((task) => task.completed).length;
+  const totalTasks = stage.tasks.length;
+  const remainingTasks = Math.max(totalTasks - completedTasks, 0);
+  const tag = state === "done" ? "DONE" : (state === "active" ? "ACTIVE" : "LOCKED");
+  const tagColor = state === "done" ? SUCCESS : (state === "active" ? PRIMARY : SOFT_MUTED);
+  const titleColor = state === "locked" ? "#5E5E6E" : TEXT;
+  const iconBackground = state === "done" ? "#E6F9F7" : (state === "active" ? PRIMARY : "#EEEEF4");
+  const iconColor = state === "done" ? SUCCESS : (state === "active" ? "#FFFFFF" : SOFT_MUTED);
+  const borderColor = state === "done" ? SUCCESS : (state === "active" ? PRIMARY : BORDER);
+  const subtitle = stage.description
+    || (stage.completed ? "Milestone complete" : `${remainingTasks} task${remainingTasks === 1 ? "" : "s"} remaining`);
+
+  return (
+    <TouchableOpacity
+      style={[
+        styles.nodeCard,
+        {
+          left: slot.left,
+          top: slot.top,
+          width: slot.width,
+          borderColor,
+        },
+        state === "active" && styles.activeNodeCard,
+        state === "done" && styles.completedNodeCard,
+        state === "locked" && styles.futureNodeCard,
+      ]}
+      onPress={onPress}
+      activeOpacity={0.86}
+      accessibilityRole="button"
+      accessibilityLabel={`Open ${stage.title}`}
+    >
+      <View style={styles.nodeGlassClip}>
+        <BlurView intensity={Platform.OS === "ios" ? 32 : 18} tint="light" style={StyleSheet.absoluteFill} />
+      </View>
+      <View style={styles.nodeInner}>
+        <View style={styles.nodeIconRow}>
+          <View style={[styles.nodeIconCircle, { backgroundColor: iconBackground }]}>
+            <Icon size={18} color={iconColor} strokeWidth={state === "done" ? 3 : 2.3} />
+          </View>
+          <View style={[styles.nodeTag, { backgroundColor: `${tagColor}14` }]}>
+            <Text style={[styles.nodeTagText, { color: tagColor }]}>{tag}</Text>
+          </View>
+        </View>
+
+        <Text style={[styles.nodeTitle, { color: titleColor }]} numberOfLines={2}>
+          {stage.title}
+        </Text>
+        <Text style={[styles.nodeSubtitle, state === "locked" && styles.lockedNodeSubtitle]} numberOfLines={2}>
+          {subtitle}
+        </Text>
+
+        {state === "active" && (
+          <View style={styles.continueButton}>
+            <Text style={styles.continueText}>Continue</Text>
+            <ArrowRight size={13} color="#FFFFFF" strokeWidth={3} />
+          </View>
+        )}
+      </View>
+
+      <View style={[
+        styles.stepDot,
+        {
+          backgroundColor: state === "done" ? SUCCESS : (state === "active" ? PRIMARY : "#E0E0EA"),
+          right: state === "active" ? -11 : -7,
+          top: state === "active" ? 39 : 46,
+        },
+      ]}>
+        <Text style={[styles.stepDotText, state === "locked" && styles.lockedStepDotText]}>{index + 1}</Text>
+      </View>
+    </TouchableOpacity>
+  );
+}
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: "#FFFFFF",
   },
-  scrollContainer: {
+  fixedMapImage: {
+    opacity: 0.38,
+    position: "absolute",
+    top: -118,
+  },
+  scroll: {
     flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 132,
   },
   loadingContainer: {
     flex: 1,
-    justifyContent: "center",
     alignItems: "center",
+    justifyContent: "center",
+    gap: 12,
   },
   loadingText: {
-    fontSize: 16,
-  },
-  scrollContent: {
-    padding: 20,
-    paddingBottom: 32,
-  },
-  header: {
-    marginBottom: 24,
-  },
-  headerTop: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  greeting: {
-    fontSize: 16,
-    marginBottom: 4,
-  },
-  name: {
-    fontSize: 28,
-    fontWeight: "700",
-  },
-  subscriptionBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    alignSelf: "flex-start",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    marginTop: 6,
-    gap: 6,
-  },
-  subscriptionBadgeText: {
-    fontSize: 12,
-    fontWeight: "600",
-    textTransform: "uppercase",
-  },
-  progressCard: {
-    marginBottom: 20,
-  },
-  progressHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  progressTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    marginBottom: 4,
-  },
-  progressSubtitle: {
-    fontSize: 14,
-  },
-  progressBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 16,
-  },
-  progressPercent: {
-    fontSize: 16,
-    fontWeight: "700",
-    marginLeft: 6,
-  },
-  viewJourneyButton: {
-    marginTop: 16,
-    paddingVertical: 12,
-    alignItems: "center",
-    borderRadius: 8,
-  },
-  viewJourneyText: {
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  premiumFeaturesCard: {
-    marginBottom: 20,
-    borderWidth: 1,
-  },
-  premiumSectionTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    marginLeft: 8,
-  },
-  premiumGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
-    marginTop: 16,
-  },
-  premiumFeatureCard: {
-    width: "48%",
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 12,
-    borderLeftWidth: 3,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  premiumFeatureTitle: {
-    fontSize: 14,
-    fontWeight: "600",
-    marginTop: 8,
-    marginBottom: 4,
-  },
-  premiumFeatureDescription: {
-    fontSize: 12,
-    lineHeight: 16,
-  },
-  premiumActionsCard: {
-    marginBottom: 20,
-    borderWidth: 1,
-  },
-  premiumActionsGrid: {
-    marginTop: 12,
-  },
-  premiumActionCard: {
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    borderWidth: 2,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-    opacity: 0.9,
-  },
-  tasksCard: {
-    marginBottom: 20,
-  },
-  sectionHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-  },
-  viewAllText: {
+    color: MUTED,
     fontSize: 14,
     fontWeight: "500",
   },
-  taskItem: {
+  header: {
+    backgroundColor: "transparent",
+    paddingHorizontal: 24,
+    paddingTop: 10,
+    paddingBottom: 12,
+    zIndex: 2,
+  },
+  headerTop: {
+    alignItems: "center",
     flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 12,
-    paddingHorizontal: 4,
-    borderRadius: 8,
+    justifyContent: "space-between",
   },
-  taskIndicator: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginRight: 12,
-  },
-  taskTitle: {
-    fontSize: 14,
+  headerText: {
     flex: 1,
+    paddingRight: 16,
   },
-  taskCompleted: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    justifyContent: "center",
-    alignItems: "center",
+  title: {
+    color: TEXT,
+    fontSize: 26,
+    fontWeight: "800",
+    lineHeight: 32,
   },
-  taskCompletedText: {
-    color: "#FFFFFF",
+  subtitle: {
+    color: MUTED,
+    fontSize: 13,
+    fontWeight: "500",
+    marginTop: 1,
+  },
+  stepBadge: {
+    backgroundColor: "#FFF0F0",
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+  },
+  stepBadgeText: {
+    color: PRIMARY,
     fontSize: 12,
-    fontWeight: "600",
+    fontWeight: "700",
   },
-  quickActions: {
-    marginBottom: 20,
+  progressBlock: {
+    marginTop: 10,
   },
-  actionsGrid: {
-    marginTop: 12,
+  progressTrack: {
+    backgroundColor: BORDER,
+    borderRadius: 999,
+    height: 6,
+    overflow: "hidden",
   },
-  actionCard: {
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    borderLeftWidth: 4,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+  progressFill: {
+    backgroundColor: PRIMARY,
+    borderRadius: 999,
+    height: "100%",
   },
-  actionTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    marginTop: 8,
-    marginBottom: 4,
+  milestoneText: {
+    color: MUTED,
+    fontSize: 11,
+    fontWeight: "500",
+    marginTop: 7,
   },
-  actionDescription: {
-    fontSize: 14,
-  },
-  actionIconContainer: {
+  mapCanvas: {
+    marginTop: 0,
+    overflow: "visible",
     position: "relative",
   },
-  premiumBadge: {
-    position: "absolute",
-    top: -6,
-    right: -6,
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    justifyContent: "center",
+  emptyState: {
     alignItems: "center",
-    borderWidth: 2,
-    borderColor: "#FFFFFF",
-  },
-  upgradeCard: {
+    alignSelf: "flex-start",
+    backgroundColor: "rgba(255,255,255,0.82)",
+    borderColor: BORDER,
+    borderRadius: 18,
     borderWidth: 1,
-    marginBottom: 20,
+    gap: 8,
+    marginTop: 170,
+    padding: 20,
   },
-  upgradeContent: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  upgradeText: {
-    flex: 1,
-    marginLeft: 16,
-  },
-  upgradeTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    marginBottom: 4,
-  },
-  upgradeDescription: {
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  upgradeButton: {
-    borderRadius: 8,
-    paddingVertical: 12,
-    alignItems: "center",
-  },
-  upgradeButtonText: {
+  emptyTitle: {
+    color: TEXT,
     fontSize: 16,
-    fontWeight: "600",
+    fontWeight: "800",
+    textAlign: "center",
+  },
+  emptyDescription: {
+    color: MUTED,
+    fontSize: 13,
+    lineHeight: 19,
+    textAlign: "center",
+  },
+  nodeCard: {
+    backgroundColor: "rgba(255,255,255,0.82)",
+    borderRadius: 16,
+    borderWidth: 1,
+    overflow: "visible",
+    position: "absolute",
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000000",
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.08,
+        shadowRadius: 18,
+      },
+      android: {
+        elevation: 3,
+      },
+    }),
+  },
+  nodeGlassClip: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 16,
+    overflow: "hidden",
+  },
+  activeNodeCard: {
+    borderWidth: 1.5,
+    ...Platform.select({
+      ios: {
+        shadowColor: PRIMARY,
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.2,
+        shadowRadius: 20,
+      },
+      android: {
+        elevation: 6,
+      },
+    }),
+  },
+  completedNodeCard: {
+    borderWidth: 1.25,
+  },
+  futureNodeCard: {
+    opacity: 0.68,
+  },
+  nodeInner: {
+    gap: 6,
+    padding: 14,
+  },
+  nodeIconRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 8,
+    marginBottom: 2,
+  },
+  nodeIconCircle: {
+    alignItems: "center",
+    borderRadius: 18,
+    height: 36,
+    justifyContent: "center",
+    width: 36,
+  },
+  nodeTag: {
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  nodeTagText: {
+    fontSize: 9,
+    fontWeight: "800",
+    letterSpacing: 0,
+  },
+  nodeTitle: {
+    fontSize: 13,
+    fontWeight: "800",
+    lineHeight: 17,
+  },
+  nodeSubtitle: {
+    color: MUTED,
+    fontSize: 11,
+    lineHeight: 15,
+  },
+  lockedNodeSubtitle: {
+    color: SOFT_MUTED,
+  },
+  continueButton: {
+    alignItems: "center",
+    backgroundColor: PRIMARY,
+    borderRadius: 10,
+    flexDirection: "row",
+    gap: 5,
+    justifyContent: "center",
+    marginTop: 3,
+    paddingVertical: 7,
+  },
+  continueText: {
     color: "#FFFFFF",
+    fontSize: 11,
+    fontWeight: "800",
+  },
+  stepDot: {
+    alignItems: "center",
+    borderRadius: 11,
+    height: 22,
+    justifyContent: "center",
+    position: "absolute",
+    width: 22,
+  },
+  stepDotText: {
+    color: "#FFFFFF",
+    fontSize: 11,
+    fontWeight: "800",
+  },
+  lockedStepDotText: {
+    color: SOFT_MUTED,
   },
 });

@@ -9,10 +9,9 @@ import Card from "@/components/Card";
 import Button from "@/components/Button";
 import Avatar from "@/components/Avatar";
 import { useUserStore } from "@/store/userStore";
-import { useAppStateStore } from "@/store/appStateStore";
 import { useJourneyStore } from "@/store/journeyStore";
 import { useDocumentStore } from "@/store/documentStore";
-import { supabase } from "@/lib/supabase";
+import { useSignOut } from "@/hooks/useSignOut";
 import { EducationLevel } from "@/types/user";
 
 const formatEducationLevel = (level: EducationLevel | undefined): string => {
@@ -30,29 +29,18 @@ const formatEducationLevel = (level: EducationLevel | undefined): string => {
 export default function ProfileScreen() {
   const router = useRouter();
   const Colors = useColors();
-  const { user, isPremium, logout } = useUserStore();
-  const { setHasBootstrappedNavigation } = useAppStateStore();
+  const { user, isPremium } = useUserStore();
+  const signOut = useSignOut();
   const { journeyProgress } = useJourneyStore();
   const { documents } = useDocumentStore();
 
-  const performSignOut = async () => {
-    try {
-      await supabase.auth.signOut();
-    } catch (error) {
-      console.error("Sign out failed:", error);
-    } finally {
-      await logout();
-      setHasBootstrappedNavigation(false);
-    }
-  };
-  
   if (!user) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: Colors.background }]} edges={['top']}>
         <Text style={[styles.errorText, { color: Colors.text }]}>User data not available. Please log in.</Text>
         <Button
           title="Logout"
-          onPress={performSignOut}
+          onPress={signOut}
           variant="outline"
           fullWidth
           style={{ ...styles.actionButton, borderColor: Colors.error }}
@@ -254,10 +242,7 @@ export default function ProfileScreen() {
         {/* Sign Out Button */}
         <Button
           title="Sign Out"
-          onPress={async () => {
-            await performSignOut();
-            router.replace("/onboarding/step1-account");
-          }}
+          onPress={signOut}
           variant="outline"
           fullWidth
           style={styles.signOutButton}
@@ -276,7 +261,7 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 20,
-    paddingBottom: 40,
+    paddingBottom: 148,
   },
   headerCard: {
     marginBottom: 20,
@@ -426,6 +411,7 @@ const styles = StyleSheet.create({
   },
   signOutButton: {
     marginTop: 20,
+    marginBottom: 8,
   },
   errorText: {
     fontSize: 16,

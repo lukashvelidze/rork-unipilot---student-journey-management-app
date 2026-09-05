@@ -1,116 +1,107 @@
 import React, { useState } from "react";
-import { StyleSheet, View, Text, ScrollView, Alert, TouchableOpacity, KeyboardAvoidingView, Platform } from "react-native";
+import {
+  Alert,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { ArrowLeft } from "lucide-react-native";
-import { useColors } from "@/hooks/useColors";
-import { useAppBack } from "@/hooks/useAppBack";
 import Button from "@/components/Button";
 import Input from "@/components/Input";
+import OnboardingProgressHeader from "@/components/onboarding/OnboardingProgressHeader";
+import { useAppBack } from "@/hooks/useAppBack";
 import { useUserStore } from "@/store/userStore";
 import { supabase } from "@/lib/supabase";
 import { SubscriptionTier } from "@/types/user";
 import { posthog } from "@/src/config/posthog";
 
+const worldMap = require("@/assets/images/onboarding/world-map-login.png");
+
 export default function SignInScreen() {
   const router = useRouter();
-  const Colors = useColors();
-  const handleBack = useAppBack("/onboarding");
+  const handleBack = useAppBack("/onboarding/step0-welcome");
   const { user, setUser } = useUserStore();
-  
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
-  const [errors, setErrors] = useState({
-    email: "",
-    password: "",
-  });
+  const [errors, setErrors] = useState({ email: "", password: "" });
+
+  const isValidEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 
   const validateForm = () => {
     const newErrors = {
-      email: "",
-      password: "",
+      email: !email.trim()
+        ? "Email is required"
+        : !isValidEmail(email.trim())
+          ? "Please enter a valid email address"
+          : "",
+      password: !password.trim()
+        ? "Password is required"
+        : password.length < 6
+          ? "Password must be at least 6 characters"
+          : "",
     };
 
-    if (!email.trim()) {
-      newErrors.email = "Email is required";
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      newErrors.email = "Please enter a valid email address";
-    }
-
-    if (!password.trim()) {
-      newErrors.password = "Password is required";
-    } else if (password.length < 6) {
-      newErrors.password = "Password must be at least 6 characters";
-    }
-
     setErrors(newErrors);
-    return Object.keys(newErrors).every(key => !newErrors[key as keyof typeof newErrors]);
+    return !newErrors.email && !newErrors.password;
   };
 
   const handleSignIn = async () => {
-    if (!validateForm()) {
-      return;
-    }
-
-    if (isProcessing) {
-      return;
-    }
+    if (!validateForm() || isProcessing) return;
 
     setIsProcessing(true);
 
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
-        email,
+        email: email.trim(),
         password,
       });
 
       if (error) {
-        Alert.alert("Sign In Error", error.message);
-        setIsProcessing(false);
+        Alert.alert("Log in error", error.message);
         return;
       }
 
-      if (data.user) {
-        // Fetch user profile
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("*")
-          .eq("id", data.user.id)
-          .single();
+      if (!data.user) return;
 
-        const subscriptionTier = (profile?.subscription_tier || "free").toLowerCase() as SubscriptionTier;
-        const premiumPlan = subscriptionTier === "premium" || subscriptionTier === "pro";
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", data.user.id)
+        .single();
 
-        // Update local store
-        const updatedUser = {
-          ...user!,
-          id: data.user.id,
-          name: profile?.full_name || data.user.email || "",
-          email: profile?.email || data.user.email || "",
-          onboardingCompleted: !!profile?.visa_type,
-           subscriptionTier,
-           isPremium: premiumPlan,
-        };
+      const subscriptionTier = (
+        profile?.subscription_tier || "free"
+      ).toLowerCase() as SubscriptionTier;
+      const premiumPlan = subscriptionTier === "premium" || subscriptionTier === "pro";
+      const onboardingCompleted = Boolean(profile?.visa_type);
 
-        setUser(updatedUser);
+      setUser({
+        ...user!,
+        id: data.user.id,
+        name: profile?.full_name || data.user.email || "",
+        email: profile?.email || data.user.email || "",
+        onboardingCompleted,
+        subscriptionTier,
+        isPremium: premiumPlan,
+      });
 
-        posthog.identify(data.user.id, {
-          $set: { subscription_tier: subscriptionTier },
-        });
-        posthog.capture('user_signed_in', {
-          subscription_tier: subscriptionTier,
-          onboarding_completed: !!profile?.visa_type,
-        });
+      posthog.identify(data.user.id, {
+        $set: { subscription_tier: subscriptionTier },
+      });
+      posthog.capture("user_signed_in", {
+        subscription_tier: subscriptionTier,
+        onboarding_completed: onboardingCompleted,
+      });
 
-        // Redirect to main app (tabs) or onboarding if not completed
-        if (profile?.visa_type) {
-          router.replace("/(tabs)");
-        } else {
-          // User exists but hasn't completed onboarding
-          router.replace("/onboarding");
-        }
-      }
+      router.replace(onboardingCompleted ? "/(tabs)" : "/onboarding");
     } catch (error: any) {
       console.error("Sign in error:", error);
       Alert.alert("Error", error.message || "Something went wrong. Please try again.");
@@ -119,74 +110,111 @@ export default function SignInScreen() {
     }
   };
 
+  const handleForgotPassword = async () => {
+    const normalizedEmail = email.trim();
+    if (!isValidEmail(normalizedEmail)) {
+      setErrors((current) => ({
+        ...current,
+        email: "Enter your email above to reset your password",
+      }));
+      return;
+    }
+
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(normalizedEmail);
+      if (error) {
+        Alert.alert("Reset password", error.message);
+        return;
+      }
+      Alert.alert("Check your email", "We sent you a password reset link.");
+    } catch (error: any) {
+      Alert.alert("Reset password", error.message || "Please try again.");
+    }
+  };
+
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: Colors.background }]} edges={['top']}>
+    <SafeAreaView edges={["top", "bottom"]} style={styles.container}>
+      <Image resizeMode="contain" source={worldMap} style={styles.map} />
+
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.keyboardView}
       >
+        <OnboardingProgressHeader onBack={handleBack} progress={0.25} />
+
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
-          {/* Header */}
           <View style={styles.header}>
-            <TouchableOpacity
-              onPress={handleBack}
-              style={styles.backButton}
-            >
-              <ArrowLeft size={24} color={Colors.text} />
-            </TouchableOpacity>
-            <Text style={[styles.title, { color: Colors.text }]}>Sign In</Text>
-            <View style={{ width: 24 }} />
+            <Text style={styles.title}>Welcome back!</Text>
+            <Text style={styles.subtitle}>Log in to continue your journey</Text>
           </View>
 
-          <View style={styles.content}>
-            <Text style={[styles.subtitle, { color: Colors.lightText }]}>
-              Welcome back! Sign in to continue.
-            </Text>
+          <View style={styles.form}>
+            <Input
+              autoCapitalize="none"
+              autoComplete="email"
+              containerStyle={styles.field}
+              error={errors.email}
+              inputContainerStyle={styles.inputContainer}
+              inputStyle={styles.input}
+              keyboardType="email-address"
+              label="Email or Username"
+              labelStyle={styles.label}
+              onChangeText={(value) => {
+                setEmail(value);
+                if (errors.email) setErrors((current) => ({ ...current, email: "" }));
+              }}
+              placeholder="Enter your email"
+              testID="login-email"
+              value={email}
+            />
 
-            <View style={styles.form}>
-              <Input
-                label="Email"
-                placeholder="Enter your email"
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoComplete="email"
-                error={errors.email}
-              />
+            <Input
+              autoCapitalize="none"
+              autoComplete="password"
+              containerStyle={styles.field}
+              error={errors.password}
+              inputContainerStyle={styles.inputContainer}
+              inputStyle={styles.input}
+              label="Password"
+              labelStyle={styles.label}
+              onChangeText={(value) => {
+                setPassword(value);
+                if (errors.password) setErrors((current) => ({ ...current, password: "" }));
+              }}
+              placeholder="••••••••"
+              secureTextEntry
+              showPasswordToggle
+              testID="login-password"
+              value={password}
+            />
 
-              <Input
-                label="Password"
-                placeholder="Enter your password"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry
-                autoCapitalize="none"
-                autoComplete="password"
-                error={errors.password}
-              />
+            <TouchableOpacity
+              accessibilityRole="button"
+              activeOpacity={0.65}
+              onPress={handleForgotPassword}
+              style={styles.forgotButton}
+            >
+              <Text style={styles.forgotText}>Forgot password?</Text>
+            </TouchableOpacity>
 
-              <Button
-                title="Sign In"
-                onPress={handleSignIn}
-                loading={isProcessing}
-                fullWidth
-                style={styles.signInButton}
-              />
+            <Button
+              fullWidth
+              loading={isProcessing}
+              onPress={handleSignIn}
+              style={styles.submitButton}
+              testID="login-submit"
+              title="Log in"
+            />
 
-              <View style={styles.footer}>
-                <Text style={[styles.footerText, { color: Colors.lightText }]}>
-                  Don't have an account?{" "}
-                </Text>
-                <TouchableOpacity onPress={() => router.push("/onboarding/step1-account")}>
-                  <Text style={[styles.footerLink, { color: Colors.primary }]}>
-                    Sign Up
-                  </Text>
-                </TouchableOpacity>
-              </View>
+            <View style={styles.footerPrompt}>
+              <Text style={styles.footerText}>Don&apos;t have an account?</Text>
+              <TouchableOpacity onPress={() => router.push("/onboarding/step1-account")}>
+                <Text style={styles.footerLink}>Register</Text>
+              </TouchableOpacity>
             </View>
           </View>
         </ScrollView>
@@ -197,56 +225,94 @@ export default function SignInScreen() {
 
 const styles = StyleSheet.create({
   container: {
+    backgroundColor: "#FFFFFF",
     flex: 1,
+  },
+  map: {
+    left: "-21%",
+    opacity: 0.11,
+    position: "absolute",
+    top: -20,
+    width: "277%",
+    aspectRatio: 1,
   },
   keyboardView: {
     flex: 1,
   },
   scrollContent: {
     flexGrow: 1,
+    paddingBottom: 28,
+    paddingHorizontal: 24,
+    paddingTop: 62,
   },
   header: {
-    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 8,
-  },
-  backButton: {
-    padding: 8,
-    marginLeft: -8,
   },
   title: {
-    fontSize: 24,
+    color: "#111827",
+    fontSize: 28,
     fontWeight: "700",
-  },
-  content: {
-    flex: 1,
-    padding: 20,
-    paddingTop: 32,
+    letterSpacing: -0.5,
+    textAlign: "center",
   },
   subtitle: {
-    fontSize: 16,
-    marginBottom: 32,
+    color: "#64748B",
+    fontSize: 14,
+    marginTop: 12,
     textAlign: "center",
   },
   form: {
-    gap: 20,
+    marginTop: 28,
   },
-  signInButton: {
-    marginTop: 8,
+  field: {
+    marginBottom: 20,
   },
-  footer: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
+  label: {
+    color: "#374151",
+    fontSize: 14,
+    fontWeight: "600",
+    marginBottom: 8,
+  },
+  inputContainer: {
+    backgroundColor: "#FFFFFF",
+    borderColor: "#E5E7EB",
+    borderRadius: 12,
+    borderWidth: 1.5,
+    height: 52,
+  },
+  input: {
+    color: "#111827",
+    fontSize: 15,
+    height: 52,
+    paddingVertical: 0,
+  },
+  forgotButton: {
+    alignSelf: "flex-end",
+    marginTop: -3,
+  },
+  forgotText: {
+    color: "#FF6B6B",
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  submitButton: {
+    borderRadius: 28,
+    height: 56,
     marginTop: 24,
   },
+  footerPrompt: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 4,
+    justifyContent: "center",
+    marginTop: 16,
+  },
   footerText: {
+    color: "#64748B",
     fontSize: 14,
   },
   footerLink: {
+    color: "#FF6B6B",
     fontSize: 14,
     fontWeight: "600",
   },

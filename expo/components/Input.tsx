@@ -18,6 +18,7 @@ interface InputProps extends TextInputProps {
   leftIcon?: React.ReactNode;
   rightIcon?: React.ReactNode;
   containerStyle?: ViewStyle;
+  inputContainerStyle?: ViewStyle;
   inputStyle?: TextStyle;
   labelStyle?: TextStyle;
   errorStyle?: TextStyle;
@@ -31,6 +32,7 @@ const Input: React.FC<InputProps> = ({
   leftIcon,
   rightIcon,
   containerStyle,
+  inputContainerStyle,
   inputStyle,
   labelStyle,
   errorStyle,
@@ -51,6 +53,7 @@ const Input: React.FC<InputProps> = ({
       )}
       <View style={[
         styles.inputContainer,
+        inputContainerStyle,
         error ? styles.inputError : null,
       ]}>
         {leftIcon && (

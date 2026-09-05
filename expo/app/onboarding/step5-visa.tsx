@@ -1,95 +1,115 @@
-import React, { useState, useEffect } from "react";
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from "react-native";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
-import { useRouter, useLocalSearchParams } from "expo-router";
-import { ChevronRight } from "lucide-react-native";
-import { useAppBack } from "@/hooks/useAppBack";
-import Colors from "@/constants/colors";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { ChevronRight, Stamp } from "lucide-react-native";
 import Button from "@/components/Button";
-import { useUserStore } from "@/store/userStore";
+import OnboardingChoiceCard from "@/components/onboarding/OnboardingChoiceCard";
+import OnboardingProgressHeader from "@/components/onboarding/OnboardingProgressHeader";
+import { useAppBack } from "@/hooks/useAppBack";
 import { supabase } from "@/lib/supabase";
+import { posthog } from "@/src/config/posthog";
+import { useUserStore } from "@/store/userStore";
 import { Country } from "@/types/user";
 
+const CORAL = "#FF6B6B";
+
 interface VisaType {
-  id: string;
-  country_code: string;
   code: string;
-  title: string;
+  country_code: string | null;
   description: string | null;
+  id: string;
   is_active: boolean;
+  title: string;
 }
+
+const normalizeParam = (value?: string | string[]) =>
+  Array.isArray(value) ? value[0] : value;
 
 export default function Step5Visa() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const handleBack = useAppBack("/(tabs)");
   const params = useLocalSearchParams<{
-    pendingCountryCode?: string;
-    pendingCountryName?: string;
-    pendingCountryFlag?: string;
-    pendingHomeCountryCode?: string;
-    pendingHomeCountryName?: string;
-    pendingHomeCountryFlag?: string;
-    pendingName?: string;
-    pendingEmail?: string;
-    pendingEducationLevel?: string;
-    pendingCareerGoal?: string;
     pendingBio?: string;
+    pendingCareerGoal?: string;
+    pendingCountryCode?: string;
+    pendingCountryFlag?: string;
+    pendingCountryName?: string;
+    pendingEducationLevel?: string;
+    pendingEmail?: string;
+    pendingHomeCountryCode?: string;
+    pendingHomeCountryFlag?: string;
+    pendingHomeCountryName?: string;
+    pendingName?: string;
     fromEditProfile?: string;
   }>();
-  const { user, setUser, updateDestinationCountry, updateUser } = useUserStore();
+  const {
+    completeOnboarding,
+    setUser,
+    updateDestinationCountry,
+    updateUser,
+    user,
+  } = useUserStore();
 
-  // Check if we have a pending country change from edit profile
-  const normalizeParam = (value?: string | string[]) => {
-    if (Array.isArray(value)) {
-      return value[0];
-    }
-    return value;
-  };
+  const pendingDestinationCountry = useMemo<Country | null>(() => {
+    const code = normalizeParam(params.pendingCountryCode);
+    if (!code) return null;
 
-  const pendingDestinationCountry: Country | null = normalizeParam(params.pendingCountryCode) ? {
-    code: normalizeParam(params.pendingCountryCode)!,
-    name: normalizeParam(params.pendingCountryName) || normalizeParam(params.pendingCountryCode)!,
-    flag: normalizeParam(params.pendingCountryFlag) || "",
-  } : null;
+    return {
+      code,
+      flag: normalizeParam(params.pendingCountryFlag) || "",
+      name: normalizeParam(params.pendingCountryName) || code,
+    };
+  }, [
+    params.pendingCountryCode,
+    params.pendingCountryFlag,
+    params.pendingCountryName,
+  ]);
 
-  const pendingHomeCountry: Country | null = normalizeParam(params.pendingHomeCountryCode) ? {
-    code: normalizeParam(params.pendingHomeCountryCode)!,
-    name: normalizeParam(params.pendingHomeCountryName) || normalizeParam(params.pendingHomeCountryCode)!,
-    flag: normalizeParam(params.pendingHomeCountryFlag) || "",
-  } : null;
+  const pendingHomeCountry = useMemo<Country | null>(() => {
+    const code = normalizeParam(params.pendingHomeCountryCode);
+    if (!code) return null;
+
+    return {
+      code,
+      flag: normalizeParam(params.pendingHomeCountryFlag) || "",
+      name: normalizeParam(params.pendingHomeCountryName) || code,
+    };
+  }, [
+    params.pendingHomeCountryCode,
+    params.pendingHomeCountryFlag,
+    params.pendingHomeCountryName,
+  ]);
 
   const isFromEditProfile = params.fromEditProfile === "true";
-
-  // Use pending country if available, otherwise use user's current destination
   const effectiveCountry = pendingDestinationCountry || user?.destinationCountry;
-
   const [visaTypes, setVisaTypes] = useState<VisaType[]>([]);
   const [selectedVisaType, setSelectedVisaType] = useState<VisaType | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    loadVisaTypes();
-  }, [effectiveCountry?.code]); // Reload when effective country changes
-
-  const loadVisaTypes = async () => {
+  const loadVisaTypes = useCallback(async () => {
     try {
       setIsLoading(true);
       setError("");
-      const { data: { user: authUser } } = await supabase.auth.getUser();
+      const {
+        data: { user: authUser },
+      } = await supabase.auth.getUser();
 
-      if (!authUser) {
-        setIsLoading(false);
-        return;
-      }
+      if (!authUser) return;
 
-      // Get destination country - prefer pending country, then user store, then fetch from profile
       let countryCode = effectiveCountry?.code;
 
       if (!countryCode) {
-        // Fetch from profile if not in store
         const { data: profile, error: profileError } = await supabase
           .from("profiles")
           .select("destination_country")
@@ -97,9 +117,8 @@ export default function Step5Visa() {
           .single();
 
         if (profileError || !profile?.destination_country) {
-          console.error("No destination country found");
+          console.error("No destination country found", profileError);
           setError("Please set your destination country first.");
-          setIsLoading(false);
           return;
         }
 
@@ -108,12 +127,10 @@ export default function Step5Visa() {
 
       if (!countryCode) {
         setError("Please set your destination country first.");
-        setIsLoading(false);
         return;
       }
 
       const sanitizedCode = countryCode.trim().toUpperCase();
-      // Query visa types for the destination country or generic ones
       const { data, error: queryError } = await supabase
         .from("visa_types")
         .select("*")
@@ -125,17 +142,22 @@ export default function Step5Visa() {
       if (queryError) {
         console.error("Error loading visa types:", queryError);
         setError("Failed to load visa types. Please try again.");
-      } else {
-        setVisaTypes(data || []);
-        setError("");
+        return;
       }
-    } catch (error: any) {
-      console.error("Error loading visa types:", error);
+
+      setVisaTypes(data || []);
+      setSelectedVisaType(null);
+    } catch (loadError) {
+      console.error("Error loading visa types:", loadError);
       setError("Something went wrong. Please try again.");
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [effectiveCountry?.code]);
+
+  useEffect(() => {
+    loadVisaTypes();
+  }, [loadVisaTypes]);
 
   const handleContinue = async () => {
     if (!selectedVisaType) {
@@ -143,48 +165,41 @@ export default function Step5Visa() {
       return;
     }
 
-    if (isProcessing) {
-      return;
-    }
+    if (isProcessing) return;
 
     setIsProcessing(true);
     setError("");
 
     try {
-      const { data: { user: authUser } } = await supabase.auth.getUser();
+      const {
+        data: { user: authUser },
+      } = await supabase.auth.getUser();
 
       if (!authUser) {
-        setIsProcessing(false);
         router.replace("/onboarding/step1-account");
         return;
       }
 
-      // Build the update object
-      const updateData: any = {
-        visa_type: selectedVisaType.code,
+      const updateData: Record<string, string> = {
         updated_at: new Date().toISOString(),
+        visa_type: selectedVisaType.code,
       };
 
-      // If coming from edit profile, include all profile updates
       if (isFromEditProfile) {
         if (pendingDestinationCountry) {
-          updateData.destination_country = pendingDestinationCountry.code.toUpperCase();
+          updateData.destination_country =
+            pendingDestinationCountry.code.toUpperCase();
         }
         if (pendingHomeCountry) {
           updateData.country_origin = pendingHomeCountry.code.toUpperCase();
         }
-        if (params.pendingName) {
-          updateData.full_name = params.pendingName;
-        }
-        if (params.pendingEmail) {
-          updateData.email = params.pendingEmail;
-        }
+        if (params.pendingName) updateData.full_name = params.pendingName;
+        if (params.pendingEmail) updateData.email = params.pendingEmail;
         if (params.pendingEducationLevel) {
           updateData.level_of_study = params.pendingEducationLevel;
         }
       }
 
-      // Update profile in Supabase (all data together)
       const { error: updateError } = await supabase
         .from("profiles")
         .update(updateData)
@@ -193,27 +208,21 @@ export default function Step5Visa() {
       if (updateError) {
         console.error("Error updating profile:", updateError);
         setError("Failed to save. Please try again.");
-        setIsProcessing(false);
         return;
       }
 
-      // Update local store
       if (user) {
         if (isFromEditProfile) {
-          // Update all profile data in store
-          const updatedUserData: any = {
-            destinationCountry: pendingDestinationCountry || user.destinationCountry,
+          const updatedUserData: Record<string, unknown> = {
+            destinationCountry:
+              pendingDestinationCountry || user.destinationCountry,
           };
 
           if (pendingHomeCountry) {
             updatedUserData.homeCountry = pendingHomeCountry;
           }
-          if (params.pendingName) {
-            updatedUserData.name = params.pendingName;
-          }
-          if (params.pendingEmail) {
-            updatedUserData.email = params.pendingEmail;
-          }
+          if (params.pendingName) updatedUserData.name = params.pendingName;
+          if (params.pendingEmail) updatedUserData.email = params.pendingEmail;
           if (params.pendingEducationLevel) {
             updatedUserData.educationBackground = {
               ...user.educationBackground,
@@ -223,26 +232,32 @@ export default function Step5Visa() {
           if (params.pendingCareerGoal) {
             updatedUserData.careerGoal = params.pendingCareerGoal;
           }
-          if (params.pendingBio) {
-            updatedUserData.bio = params.pendingBio;
-          }
+          if (params.pendingBio) updatedUserData.bio = params.pendingBio;
 
           updateUser(updatedUserData);
-          updateDestinationCountry(pendingDestinationCountry || user.destinationCountry!);
+          updateDestinationCountry(
+            pendingDestinationCountry || user.destinationCountry!,
+          );
         } else {
           setUser({
             ...user,
-            onboardingStep: 6,
+            onboardingCompleted: true,
+            onboardingStep: 0,
+          });
+          completeOnboarding();
+
+          posthog.capture("onboarding_completed", {
+            destination_country: user.destinationCountry?.name,
+            education_level: user.educationBackground?.level,
+            home_country: user.homeCountry?.name,
           });
         }
       }
 
-      // Refresh journey store to fetch new checklists
       const { useJourneyStore } = require("@/store/journeyStore");
       const journeyStore = useJourneyStore.getState();
-
-      // Clear old journey data and refresh
       journeyStore.setJourneyProgress([]);
+
       try {
         await Promise.race([
           journeyStore.refreshJourney(),
@@ -252,34 +267,28 @@ export default function Step5Visa() {
         console.warn("Journey refresh failed:", refreshError);
       }
 
-      // Navigate based on where user came from
       if (isFromEditProfile) {
         Alert.alert(
           "Journey Updated",
           "Your journey modules were refreshed for the new country. Would you like to view them now?",
           [
             {
-              text: "Not now",
-              style: "cancel",
               onPress: () => router.replace("/(tabs)/profile"),
+              style: "cancel",
+              text: "Not now",
             },
             {
-              text: "Go to journey",
               onPress: () => router.replace("/(tabs)/journey"),
+              text: "Go to journey",
             },
-          ]
+          ],
         );
         return;
       }
 
-      if (user?.onboardingCompleted) {
-        router.replace("/(tabs)/journey");
-      } else {
-        // Normal onboarding flow - go to finish step
-        router.push("/onboarding/step6-finish");
-      }
-    } catch (error: any) {
-      console.error("Error saving visa type:", error);
+      router.replace(user?.onboardingCompleted ? "/(tabs)/journey" : "/(tabs)");
+    } catch (saveError) {
+      console.error("Error saving visa type:", saveError);
       setError("Something went wrong. Please try again.");
     } finally {
       setIsProcessing(false);
@@ -288,128 +297,122 @@ export default function Step5Visa() {
 
   if (isLoading) {
     return (
-      <SafeAreaView style={styles.container} edges={[]}>
+      <SafeAreaView edges={["top", "bottom"]} style={styles.container}>
+        <OnboardingProgressHeader onBack={handleBack} progress={1} />
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={Colors.primary} />
-          <Text style={styles.loadingText}>Loading visa types...</Text>
+          <ActivityIndicator color={CORAL} size="large" />
+          <Text style={styles.loadingText}>Finding your visa options...</Text>
         </View>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={[]}>
-      {/* Progress bar - only show during onboarding */}
-      {!isFromEditProfile && !user?.onboardingCompleted && (
-        <View style={styles.progressContainer}>
-          <View style={styles.progressBar}>
-            <View style={[styles.progressFill, { width: "83%" }]} />
-          </View>
-          <Text style={styles.progressText}>Step 5 of 6</Text>
-        </View>
-      )}
+    <SafeAreaView edges={["top", "bottom"]} style={styles.container}>
+      <OnboardingProgressHeader onBack={handleBack} progress={1} />
 
-      {/* Main content */}
       <ScrollView
-        style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.stepContainer}>
-          <Text style={styles.stepTitle}>
-            {isFromEditProfile ? "Update Your Visa Type" : "What type of visa do you need?"}
-          </Text>
-          <Text style={styles.stepDescription}>
+        <View style={styles.header}>
+          <View style={styles.heroIcon}>
+            <Stamp color={CORAL} size={27} strokeWidth={1.8} />
+          </View>
+          <Text style={styles.title}>
             {isFromEditProfile
-              ? `You changed your destination to ${effectiveCountry?.name || "a new country"}. Please select the visa type for this country.`
-              : `Select the visa type that matches your study plans for ${effectiveCountry?.name || "your destination"}`
-            }
+              ? "Update your visa type"
+              : "What type of visa do you need?"}
+          </Text>
+          <Text style={styles.subtitle}>
+            {isFromEditProfile
+              ? `Choose the visa type for your updated destination.`
+              : "Choose the option that best matches your study plans."}
           </Text>
 
-          {error && !selectedVisaType && (
-            <Text style={styles.errorText}>{error}</Text>
-          )}
+          <View style={styles.countryPill}>
+            <Text style={styles.countryFlag}>
+              {effectiveCountry?.flag || "🌍"}
+            </Text>
+            <Text numberOfLines={1} style={styles.countryName}>
+              {effectiveCountry?.name || "Your destination"}
+            </Text>
+          </View>
+        </View>
 
-          {visaTypes.length === 0 ? (
-            <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>
-                No visa types found for {effectiveCountry?.name || "this country"}.
-              </Text>
-              <Text style={styles.emptySubtext}>
-                You can continue and update this later.
-              </Text>
+        {error ? (
+          <View accessibilityRole="alert" style={styles.errorBanner}>
+            <Text style={styles.errorText}>{error}</Text>
+          </View>
+        ) : null}
+
+        {visaTypes.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <View style={styles.emptyIcon}>
+              <Stamp color="#94A3B8" size={26} strokeWidth={1.7} />
             </View>
-          ) : (
-            <View style={styles.visaTypesList}>
-              {visaTypes.map((visaType) => (
-                <TouchableOpacity
+            <Text style={styles.emptyTitle}>No visa types found</Text>
+            <Text style={styles.emptyText}>
+              Please try again shortly or go back and choose another
+              destination.
+            </Text>
+            <TouchableOpacity onPress={loadVisaTypes} style={styles.retryButton}>
+              <Text style={styles.retryText}>Try again</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <View accessibilityRole="radiogroup" style={styles.visaTypesList}>
+            {visaTypes.map((visaType) => {
+              const selected = selectedVisaType?.id === visaType.id;
+
+              return (
+                <OnboardingChoiceCard
+                  description={visaType.description}
+                  disabled={isProcessing}
+                  icon={
+                    <Stamp
+                      color={selected ? CORAL : "#64748B"}
+                      size={22}
+                      strokeWidth={1.8}
+                    />
+                  }
                   key={visaType.id}
-                  style={[
-                    styles.visaTypeCard,
-                    selectedVisaType?.id === visaType.id && styles.selectedVisaType
-                  ]}
                   onPress={() => {
                     setSelectedVisaType(visaType);
                     setError("");
                   }}
-                >
-                  <View style={styles.visaTypeContent}>
-                    <Text style={[
-                      styles.visaTypeTitle,
-                      selectedVisaType?.id === visaType.id && styles.selectedVisaTypeTitle
-                    ]}>
-                      {visaType.title}
-                    </Text>
-                    {visaType.description && (
-                      <Text style={[
-                        styles.visaTypeDescription,
-                        selectedVisaType?.id === visaType.id && styles.selectedVisaTypeDescription
-                      ]}>
-                        {visaType.description}
-                      </Text>
-                    )}
-                  </View>
-                  {selectedVisaType?.id === visaType.id && (
-                    <View style={styles.checkmark}>
-                      <Text style={styles.checkmarkText}>✓</Text>
-                    </View>
-                  )}
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
-        </View>
+                  selected={selected}
+                  testID={`visa-type-${visaType.code}`}
+                  title={visaType.title}
+                />
+              );
+            })}
+          </View>
+        )}
       </ScrollView>
 
-      {/* Fixed footer with buttons */}
       <View style={styles.footer}>
         <Button
-          title="Continue"
-          onPress={handleContinue}
-          loading={isProcessing}
+          disabled={!selectedVisaType}
           fullWidth
-          icon={<ChevronRight size={20} color={Colors.white} />}
+          icon={<ChevronRight color="#FFFFFF" size={20} />}
+          loading={isProcessing}
+          onPress={handleContinue}
+          style={styles.continueButton}
+          testID="visa-continue"
+          title={isFromEditProfile ? "Save changes" : "Finish setup"}
         />
-        
-        <TouchableOpacity
-          style={styles.skipButton}
-          onPress={() => {
-            if (isFromEditProfile) {
-              // Go back to edit profile without saving
-              handleBack();
-            } else if (user?.onboardingCompleted) {
-              // Go back to previous screen
-              handleBack();
-            } else {
-              router.push("/onboarding/step6-finish");
-            }
-          }}
-          disabled={isProcessing}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.skipText}>{isFromEditProfile ? "Cancel" : "Skip for now"}</Text>
-        </TouchableOpacity>
+
+        {isFromEditProfile || user?.onboardingCompleted ? (
+          <TouchableOpacity
+            activeOpacity={0.7}
+            disabled={isProcessing}
+            onPress={handleBack}
+            style={styles.cancelButton}
+          >
+            <Text style={styles.cancelText}>Cancel</Text>
+          </TouchableOpacity>
+        ) : null}
       </View>
     </SafeAreaView>
   );
@@ -417,149 +420,152 @@ export default function Step5Visa() {
 
 const styles = StyleSheet.create({
   container: {
+    backgroundColor: "#FFFFFF",
     flex: 1,
-    backgroundColor: Colors.background,
   },
   loadingContainer: {
+    alignItems: "center",
     flex: 1,
     justifyContent: "center",
-    alignItems: "center",
   },
   loadingText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: Colors.lightText,
-  },
-  progressContainer: {
-    paddingHorizontal: 24,
-    paddingTop: 16,
-    paddingBottom: 16,
-    backgroundColor: Colors.background,
-  },
-  progressBar: {
-    height: 4,
-    backgroundColor: Colors.lightBackground,
-    borderRadius: 2,
-    marginBottom: 8,
-  },
-  progressFill: {
-    height: "100%",
-    backgroundColor: Colors.primary,
-    borderRadius: 2,
-  },
-  progressText: {
+    color: "#64748B",
     fontSize: 14,
-    color: Colors.lightText,
-    textAlign: "right",
-  },
-  scrollView: {
-    flex: 1,
+    marginTop: 14,
   },
   scrollContent: {
-    flexGrow: 1,
+    paddingBottom: 22,
     paddingHorizontal: 24,
-    paddingBottom: 24,
   },
-  stepContainer: {
-    flex: 1,
-    justifyContent: "center",
-    paddingVertical: 40,
-  },
-  stepTitle: {
-    fontSize: 24,
-    fontWeight: "700",
-    color: Colors.text,
-    marginBottom: 8,
-  },
-  stepDescription: {
-    fontSize: 16,
-    color: Colors.lightText,
-    marginBottom: 32,
-    lineHeight: 24,
-  },
-  errorText: {
-    fontSize: 14,
-    color: Colors.error,
-    marginBottom: 16,
-  },
-  emptyContainer: {
-    padding: 24,
+  header: {
     alignItems: "center",
+    marginBottom: 26,
+    paddingTop: 32,
   },
-  emptyText: {
-    fontSize: 16,
-    color: Colors.text,
-    marginBottom: 8,
+  heroIcon: {
+    alignItems: "center",
+    backgroundColor: "#FFF0F0",
+    borderRadius: 22,
+    height: 54,
+    justifyContent: "center",
+    marginBottom: 18,
+    width: 54,
+  },
+  title: {
+    color: "#111827",
+    fontSize: 28,
+    fontWeight: "700",
+    letterSpacing: -0.55,
+    maxWidth: 350,
     textAlign: "center",
   },
-  emptySubtext: {
+  subtitle: {
+    color: "#64748B",
     fontSize: 14,
-    color: Colors.lightText,
+    lineHeight: 20,
+    marginTop: 10,
+    maxWidth: 330,
+    textAlign: "center",
+  },
+  countryPill: {
+    alignItems: "center",
+    backgroundColor: "#F8FAFC",
+    borderColor: "#E5E7EB",
+    borderRadius: 20,
+    borderWidth: 1,
+    flexDirection: "row",
+    marginTop: 16,
+    maxWidth: 250,
+    paddingHorizontal: 13,
+    paddingVertical: 8,
+  },
+  countryFlag: {
+    fontSize: 18,
+  },
+  countryName: {
+    color: "#334155",
+    flexShrink: 1,
+    fontSize: 13,
+    fontWeight: "600",
+    marginLeft: 7,
+  },
+  errorBanner: {
+    backgroundColor: "#FFF1F2",
+    borderRadius: 14,
+    marginBottom: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  errorText: {
+    color: "#BE123C",
+    fontSize: 13,
+    lineHeight: 18,
     textAlign: "center",
   },
   visaTypesList: {
-    gap: 12,
+    gap: 10,
   },
-  visaTypeCard: {
-    flexDirection: "row",
+  emptyContainer: {
     alignItems: "center",
-    backgroundColor: Colors.lightBackground,
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: Colors.border,
+    backgroundColor: "#F8FAFC",
+    borderColor: "#E5E7EB",
+    borderRadius: 24,
+    borderWidth: 1,
+    paddingHorizontal: 24,
+    paddingVertical: 30,
   },
-  selectedVisaType: {
-    backgroundColor: Colors.primary + "20",
-    borderColor: Colors.primary,
-  },
-  visaTypeContent: {
-    flex: 1,
-  },
-  visaTypeTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: Colors.text,
-    marginBottom: 4,
-  },
-  selectedVisaTypeTitle: {
-    color: Colors.primary,
-  },
-  visaTypeDescription: {
-    fontSize: 14,
-    color: Colors.lightText,
-    lineHeight: 20,
-  },
-  selectedVisaTypeDescription: {
-    color: Colors.text,
-  },
-  checkmark: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: Colors.primary,
+  emptyIcon: {
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
+    borderRadius: 20,
+    height: 48,
     justifyContent: "center",
-    alignItems: "center",
-    marginLeft: 12,
+    width: 48,
   },
-  checkmarkText: {
-    color: Colors.white,
-    fontSize: 16,
-    fontWeight: "600",
+  emptyTitle: {
+    color: "#111827",
+    fontSize: 17,
+    fontWeight: "700",
+    marginTop: 14,
+  },
+  emptyText: {
+    color: "#64748B",
+    fontSize: 14,
+    lineHeight: 20,
+    marginTop: 7,
+    textAlign: "center",
+  },
+  retryButton: {
+    backgroundColor: CORAL,
+    borderRadius: 18,
+    marginTop: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 9,
+  },
+  retryText: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "700",
   },
   footer: {
-    padding: 24,
-    backgroundColor: Colors.background,
+    backgroundColor: "#FFFFFF",
+    borderTopColor: "#F1F5F9",
     borderTopWidth: 1,
-    borderTopColor: Colors.border,
+    paddingBottom: 8,
+    paddingHorizontal: 16,
+    paddingTop: 14,
   },
-  skipButton: {
-    paddingVertical: 12,
+  continueButton: {
+    borderRadius: 28,
+    height: 56,
+  },
+  cancelButton: {
     alignItems: "center",
-    marginTop: 12,
+    paddingVertical: 12,
   },
-  skipText: {
+  cancelText: {
+    color: "#64748B",
     fontSize: 14,
-    color: Colors.lightText,
+    fontWeight: "500",
   },
 });

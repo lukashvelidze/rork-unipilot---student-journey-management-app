@@ -12,6 +12,7 @@ interface ButtonProps {
   style?: ViewStyle;
   textStyle?: TextStyle;
   icon?: React.ReactNode;
+  testID?: string;
 }
 
 const Button: React.FC<ButtonProps> = ({
@@ -24,6 +25,7 @@ const Button: React.FC<ButtonProps> = ({
   style,
   textStyle,
   icon,
+  testID,
 }) => {
   const isDisabled = disabled || loading;
   const containerStyles: StyleProp<ViewStyle> = [
@@ -47,6 +49,7 @@ const Button: React.FC<ButtonProps> = ({
       style={containerStyles}
       disabled={isDisabled}
       activeOpacity={0.8}
+      testID={testID}
     >
       {loading ? (
         <ActivityIndicator color={variant === "outline" ? Colors.primary : "#FFFFFF"} />
@@ -99,5 +102,4 @@ const styles = StyleSheet.create({
 });
 
 export default Button;
-
 
