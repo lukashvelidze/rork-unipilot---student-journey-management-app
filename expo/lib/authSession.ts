@@ -4,6 +4,12 @@ import { useDocumentStore } from "@/store/documentStore";
 import { useJourneyStore } from "@/store/journeyStore";
 import { useUserStore } from "@/store/userStore";
 
+let signOutTransitionInProgress = false;
+
+export function isSignOutTransitionInProgress() {
+  return signOutTransitionInProgress;
+}
+
 export function clearAuthenticatedSessionState() {
   useUserStore.getState().logout();
   useJourneyStore.getState().resetForSignOut();
@@ -14,7 +20,11 @@ export function clearAuthenticatedSessionState() {
   });
 }
 
-export async function signOutAndClearSession() {
+export async function signOutAndClearSession(
+  navigationSettled?: Promise<void>,
+) {
+  signOutTransitionInProgress = Boolean(navigationSettled);
+
   try {
     const { error } = await supabase.auth.signOut();
     if (error) {
@@ -23,6 +33,11 @@ export async function signOutAndClearSession() {
   } catch (error) {
     console.error("Sign out failed:", error);
   } finally {
-    clearAuthenticatedSessionState();
+    try {
+      await navigationSettled;
+    } finally {
+      clearAuthenticatedSessionState();
+      signOutTransitionInProgress = false;
+    }
   }
 }

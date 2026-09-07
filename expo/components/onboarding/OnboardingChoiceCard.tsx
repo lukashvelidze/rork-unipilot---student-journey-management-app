@@ -1,13 +1,22 @@
 import React, { memo } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import {
+  Pressable,
+  StyleProp,
+  StyleSheet,
+  Text,
+  View,
+  ViewStyle,
+} from "react-native";
 import { Check } from "lucide-react-native";
 
 interface OnboardingChoiceCardProps {
   description?: string | null;
   disabled?: boolean;
   icon: React.ReactNode;
+  layout?: "list" | "tile";
   onPress: () => void;
   selected: boolean;
+  style?: StyleProp<ViewStyle>;
   testID?: string;
   title: string;
 }
@@ -16,11 +25,15 @@ function OnboardingChoiceCard({
   description,
   disabled = false,
   icon,
+  layout = "list",
   onPress,
   selected,
+  style,
   testID,
   title,
 }: OnboardingChoiceCardProps) {
+  const isTile = layout === "tile";
+
   return (
     <Pressable
       accessibilityLabel={`${title}${description ? `. ${description}` : ""}`}
@@ -30,28 +43,62 @@ function OnboardingChoiceCard({
       onPress={onPress}
       style={({ pressed }) => [
         styles.card,
+        isTile && styles.tileCard,
         selected && styles.selectedCard,
         pressed && !disabled && styles.pressedCard,
         disabled && styles.disabledCard,
+        style,
       ]}
       testID={testID}
     >
-      <View style={[styles.iconShell, selected && styles.selectedIconShell]}>
-        {icon}
-      </View>
+      <View style={isTile ? styles.tileTopRow : undefined}>
+        <View
+          style={[
+            styles.iconShell,
+            isTile && styles.tileIconShell,
+            selected && styles.selectedIconShell,
+          ]}
+        >
+          {icon}
+        </View>
 
-      <View style={styles.copy}>
-        <Text style={[styles.title, selected && styles.selectedTitle]}>
-          {title}
-        </Text>
-        {description ? (
-          <Text style={styles.description}>{description}</Text>
+        {isTile && selected ? (
+          <View
+            style={[
+              styles.selector,
+              styles.tileSelector,
+              styles.selectedSelector,
+            ]}
+          >
+            <Check color="#FFFFFF" size={10} strokeWidth={3} />
+          </View>
         ) : null}
       </View>
 
-      <View style={[styles.selector, selected && styles.selectedSelector]}>
-        {selected ? <Check color="#FFFFFF" size={14} strokeWidth={3} /> : null}
+      <View style={[styles.copy, isTile && styles.tileCopy]}>
+        <Text
+          numberOfLines={isTile ? 2 : undefined}
+          selectable={false}
+          style={[styles.title, isTile && styles.tileTitle]}
+        >
+          {title}
+        </Text>
+        {description ? (
+          <Text
+            numberOfLines={isTile ? 2 : undefined}
+            selectable={false}
+            style={[styles.description, isTile && styles.tileDescription]}
+          >
+            {description}
+          </Text>
+        ) : null}
       </View>
+
+      {!isTile ? (
+        <View style={[styles.selector, selected && styles.selectedSelector]}>
+          {selected ? <Check color="#FFFFFF" size={14} strokeWidth={3} /> : null}
+        </View>
+      ) : null}
     </Pressable>
   );
 }
@@ -77,6 +124,7 @@ const styles = StyleSheet.create({
   selectedCard: {
     backgroundColor: "#FFF7F7",
     borderColor: "#FF6B6B",
+    borderWidth: 2,
     shadowColor: "#FF6B6B",
     shadowOpacity: 0.12,
   },
@@ -96,7 +144,7 @@ const styles = StyleSheet.create({
     width: 46,
   },
   selectedIconShell: {
-    backgroundColor: "#FFE8E8",
+    backgroundColor: "#FFF0F0",
   },
   copy: {
     flex: 1,
@@ -108,9 +156,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "700",
     letterSpacing: -0.15,
-  },
-  selectedTitle: {
-    color: "#E85454",
   },
   description: {
     color: "#64748B",
@@ -130,5 +175,56 @@ const styles = StyleSheet.create({
   selectedSelector: {
     backgroundColor: "#FF6B6B",
     borderColor: "#FF6B6B",
+  },
+  tileCard: {
+    alignItems: "stretch",
+    borderRadius: 16,
+    flexDirection: "column",
+    justifyContent: "flex-start",
+    minHeight: 136,
+    padding: 16,
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.02,
+    shadowRadius: 6,
+    width: "48.3%",
+  },
+  tileTopRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  tileIconShell: {
+    borderRadius: 12,
+    height: 40,
+    width: 40,
+  },
+  tileSelector: {
+    borderRadius: 9,
+    borderWidth: 0,
+    height: 18,
+    width: 18,
+  },
+  tileCopy: {
+    alignSelf: "stretch",
+    marginLeft: 0,
+    marginRight: 0,
+    marginTop: 12,
+    minHeight: 39,
+    width: "100%",
+  },
+  tileTitle: {
+    color: "#1F2937",
+    fontSize: 14,
+    fontWeight: "700",
+    lineHeight: 18,
+    opacity: 1,
+  },
+  tileDescription: {
+    color: "#6B7280",
+    fontSize: 11,
+    lineHeight: 15,
+    marginTop: 4,
+    opacity: 1,
   },
 });

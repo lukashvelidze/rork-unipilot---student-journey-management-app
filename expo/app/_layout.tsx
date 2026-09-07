@@ -19,7 +19,10 @@ import { preRehydrationCleanup } from "@/utils/hermesStorage";
 import { supabase } from "@/lib/supabase";
 import { ElevenLabsProvider } from "@elevenlabs/react-native";
 import { useRevenueCatSync } from "@/hooks/useRevenueCatSync";
-import { clearAuthenticatedSessionState } from "@/lib/authSession";
+import {
+  clearAuthenticatedSessionState,
+  isSignOutTransitionInProgress,
+} from "@/lib/authSession";
 
 // Import iOS crash prevention at module level (synchronous)
 // Wrapped in try/catch for Expo Go compatibility
@@ -180,7 +183,7 @@ function RootLayoutNav() {
     hydrateSession();
 
     const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
-      if (!session) {
+      if (!session && !isSignOutTransitionInProgress()) {
         clearAuthenticatedSessionState();
       }
 

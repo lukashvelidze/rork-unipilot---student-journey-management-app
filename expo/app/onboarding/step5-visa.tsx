@@ -10,7 +10,15 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { ChevronRight, Stamp } from "lucide-react-native";
+import {
+  BriefcaseBusiness,
+  GraduationCap,
+  Languages,
+  Plane,
+  RefreshCw,
+  Stamp,
+  type LucideIcon,
+} from "lucide-react-native";
 import Button from "@/components/Button";
 import OnboardingChoiceCard from "@/components/onboarding/OnboardingChoiceCard";
 import OnboardingProgressHeader from "@/components/onboarding/OnboardingProgressHeader";
@@ -33,6 +41,20 @@ interface VisaType {
 
 const normalizeParam = (value?: string | string[]) =>
   Array.isArray(value) ? value[0] : value;
+
+const getVisaIcon = (visaType: VisaType): LucideIcon => {
+  const searchableText = `${visaType.code} ${visaType.title}`.toLowerCase();
+
+  if (/student|study|academic|f-?1/.test(searchableText)) {
+    return GraduationCap;
+  }
+  if (/exchange|j-?1/.test(searchableText)) return RefreshCw;
+  if (/language/.test(searchableText)) return Languages;
+  if (/work|graduate|skilled/.test(searchableText)) return BriefcaseBusiness;
+  if (/visitor|tourist|travel/.test(searchableText)) return Plane;
+
+  return Stamp;
+};
 
 export default function Step5Visa() {
   const router = useRouter();
@@ -316,26 +338,19 @@ export default function Step5Visa() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.header}>
-          <View style={styles.heroIcon}>
-            <Stamp color={CORAL} size={27} strokeWidth={1.8} />
-          </View>
+          <Text style={styles.eyebrow}>Visa</Text>
           <Text style={styles.title}>
             {isFromEditProfile
               ? "Update your visa type"
               : "What type of visa do you need?"}
           </Text>
-          <Text style={styles.subtitle}>
-            {isFromEditProfile
-              ? `Choose the visa type for your updated destination.`
-              : "Choose the option that best matches your study plans."}
-          </Text>
 
-          <View style={styles.countryPill}>
+          <View style={styles.countryContext}>
             <Text style={styles.countryFlag}>
               {effectiveCountry?.flag || "🌍"}
             </Text>
             <Text numberOfLines={1} style={styles.countryName}>
-              {effectiveCountry?.name || "Your destination"}
+              For {effectiveCountry?.name || "your destination"}
             </Text>
           </View>
         </View>
@@ -364,24 +379,27 @@ export default function Step5Visa() {
           <View accessibilityRole="radiogroup" style={styles.visaTypesList}>
             {visaTypes.map((visaType) => {
               const selected = selectedVisaType?.id === visaType.id;
+              const VisaIcon = getVisaIcon(visaType);
 
               return (
                 <OnboardingChoiceCard
                   description={visaType.description}
                   disabled={isProcessing}
                   icon={
-                    <Stamp
-                      color={selected ? CORAL : "#64748B"}
+                    <VisaIcon
+                      color={selected ? CORAL : "#6B7280"}
                       size={22}
                       strokeWidth={1.8}
                     />
                   }
                   key={visaType.id}
+                  layout="tile"
                   onPress={() => {
                     setSelectedVisaType(visaType);
                     setError("");
                   }}
                   selected={selected}
+                  style={styles.visaCard}
                   testID={`visa-type-${visaType.code}`}
                   title={visaType.title}
                 />
@@ -395,7 +413,6 @@ export default function Step5Visa() {
         <Button
           disabled={!selectedVisaType}
           fullWidth
-          icon={<ChevronRight color="#FFFFFF" size={20} />}
           loading={isProcessing}
           onPress={handleContinue}
           style={styles.continueButton}
@@ -420,7 +437,7 @@ export default function Step5Visa() {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "#FAFBFC",
     flex: 1,
   },
   loadingContainer: {
@@ -434,60 +451,46 @@ const styles = StyleSheet.create({
     marginTop: 14,
   },
   scrollContent: {
-    paddingBottom: 22,
+    paddingBottom: 28,
     paddingHorizontal: 24,
+    paddingTop: 38,
   },
   header: {
-    alignItems: "center",
-    marginBottom: 26,
-    paddingTop: 32,
+    alignItems: "flex-start",
+    marginBottom: 24,
   },
-  heroIcon: {
-    alignItems: "center",
-    backgroundColor: "#FFF0F0",
-    borderRadius: 22,
-    height: 54,
-    justifyContent: "center",
-    marginBottom: 18,
-    width: 54,
+  eyebrow: {
+    color: CORAL,
+    fontSize: 12,
+    fontWeight: "600",
+    letterSpacing: 1,
+    lineHeight: 16,
+    textTransform: "uppercase",
   },
   title: {
-    color: "#111827",
-    fontSize: 28,
+    color: "#1F2937",
+    fontSize: 24,
     fontWeight: "700",
-    letterSpacing: -0.55,
-    maxWidth: 350,
-    textAlign: "center",
+    letterSpacing: -0.3,
+    lineHeight: 30,
+    marginTop: 8,
+    maxWidth: 340,
   },
-  subtitle: {
-    color: "#64748B",
-    fontSize: 14,
-    lineHeight: 20,
-    marginTop: 10,
-    maxWidth: 330,
-    textAlign: "center",
-  },
-  countryPill: {
+  countryContext: {
     alignItems: "center",
-    backgroundColor: "#F8FAFC",
-    borderColor: "#E5E7EB",
-    borderRadius: 20,
-    borderWidth: 1,
     flexDirection: "row",
-    marginTop: 16,
-    maxWidth: 250,
-    paddingHorizontal: 13,
-    paddingVertical: 8,
+    marginTop: 10,
+    maxWidth: 300,
   },
   countryFlag: {
-    fontSize: 18,
+    fontSize: 15,
   },
   countryName: {
-    color: "#334155",
+    color: "#6B7280",
     flexShrink: 1,
-    fontSize: 13,
-    fontWeight: "600",
-    marginLeft: 7,
+    fontSize: 12,
+    lineHeight: 16,
+    marginLeft: 6,
   },
   errorBanner: {
     backgroundColor: "#FFF1F2",
@@ -503,7 +506,13 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   visaTypesList: {
-    gap: 10,
+    columnGap: 12,
+    flexDirection: "row",
+    flexWrap: "wrap",
+    rowGap: 20,
+  },
+  visaCard: {
+    minHeight: 148,
   },
   emptyContainer: {
     alignItems: "center",
@@ -548,16 +557,17 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   footer: {
-    backgroundColor: "#FFFFFF",
-    borderTopColor: "#F1F5F9",
-    borderTopWidth: 1,
-    paddingBottom: 8,
-    paddingHorizontal: 16,
-    paddingTop: 14,
+    backgroundColor: "#FAFBFC",
+    paddingBottom: 20,
+    paddingHorizontal: 24,
   },
   continueButton: {
-    borderRadius: 28,
+    borderRadius: 24,
     height: 56,
+    shadowColor: CORAL,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
   },
   cancelButton: {
     alignItems: "center",

@@ -5,16 +5,16 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import {
+  Award,
   BookOpen,
-  ChevronRight,
-  FlaskConical,
+  Globe2,
   GraduationCap,
+  MoreHorizontal,
   School,
   type LucideIcon,
 } from "lucide-react-native";
@@ -35,28 +35,40 @@ const educationLevels: {
   value: EducationLevel;
 }[] = [
   {
-    description: "Currently in or completed high school",
+    description: "Currently in or finished",
     icon: School,
     label: "High School",
     value: "high_school",
   },
   {
-    description: "Pursuing or completed undergraduate studies",
-    icon: BookOpen,
-    label: "Bachelor’s Degree",
+    description: "Undergraduate studies",
+    icon: GraduationCap,
+    label: "Bachelor’s",
     value: "bachelors",
   },
   {
-    description: "Pursuing or completed graduate studies",
-    icon: GraduationCap,
-    label: "Master’s Degree",
+    description: "Graduate programs",
+    icon: BookOpen,
+    label: "Master’s",
     value: "masters",
   },
   {
-    description: "Pursuing or completed doctoral studies",
-    icon: FlaskConical,
-    label: "PhD",
+    description: "Research & doctorate",
+    icon: Award,
+    label: "PhD / Doctoral",
     value: "phd",
+  },
+  {
+    description: "English learning courses",
+    icon: Globe2,
+    label: "Language",
+    value: "language",
+  },
+  {
+    description: "Different educational path",
+    icon: MoreHorizontal,
+    label: "Other",
+    value: "other",
   },
 ];
 
@@ -184,7 +196,7 @@ export default function Step3Education() {
   if (!isReady) {
     return (
       <SafeAreaView edges={["top", "bottom"]} style={styles.container}>
-        <OnboardingProgressHeader onBack={handleBack} progress={0.6} />
+        <OnboardingProgressHeader onBack={handleBack} progress={0.25} />
         <View style={styles.loadingContainer}>
           <ActivityIndicator color={CORAL} size="large" />
           <Text style={styles.loadingText}>Preparing your options...</Text>
@@ -195,20 +207,16 @@ export default function Step3Education() {
 
   return (
     <SafeAreaView edges={["top", "bottom"]} style={styles.container}>
-      <OnboardingProgressHeader onBack={handleBack} progress={0.6} />
+      <OnboardingProgressHeader onBack={handleBack} progress={0.25} />
 
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.header}>
-          <View style={styles.heroIcon}>
-            <GraduationCap color={CORAL} size={28} strokeWidth={1.8} />
-          </View>
-          <Text style={styles.title}>What’s your education level?</Text>
-          <Text style={styles.subtitle}>
-            This helps us personalize your journey and show the most relevant
-            guidance.
+          <Text style={styles.eyebrow}>Education</Text>
+          <Text style={styles.title}>
+            What’s your current education level?
           </Text>
         </View>
 
@@ -229,12 +237,13 @@ export default function Step3Education() {
                 disabled={isProcessing}
                 icon={
                   <Icon
-                    color={selected ? CORAL : "#64748B"}
-                    size={23}
+                    color={selected ? CORAL : "#6B7280"}
+                    size={22}
                     strokeWidth={1.8}
                   />
                 }
                 key={level.value}
+                layout="tile"
                 onPress={() => {
                   setSelectedLevel(level.value);
                   setError("");
@@ -252,21 +261,12 @@ export default function Step3Education() {
         <Button
           disabled={!selectedLevel}
           fullWidth
-          icon={<ChevronRight color="#FFFFFF" size={20} />}
           loading={isProcessing}
           onPress={handleContinue}
           style={styles.continueButton}
           testID="education-continue"
           title="Continue"
         />
-        <TouchableOpacity
-          activeOpacity={0.7}
-          disabled={isProcessing}
-          onPress={navigateForward}
-          style={styles.skipButton}
-        >
-          <Text style={styles.skipText}>Skip for now</Text>
-        </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
@@ -274,7 +274,7 @@ export default function Step3Education() {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "#FAFBFC",
     flex: 1,
   },
   loadingContainer: {
@@ -288,37 +288,30 @@ const styles = StyleSheet.create({
     marginTop: 14,
   },
   scrollContent: {
-    paddingBottom: 20,
+    paddingBottom: 28,
     paddingHorizontal: 24,
+    paddingTop: 38,
   },
   header: {
-    alignItems: "center",
-    marginBottom: 26,
-    paddingTop: 34,
+    alignItems: "flex-start",
+    marginBottom: 24,
   },
-  heroIcon: {
-    alignItems: "center",
-    backgroundColor: "#FFF0F0",
-    borderRadius: 22,
-    height: 54,
-    justifyContent: "center",
-    marginBottom: 18,
-    width: 54,
+  eyebrow: {
+    color: CORAL,
+    fontSize: 12,
+    fontWeight: "600",
+    letterSpacing: 1,
+    lineHeight: 16,
+    textTransform: "uppercase",
   },
   title: {
-    color: "#111827",
-    fontSize: 28,
+    color: "#1F2937",
+    fontSize: 24,
     fontWeight: "700",
-    letterSpacing: -0.55,
-    textAlign: "center",
-  },
-  subtitle: {
-    color: "#64748B",
-    fontSize: 14,
-    lineHeight: 20,
-    marginTop: 10,
-    maxWidth: 340,
-    textAlign: "center",
+    letterSpacing: -0.3,
+    lineHeight: 30,
+    marginTop: 8,
+    maxWidth: 330,
   },
   errorBanner: {
     backgroundColor: "#FFF1F2",
@@ -334,27 +327,22 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   optionsList: {
-    gap: 10,
+    columnGap: 12,
+    flexDirection: "row",
+    flexWrap: "wrap",
+    rowGap: 12,
   },
   footer: {
-    backgroundColor: "#FFFFFF",
-    borderTopColor: "#F1F5F9",
-    borderTopWidth: 1,
-    paddingBottom: 8,
-    paddingHorizontal: 16,
-    paddingTop: 14,
+    backgroundColor: "#FAFBFC",
+    paddingBottom: 20,
+    paddingHorizontal: 24,
   },
   continueButton: {
-    borderRadius: 28,
+    borderRadius: 24,
     height: 56,
-  },
-  skipButton: {
-    alignItems: "center",
-    paddingVertical: 12,
-  },
-  skipText: {
-    color: "#64748B",
-    fontSize: 14,
-    fontWeight: "500",
+    shadowColor: CORAL,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
   },
 });

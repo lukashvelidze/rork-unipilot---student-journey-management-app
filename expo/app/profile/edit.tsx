@@ -19,6 +19,8 @@ const educationLevels = [
   { value: "bachelors" as EducationLevel, label: "Bachelor's Degree" },
   { value: "masters" as EducationLevel, label: "Master's Degree" },
   { value: "phd" as EducationLevel, label: "PhD" },
+  { value: "language" as EducationLevel, label: "Language Program" },
+  { value: "other" as EducationLevel, label: "Other" },
 ];
 
 const careerGoals = [
