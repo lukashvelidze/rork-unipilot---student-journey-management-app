@@ -68,6 +68,7 @@ interface JourneyState {
   deleteMemory: (id: string) => Promise<void>;
   getMemoriesByStage: (stage?: JourneyStage) => Memory[];
   getMemoriesByMood: (mood?: MemoryMood) => Memory[];
+  resetForSignOut: () => void;
 }
 
 export const useJourneyStore = create<JourneyState>()(
@@ -382,6 +383,17 @@ export const useJourneyStore = create<JourneyState>()(
         if (!mood) return state.memories;
         return state.memories.filter((memory) => memory.mood === mood);
       },
+
+      resetForSignOut: () =>
+        set({
+          flightSearchLoading: false,
+          flightSearchParams: null,
+          flightSearchResults: [],
+          journeyProgress: [],
+          lastUpdated: Date.now(),
+          memories: [],
+          recentMilestone: null,
+        }),
     }),
     {
       name: "journey-storage",

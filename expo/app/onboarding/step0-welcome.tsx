@@ -1,50 +1,45 @@
 import React from "react";
-import { StyleSheet, View, Text, Image, ScrollView } from "react-native";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import { StyleSheet, Text, useWindowDimensions, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { ChevronRight } from "lucide-react-native";
-import Colors from "@/constants/colors";
 import Button from "@/components/Button";
+import AnimatedGlobe from "@/components/onboarding/AnimatedGlobe";
 
 export default function Step0Welcome() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
-
-  const handleContinue = () => {
-    router.push("/onboarding/step1-account");
-  };
+  const { height } = useWindowDimensions();
+  const isCompact = height < 760;
 
   return (
-    <SafeAreaView style={styles.container} edges={[]}>
-      {/* Main content */}
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.welcomeContainer}>
-          <Image
-            source={{ uri: "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80" }}
-            style={styles.welcomeImage}
-            resizeMode="cover"
-          />
-          <View style={styles.welcomeContent}>
-            <Text style={styles.welcomeTitle}>Welcome to UniPilot</Text>
-            <Text style={styles.welcomeText}>
-              Your personal guide through the entire international student journey, from university applications to career establishment worldwide.
-            </Text>
-          </View>
-        </View>
-      </ScrollView>
+    <SafeAreaView edges={["top", "bottom"]} style={styles.container}>
+      <View style={[styles.illustration, isCompact && styles.compactIllustration]}>
+        <AnimatedGlobe compact={isCompact} />
+      </View>
 
-      {/* Fixed footer with buttons */}
-      <View style={styles.footer}>
+      <View style={[styles.copy, isCompact && styles.compactCopy]}>
+        <Text style={styles.title}>Let’s get started!</Text>
+        <Text style={[styles.description, isCompact && styles.compactDescription]}>
+          <Text style={styles.brand}>UniPilot</Text>
+          {" helps students track the full move abroad process from application to arrival."}
+        </Text>
+      </View>
+
+      <View style={styles.actions}>
         <Button
-          title="Get Started"
-          onPress={handleContinue}
           fullWidth
-          icon={<ChevronRight size={20} color={Colors.white} />}
+          onPress={() => router.push("/onboarding/step1-account")}
+          style={styles.primaryButton}
+          testID="get-started-register"
+          title="Register"
+        />
+        <Button
+          fullWidth
+          onPress={() => router.push("/sign-in")}
+          style={styles.secondaryButton}
+          testID="get-started-login"
+          textStyle={styles.secondaryButtonText}
+          title="Log in"
+          variant="outline"
         />
       </View>
     </SafeAreaView>
@@ -53,52 +48,62 @@ export default function Step0Welcome() {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
-  scrollView: {
+    backgroundColor: "#FFFFFF",
     flex: 1,
   },
-  scrollContent: {
-    flexGrow: 1,
-    paddingHorizontal: 24,
-    paddingBottom: 24,
-  },
-  welcomeContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingVertical: 40,
-  },
-  welcomeImage: {
+  illustration: {
+    marginTop: 16,
     width: "100%",
-    height: 200,
-    borderRadius: 12,
-    marginBottom: 32,
   },
-  welcomeContent: {
+  compactIllustration: {
+    marginTop: 6,
+  },
+  copy: {
     alignItems: "center",
+    marginTop: 54,
+    paddingHorizontal: 24,
+  },
+  compactCopy: {
+    marginTop: 18,
+  },
+  title: {
+    color: "#374151",
+    fontSize: 24,
+    fontWeight: "600",
+    letterSpacing: -0.35,
+    textAlign: "center",
+  },
+  description: {
+    color: "#374151",
+    fontSize: 14,
+    lineHeight: 18,
+    marginTop: 58,
+    maxWidth: 354,
+    textAlign: "center",
+  },
+  compactDescription: {
+    marginTop: 24,
+  },
+  brand: {
+    color: "#FF6B6B",
+  },
+  actions: {
+    gap: 16,
+    marginTop: "auto",
+    paddingBottom: 24,
     paddingHorizontal: 16,
   },
-  welcomeTitle: {
-    fontSize: 28,
-    fontWeight: "700",
-    color: Colors.text,
-    marginBottom: 16,
-    textAlign: "center",
+  primaryButton: {
+    borderRadius: 24,
+    height: 56,
   },
-  welcomeText: {
-    fontSize: 16,
-    color: Colors.lightText,
-    textAlign: "center",
-    lineHeight: 24,
-    maxWidth: 300,
+  secondaryButton: {
+    backgroundColor: "#FFFFFF",
+    borderColor: "#FF6B6B",
+    borderRadius: 24,
+    height: 56,
   },
-  footer: {
-    padding: 24,
-    backgroundColor: Colors.background,
-    borderTopWidth: 1,
-    borderTopColor: Colors.border,
+  secondaryButtonText: {
+    color: "#FF6B6B",
   },
 });
-

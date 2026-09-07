@@ -14,12 +14,15 @@ import { useThemeStore } from "@/store/themeStore";
 import BackButton from "@/components/BackButton";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useUserStore } from "@/store/userStore";
-import { useAppStateStore } from "@/store/appStateStore";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { preRehydrationCleanup } from "@/utils/hermesStorage";
 import { supabase } from "@/lib/supabase";
 import { ElevenLabsProvider } from "@elevenlabs/react-native";
 import { useRevenueCatSync } from "@/hooks/useRevenueCatSync";
+import {
+  clearAuthenticatedSessionState,
+  isSignOutTransitionInProgress,
+} from "@/lib/authSession";
 
 // Import iOS crash prevention at module level (synchronous)
 // Wrapped in try/catch for Expo Go compatibility
@@ -80,6 +83,29 @@ const queryClient = new QueryClient({
   },
 });
 
+const ONBOARDING_TRANSITION = {
+  animation: "fade_from_bottom" as const,
+  animationDuration: 360,
+  animationTypeForReplace: "push" as const,
+  contentStyle: { backgroundColor: "#FFFFFF" },
+  freezeOnBlur: true,
+  gestureEnabled: true,
+  headerShown: false,
+};
+
+const ONBOARDING_ENTRY_TRANSITION = {
+  ...ONBOARDING_TRANSITION,
+  animation: "fade" as const,
+  animationDuration: 280,
+};
+
+const APP_REVEAL_TRANSITION = {
+  animation: "fade" as const,
+  animationDuration: 320,
+  freezeOnBlur: true,
+  headerShown: false,
+};
+
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
 
@@ -113,7 +139,6 @@ function RootLayoutNav() {
   const initializeUser = useUserStore((state) => state.initializeUser);
   const setAuthInitializing = useUserStore((state) => state.setAuthInitializing);
   const { syncForUser } = useRevenueCatSync();
-  const setHasBootstrappedNavigation = useAppStateStore((state) => state.setHasBootstrappedNavigation);
   const pathname = usePathname();
   const params = useGlobalSearchParams();
   const previousPathname = useRef<string | undefined>(undefined);
@@ -158,9 +183,8 @@ function RootLayoutNav() {
     hydrateSession();
 
     const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
-      if (!session) {
-        useUserStore.getState().logout();
-        setHasBootstrappedNavigation(false);
+      if (!session && !isSignOutTransitionInProgress()) {
+        clearAuthenticatedSessionState();
       }
 
       syncForUser(session?.user ?? null).catch((error) => {
@@ -196,17 +220,40 @@ function RootLayoutNav() {
             headerShadowVisible: false,
           }}
         >
-          <Stack.Screen name="index" options={{ headerShown: false }} />
-          <Stack.Screen name="sign-in" options={{ title: "Sign In", headerShown: false }} />
-          <Stack.Screen name="onboarding/index" options={{ headerShown: false }} />
-          <Stack.Screen name="onboarding/step0-welcome" options={{ title: "Welcome", headerShown: false }} />
-          <Stack.Screen name="onboarding/step1-account" options={{ title: "Step 1: Account" }} />
-          <Stack.Screen name="onboarding/step2-home-country" options={{ title: "Step 2: Home Country" }} />
-          <Stack.Screen name="onboarding/step3-education" options={{ title: "Step 3: Education" }} />
-          <Stack.Screen name="onboarding/step4-destination" options={{ title: "Step 4: Destination" }} />
-          <Stack.Screen name="onboarding/step5-visa" options={{ title: "Step 5: Visa Type" }} />
-          <Stack.Screen name="onboarding/step6-finish" options={{ title: "Step 6: Complete" }} />
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="index" options={ONBOARDING_ENTRY_TRANSITION} />
+          <Stack.Screen
+            name="sign-in"
+            options={{ ...ONBOARDING_TRANSITION, title: "Sign In" }}
+          />
+          <Stack.Screen
+            name="onboarding/index"
+            options={ONBOARDING_ENTRY_TRANSITION}
+          />
+          <Stack.Screen
+            name="onboarding/step0-welcome"
+            options={{ ...ONBOARDING_ENTRY_TRANSITION, title: "Welcome" }}
+          />
+          <Stack.Screen
+            name="onboarding/step1-account"
+            options={ONBOARDING_TRANSITION}
+          />
+          <Stack.Screen
+            name="onboarding/step2-home-country"
+            options={ONBOARDING_TRANSITION}
+          />
+          <Stack.Screen
+            name="onboarding/step3-education"
+            options={ONBOARDING_TRANSITION}
+          />
+          <Stack.Screen
+            name="onboarding/step4-destination"
+            options={ONBOARDING_TRANSITION}
+          />
+          <Stack.Screen
+            name="onboarding/step5-visa"
+            options={ONBOARDING_TRANSITION}
+          />
+          <Stack.Screen name="(tabs)" options={APP_REVEAL_TRANSITION} />
           <Stack.Screen name="journey/[id]" options={{ title: "Stage Details" }} />
           <Stack.Screen name="documents/new" options={{ title: "Add Document" }} />
           <Stack.Screen name="documents/[id]" options={{ title: "Document Details" }} />

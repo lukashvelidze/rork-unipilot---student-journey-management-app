@@ -82,8 +82,6 @@ export default function OnboardingIndex() {
         
         if (isOnboardingComplete) {
           onboardingStep = 0; // Completed, will redirect to tabs
-        } else if (profile.visa_type) {
-          onboardingStep = 6; // Has visa, go to finish
         } else if (profile.destination_country) {
           onboardingStep = 5; // Has destination, go to visa
         } else if (profile.level_of_study) {
@@ -185,8 +183,6 @@ export default function OnboardingIndex() {
         return "destination";
       case 5:
         return "visa";
-      case 6:
-        return "finish";
       default:
         return "account";
     }
