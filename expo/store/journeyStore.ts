@@ -3,6 +3,7 @@ import { persist } from "zustand/middleware";
 import { JourneyProgress, JourneyStage, Memory, MemoryMood } from "@/types/user";
 import { flattedStorage } from "@/utils/hermesStorage";
 import { createMemoryEntry, deleteMemoryEntry, fetchUserMemories, updateMemoryEntry } from "@/lib/memories";
+import type { JourneyWithProgress } from "@/lib/journeyProgress";
 
 interface Milestone {
   type: "stage_complete" | "progress_milestone" | "confetti";
@@ -44,6 +45,10 @@ interface FlightSearchParams {
 
 interface JourneyState {
   journeyProgress: JourneyProgress[];
+  /** All of the user's study journeys (one per destination university). */
+  journeys: JourneyWithProgress[];
+  /** Which journey's stages `journeyProgress` currently reflects. */
+  activeJourneyKey: string | null;
   recentMilestone: Milestone | null;
   lastUpdated: number;
   flightSearchResults: FlightSearchResult[];
@@ -51,6 +56,9 @@ interface JourneyState {
   flightSearchParams: FlightSearchParams | null;
   memories: Memory[];
   setJourneyProgress: (progress: JourneyProgress[]) => void;
+  /** Replace the full journey list; keeps or re-selects an active journey. */
+  setJourneys: (journeys: JourneyWithProgress[], preferKey?: string | null) => void;
+  setActiveJourneyKey: (key: string) => void;
   updateTaskCompletion: (checklistId: string, taskId: string, completed: boolean) => void;
   markAcceptance: (checklistId: string) => void;
   addRecentMilestone: (milestone: Milestone) => void;
@@ -68,27 +76,56 @@ interface JourneyState {
   deleteMemory: (id: string) => Promise<void>;
   getMemoriesByStage: (stage?: JourneyStage) => Memory[];
   getMemoriesByMood: (mood?: MemoryMood) => Memory[];
+  resetForSignOut: () => void;
 }
 
 export const useJourneyStore = create<JourneyState>()(
   persist(
     (set, get) => ({
       journeyProgress: [],
+      journeys: [],
+      activeJourneyKey: null,
       recentMilestone: null,
       lastUpdated: Date.now(),
       flightSearchResults: [],
       flightSearchLoading: false,
       flightSearchParams: null,
       memories: [],
-      
+
       setJourneyProgress: (progress) => {
         console.log("Setting new journey progress with", progress.length, "stages");
-        set({ 
+        set({
           journeyProgress: progress,
           lastUpdated: Date.now()
         });
       },
-      
+
+      setJourneys: (journeys, preferKey) => {
+        const current = get().activeJourneyKey;
+        const wanted = preferKey ?? current;
+        const active =
+          journeys.find((j) => j.key === wanted) ||
+          journeys.find((j) => j.journey?.is_primary) ||
+          journeys[0] ||
+          null;
+        set({
+          journeys,
+          activeJourneyKey: active?.key ?? null,
+          journeyProgress: active?.progress ?? [],
+          lastUpdated: Date.now(),
+        });
+      },
+
+      setActiveJourneyKey: (key) => {
+        const match = get().journeys.find((j) => j.key === key);
+        if (!match) return;
+        set({
+          activeJourneyKey: key,
+          journeyProgress: match.progress,
+          lastUpdated: Date.now(),
+        });
+      },
+
       updateTaskCompletion: (checklistId, taskId, completed) => {
         set((state) => {
           const updatedProgress = state.journeyProgress.map((stage) => {
@@ -142,13 +179,21 @@ export const useJourneyStore = create<JourneyState>()(
             return stage;
           });
           
-          return { 
+          // Keep the active journey's cached copy in sync with the edit.
+          const journeys = state.activeJourneyKey
+            ? state.journeys.map((j) =>
+                j.key === state.activeJourneyKey ? { ...j, progress: updatedProgress } : j
+              )
+            : state.journeys;
+
+          return {
             journeyProgress: updatedProgress,
+            journeys,
             lastUpdated: Date.now()
           };
         });
       },
-      
+
       markAcceptance: (checklistId) => {
         set((state) => {
           let milestoneStage: JourneyStage | undefined;
@@ -382,6 +427,19 @@ export const useJourneyStore = create<JourneyState>()(
         if (!mood) return state.memories;
         return state.memories.filter((memory) => memory.mood === mood);
       },
+
+      resetForSignOut: () =>
+        set({
+          flightSearchLoading: false,
+          flightSearchParams: null,
+          flightSearchResults: [],
+          journeyProgress: [],
+          journeys: [],
+          activeJourneyKey: null,
+          lastUpdated: Date.now(),
+          memories: [],
+          recentMilestone: null,
+        }),
     }),
     {
       name: "journey-storage",

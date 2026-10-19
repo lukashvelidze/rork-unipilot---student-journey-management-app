@@ -12,6 +12,7 @@ import CountrySelector from "@/components/CountrySelector";
 import Avatar from "@/components/Avatar";
 import { useUserStore } from "@/store/userStore";
 import { getCountries, supabase } from "@/lib/supabase";
+import { syncJourneyRoutes } from "@/lib/journeyRoutes";
 import { Country, EducationLevel } from "@/types/user";
 
 const educationLevels = [
@@ -19,6 +20,8 @@ const educationLevels = [
   { value: "bachelors" as EducationLevel, label: "Bachelor's Degree" },
   { value: "masters" as EducationLevel, label: "Master's Degree" },
   { value: "phd" as EducationLevel, label: "PhD" },
+  { value: "language" as EducationLevel, label: "Language Program" },
+  { value: "other" as EducationLevel, label: "Other" },
 ];
 
 const careerGoals = [
@@ -181,6 +184,13 @@ export default function EditProfileScreen() {
         setIsLoading(false);
         return;
       }
+
+      // Home country and education level decide which generated route each
+      // university journey follows.
+      await syncJourneyRoutes(authUser.id, {
+        originCountryCode: profileUpdates.country_origin,
+        currentLevel: formData.educationLevel,
+      });
 
       // Update local store
       if (user) {

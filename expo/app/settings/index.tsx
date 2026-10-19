@@ -21,8 +21,8 @@ import { useThemeStore } from "@/store/themeStore";
 import Theme from "@/constants/theme";
 import Card from "@/components/Card";
 import { useUserStore } from "@/store/userStore";
-import { useAppStateStore } from "@/store/appStateStore";
 import { supabase } from "@/lib/supabase";
+import { useSignOut } from "@/hooks/useSignOut";
 import { openAppleSubscriptionManager } from "@/lib/iap";
 import { getPaddleCustomerId } from "@/lib/paddle-customer";
 import { buildPaddleCustomerPortalUrl } from "@/lib/paddle";
@@ -44,25 +44,14 @@ interface SettingItem {
 export default function SettingsScreen() {
   const router = useRouter();
   const Colors = useColors();
-  const { user, logout, isPremium } = useUserStore();
-  const { setHasBootstrappedNavigation } = useAppStateStore();
+  const { user, isPremium } = useUserStore();
+  const signOut = useSignOut();
   const { isDarkMode, toggleDarkMode } = useThemeStore();
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const [notifications, setNotifications] = useState(true);
   const [autoDownload, setAutoDownload] = useState(false);
   const isIosDevice = Platform.OS === "ios";
 
-  const performSignOut = async () => {
-    try {
-      await supabase.auth.signOut();
-    } catch (error) {
-      console.error("Sign out failed:", error);
-    } finally {
-      await logout();
-      setHasBootstrappedNavigation(false);
-    }
-  };
-  
   const handleLogout = async () => {
     Alert.alert(
       "Sign Out",
@@ -73,8 +62,7 @@ export default function SettingsScreen() {
           text: "Sign Out",
           style: "destructive",
           onPress: async () => {
-            await performSignOut();
-            router.replace("/onboarding/step1-account");
+            await signOut();
           },
         },
       ]
@@ -140,13 +128,10 @@ export default function SettingsScreen() {
               }
 
               // Sign out and clear local state
-              await performSignOut();
+              await signOut();
 
               Alert.alert("Account Deleted", "Your account has been deleted.", [
-                {
-                  text: "OK",
-                  onPress: () => router.replace("/onboarding/step1-account"),
-                },
+                { text: "OK" },
               ]);
             } catch (error: any) {
               console.error("Delete account error:", error);

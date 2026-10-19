@@ -393,3 +393,13 @@ entrypoint = "./functions/apple-webhook/index.ts"
 # Specifies static files to be bundled with the function. Supports glob patterns.
 # For example, if you want to serve static HTML pages in your function:
 # static_files = [ "./functions/apple-webhook/*.html" ]
+
+[functions.generate-journey]
+enabled = true
+# Auth is enforced inside the function: `start`/`resume`/`enrich` require a @unipilot.app
+# admin JWT, `request` requires any signed-in user's JWT,
+# and the internal `process` fan-out is gated by an x-internal-key header. This also
+# lets the function self-invoke for the per-university chain.
+verify_jwt = false
+import_map = "./functions/generate-journey/deno.json"
+entrypoint = "./functions/generate-journey/index.ts"

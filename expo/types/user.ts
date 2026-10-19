@@ -7,7 +7,7 @@ export interface Country {
 
 export type DocumentType = "passport" | "visa" | "transcript" | "diploma" | "letter_of_recommendation" | "statement_of_purpose" | "financial_statement" | "health_certificate" | "insurance" | "other";
 
-export type EducationLevel = "high_school" | "bachelors" | "masters" | "phd" | "other";
+export type EducationLevel = "high_school" | "bachelors" | "masters" | "phd" | "language" | "other";
 
 export type JourneyStage = "research" | "application" | "visa" | "pre_departure" | "arrival" | "academic" | "career";
 

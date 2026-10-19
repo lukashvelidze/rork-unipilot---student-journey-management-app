@@ -13,6 +13,7 @@ interface DocumentState {
   getDocumentsByType: (type: string) => Document[];
   getExpiringDocuments: () => Document[];
   getTotalDocuments: () => number;
+  resetForSignOut: () => void;
 }
 
 export const useDocumentStore = create<DocumentState>()(
@@ -52,6 +53,12 @@ export const useDocumentStore = create<DocumentState>()(
       getTotalDocuments: () => {
         return get().documents.length;
       },
+      resetForSignOut: () =>
+        set({
+          documents: [],
+          error: null,
+          isLoading: false,
+        }),
     }),
     {
       name: "document-storage",
