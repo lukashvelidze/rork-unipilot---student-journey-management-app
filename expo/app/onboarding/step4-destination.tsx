@@ -88,7 +88,7 @@ export default function Step4Destination() {
       }
 
       setJourneyProgress([]);
-      router.push("/onboarding/step5-visa");
+      router.push("/onboarding/step-universities" as any);
     } catch (saveError) {
       console.error("Error saving destination country:", saveError);
       setError("Something went wrong. Please try again.");

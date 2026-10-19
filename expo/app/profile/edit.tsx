@@ -12,6 +12,7 @@ import CountrySelector from "@/components/CountrySelector";
 import Avatar from "@/components/Avatar";
 import { useUserStore } from "@/store/userStore";
 import { getCountries, supabase } from "@/lib/supabase";
+import { syncJourneyRoutes } from "@/lib/journeyRoutes";
 import { Country, EducationLevel } from "@/types/user";
 
 const educationLevels = [
@@ -183,6 +184,13 @@ export default function EditProfileScreen() {
         setIsLoading(false);
         return;
       }
+
+      // Home country and education level decide which generated route each
+      // university journey follows.
+      await syncJourneyRoutes(authUser.id, {
+        originCountryCode: profileUpdates.country_origin,
+        currentLevel: formData.educationLevel,
+      });
 
       // Update local store
       if (user) {

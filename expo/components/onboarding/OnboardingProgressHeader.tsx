@@ -12,11 +12,14 @@ import Animated, {
 interface OnboardingProgressHeaderProps {
   progress: number;
   onBack: () => void;
+  /** Show only the back button, e.g. when an onboarding step is reused later. */
+  hideProgress?: boolean;
 }
 
 export default function OnboardingProgressHeader({
   progress,
   onBack,
+  hideProgress = false,
 }: OnboardingProgressHeaderProps) {
   const clampedProgress = Math.min(Math.max(progress, 0), 1);
   const reducedMotion = useReducedMotion();
@@ -49,13 +52,15 @@ export default function OnboardingProgressHeader({
         <ArrowLeft color="#111827" size={25} strokeWidth={1.8} />
       </TouchableOpacity>
 
-      <View
-        accessibilityLabel={`${Math.round(clampedProgress * 100)} percent complete`}
-        accessibilityRole="progressbar"
-        style={styles.track}
-      >
-        <Animated.View style={[styles.fill, fillStyle]} />
-      </View>
+      {hideProgress ? null : (
+        <View
+          accessibilityLabel={`${Math.round(clampedProgress * 100)} percent complete`}
+          accessibilityRole="progressbar"
+          style={styles.track}
+        >
+          <Animated.View style={[styles.fill, fillStyle]} />
+        </View>
+      )}
     </View>
   );
 }

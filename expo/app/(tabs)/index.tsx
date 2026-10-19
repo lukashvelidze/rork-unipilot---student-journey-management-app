@@ -35,9 +35,11 @@ import { JourneyProgress, JourneyStage, SubscriptionTier } from "@/types/user";
 import { calculateOverallProgress } from "@/utils/helpers";
 import {
   canAccessJourneyTier,
-  fetchJourneyProgressFromSupabase,
+  ensureUniversityRoutes,
+  fetchJourneysWithProgress,
   formatJourneyTierLabel,
 } from "@/lib/journeyProgress";
+import UniversityStrip from "@/components/journey/UniversityStrip";
 import { openManageSubscription } from "@/lib/subscriptionManager";
 
 const worldMapImage = require("@/assets/images/journey/world-map-figma.png");
@@ -82,7 +84,8 @@ export default function HomeScreen() {
   const { user, updateUser } = useUserStore();
   const authInitializing = useUserStore((state) => state.authInitializing);
   const { inCriticalFlow } = useAppStateStore();
-  const { journeyProgress, setJourneyProgress } = useJourneyStore();
+  const { journeyProgress, setJourneys, journeys, activeJourneyKey, setActiveJourneyKey } =
+    useJourneyStore();
   const [userTier, setUserTier] = useState<string>(user?.subscriptionTier || "free");
   const [isJourneyLoading, setIsJourneyLoading] = useState(false);
   const scrollRef = useRef<ScrollView | null>(null);
@@ -108,11 +111,12 @@ export default function HomeScreen() {
 
         setIsJourneyLoading(true);
         try {
-          const result = await fetchJourneyProgressFromSupabase();
+          const result = await fetchJourneysWithProgress();
           if (!isActive) return;
 
           setUserTier(result.userTier);
-          setJourneyProgress(result.progress);
+          setJourneys(result.journeys);
+          ensureUniversityRoutes(result.journeys);
           if (userSubscriptionTier !== result.userTier || userIsPremium !== (result.userTier !== "free")) {
             updateUser({
               subscriptionTier: result.userTier as SubscriptionTier,
@@ -133,7 +137,7 @@ export default function HomeScreen() {
       return () => {
         isActive = false;
       };
-    }, [setJourneyProgress, updateUser, userId, userIsPremium, userSubscriptionTier])
+    }, [setJourneys, updateUser, userId, userIsPremium, userSubscriptionTier])
   );
 
   const stages = journeyProgress;
@@ -156,13 +160,16 @@ export default function HomeScreen() {
     return Math.max(stages.length - 1, 0);
   }, [stages, userTier]);
 
-  const currentStage = stages[currentStageIndex];
   const firstName = user?.name?.trim().split(" ")[0] || "there";
+  const activeJourney = journeys.find((journey) => journey.key === activeJourneyKey) || null;
+  const activeUniversityName = activeJourney?.journey?.university?.name || null;
+  const isActiveJourneyPreparing =
+    !!activeUniversityName && activeJourney?.source !== "university" && stages.length > 0;
   const overallProgress = calculateOverallProgress(stages);
 
   useEffect(() => {
     shouldStartAtBottomRef.current = true;
-  }, [stages.length]);
+  }, [stages.length, activeJourneyKey]);
 
   const getNodeSlot = useCallback((index: number): NodeSlot => {
     const topOffset = extraStageCount * 156;
@@ -242,28 +249,33 @@ export default function HomeScreen() {
         />
       </View>
       <View style={[styles.header, { width: contentWidth, marginLeft: horizontalOffset }]}>
-        <View style={styles.headerTop}>
-          <View style={styles.headerText}>
-            <Text style={styles.title} numberOfLines={1}>Welcome, {firstName}</Text>
-            <Text style={styles.subtitle}>Your UniPilot Journey</Text>
-          </View>
-          <View style={styles.stepBadge}>
-            <Text style={styles.stepBadgeText}>
-              Step {stages.length ? currentStageIndex + 1 : 0} of {stages.length || 0}
-            </Text>
-          </View>
+        <Text style={styles.title} numberOfLines={1}>Welcome, {firstName}</Text>
+        <Text style={styles.subtitle}>Your UniPilot Journey</Text>
+
+        <View
+          accessibilityLabel={`${overallProgress} percent of this journey complete`}
+          accessibilityRole="progressbar"
+          style={styles.progressTrack}
+        >
+          <View style={[styles.progressFill, { width: `${overallProgress}%` }]} />
         </View>
 
-        <View style={styles.progressBlock}>
-          <View style={styles.progressTrack}>
-            <View style={[styles.progressFill, { width: `${overallProgress}%` }]} />
+        <UniversityStrip
+          activeKey={activeJourneyKey}
+          journeys={journeys}
+          onAdd={() => router.push("/onboarding/step-universities?mode=manage" as any)}
+          onSelect={setActiveJourneyKey}
+          style={styles.universityStrip}
+        />
+
+        {isActiveJourneyPreparing ? (
+          <View style={styles.preparingNote}>
+            <ActivityIndicator color="#F5A524" size="small" style={styles.preparingSpinner} />
+            <Text numberOfLines={1} style={styles.preparingText}>
+              Preparing your {activeUniversityName.replace(/^the\s+/i, "")} roadmap…
+            </Text>
           </View>
-          <Text style={styles.milestoneText} numberOfLines={1}>
-            {currentStage
-              ? `Milestone ${currentStageIndex + 1} of ${stages.length}: ${currentStage.title}`
-              : "Milestones will appear after your profile is ready"}
-          </Text>
-        </View>
+        ) : null}
       </View>
 
       <ScrollView
@@ -297,9 +309,13 @@ export default function HomeScreen() {
             </View>
           ) : stages.length === 0 ? (
             <View style={[styles.emptyState, { width: contentWidth - 48, marginLeft: horizontalOffset + 24 }]}>
-              <Text style={styles.emptyTitle}>No checklist yet</Text>
+              <Text style={styles.emptyTitle}>
+                {activeUniversityName ? "Building your journey" : "No checklist yet"}
+              </Text>
               <Text style={styles.emptyDescription}>
-                Complete your visa and destination profile to generate your personalized journey.
+                {activeUniversityName
+                  ? `We're putting together your ${activeUniversityName} roadmap. This usually takes a few minutes.`
+                  : "Complete your visa and destination profile to generate your personalized journey."}
               </Text>
             </View>
           ) : (
@@ -506,15 +522,6 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
     zIndex: 2,
   },
-  headerTop: {
-    alignItems: "center",
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-  headerText: {
-    flex: 1,
-    paddingRight: 16,
-  },
   title: {
     color: TEXT,
     fontSize: 26,
@@ -527,24 +534,11 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     marginTop: 1,
   },
-  stepBadge: {
-    backgroundColor: "#FFF0F0",
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-  },
-  stepBadgeText: {
-    color: PRIMARY,
-    fontSize: 12,
-    fontWeight: "700",
-  },
-  progressBlock: {
-    marginTop: 10,
-  },
   progressTrack: {
     backgroundColor: BORDER,
     borderRadius: 999,
     height: 6,
+    marginTop: 10,
     overflow: "hidden",
   },
   progressFill: {
@@ -552,11 +546,29 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     height: "100%",
   },
-  milestoneText: {
-    color: MUTED,
-    fontSize: 11,
-    fontWeight: "500",
-    marginTop: 7,
+  universityStrip: {
+    marginTop: 10,
+  },
+  preparingNote: {
+    alignItems: "center",
+    alignSelf: "flex-start",
+    backgroundColor: "rgba(255,248,235,0.95)",
+    borderRadius: 10,
+    flexDirection: "row",
+    gap: 8,
+    marginTop: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  preparingSpinner: {
+    transform: [{ scale: 0.75 }],
+  },
+  preparingText: {
+    color: "#8A5A00",
+    flexShrink: 1,
+    fontSize: 11.5,
+    fontWeight: "600",
+    lineHeight: 15,
   },
   mapCanvas: {
     marginTop: 0,

@@ -8,6 +8,8 @@ import { useColors } from "@/hooks/useColors";
 import Card from "@/components/Card";
 import Button from "@/components/Button";
 import { useUserStore } from "@/store/userStore";
+import { useJourneyStore } from "@/store/journeyStore";
+import { buildCountryRouteCode } from "@/lib/journeyRoutes";
 import { supabase } from "@/lib/supabase";
 import { openManageSubscription } from "@/lib/subscriptionManager";
 import { posthog } from "@/src/config/posthog";
@@ -159,9 +161,30 @@ export default function ApplicationChecklistScreen() {
         ? ["free", "basic", "standard", "premium"]
         : (allowedTiers[resolvedTier] || allowedTiers.free);
       
-      // Normalize country code and visa type
-      const countryCode = profile.destination_country.trim().toUpperCase();
-      const visaType = profile.visa_type.trim();
+      // Show whichever checklist set the active study journey is on: its
+      // university route once generated, otherwise the same fallback the
+      // journey screens use.
+      const { journeys, activeJourneyKey } = useJourneyStore.getState();
+      const activeJourney =
+        journeys.find((j) => j.key === activeJourneyKey) || journeys[0] || null;
+      const journeyRow = activeJourney?.journey;
+
+      const countryCode = (
+        activeJourney?.destinationCountryCode || profile.destination_country
+      )
+        .trim()
+        .toUpperCase();
+      const journeyVisaType =
+        activeJourney?.source === "university"
+          ? activeJourney.routeVisaCode
+          : activeJourney?.source === "country_route" && journeyRow
+            ? buildCountryRouteCode(
+                journeyRow.destination_country_code,
+                journeyRow.origin_country_code,
+                journeyRow.education_level,
+              )
+            : journeyRow?.country_visa_type;
+      const visaType = (journeyVisaType || profile.visa_type).trim();
       
       console.log("Loading checklists with:", {
         country_code: countryCode,

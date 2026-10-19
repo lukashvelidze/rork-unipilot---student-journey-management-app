@@ -24,6 +24,7 @@ import OnboardingChoiceCard from "@/components/onboarding/OnboardingChoiceCard";
 import OnboardingProgressHeader from "@/components/onboarding/OnboardingProgressHeader";
 import { useAppBack } from "@/hooks/useAppBack";
 import { supabase } from "@/lib/supabase";
+import { syncJourneyRoutes } from "@/lib/journeyRoutes";
 import { posthog } from "@/src/config/posthog";
 import { useUserStore } from "@/store/userStore";
 import { Country } from "@/types/user";
@@ -158,6 +159,9 @@ export default function Step5Visa() {
         .select("*")
         .or(`country_code.eq.${sanitizedCode},country_code.is.null`)
         .eq("is_active", true)
+        // Per-university routes from generate-journey live in visa_types too;
+        // they're reached through user_journeys, not picked here.
+        .is("university_id", null)
         .order("country_code", { ascending: false })
         .order("title", { ascending: true });
 
@@ -231,6 +235,27 @@ export default function Step5Visa() {
         console.error("Error updating profile:", updateError);
         setError("Failed to save. Please try again.");
         return;
+      }
+
+      if (isFromEditProfile && (pendingHomeCountry || params.pendingEducationLevel)) {
+        await syncJourneyRoutes(authUser.id, {
+          originCountryCode: pendingHomeCountry?.code || user?.homeCountry?.code || null,
+          currentLevel:
+            (params.pendingEducationLevel as string | undefined) ||
+            user?.educationBackground?.level ||
+            null,
+        });
+      }
+
+      // Record the picked country-level visa on the user's study journeys so it
+      // can act as a fallback when a university's route hasn't been generated.
+      const { error: journeyVisaError } = await supabase
+        .from("user_journeys")
+        .update({ country_visa_type: selectedVisaType.code })
+        .eq("user_id", authUser.id)
+        .is("country_visa_type", null);
+      if (journeyVisaError) {
+        console.warn("Could not sync visa type to user journeys:", journeyVisaError);
       }
 
       if (user) {

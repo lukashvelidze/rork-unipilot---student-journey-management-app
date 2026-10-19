@@ -13,6 +13,7 @@ import {
   Check,
   ChevronRight,
   Edit3,
+  GraduationCap,
   Settings,
 } from "lucide-react-native";
 import Svg, { Circle } from "react-native-svg";
@@ -286,6 +287,24 @@ export default function ProfileScreen() {
             </Text>
           </TouchableOpacity>
         </View>
+
+        <TouchableOpacity
+          accessibilityRole="button"
+          activeOpacity={0.75}
+          onPress={() => router.push("/profile/destinations" as any)}
+          style={[styles.destinationsCard, { backgroundColor: palette.card }]}
+        >
+          <GraduationCap color={CORAL} size={22} strokeWidth={1.8} />
+          <View style={styles.destinationsCopy}>
+            <Text style={[styles.actionTitle, { color: palette.text }]}>
+              My destinations
+            </Text>
+            <Text style={[styles.actionSubtitle, { color: palette.muted }]}>
+              Manage countries and universities
+            </Text>
+          </View>
+          <ChevronRight color={palette.text} size={17} strokeWidth={1.7} />
+        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );
@@ -480,6 +499,17 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 107,
     padding: 16,
+  },
+  destinationsCard: {
+    alignItems: "center",
+    borderRadius: 18,
+    flexDirection: "row",
+    gap: 14,
+    marginTop: 16,
+    padding: 16,
+  },
+  destinationsCopy: {
+    flex: 1,
   },
   actionTitle: {
     fontSize: 14,

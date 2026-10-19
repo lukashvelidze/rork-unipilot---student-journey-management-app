@@ -125,7 +125,7 @@ export default function Step3Education() {
 
   const navigateForward = () => {
     if (user?.destinationCountry) {
-      router.replace("/onboarding/step5-visa");
+      router.replace("/onboarding/step-universities" as any);
     } else {
       router.replace("/onboarding/step4-destination");
     }

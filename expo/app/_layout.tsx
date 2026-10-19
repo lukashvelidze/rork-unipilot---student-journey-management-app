@@ -250,6 +250,10 @@ function RootLayoutNav() {
             options={ONBOARDING_TRANSITION}
           />
           <Stack.Screen
+            name="onboarding/step-universities"
+            options={ONBOARDING_TRANSITION}
+          />
+          <Stack.Screen
             name="onboarding/step5-visa"
             options={ONBOARDING_TRANSITION}
           />
@@ -260,6 +264,7 @@ function RootLayoutNav() {
           <Stack.Screen name="memories/new" options={{ title: "New Memory" }} />
           <Stack.Screen name="memories/[id]" options={{ title: "Memory Details" }} />
           <Stack.Screen name="profile/edit" options={{ title: "Edit Profile" }} />
+          <Stack.Screen name="profile/destinations" options={{ title: "My Destinations" }} />
           <Stack.Screen name="profile/personal" options={{ title: "Personal Information" }} />
           <Stack.Screen name="profile/education" options={{ title: "Education" }} />
           <Stack.Screen name="profile/countries" options={{ title: "Countries" }} />

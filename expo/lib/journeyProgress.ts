@@ -1,5 +1,11 @@
 import { supabase } from "@/lib/supabase";
 import { JourneyProgress, JourneyStage, Task } from "@/types/user";
+import {
+  buildCountryRouteCode,
+  fetchUserJourneys,
+  requestMissingJourneyRoutes,
+  UserJourneyWithUniversity,
+} from "@/lib/journeyRoutes";
 
 const allowedTiers: Record<string, string[]> = {
   free: ["free"],
@@ -29,6 +35,17 @@ const determineStage = (title: string): JourneyStage => {
   return mapping.find(({ match }) => match.test(titleLower))?.stage || "pre_departure";
 };
 
+// generate-journey prefixes some titles ("Research: English Language
+// Preparation") so determineStage files them under the right stage. The stage
+// is derived from the full title; users see it without the prefix.
+const GENERATED_STAGE_PREFIX =
+  /^(Research|Application|Visa & immigration|Pre-departure & documents|Arrival & orientation|Academic start|Career & internships):\s+/i;
+
+const displayChecklistTitle = (title: string) => {
+  const stripped = title.replace(GENERATED_STAGE_PREFIX, "").trim();
+  return stripped ? stripped.charAt(0).toUpperCase() + stripped.slice(1) : title;
+};
+
 export const canAccessJourneyTier = (userTier?: string | null, requiredTier?: string) => {
   if (!requiredTier) return true;
   const normalizedUserTier = normalizeTier(userTier);
@@ -42,35 +59,21 @@ export const formatJourneyTierLabel = (tier?: string) => {
   return normalized.charAt(0).toUpperCase() + normalized.slice(1);
 };
 
-export const fetchJourneyProgressFromSupabase = async (): Promise<{
-  progress: JourneyProgress[];
-  userTier: string;
-}> => {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    return { progress: [], userTier: "free" };
-  }
-
-  const { data: profile, error: profileError } = await supabase
-    .from("profiles")
-    .select("visa_type, destination_country, subscription_tier")
-    .eq("id", user.id)
-    .single();
-
-  if (profileError) {
-    console.error("Error fetching journey profile:", profileError);
-  }
-
-  const userTier = normalizeTier(profile?.subscription_tier);
-  if (!profile?.visa_type || !profile?.destination_country) {
-    return { progress: [], userTier };
-  }
-
-  const tiersToShow = userTier === "free"
+const tiersToShowFor = (userTier: string) =>
+  userTier === "free"
     ? ["free", "basic", "standard", "premium"]
-    : (allowedTiers[userTier] || allowedTiers.free);
-  const countryCode = profile.destination_country.trim().toUpperCase();
-  const visaType = profile.visa_type.trim();
+    : allowedTiers[userTier] || allowedTiers.free;
+
+/**
+ * Turn a set of checklists (matched by visa_type + country) into JourneyProgress
+ * stages, merged with the user's per-item progress.
+ */
+const buildProgressForVisaType = async (
+  userId: string,
+  visaType: string,
+  countryCode: string,
+  tiersToShow: string[],
+): Promise<JourneyProgress[]> => {
   const checklistFilter = `and(visa_type.eq.${visaType},country_code.eq.${countryCode}),and(visa_type.eq.${visaType},country_code.is.null)`;
 
   const { data: checklistsData, error: checklistsError } = await supabase
@@ -80,13 +83,9 @@ export const fetchJourneyProgressFromSupabase = async (): Promise<{
     .in("subscription_tier", tiersToShow)
     .order("sort_order", { ascending: true });
 
-  if (checklistsError) {
-    console.error("Error fetching journey checklists:", checklistsError);
-    return { progress: [], userTier };
-  }
-
-  if (!checklistsData?.length) {
-    return { progress: [], userTier };
+  if (checklistsError || !checklistsData?.length) {
+    if (checklistsError) console.error("Error fetching journey checklists:", checklistsError);
+    return [];
   }
 
   const checklistIds = checklistsData.map((checklist: any) => checklist.id);
@@ -96,32 +95,26 @@ export const fetchJourneyProgressFromSupabase = async (): Promise<{
     .in("checklist_id", checklistIds)
     .order("sort_order", { ascending: true });
 
-  if (itemsError) {
-    console.error("Error fetching journey checklist items:", itemsError);
-    return { progress: [], userTier };
-  }
-
-  if (!itemsData?.length) {
-    return { progress: [], userTier };
+  if (itemsError || !itemsData?.length) {
+    if (itemsError) console.error("Error fetching journey checklist items:", itemsError);
+    return [];
   }
 
   const itemIds = itemsData.map((item: any) => item.id);
   const { data: progressData, error: progressError } = await supabase
     .from("user_progress")
     .select("*")
-    .eq("user_id", user.id)
+    .eq("user_id", userId)
     .in("checklist_item_id", itemIds);
 
-  if (progressError) {
-    console.error("Error fetching user journey progress:", progressError);
-  }
+  if (progressError) console.error("Error fetching user journey progress:", progressError);
 
   const progressMap = new Map<string, any>();
   (progressData || []).forEach((entry: any) => {
     progressMap.set(entry.checklist_item_id, entry);
   });
 
-  const progress = checklistsData.map((checklist: any) => {
+  return checklistsData.map((checklist: any) => {
     const tasks: Task[] = itemsData
       .filter((item: any) => item.checklist_id === checklist.id)
       .map((item: any) => {
@@ -147,7 +140,7 @@ export const fetchJourneyProgressFromSupabase = async (): Promise<{
     return {
       id: checklist.id,
       stage: determineStage(checklist.title),
-      title: checklist.title,
+      title: displayChecklistTitle(checklist.title),
       description: checklist.description || undefined,
       subscriptionTier: checklist.subscription_tier,
       progress: progressPercent,
@@ -165,6 +158,159 @@ export const fetchJourneyProgressFromSupabase = async (): Promise<{
       ],
     };
   });
+};
 
-  return { progress, userTier };
+/** Which checklist set a journey is currently showing. */
+export type JourneySource = "university" | "country_route" | "visa" | "none";
+
+/**
+ * Progress for one journey. Tries, in order: the university-specific route,
+ * the country-level route for the student's (origin x level), and the
+ * country visa type the user picked.
+ */
+export const fetchJourneyProgressForRoute = async (input: {
+  userId: string;
+  routeVisaCode?: string | null;
+  countryRouteCode?: string | null;
+  countryVisaType?: string | null;
+  destinationCountryCode: string;
+  userTier: string;
+}): Promise<{ progress: JourneyProgress[]; source: JourneySource }> => {
+  const countryCode = input.destinationCountryCode.trim().toUpperCase();
+  const tiers = tiersToShowFor(normalizeTier(input.userTier));
+
+  const attempts: Array<[string | null | undefined, JourneySource]> = [
+    [input.routeVisaCode, "university"],
+    [input.countryRouteCode, "country_route"],
+    [input.countryVisaType, "visa"],
+  ];
+  for (const [code, source] of attempts) {
+    if (!code) continue;
+    const progress = await buildProgressForVisaType(input.userId, code.trim(), countryCode, tiers);
+    if (progress.length > 0) return { progress, source };
+  }
+
+  return { progress: [], source: "none" };
+};
+
+export interface JourneyWithProgress {
+  journey: UserJourneyWithUniversity | null;
+  /** Stable id for switcher UI — the user_journeys row id, or "legacy". */
+  key: string;
+  label: string;
+  destinationCountryCode: string;
+  routeVisaCode: string | null;
+  progress: JourneyProgress[];
+  /**
+   * "university" once the university's own route exists; anything else means
+   * a fallback checklist is shown while that route is generated.
+   */
+  source: JourneySource;
+}
+
+/**
+ * Every study journey a user has. Reads user_journeys; if there are none, falls
+ * back to the single legacy journey stored on the profile.
+ */
+export const fetchJourneysWithProgress = async (): Promise<{
+  journeys: JourneyWithProgress[];
+  userTier: string;
+}> => {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { journeys: [], userTier: "free" };
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("visa_type, destination_country, subscription_tier")
+    .eq("id", user.id)
+    .single();
+
+  const userTier = normalizeTier(profile?.subscription_tier);
+  const journeyRows = await fetchUserJourneys(user.id);
+
+  if (journeyRows.length > 0) {
+    const journeys = await Promise.all(
+      journeyRows.map(async (row) => {
+        const { progress, source } = await fetchJourneyProgressForRoute({
+          userId: user.id,
+          routeVisaCode: row.route_visa_code,
+          countryRouteCode: buildCountryRouteCode(
+            row.destination_country_code,
+            row.origin_country_code,
+            row.education_level,
+          ),
+          countryVisaType: row.country_visa_type,
+          destinationCountryCode: row.destination_country_code,
+          userTier,
+        });
+        return {
+          journey: row,
+          key: row.id,
+          label: row.university?.name || row.destination_country_code,
+          destinationCountryCode: row.destination_country_code,
+          routeVisaCode: row.route_visa_code,
+          progress,
+          source,
+        } as JourneyWithProgress;
+      }),
+    );
+    return { journeys, userTier };
+  }
+
+  // Legacy: single journey on the profile.
+  if (!profile?.visa_type || !profile?.destination_country) {
+    return { journeys: [], userTier };
+  }
+
+  const { progress, source } = await fetchJourneyProgressForRoute({
+    userId: user.id,
+    routeVisaCode: null,
+    countryVisaType: profile.visa_type,
+    destinationCountryCode: profile.destination_country,
+    userTier,
+  });
+
+  return {
+    journeys: [
+      {
+        journey: null,
+        key: "legacy",
+        label: profile.destination_country,
+        destinationCountryCode: profile.destination_country,
+        routeVisaCode: null,
+        progress,
+        source,
+      },
+    ],
+    userTier,
+  };
+};
+
+/**
+ * Back-compat entry point (used by the home tab). Returns the PRIMARY / first
+ * journey's progress.
+ */
+export const fetchJourneyProgressFromSupabase = async (): Promise<{
+  progress: JourneyProgress[];
+  userTier: string;
+}> => {
+  const { journeys, userTier } = await fetchJourneysWithProgress();
+  return { progress: journeys[0]?.progress ?? [], userTier };
+};
+
+const RETRY_MISSING_ROUTES_MS = 10 * 60 * 1000;
+let lastRouteRequestAt = 0;
+
+/**
+ * If any university journey is still on a fallback checklist, ask the server
+ * to (re)generate it. Throttled per app session; the server also skips routes
+ * that are already generating or keep failing.
+ */
+export const ensureUniversityRoutes = (journeys: JourneyWithProgress[]) => {
+  const missing = journeys.some((j) => j.journey?.university && j.source !== "university");
+  if (!missing || Date.now() - lastRouteRequestAt < RETRY_MISSING_ROUTES_MS) return;
+  lastRouteRequestAt = Date.now();
+  void requestMissingJourneyRoutes();
 };

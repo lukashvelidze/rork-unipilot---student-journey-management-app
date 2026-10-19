@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useCallback, useState, useEffect } from "react";
 import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Platform, Animated, Dimensions, Alert, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter, useLocalSearchParams } from "expo-router";
+import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { ChevronRight, Quote, CheckSquare, Calendar, Clock, Star, Heart, Camera, Plus, Globe, Timer, MapPin, Sparkles, Filter, Grid, List, MessageCircle } from "lucide-react-native";
 import { useColors } from "@/hooks/useColors";
@@ -18,8 +18,9 @@ import { calculateOverallProgress } from "@/utils/helpers";
 import { getRandomQuote, generalQuotes } from "@/mocks/quotes";
 import { TimelineEvent } from "@/types/user";
 import { JourneyStage, MemoryMood, JourneyProgress, Task } from "@/types/user";
-import { supabase } from "@/lib/supabase";
 import { openManageSubscription } from "@/lib/subscriptionManager";
+import { ensureUniversityRoutes, fetchJourneysWithProgress } from "@/lib/journeyProgress";
+import UniversityStrip from "@/components/journey/UniversityStrip";
 import { posthog } from "@/src/config/posthog";
 
 const { width, height } = Dimensions.get("window");
@@ -30,11 +31,15 @@ export default function JourneyScreen() {
   const Colors = useColors();
   const { user } = useUserStore();
   const [userTier, setUserTier] = useState<string>("free");
-  const { 
-    journeyProgress, 
-    recentMilestone, 
-    clearRecentMilestone, 
+  const {
+    journeyProgress,
+    recentMilestone,
+    clearRecentMilestone,
     setJourneyProgress,
+    journeys,
+    activeJourneyKey,
+    setJourneys,
+    setActiveJourneyKey,
     memories,
     getMemoriesByStage,
     getMemoriesByMood,
@@ -99,6 +104,13 @@ export default function JourneyScreen() {
     fetchJourneyProgress();
   }, [user?.destinationCountry?.code, user?.id]);
 
+  // Refresh when returning to the tab (e.g. after adding a destination).
+  useFocusEffect(
+    useCallback(() => {
+      fetchJourneyProgress();
+    }, [user?.id])
+  );
+
   useEffect(() => {
     const fetchMemories = async () => {
       if (!user) return;
@@ -117,211 +129,16 @@ export default function JourneyScreen() {
 
   const fetchJourneyProgress = async () => {
     try {
-      const { data: { user: authUser } } = await supabase.auth.getUser();
-      if (!authUser) return;
-
-      // Get visa type, destination country, and subscription tier from profile (source of truth)
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("visa_type, destination_country, subscription_tier")
-        .eq("id", authUser.id)
-        .single();
-
-      if (!profile?.visa_type || !profile?.destination_country) {
-        console.log("Profile missing visa_type or destination_country", {
-          visa_type: profile?.visa_type,
-          destination_country: profile?.destination_country
-        });
-        return;
-      }
-
-      // Log the query parameters for debugging
-      console.log("Fetching checklists with:", {
-        visa_type: profile.visa_type,
-        destination_country: profile.destination_country,
-        subscription_tier: profile.subscription_tier
-      });
-
-      // Fetch checklists for this country and visa type
-      // Use .or() with and() inside to group: (visa_type = X AND country_code = Y) OR (visa_type = X AND country_code IS NULL)
-      // This ensures correct visa type AND correct country-specific OR generic checklists
-      
-      // Define subscription tier hierarchy
-      // Map "pro" to "premium" for consistency (pro is used in UI, premium in DB)
-      const allowedTiers: Record<string, string[]> = {
-        free: ["free"],
-        basic: ["free", "basic"],
-        standard: ["free", "basic", "standard"],
-        premium: ["free", "basic", "standard", "premium"],
-        pro: ["free", "basic", "standard", "premium"] // Map pro to premium tier access
-      };
-      
-      // Normalize tier: map "pro" to "premium" for lookup
-      const normalizedTier = profile.subscription_tier === "pro" ? "premium" : (profile.subscription_tier || "free");
-      const resolvedTier = normalizedTier;
-      setUserTier(resolvedTier);
-      const tiersToShow = resolvedTier === "free"
-        ? ["free", "basic", "standard", "premium"]
-        : (allowedTiers[resolvedTier] || allowedTiers.free);
-      
-      // Build the OR filter string - ensure country code is properly formatted
-      const countryCode = profile.destination_country.trim().toUpperCase();
-      const visaType = profile.visa_type.trim();
-      
-      // First, let's check what checklists exist for this country/visa (without subscription filter) for debugging
-      const debugQuery = supabase
-        .from("checklists")
-        .select("id, title, country_code, visa_type, subscription_tier")
-        .or(
-          `and(visa_type.eq.${visaType},country_code.eq.${countryCode}),and(visa_type.eq.${visaType},country_code.is.null)`
-        );
-      
-      const { data: debugData } = await debugQuery;
-      console.log(`Debug: Found ${debugData?.length || 0} total checklists (any tier) for ${countryCode}/${visaType}:`, 
-        debugData?.map(c => ({ title: c.title, country: c.country_code, visa: c.visa_type, tier: c.subscription_tier }))
-      );
-      
-      const orFilter = `and(visa_type.eq.${visaType},country_code.eq.${countryCode}),and(visa_type.eq.${visaType},country_code.is.null)`;
-      
-      console.log("Query filter:", orFilter);
-      console.log("Subscription tiers to show:", tiersToShow);
-      
-      let query = supabase
-        .from("checklists")
-        .select("*")
-        .or(orFilter)
-        .in("subscription_tier", tiersToShow)
-        .order("sort_order", { ascending: true });
-
-      const { data: checklistsData, error: checklistsError } = await query;
-
-      if (checklistsError) {
-        console.error("Error fetching checklists:", checklistsError);
-        console.error("Query details:", {
-          visa_type: visaType,
-          country_code: countryCode,
-          subscription_tiers: tiersToShow,
-          error: checklistsError
-        });
-        return;
-      }
-
-      console.log(`Found ${checklistsData?.length || 0} checklists for ${countryCode} with visa ${visaType}`);
-
-      if (!checklistsData || checklistsData.length === 0) {
-        console.log("No checklists found for this country/visa combination", {
-          country_code: countryCode,
-          visa_type: visaType,
-          subscription_tiers: tiersToShow
-        });
-        // Clear any existing progress since there are no checklists for this country/visa
-        setJourneyProgress([]);
-        return;
-      }
-
-      // Fetch checklist items
-      if (!checklistsData || !Array.isArray(checklistsData) || checklistsData.length === 0) {
-        console.log("No checklists data found");
-        return;
-      }
-      const checklistIds = checklistsData.map((c: any) => c.id);
-      const { data: itemsData } = await supabase
-        .from("checklist_items")
-        .select("*")
-        .in("checklist_id", checklistIds)
-        .order("sort_order", { ascending: true });
-
-      if (!itemsData) return;
-
-      // Fetch user progress
-      const itemIds = itemsData.map(item => item.id);
-      const { data: progressData } = await supabase
-        .from("user_progress")
-        .select("*")
-        .eq("user_id", authUser.id)
-        .in("checklist_item_id", itemIds);
-
-      const progressMap = new Map<string, any>();
-      (progressData || []).forEach((entry) => {
-        progressMap.set(entry.checklist_item_id, entry);
-      });
-
-      const determineStage = (title: string): JourneyStage => {
-        const titleLower = title.toLowerCase();
-
-        const mapping: { match: RegExp; stage: JourneyStage }[] = [
-          { match: /research|university|program/, stage: "research" },
-          { match: /application|apply/, stage: "application" },
-          { match: /visa|immigration/, stage: "visa" },
-          { match: /pre[-\s]?departure|document|financial|insurance|pre-arrival/, stage: "pre_departure" },
-          { match: /arrival|orientation|accommodation|housing/, stage: "arrival" },
-          { match: /academic|class|course/, stage: "academic" },
-          { match: /career|internship|job/, stage: "career" },
-        ];
-
-        for (let i = 0; i < mapping.length; i++) {
-          if (mapping[i].match.test(titleLower)) {
-            return mapping[i].stage;
-          }
-        }
-
-        return "pre_departure";
-      };
-
-      const progress: JourneyProgress[] = (checklistsData || []).map((checklist: any) => {
-        const tasks: Task[] = itemsData
-          .filter(item => item.checklist_id === checklist.id)
-          .map((item) => {
-            const progressEntry = progressMap.get(item.id);
-            const isCompleted = !!progressEntry?.is_completed;
-            const completedDate = isCompleted
-              ? progressEntry?.updated_at || progressEntry?.created_at || new Date().toISOString()
-              : undefined;
-
-            return {
-              id: item.id,
-              title: item.label,
-              completed: isCompleted,
-              completedDate,
-              checklistId: checklist.id,
-              checklistTitle: checklist.title,
-            };
-          });
-
-        const completedCount = tasks.filter(t => t.completed).length;
-        const progressPercent = tasks.length > 0 ? Math.round((completedCount / tasks.length) * 100) : 0;
-
-        return {
-          id: checklist.id,
-          stage: determineStage(checklist.title),
-          title: checklist.title,
-          description: checklist.description || undefined,
-          subscriptionTier: checklist.subscription_tier,
-          progress: progressPercent,
-          completed: progressPercent === 100,
-          completedDate: progressPercent === 100 ? new Date().toISOString() : undefined,
-          tasks,
-          hasAcceptance: tasks.some(task => task.title.includes("🎉 Receive acceptance letter") && task.completed),
-          checklists: [
-            {
-              id: checklist.id,
-              title: checklist.title,
-              subscriptionTier: checklist.subscription_tier,
-              items: tasks,
-            },
-          ],
-        };
-      });
-
-      setJourneyProgress(progress);
+      const { journeys: loadedJourneys, userTier: loadedTier } = await fetchJourneysWithProgress();
+      setUserTier(loadedTier);
+      setJourneys(loadedJourneys);
+      ensureUniversityRoutes(loadedJourneys);
     } catch (error) {
       console.error("❌ Critical error in fetchJourneyProgress:", error);
-      // Don't crash - use safe default
       setJourneyProgress([]);
-      // Error is logged but app continues to work
     }
   };
-  
+
   // Handle tab parameter from navigation
   useEffect(() => {
     if (params.tab === "memories") {
@@ -553,7 +370,36 @@ export default function JourneyScreen() {
               </View>
             </Card>
             
+            {journeys.some((j) => !!j.journey?.university) ? (
+              <View style={styles.journeySwitcher}>
+                <UniversityStrip
+                  activeKey={activeJourneyKey}
+                  gutter={16}
+                  journeys={journeys}
+                  onAdd={() => router.push("/onboarding/step-universities?mode=manage" as any)}
+                  onSelect={setActiveJourneyKey}
+                />
+              </View>
+            ) : null}
+
             <View style={styles.stagesContainer}>
+              {journeyProgress.length === 0 ? (
+                <Card style={[styles.instructionCard, { backgroundColor: Colors.card }]}>
+                  <View style={styles.instructionContent}>
+                    <Clock size={22} color={Colors.primary} />
+                    <View style={styles.instructionText}>
+                      <Text style={[styles.instructionTitle, { color: Colors.text }]}>
+                        Your journey is being prepared
+                      </Text>
+                      <Text style={[styles.instructionDescription, { color: Colors.lightText }]}>
+                        {journeys.length > 1
+                          ? "We're still building the checklist for this university. Try another destination above, or check back soon."
+                          : "We're still building your personalised checklist. Check back soon."}
+                      </Text>
+                    </View>
+                  </View>
+                </Card>
+              ) : null}
               {journeyProgress.map((stage) => {
                 const checklistId = stage.id || stage.stage;
                 const isLocked = !canAccessTier(stage.subscriptionTier);
@@ -1129,7 +975,10 @@ const styles = StyleSheet.create({
     marginTop: 16,
     paddingBottom: 32,
   },
-  
+  journeySwitcher: {
+    marginTop: 16,
+  },
+
   // Map styles
   mapContainer: {
     flex: 1,

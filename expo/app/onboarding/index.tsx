@@ -144,13 +144,26 @@ export default function OnboardingIndex() {
 
         setUser(updatedUser);
 
+        // Between destination and visa: send the user to pick universities
+        // unless they already have study journeys set up.
+        let resumeRoute = `/onboarding/step${onboardingStep}-${getStepName(onboardingStep)}`;
+        if (!isOnboardingComplete && onboardingStep === 5) {
+          const { count: journeyCount } = await supabase
+            .from("user_journeys")
+            .select("id", { count: "exact", head: true })
+            .eq("user_id", authUser.id);
+          if (!journeyCount) {
+            resumeRoute = "/onboarding/step-universities";
+          }
+        }
+
         // Redirect based on onboarding step
         if (!hasRedirectedRef.current) {
           hasRedirectedRef.current = true;
           if (isOnboardingComplete) {
             router.replace("/(tabs)");
           } else {
-            router.replace(`/onboarding/step${onboardingStep}-${getStepName(onboardingStep)}` as any);
+            router.replace(resumeRoute as any);
           }
         }
       } else {
