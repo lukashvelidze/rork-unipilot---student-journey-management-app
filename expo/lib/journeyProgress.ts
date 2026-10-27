@@ -127,6 +127,11 @@ const buildProgressForVisaType = async (
         return {
           id: item.id,
           title: item.label,
+          // Generated hints can carry search citation markers such as "[7]".
+          hint:
+            typeof item.metadata?.hint === "string"
+              ? item.metadata.hint.replace(/\s*\[\d+(?:,\s*\d+)*\]/g, "").trim() || undefined
+              : undefined,
           completed,
           completedDate,
           checklistId: checklist.id,

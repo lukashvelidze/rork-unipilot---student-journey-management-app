@@ -130,6 +130,7 @@ export default function OnboardingIndex() {
           ...user!,
           id: authUser.id,
           name: profile.full_name || user?.name || "",
+          avatar: profile.avatar_url || undefined,
           email: profile.email || authUser.email || "",
           homeCountry,
           destinationCountry,

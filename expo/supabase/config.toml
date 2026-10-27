@@ -403,3 +403,10 @@ enabled = true
 verify_jwt = false
 import_map = "./functions/generate-journey/deno.json"
 entrypoint = "./functions/generate-journey/index.ts"
+
+[functions.interview-feedback]
+enabled = true
+# Requires the caller's Supabase JWT (checked by the gateway and again inside).
+verify_jwt = true
+import_map = "./functions/interview-feedback/deno.json"
+entrypoint = "./functions/interview-feedback/index.ts"

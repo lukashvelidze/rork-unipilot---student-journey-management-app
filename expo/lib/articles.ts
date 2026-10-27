@@ -3,7 +3,7 @@ import { Article, ArticleAccessTier, ArticleCategory } from "@/types/articles";
 import { SubscriptionTier } from "@/types/user";
 
 const DEFAULT_ARTICLE_BUCKET = "article-images";
-const FALLBACK_ARTICLE_IMAGE = "https://yagdgijrdlifgcjkcnqe.supabase.co/storage/v1/object/public/article-images/articles/how-to-test-article-1766685291758.jpg";
+export const FALLBACK_ARTICLE_IMAGE = "https://yagdgijrdlifgcjkcnqe.supabase.co/storage/v1/object/public/article-images/articles/how-to-test-article-1766685291758.jpg";
 
 const tierRank: Record<ArticleAccessTier | SubscriptionTier, number> = {
   free: 0,

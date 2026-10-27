@@ -99,7 +99,7 @@ export default function NewMemoryScreen() {
           {
             text: "View Memories",
             onPress: () => {
-              router.replace("/(tabs)/journey?tab=memories");
+              router.replace("/memories" as any);
             }
           }
         ]

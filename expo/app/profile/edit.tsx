@@ -1,539 +1,1460 @@
-import React, { useState, useEffect } from "react";
-import { StyleSheet, View, Text, ScrollView, Alert, TouchableOpacity, ActivityIndicator } from "react-native";
-import { useRouter } from "expo-router";
-import { Save, User, Mail, MapPin, GraduationCap, Calendar, Target } from "lucide-react-native";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  KeyboardTypeOptions,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useNavigation, useRouter } from "expo-router";
+import { Image } from "expo-image";
+import * as ImagePicker from "expo-image-picker";
+import * as Haptics from "expo-haptics";
+import {
+  ArrowLeft,
+  ArrowRight,
+  Award,
+  Bell,
+  BookOpen,
+  Calendar,
+  CalendarCheck,
+  CalendarClock,
+  Check,
+  ClipboardCheck,
+  Flag,
+  Globe,
+  GraduationCap,
+  Home,
+  Mail,
+  MapPin,
+  Phone,
+  Plane,
+  Plus,
+  School,
+  Search,
+  Trash2,
+  User,
+  Wallet,
+  X,
+} from "lucide-react-native";
+import BottomSheet from "@/components/ui/BottomSheet";
+import CalendarPicker, { toIsoDate } from "@/components/ui/CalendarPicker";
+import ProgressRing from "@/components/ui/ProgressRing";
+import { CARD_SHADOW, GUTTER, RADIUS, UI } from "@/constants/design";
 import { useAppBack } from "@/hooks/useAppBack";
-import Colors from "@/constants/colors";
-import Theme from "@/constants/theme";
-import Card from "@/components/Card";
-import Button from "@/components/Button";
-import Input from "@/components/Input";
-import CountrySelector from "@/components/CountrySelector";
-import Avatar from "@/components/Avatar";
-import { useUserStore } from "@/store/userStore";
-import { getCountries, supabase } from "@/lib/supabase";
+import { useDeleteAccount } from "@/hooks/useDeleteAccount";
 import { syncJourneyRoutes } from "@/lib/journeyRoutes";
-import { Country, EducationLevel } from "@/types/user";
+import {
+  BUDGET_OPTIONS,
+  budgetLabel,
+  degreeLabelForLevel,
+  DEGREE_OPTIONS,
+  deleteAvatarFile,
+  fetchProfileDetails,
+  GPA_SCALES,
+  MAJOR_SUGGESTIONS,
+  ProfileDetails,
+  profileCompletion,
+  saveProfileDetails,
+  TEST_TYPES,
+  TestScore,
+  upcomingIntakes,
+  uploadAvatar,
+} from "@/lib/profileDetails";
+import { getCountries, supabase } from "@/lib/supabase";
+import { useUserStore } from "@/store/userStore";
+import { Country } from "@/types/user";
 
-const educationLevels = [
-  { value: "high_school" as EducationLevel, label: "High School" },
-  { value: "bachelors" as EducationLevel, label: "Bachelor's Degree" },
-  { value: "masters" as EducationLevel, label: "Master's Degree" },
-  { value: "phd" as EducationLevel, label: "PhD" },
-  { value: "language" as EducationLevel, label: "Language Program" },
-  { value: "other" as EducationLevel, label: "Other" },
+type FieldKey =
+  | "full_name"
+  | "date_of_birth"
+  | "nationality"
+  | "current_city"
+  | "email"
+  | "phone"
+  | "country_origin"
+  | "current_school"
+  | "graduation_year"
+  | "gpa"
+  | "test_scores"
+  | "level_of_study"
+  | "intended_majors"
+  | "destination_country"
+  | "target_countries"
+  | "budget"
+  | "intake_term";
+
+type Row = { key: FieldKey; label: string; Icon: typeof User };
+
+const SECTIONS: { title: string; rows: Row[] }[] = [
+  {
+    title: "Personal Info",
+    rows: [
+      { key: "full_name", label: "Full name", Icon: User },
+      { key: "date_of_birth", label: "Date of birth", Icon: Calendar },
+      { key: "nationality", label: "Nationality", Icon: Flag },
+      { key: "current_city", label: "Current city", Icon: MapPin },
+      { key: "country_origin", label: "Home country", Icon: Home },
+      { key: "email", label: "Email", Icon: Mail },
+      { key: "phone", label: "Phone number", Icon: Phone },
+    ],
+  },
+  {
+    title: "Academic Profile",
+    rows: [
+      { key: "current_school", label: "Current school", Icon: School },
+      { key: "graduation_year", label: "Graduation year", Icon: CalendarCheck },
+      { key: "gpa", label: "GPA", Icon: Award },
+      { key: "test_scores", label: "Test scores", Icon: ClipboardCheck },
+    ],
+  },
+  {
+    title: "Study Preferences",
+    rows: [
+      { key: "level_of_study", label: "Degree level", Icon: GraduationCap },
+      { key: "intended_majors", label: "Intended majors", Icon: BookOpen },
+      { key: "destination_country", label: "Main destination", Icon: Plane },
+      { key: "target_countries", label: "Also considering", Icon: Globe },
+      { key: "budget", label: "Budget range", Icon: Wallet },
+      { key: "intake_term", label: "Intake term", Icon: CalendarClock },
+    ],
+  },
 ];
 
-const careerGoals = [
-  "Technology & Engineering",
-  "Business & Finance",
-  "Healthcare & Medicine",
-  "Arts & Design",
-  "Science & Research",
-  "Education",
-  "Law & Government",
-  "Media & Communications",
-  "Other",
-];
+const COMPLETION_TO_FIELD: Record<string, FieldKey> = { budget: "budget" };
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PHONE_RE = /^\+?[0-9 ()-]{7,20}$/;
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+const formatDate = (iso: string | null) => {
+  if (!iso) return null;
+  const [y, m, d] = iso.split("-").map(Number);
+  return `${d} ${MONTHS[m - 1]} ${y}`;
+};
+
+const isEqual = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
 
 export default function EditProfileScreen() {
   const router = useRouter();
+  const navigation = useNavigation();
   const handleBack = useAppBack("/(tabs)/profile");
   const { user, updateUser } = useUserStore();
+  const { confirmDeleteAccount, isDeletingAccount } = useDeleteAccount();
 
-  const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    homeCountry: null as Country | null,
-    destinationCountry: null as Country | null,
-    educationLevel: "bachelors" as EducationLevel,
-    careerGoal: "",
-    bio: "",
-  });
+  const [original, setOriginal] = useState<ProfileDetails | null>(null);
+  const [draft, setDraft] = useState<ProfileDetails | null>(null);
+  const [origins, setOrigins] = useState<Country[]>([]);
+  const [destinations, setDestinations] = useState<Country[]>([]);
+  const [editing, setEditing] = useState<FieldKey | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [avatarBusy, setAvatarBusy] = useState(false);
+  const [loadError, setLoadError] = useState("");
+  const leavingRef = useRef(false);
 
-  const [isLoading, setIsLoading] = useState(false);
-  const [isLoadingCountries, setIsLoadingCountries] = useState(true);
-  const [originCountries, setOriginCountries] = useState<Country[]>([]);
-  const [destinationCountries, setDestinationCountries] = useState<Country[]>([]);
-  const [errors, setErrors] = useState({
-    name: "",
-    email: "",
-    homeCountry: "",
-    destinationCountry: "",
-  });
-
-  // Fetch countries from database
   useEffect(() => {
-    async function fetchCountries() {
-      try {
-        setIsLoadingCountries(true);
-        const { origin, destination } = await getCountries();
-        setOriginCountries(origin);
-        setDestinationCountries(destination);
-      } catch (error) {
-        console.error("Error fetching countries:", error);
-        Alert.alert("Error", "Failed to load countries. Please try again.");
-      } finally {
-        setIsLoadingCountries(false);
-      }
-    }
-
-    fetchCountries();
+    Promise.all([fetchProfileDetails(), getCountries()])
+      .then(([profile, countries]) => {
+        setOriginal(profile);
+        setDraft(profile);
+        setOrigins(countries.origin);
+        setDestinations(countries.destination);
+      })
+      .catch((error) => {
+        console.error("Error loading profile:", error);
+        setLoadError("We couldn't load your profile. Please go back and try again.");
+      });
   }, []);
 
+  const dirty = !!draft && !!original && !isEqual(draft, original);
+
+  // "Unsaved changes" prompt when leaving with edits.
   useEffect(() => {
-    if (user) {
-      setFormData({
-        name: user.name || "",
-        email: user.email || "",
-        homeCountry: user.homeCountry || null,
-        destinationCountry: user.destinationCountry || null,
-        educationLevel: user.educationBackground?.level || "bachelors",
-        careerGoal: user.careerGoal || "",
-        bio: user.bio || "",
-      });
-    }
-  }, [user]);
-  
-  const validateForm = () => {
-    let isValid = true;
-    const newErrors = { ...errors };
-    
-    if (!formData.name.trim()) {
-      newErrors.name = "Name is required";
-      isValid = false;
-    } else {
-      newErrors.name = "";
-    }
-    
-    if (!formData.email.trim()) {
-      newErrors.email = "Email is required";
-      isValid = false;
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = "Please enter a valid email";
-      isValid = false;
-    } else {
-      newErrors.email = "";
-    }
-    
-    if (!formData.homeCountry) {
-      newErrors.homeCountry = "Please select your home country";
-      isValid = false;
-    } else {
-      newErrors.homeCountry = "";
-    }
-
-    if (!formData.destinationCountry) {
-      newErrors.destinationCountry = "Please select your destination country";
-      isValid = false;
-    } else {
-      newErrors.destinationCountry = "";
-    }
-
-    setErrors(newErrors);
-    return isValid;
-  };
-  
-  const handleSave = async () => {
-    if (!validateForm()) {
-      return;
-    }
-
-    // Check if country selections changed
-    const destinationChanged = formData.destinationCountry?.code !== user?.destinationCountry?.code;
-    const homeChanged = formData.homeCountry?.code !== user?.homeCountry?.code;
-
-    setIsLoading(true);
-
-    try {
-      // Get auth user
-      const { data: { user: authUser } } = await supabase.auth.getUser();
-      if (!authUser) {
-        Alert.alert("Error", "You must be logged in to update your profile.");
-        setIsLoading(false);
-        return;
-      }
-
-      // Update profile in database
-      const profileUpdates: any = {
-        full_name: formData.name,
-        email: formData.email,
-        country_origin: formData.homeCountry?.code?.toUpperCase() || null,
-        level_of_study: formData.educationLevel,
-        bio: formData.bio?.trim() || null,
-        updated_at: new Date().toISOString(),
-      };
-
-      if (formData.destinationCountry) {
-        profileUpdates.destination_country = formData.destinationCountry.code.toUpperCase();
-      }
-
-      if (destinationChanged || homeChanged) {
-        // Clear visa type so the user must reselect for the new country setup
-        profileUpdates.visa_type = null;
-      }
-
-      const { error: updateError } = await supabase
-        .from("profiles")
-        .update(profileUpdates)
-        .eq("id", authUser.id);
-
-      if (updateError) {
-        console.error("Error updating profile:", updateError);
-        Alert.alert("Error", "Failed to update profile. Please try again.");
-        setIsLoading(false);
-        return;
-      }
-
-      // Home country and education level decide which generated route each
-      // university journey follows.
-      await syncJourneyRoutes(authUser.id, {
-        originCountryCode: profileUpdates.country_origin,
-        currentLevel: formData.educationLevel,
-      });
-
-      // Update local store
-      if (user) {
-        const updatedUserData = {
-          name: formData.name,
-          email: formData.email,
-          homeCountry: formData.homeCountry || user.homeCountry,
-          destinationCountry: formData.destinationCountry || user.destinationCountry,
-          educationBackground: {
-            ...user.educationBackground,
-            level: formData.educationLevel,
+    const unsubscribe = navigation.addListener("beforeRemove", (event: any) => {
+      if (!dirty || leavingRef.current) return;
+      event.preventDefault();
+      Alert.alert("Unsaved changes", "You have changes that haven't been saved.", [
+        { text: "Keep editing", style: "cancel" },
+        {
+          text: "Discard",
+          style: "destructive",
+          onPress: () => {
+            leavingRef.current = true;
+            navigation.dispatch(event.data.action);
           },
-          careerGoal: formData.careerGoal,
-          bio: formData.bio,
-        };
+        },
+      ]);
+    });
+    return unsubscribe;
+  }, [dirty, navigation]);
 
-        updateUser(updatedUserData);
+  const allCountries = useMemo(() => {
+    const map = new Map<string, Country>();
+    [...origins, ...destinations].forEach((country) => map.set(country.code.toUpperCase(), country));
+    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [destinations, origins]);
 
-        const requiresVisaUpdate = (destinationChanged || homeChanged) && !!formData.destinationCountry;
-
-        if (requiresVisaUpdate && formData.destinationCountry) {
-          router.push({
-            pathname: "/onboarding/step5-visa",
-            params: {
-              pendingCountryCode: formData.destinationCountry.code,
-              pendingCountryName: formData.destinationCountry.name,
-              pendingCountryFlag: formData.destinationCountry.flag || "",
-              pendingHomeCountryCode: formData.homeCountry?.code || "",
-              pendingHomeCountryName: formData.homeCountry?.name || "",
-              pendingHomeCountryFlag: formData.homeCountry?.flag || "",
-              pendingName: formData.name,
-              pendingEmail: formData.email,
-              pendingEducationLevel: formData.educationLevel,
-              pendingCareerGoal: formData.careerGoal || "",
-              pendingBio: formData.bio || "",
-              fromEditProfile: "true"
-            }
-          });
-          return;
-        }
-
-        Alert.alert(
-          "Profile Updated",
-          "Your profile has been successfully updated.",
-          [
-            {
-              text: "OK",
-              onPress: handleBack,
-            },
-          ]
-        );
-      }
-    } catch (error) {
-      Alert.alert(
-        "Error",
-        "There was an issue updating your profile. Please try again.",
-        [{ text: "OK" }]
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  };
-  
-  const renderEducationLevelSelector = () => (
-    <View style={styles.selectorContainer}>
-      <Text style={styles.selectorLabel}>Education Level</Text>
-      <View style={styles.optionsGrid}>
-        {educationLevels.map((level) => (
-          <TouchableOpacity
-            key={level.value}
-            style={[
-              styles.optionButton,
-              formData.educationLevel === level.value && styles.optionButtonActive,
-            ]}
-            onPress={() => setFormData(prev => ({ ...prev, educationLevel: level.value }))}
-          >
-            <Text style={[
-              styles.optionButtonText,
-              formData.educationLevel === level.value && styles.optionButtonTextActive,
-            ]}>
-              {level.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-    </View>
+  const countryName = useCallback(
+    (code: string | null) => {
+      if (!code) return null;
+      const country = allCountries.find((c) => c.code.toUpperCase() === code.toUpperCase());
+      return country ? `${country.flag} ${country.name}` : code;
+    },
+    [allCountries],
   );
-  
-  const renderCareerGoalSelector = () => (
-    <View style={styles.selectorContainer}>
-      <Text style={styles.selectorLabel}>Career Interest</Text>
-      <View style={styles.optionsGrid}>
-        {careerGoals.map((goal) => (
-          <TouchableOpacity
-            key={goal}
-            style={[
-              styles.optionButton,
-              formData.careerGoal === goal && styles.optionButtonActive,
-            ]}
-            onPress={() => setFormData(prev => ({ ...prev, careerGoal: goal }))}
-          >
-            <Text style={[
-              styles.optionButtonText,
-              formData.careerGoal === goal && styles.optionButtonTextActive,
-            ]}>
-              {goal}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-    </View>
-  );
-  
-  if (!user) {
+
+  if (loadError) {
     return (
-      <View style={styles.container}>
-        <Text style={styles.errorText}>User data not available</Text>
-      </View>
+      <SafeAreaView style={styles.container}>
+        <Header dirty={false} onBack={handleBack} onSave={() => null} saving={false} />
+        <Text style={styles.loadError}>{loadError}</Text>
+      </SafeAreaView>
     );
   }
-  
+
+  if (!draft || !original) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <Header dirty={false} onBack={handleBack} onSave={() => null} saving={false} />
+        <ActivityIndicator color={UI.primary} style={styles.loading} />
+      </SafeAreaView>
+    );
+  }
+
+  const completion = profileCompletion(draft);
+
+  const valueFor = (key: FieldKey): string | null => {
+    switch (key) {
+      case "date_of_birth":
+        return formatDate(draft.date_of_birth);
+      case "nationality":
+        return countryName(draft.nationality);
+      case "country_origin":
+        return countryName(draft.country_origin);
+      case "destination_country":
+        return countryName(draft.destination_country);
+      case "target_countries":
+        return draft.target_countries.map((code) => countryName(code)).join(", ") || null;
+      case "graduation_year":
+        return draft.graduation_year ? String(draft.graduation_year) : null;
+      case "gpa":
+        return draft.gpa !== null ? `${draft.gpa} / ${draft.gpa_scale ?? 4} scale` : null;
+      case "test_scores":
+        return draft.test_scores.map((t) => `${t.type} ${t.score}`).join(" · ") || null;
+      case "level_of_study":
+        return degreeLabelForLevel(draft.level_of_study);
+      case "intended_majors":
+        return draft.intended_majors.join(", ") || null;
+      case "budget":
+        return budgetLabel(draft.budget_min, draft.budget_max);
+      default:
+        return (draft[key] as string | null) || null;
+    }
+  };
+
+  const apply = (patch: Partial<ProfileDetails>) => {
+    setDraft((current) => (current ? { ...current, ...patch } : current));
+    setEditing(null);
+  };
+
+  // ---------------------------------------------------------------------
+  // avatar
+  // ---------------------------------------------------------------------
+
+  const changeAvatar = async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert("Photos access needed", "Allow photo access in Settings to choose a profile picture.");
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      allowsEditing: true,
+      aspect: [1, 1],
+      mediaTypes: ["images"],
+      quality: 0.7,
+    });
+    if (result.canceled || !result.assets?.[0]) return;
+
+    setAvatarBusy(true);
+    try {
+      const asset = result.assets[0];
+      const url = await uploadAvatar(asset.uri, asset.mimeType ?? "image/jpeg");
+      await saveProfileDetails({ avatar_url: url });
+      await deleteAvatarFile(original.avatar_url);
+      setOriginal((current) => (current ? { ...current, avatar_url: url } : current));
+      setDraft((current) => (current ? { ...current, avatar_url: url } : current));
+      updateUser({ avatar: url });
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => null);
+    } catch (error) {
+      console.error("Avatar upload failed:", error);
+      Alert.alert("Upload failed", "We couldn't update your photo. Please try again.");
+    } finally {
+      setAvatarBusy(false);
+    }
+  };
+
+  const removeAvatar = () => {
+    Alert.alert("Remove photo", "Your initials will be shown instead.", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Remove",
+        style: "destructive",
+        onPress: async () => {
+          setAvatarBusy(true);
+          try {
+            await saveProfileDetails({ avatar_url: null });
+            await deleteAvatarFile(original.avatar_url);
+            setOriginal((current) => (current ? { ...current, avatar_url: null } : current));
+            setDraft((current) => (current ? { ...current, avatar_url: null } : current));
+            updateUser({ avatar: undefined });
+          } catch (error) {
+            console.error("Avatar removal failed:", error);
+            Alert.alert("Couldn't remove photo", "Please try again.");
+          } finally {
+            setAvatarBusy(false);
+          }
+        },
+      },
+    ]);
+  };
+
+  // ---------------------------------------------------------------------
+  // save
+  // ---------------------------------------------------------------------
+
+  const save = async () => {
+    if (!dirty || saving) return;
+    const patch = Object.fromEntries(
+      Object.entries(draft).filter(([key, value]) => !isEqual(value, original[key as keyof ProfileDetails])),
+    ) as Partial<ProfileDetails>;
+
+    const destinationChanged = "destination_country" in patch;
+    const homeChanged = "country_origin" in patch;
+    if (destinationChanged || homeChanged) {
+      // The visa type depends on both countries; the student re-picks it next.
+      (patch as Record<string, unknown>).visa_type = null;
+    }
+
+    setSaving(true);
+    try {
+      await saveProfileDetails(patch);
+      if (homeChanged || "level_of_study" in patch) {
+        const {
+          data: { user: authUser },
+        } = await supabase.auth.getUser();
+        if (authUser) {
+          await syncJourneyRoutes(authUser.id, {
+            originCountryCode: draft.country_origin,
+            currentLevel: draft.level_of_study,
+          });
+        }
+      }
+
+      const home = allCountries.find((c) => c.code.toUpperCase() === draft.country_origin?.toUpperCase());
+      const destination = allCountries.find(
+        (c) => c.code.toUpperCase() === draft.destination_country?.toUpperCase(),
+      );
+      if (user) {
+        updateUser({
+          name: draft.full_name,
+          email: draft.email,
+          homeCountry: home || user.homeCountry,
+          destinationCountry: destination || user.destinationCountry,
+          educationBackground: {
+            ...user.educationBackground,
+            level: draft.level_of_study || user.educationBackground?.level,
+          },
+        });
+      }
+
+      setOriginal(draft);
+      leavingRef.current = true;
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => null);
+
+      if ((destinationChanged || homeChanged) && destination) {
+        router.push({
+          pathname: "/onboarding/step5-visa",
+          params: {
+            pendingCountryCode: destination.code,
+            pendingCountryName: destination.name,
+            pendingCountryFlag: destination.flag || "",
+            pendingHomeCountryCode: home?.code || "",
+            pendingHomeCountryName: home?.name || "",
+            pendingHomeCountryFlag: home?.flag || "",
+            fromEditProfile: "true",
+          },
+        });
+        return;
+      }
+      handleBack();
+    } catch (error) {
+      console.error("Error saving profile:", error);
+      leavingRef.current = false;
+      Alert.alert("Couldn't save", "There was an issue updating your profile. Please try again.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // ---------------------------------------------------------------------
+
+  const initials = (draft.full_name || user?.name || "?")
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("");
+  const statusLine = draft.intake_term
+    ? `Applying for ${draft.intake_term}`
+    : degreeLabelForLevel(draft.level_of_study)
+      ? `Planning a ${degreeLabelForLevel(draft.level_of_study)}`
+      : "Tell us when you plan to start";
+
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      {/* Profile Picture Section */}
-      <Card style={styles.avatarCard} variant="elevated">
-        <View style={styles.avatarSection}>
-          <Avatar
-            size="large"
-            name={formData.name}
-            showBorder
-          />
-          <View style={styles.avatarInfo}>
-            <Text style={styles.avatarTitle}>Profile Picture</Text>
-            <Text style={styles.avatarSubtitle}>
-              Your avatar is generated from your name
+    <SafeAreaView edges={["top"]} style={styles.container}>
+      <Header dirty={dirty} onBack={handleBack} onSave={save} saving={saving} />
+
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <View style={styles.profileCard}>
+          <View style={styles.avatar}>
+            {draft.avatar_url ? (
+              <Image contentFit="cover" source={{ uri: draft.avatar_url }} style={styles.avatarImage} transition={150} />
+            ) : (
+              <Text style={styles.avatarInitials}>{initials}</Text>
+            )}
+            {avatarBusy ? (
+              <View style={styles.avatarBusy}>
+                <ActivityIndicator color="#FFFFFF" />
+              </View>
+            ) : null}
+          </View>
+          <View style={styles.profileCopy}>
+            <Text numberOfLines={1} style={styles.profileName}>
+              {draft.full_name || "Your name"}
+            </Text>
+            <Text numberOfLines={1} style={styles.profileStatus}>
+              {statusLine}
+            </Text>
+            <View style={styles.avatarActions}>
+              <TouchableOpacity disabled={avatarBusy} hitSlop={8} onPress={changeAvatar}>
+                <Text style={styles.avatarChange}>Change profile picture</Text>
+              </TouchableOpacity>
+              {draft.avatar_url ? (
+                <TouchableOpacity disabled={avatarBusy} hitSlop={8} onPress={removeAvatar}>
+                  <Text style={styles.avatarRemove}>Remove</Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
+          </View>
+        </View>
+
+        <Pressable
+          accessibilityRole="button"
+          disabled={!completion.next}
+          onPress={() =>
+            completion.next &&
+            setEditing(COMPLETION_TO_FIELD[completion.next.key] ?? (completion.next.key as FieldKey))
+          }
+          style={styles.completionCard}
+        >
+          <ProgressRing labelSize={15} progress={completion.percent} size={58} />
+          <View style={styles.completionCopy}>
+            <View style={styles.completionTitleRow}>
+              <Text style={styles.completionTitle}>Profile {completion.percent}% complete</Text>
+              <View style={styles.countPill}>
+                <Text style={styles.countPillText}>
+                  {completion.filled} of {completion.total}
+                </Text>
+              </View>
+            </View>
+            <View style={styles.track}>
+              <View style={[styles.trackFill, { width: `${completion.percent}%` }]} />
+            </View>
+            <Text numberOfLines={1} style={styles.completionNext}>
+              {completion.next ? (
+                <>
+                  Next: <Text style={styles.completionNextField}>Add your {completion.next.label.toLowerCase()}</Text>
+                </>
+              ) : (
+                "Your profile is complete. Nice!"
+              )}
             </Text>
           </View>
-        </View>
-      </Card>
-      
-      {/* Basic Information */}
-      <Card style={styles.section} variant="default">
-        <View style={styles.sectionHeader}>
-          <User size={20} color={Colors.primary} />
-          <Text style={styles.sectionTitle}>Basic Information</Text>
-        </View>
-        
-        <Input
-          label="Full Name"
-          placeholder="Enter your full name"
-          value={formData.name}
-          onChangeText={(text) => setFormData(prev => ({ ...prev, name: text }))}
-          error={errors.name}
-          autoCapitalize="words"
-        />
-        
-        <Input
-          label="Email Address"
-          placeholder="Enter your email address"
-          value={formData.email}
-          onChangeText={(text) => setFormData(prev => ({ ...prev, email: text }))}
-          error={errors.email}
-          keyboardType="email-address"
-          autoCapitalize="none"
-        />
-        
-        <Input
-          label="Bio (Optional)"
-          placeholder="Tell us about yourself..."
-          value={formData.bio}
-          onChangeText={(text) => setFormData(prev => ({ ...prev, bio: text }))}
-          multiline
-          numberOfLines={3}
-          style={styles.bioInput}
-        />
-      </Card>
-      
-      {/* Location Information */}
-      <Card style={styles.section} variant="default">
-        <View style={styles.sectionHeader}>
-          <MapPin size={20} color={Colors.secondary} />
-          <Text style={styles.sectionTitle}>Location</Text>
-        </View>
+        </Pressable>
 
-        {isLoadingCountries ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="small" color={Colors.primary} />
-            <Text style={styles.loadingText}>Loading countries...</Text>
+        {SECTIONS.map((section) => (
+          <View key={section.title} style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text accessibilityRole="header" style={styles.sectionTitle}>
+                {section.title}
+              </Text>
+              <TouchableOpacity
+                hitSlop={10}
+                onPress={() =>
+                  setEditing(section.rows.find((row) => !valueFor(row.key))?.key ?? section.rows[0].key)
+                }
+              >
+                <Text style={styles.sectionEdit}>Edit</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.card}>
+              {section.rows.map((row, index) => {
+                const value = valueFor(row.key);
+                const changed = !isEqual(fieldValue(draft, row.key), fieldValue(original, row.key));
+                return (
+                  <Pressable
+                    key={row.key}
+                    accessibilityHint="Edit"
+                    accessibilityLabel={`${row.label}: ${value ?? "not set"}`}
+                    accessibilityRole="button"
+                    onPress={() => setEditing(row.key)}
+                    style={({ pressed }) => [
+                      styles.row,
+                      index < section.rows.length - 1 && styles.rowDivider,
+                      pressed && styles.rowPressed,
+                    ]}
+                  >
+                    <row.Icon color="#7A7A8C" size={20} strokeWidth={1.7} />
+                    <View style={styles.rowCopy}>
+                      <Text style={styles.rowLabel}>
+                        {row.label}
+                        {changed ? <Text style={styles.rowChanged}>  · edited</Text> : null}
+                      </Text>
+                      <Text numberOfLines={2} style={[styles.rowValue, !value && styles.rowPlaceholder]}>
+                        {value ?? "Add"}
+                      </Text>
+                    </View>
+                    <ArrowRight color="#7A7A8C" size={18} strokeWidth={1.8} />
+                  </Pressable>
+                );
+              })}
+            </View>
           </View>
-        ) : (
-          <>
-            <CountrySelector
-              label="Home Country"
-              value={formData.homeCountry}
-              onChange={(country) => setFormData(prev => ({ ...prev, homeCountry: country }))}
-              countries={originCountries}
-              error={errors.homeCountry}
-            />
+        ))}
 
-            <CountrySelector
-              label="Destination Country"
-              value={formData.destinationCountry}
-              onChange={(country) => setFormData(prev => ({ ...prev, destinationCountry: country }))}
-              countries={destinationCountries}
-              error={errors.destinationCountry}
-            />
-          </>
-        )}
-      </Card>
-      
-      {/* Education Information */}
-      <Card style={styles.section} variant="default">
-        <View style={styles.sectionHeader}>
-          <GraduationCap size={20} color={Colors.accent} />
-          <Text style={styles.sectionTitle}>Education</Text>
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text accessibilityRole="header" style={styles.sectionTitle}>
+              Account & Privacy
+            </Text>
+          </View>
+          <View style={styles.card}>
+            <Pressable onPress={() => router.push("/settings")} style={[styles.row, styles.rowDivider]}>
+              <Bell color="#7A7A8C" size={20} strokeWidth={1.7} />
+              <View style={styles.rowCopy}>
+                <Text style={styles.rowValue}>Notifications & privacy</Text>
+                <Text style={styles.rowLabel}>Password, notifications and app settings</Text>
+              </View>
+              <ArrowRight color="#7A7A8C" size={18} strokeWidth={1.8} />
+            </Pressable>
+            <Pressable disabled={isDeletingAccount} onPress={confirmDeleteAccount} style={styles.row}>
+              <Trash2 color={UI.danger} size={20} strokeWidth={1.7} />
+              <View style={styles.rowCopy}>
+                <Text style={[styles.rowValue, styles.danger]}>Delete account</Text>
+                <Text style={styles.rowLabel}>Permanently remove your account and data</Text>
+              </View>
+              {isDeletingAccount ? <ActivityIndicator color={UI.danger} /> : null}
+            </Pressable>
+          </View>
         </View>
-        
-        {renderEducationLevelSelector()}
-      </Card>
-      
-      {/* Career Goals */}
-      <Card style={styles.section} variant="default">
-        <View style={styles.sectionHeader}>
-          <Target size={20} color={Colors.success} />
-          <Text style={styles.sectionTitle}>Career Goals</Text>
-        </View>
-        
-        {renderCareerGoalSelector()}
-      </Card>
-      
-      {/* Save Button */}
-      <Button
-        title="Save Changes"
-        onPress={handleSave}
-        loading={isLoading}
-        icon={<Save size={20} color={Colors.white} />}
-        fullWidth
-        style={styles.saveButton}
+      </ScrollView>
+
+      <FieldEditor
+        countries={{ all: allCountries, origins, destinations }}
+        draft={draft}
+        field={editing}
+        onApply={apply}
+        onClose={() => setEditing(null)}
       />
-    </ScrollView>
+    </SafeAreaView>
   );
 }
 
+const fieldValue = (profile: ProfileDetails, key: FieldKey) =>
+  key === "budget"
+    ? [profile.budget_min, profile.budget_max]
+    : key === "gpa"
+      ? [profile.gpa, profile.gpa_scale]
+      : profile[key as keyof ProfileDetails];
+
+function Header({
+  dirty,
+  saving,
+  onBack,
+  onSave,
+}: {
+  dirty: boolean;
+  saving: boolean;
+  onBack: () => void;
+  onSave: () => void;
+}) {
+  return (
+    <View style={styles.header}>
+      <TouchableOpacity accessibilityLabel="Go back" hitSlop={8} onPress={onBack} style={styles.backButton}>
+        <ArrowLeft color={UI.text} size={20} strokeWidth={2.2} />
+      </TouchableOpacity>
+      <Text accessibilityRole="header" style={styles.headerTitle}>
+        Edit Profile
+      </Text>
+      <TouchableOpacity
+        accessibilityRole="button"
+        accessibilityState={{ disabled: !dirty || saving }}
+        disabled={!dirty || saving}
+        onPress={onSave}
+        style={[styles.saveButton, (!dirty || saving) && styles.saveButtonDisabled]}
+      >
+        {saving ? <ActivityIndicator color="#FFFFFF" size="small" /> : <Text style={styles.saveText}>Save</Text>}
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// field editor
+// ---------------------------------------------------------------------------
+
+const TITLES: Record<FieldKey, string> = {
+  full_name: "Full name",
+  date_of_birth: "Date of birth",
+  nationality: "Nationality",
+  current_city: "Current city",
+  email: "Email",
+  phone: "Phone number",
+  country_origin: "Home country",
+  current_school: "Current school",
+  graduation_year: "Graduation year",
+  gpa: "GPA",
+  test_scores: "Test scores",
+  level_of_study: "Degree level",
+  intended_majors: "Intended majors",
+  destination_country: "Main destination",
+  target_countries: "Also considering",
+  budget: "Budget range",
+  intake_term: "Intake term",
+};
+
+function FieldEditor({
+  field: requestedField,
+  draft,
+  countries,
+  onApply,
+  onClose,
+}: {
+  field: FieldKey | null;
+  draft: ProfileDetails;
+  countries: { all: Country[]; origins: Country[]; destinations: Country[] };
+  onApply: (patch: Partial<ProfileDetails>) => void;
+  onClose: () => void;
+}) {
+  // Keep rendering the last field while the sheet animates closed.
+  const [field, setField] = useState<FieldKey | null>(requestedField);
+  useEffect(() => {
+    if (requestedField) setField(requestedField);
+  }, [requestedField]);
+
+  // Local working copy so Cancel discards.
+  const [text, setText] = useState("");
+  const [secondary, setSecondary] = useState("");
+  const [dateValue, setDateValue] = useState<string | null>(null);
+  const [selection, setSelection] = useState<string[]>([]);
+  const [scale, setScale] = useState(4);
+  const [scores, setScores] = useState<TestScore[]>([]);
+  const [testType, setTestType] = useState(TEST_TYPES[0]);
+  const [query, setQuery] = useState("");
+  const [error, setError] = useState("");
+  const inputRef = useRef<TextInput>(null);
+
+  useEffect(() => {
+    const field = requestedField;
+    if (!field) return;
+    setError("");
+    setQuery("");
+    setSecondary("");
+    setText(
+      field === "full_name" || field === "current_city" || field === "email" || field === "phone" || field === "current_school"
+        ? ((draft[field] as string | null) ?? "")
+        : field === "gpa"
+          ? draft.gpa !== null
+            ? String(draft.gpa)
+            : ""
+          : "",
+    );
+    setScale(draft.gpa_scale ?? 4);
+    setDateValue(draft.date_of_birth);
+    setScores(draft.test_scores);
+    setSelection(
+      field === "intended_majors"
+        ? draft.intended_majors
+        : field === "target_countries"
+          ? draft.target_countries
+          : field === "nationality" || field === "country_origin" || field === "destination_country"
+            ? draft[field]
+              ? [draft[field] as string]
+              : []
+            : field === "graduation_year"
+              ? draft.graduation_year
+                ? [String(draft.graduation_year)]
+                : []
+              : field === "level_of_study"
+                ? draft.level_of_study
+                  ? [draft.level_of_study]
+                  : []
+                : field === "intake_term"
+                  ? draft.intake_term
+                    ? [draft.intake_term]
+                    : []
+                  : field === "budget"
+                    ? [`${draft.budget_min}-${draft.budget_max}`]
+                    : [],
+    );
+    // Only reset when a sheet opens, not when the draft changes underneath it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [requestedField]);
+
+  if (!field) return null;
+
+  const done = () => {
+    switch (field) {
+      case "full_name":
+        if (!text.trim()) return setError("Please enter your name.");
+        return onApply({ full_name: text.trim() });
+      case "email":
+        if (!EMAIL_RE.test(text.trim())) return setError("Enter a valid email address.");
+        return onApply({ email: text.trim() });
+      case "phone":
+        if (text.trim() && !PHONE_RE.test(text.trim())) return setError("Enter a valid phone number, e.g. +995 555 555 555.");
+        return onApply({ phone: text.trim() || null });
+      case "current_city":
+      case "current_school":
+        return onApply({ [field]: text.trim() || null });
+      case "date_of_birth":
+        return onApply({ date_of_birth: dateValue });
+      case "gpa": {
+        if (!text.trim()) return onApply({ gpa: null, gpa_scale: null });
+        const value = Number(text.replace(",", "."));
+        if (!Number.isFinite(value) || value < 0) return setError("Enter your GPA as a number.");
+        if (value > scale) return setError(`Your GPA can't be higher than the ${scale} scale.`);
+        return onApply({ gpa: Math.round(value * 100) / 100, gpa_scale: scale });
+      }
+      case "test_scores":
+        return onApply({ test_scores: scores });
+      case "nationality":
+      case "country_origin":
+      case "destination_country":
+        if (field !== "nationality" && !selection[0]) return setError("Please choose a country.");
+        return onApply({ [field]: selection[0] ?? null });
+      case "target_countries":
+        return onApply({ target_countries: selection });
+      case "intended_majors":
+        return onApply({ intended_majors: selection });
+      case "graduation_year":
+        return onApply({ graduation_year: selection[0] ? Number(selection[0]) : null });
+      case "level_of_study":
+        if (!selection[0]) return setError("Please choose a degree level.");
+        return onApply({ level_of_study: selection[0] as ProfileDetails["level_of_study"] });
+      case "intake_term":
+        return onApply({ intake_term: selection[0] ?? null });
+      case "budget": {
+        const option = BUDGET_OPTIONS.find((o) => `${o.min}-${o.max}` === selection[0]);
+        return onApply({ budget_min: option?.min ?? null, budget_max: option?.max ?? null });
+      }
+    }
+  };
+
+  const toggle = (value: string, multi: boolean) =>
+    setSelection((current) =>
+      multi
+        ? current.includes(value)
+          ? current.filter((v) => v !== value)
+          : [...current, value]
+        : current[0] === value
+          ? []
+          : [value],
+    );
+
+  const textField = (keyboardType: KeyboardTypeOptions, placeholder: string, autoCapitalize: "none" | "words" = "words") => (
+    <>
+      <TextInput
+        ref={inputRef}
+        autoCapitalize={autoCapitalize}
+        keyboardType={keyboardType}
+        onChangeText={(value) => {
+          setText(value);
+          if (error) setError("");
+        }}
+        onSubmitEditing={done}
+        placeholder={placeholder}
+        placeholderTextColor={UI.muted}
+        returnKeyType="done"
+        style={[styles.input, !!error && styles.inputError]}
+        value={text}
+      />
+      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+    </>
+  );
+
+  const countryList = (list: Country[], multi: boolean) => {
+    const needle = query.trim().toLowerCase();
+    const filtered = needle ? list.filter((c) => c.name.toLowerCase().includes(needle)) : list;
+    return (
+      <>
+        <View style={styles.searchBox}>
+          <Search color={UI.muted} size={17} />
+          <TextInput
+            autoCorrect={false}
+            onChangeText={setQuery}
+            placeholder="Search countries"
+            placeholderTextColor={UI.muted}
+            style={styles.searchInput}
+            value={query}
+          />
+        </View>
+        <FlatList
+          data={filtered}
+          keyboardShouldPersistTaps="handled"
+          keyExtractor={(country) => country.code}
+          renderItem={({ item }) => {
+            const active = selection.includes(item.code);
+            return (
+              <Pressable onPress={() => toggle(item.code, multi)} style={styles.optionRow}>
+                <Text style={[styles.optionText, active && styles.optionTextActive]}>
+                  {item.flag} {item.name}
+                </Text>
+                {active ? <Check color={UI.primary} size={18} strokeWidth={2.4} /> : null}
+              </Pressable>
+            );
+          }}
+          style={styles.optionList}
+        />
+        {error ? <Text style={styles.errorText}>{error}</Text> : null}
+      </>
+    );
+  };
+
+  const chipOptions = (options: { value: string; label: string; hint?: string }[], multi: boolean, stacked = false) => (
+    <View style={stacked ? styles.optionStack : styles.chips}>
+      {options.map((option) => {
+        const active = selection.includes(option.value);
+        return stacked ? (
+          <Pressable key={option.value} onPress={() => toggle(option.value, multi)} style={[styles.optionCard, active && styles.optionCardActive]}>
+            <View style={styles.optionCardCopy}>
+              <Text style={[styles.optionCardTitle, active && styles.optionTextActive]}>{option.label}</Text>
+              {option.hint ? <Text style={styles.optionCardHint}>{option.hint}</Text> : null}
+            </View>
+            <View style={[styles.radio, active && styles.radioActive]}>
+              {active ? <Check color="#FFFFFF" size={12} strokeWidth={3} /> : null}
+            </View>
+          </Pressable>
+        ) : (
+          <Pressable key={option.value} onPress={() => toggle(option.value, multi)} style={[styles.chip, active && styles.chipActive]}>
+            <Text style={[styles.chipText, active && styles.chipTextActive]}>{option.label}</Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+
+  const thisYear = new Date().getFullYear();
+  const minBirth = `${thisYear - 70}-01-01`;
+  const maxBirth = (() => {
+    const date = new Date();
+    date.setFullYear(date.getFullYear() - 12);
+    return toIsoDate(date);
+  })();
+
+  let body: React.ReactNode = null;
+  switch (field) {
+    case "full_name":
+      body = textField("default", "Your full name");
+      break;
+    case "current_city":
+      body = textField("default", "e.g. Tbilisi");
+      break;
+    case "current_school":
+      body = textField("default", "e.g. Tbilisi Public School #1");
+      break;
+    case "email":
+      body = textField("email-address", "you@example.com", "none");
+      break;
+    case "phone":
+      body = textField("phone-pad", "+995 555 555 555", "none");
+      break;
+    case "date_of_birth":
+      body = (
+        <CalendarPicker maxDate={maxBirth} minDate={minBirth} onChange={setDateValue} value={dateValue} yearNavigation />
+      );
+      break;
+    case "nationality":
+      body = countryList(countries.all, false);
+      break;
+    case "country_origin":
+      body = countryList(countries.origins, false);
+      break;
+    case "destination_country":
+      body = countryList(countries.destinations, false);
+      break;
+    case "target_countries":
+      body = countryList(countries.destinations, true);
+      break;
+    case "graduation_year":
+      body = chipOptions(
+        Array.from({ length: 14 }, (_, i) => String(thisYear - 6 + i)).map((year) => ({ value: year, label: year })),
+        false,
+      );
+      break;
+    case "gpa":
+      body = (
+        <>
+          {textField("decimal-pad", "e.g. 3.6")}
+          <Text style={styles.fieldLabel}>Scale</Text>
+          <View style={styles.chips}>
+            {GPA_SCALES.map((value) => (
+              <Pressable key={value} onPress={() => setScale(value)} style={[styles.chip, scale === value && styles.chipActive]}>
+                <Text style={[styles.chipText, scale === value && styles.chipTextActive]}>{value.toFixed(1)}</Text>
+              </Pressable>
+            ))}
+          </View>
+        </>
+      );
+      break;
+    case "test_scores":
+      body = (
+        <>
+          {scores.length ? (
+            <View style={styles.chips}>
+              {scores.map((score, index) => (
+                <View key={`${score.type}-${index}`} style={[styles.chip, styles.chipActive, styles.scoreChip]}>
+                  <Text style={[styles.chipText, styles.chipTextActive]}>
+                    {score.type} {score.score}
+                  </Text>
+                  <TouchableOpacity
+                    accessibilityLabel={`Remove ${score.type}`}
+                    hitSlop={8}
+                    onPress={() => setScores((current) => current.filter((_, i) => i !== index))}
+                  >
+                    <X color="#FFFFFF" size={14} strokeWidth={2.6} />
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
+          ) : (
+            <Text style={styles.helper}>Add the tests you've taken or plan to take.</Text>
+          )}
+          <Text style={styles.fieldLabel}>Add a score</Text>
+          <View style={styles.chips}>
+            {TEST_TYPES.map((type) => (
+              <Pressable key={type} onPress={() => setTestType(type)} style={[styles.chip, testType === type && styles.chipActive]}>
+                <Text style={[styles.chipText, testType === type && styles.chipTextActive]}>{type}</Text>
+              </Pressable>
+            ))}
+          </View>
+          <View style={styles.inlineAdd}>
+            <TextInput
+              keyboardType="decimal-pad"
+              onChangeText={(value) => {
+                setSecondary(value);
+                if (error) setError("");
+              }}
+              placeholder={`${testType} score`}
+              placeholderTextColor={UI.muted}
+              style={[styles.input, styles.inlineInput]}
+              value={secondary}
+            />
+            <TouchableOpacity
+              accessibilityLabel="Add score"
+              onPress={() => {
+                if (!secondary.trim()) return setError("Enter a score first.");
+                setScores((current) => [...current.filter((s) => s.type !== testType), { type: testType, score: secondary.trim() }]);
+                setSecondary("");
+              }}
+              style={styles.inlineButton}
+            >
+              <Plus color="#FFFFFF" size={20} strokeWidth={2.4} />
+            </TouchableOpacity>
+          </View>
+          {error ? <Text style={styles.errorText}>{error}</Text> : null}
+        </>
+      );
+      break;
+    case "level_of_study":
+      body = (
+        <>
+          {chipOptions(
+            DEGREE_OPTIONS.map((o) => ({ value: o.level, label: o.label, hint: o.hint })),
+            false,
+            true,
+          )}
+          {error ? <Text style={styles.errorText}>{error}</Text> : null}
+        </>
+      );
+      break;
+    case "intended_majors": {
+      const custom = selection.filter((m) => !MAJOR_SUGGESTIONS.includes(m));
+      body = (
+        <>
+          <View style={styles.inlineAdd}>
+            <TextInput
+              onChangeText={setSecondary}
+              onSubmitEditing={() => {
+                const value = secondary.trim();
+                if (value && !selection.includes(value)) setSelection((current) => [...current, value]);
+                setSecondary("");
+              }}
+              placeholder="Type a major and press return"
+              placeholderTextColor={UI.muted}
+              returnKeyType="done"
+              style={[styles.input, styles.inlineInput]}
+              value={secondary}
+            />
+          </View>
+          <ScrollView style={styles.optionList}>
+            {chipOptions([...custom, ...MAJOR_SUGGESTIONS].map((m) => ({ value: m, label: m })), true)}
+          </ScrollView>
+        </>
+      );
+      break;
+    }
+    case "budget":
+      body = chipOptions(
+        BUDGET_OPTIONS.map((o) => ({ value: `${o.min}-${o.max}`, label: o.label })),
+        false,
+        true,
+      );
+      break;
+    case "intake_term":
+      body = chipOptions(upcomingIntakes().map((term) => ({ value: term, label: term })), false);
+      break;
+  }
+
+  return (
+    <BottomSheet
+      footer={
+        <TouchableOpacity accessibilityRole="button" activeOpacity={0.85} onPress={done} style={styles.doneButton}>
+          <Text style={styles.doneText}>Done</Text>
+        </TouchableOpacity>
+      }
+      onClose={onClose}
+      onOpened={() => inputRef.current?.focus()}
+      title={TITLES[field]}
+      visible={!!requestedField}
+    >
+      {body}
+    </BottomSheet>
+  );
+}
+
+// ---------------------------------------------------------------------------
+
 const styles = StyleSheet.create({
   container: {
+    backgroundColor: UI.background,
     flex: 1,
-    backgroundColor: Colors.background,
+  },
+  loading: {
+    marginTop: 60,
+  },
+  loadError: {
+    color: UI.textSecondary,
+    fontSize: 14,
+    marginTop: 40,
+    paddingHorizontal: GUTTER,
+    textAlign: "center",
+  },
+  header: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingBottom: 10,
+    paddingHorizontal: GUTTER - 4,
+    paddingTop: 6,
+  },
+  backButton: {
+    alignItems: "center",
+    backgroundColor: UI.card,
+    borderRadius: 20,
+    height: 40,
+    justifyContent: "center",
+    width: 40,
+    ...CARD_SHADOW,
+  },
+  headerTitle: {
+    color: UI.text,
+    fontSize: 19,
+    fontWeight: "700",
+  },
+  saveButton: {
+    alignItems: "center",
+    backgroundColor: UI.primary,
+    borderRadius: RADIUS.pill,
+    height: 36,
+    justifyContent: "center",
+    minWidth: 66,
+    paddingHorizontal: 16,
+  },
+  saveButtonDisabled: {
+    backgroundColor: "#FFC2C2",
+  },
+  saveText: {
+    color: "#FFFFFF",
+    fontSize: 14.5,
+    fontWeight: "700",
   },
   content: {
-    padding: 20,
-    paddingBottom: 40,
+    paddingBottom: 60,
+    paddingHorizontal: GUTTER - 8,
   },
-  avatarCard: {
-    marginBottom: 20,
-    padding: 20,
-  },
-  avatarSection: {
-    flexDirection: "row",
+  profileCard: {
     alignItems: "center",
+    backgroundColor: UI.card,
+    borderRadius: 20,
+    flexDirection: "row",
+    gap: 14,
+    marginTop: 6,
+    padding: 16,
+    ...CARD_SHADOW,
   },
-  avatarInfo: {
-    marginLeft: 16,
+  avatar: {
+    alignItems: "center",
+    backgroundColor: UI.primarySoft,
+    borderRadius: 34,
+    height: 68,
+    justifyContent: "center",
+    overflow: "hidden",
+    width: 68,
+  },
+  avatarImage: {
+    height: "100%",
+    width: "100%",
+  },
+  avatarInitials: {
+    color: UI.primary,
+    fontSize: 24,
+    fontWeight: "800",
+  },
+  avatarBusy: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.35)",
+    justifyContent: "center",
+  },
+  profileCopy: {
     flex: 1,
   },
-  avatarTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: Colors.text,
-    marginBottom: 2,
+  profileName: {
+    color: UI.text,
+    fontSize: 17,
+    fontWeight: "700",
   },
-  avatarSubtitle: {
-    fontSize: 14,
-    color: Colors.lightText,
+  profileStatus: {
+    color: UI.textSecondary,
+    fontSize: 13,
+    marginTop: 2,
+  },
+  avatarActions: {
+    flexDirection: "row",
+    gap: 18,
+    marginTop: 10,
+  },
+  avatarChange: {
+    color: UI.primary,
+    fontSize: 12.5,
+    fontWeight: "600",
+  },
+  avatarRemove: {
+    color: UI.muted,
+    fontSize: 12.5,
+    fontWeight: "600",
+  },
+  completionCard: {
+    alignItems: "center",
+    backgroundColor: UI.card,
+    borderRadius: 20,
+    flexDirection: "row",
+    gap: 14,
+    marginTop: 12,
+    padding: 16,
+    ...CARD_SHADOW,
+  },
+  completionCopy: {
+    flex: 1,
+  },
+  completionTitleRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  completionTitle: {
+    color: UI.text,
+    fontSize: 14.5,
+    fontWeight: "700",
+  },
+  countPill: {
+    backgroundColor: UI.successSoft,
+    borderRadius: RADIUS.pill,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  countPillText: {
+    color: UI.success,
+    fontSize: 11,
+    fontWeight: "700",
+  },
+  track: {
+    backgroundColor: UI.track,
+    borderRadius: 4,
+    height: 6,
+    marginTop: 9,
+    overflow: "hidden",
+  },
+  trackFill: {
+    backgroundColor: UI.primary,
+    borderRadius: 4,
+    height: "100%",
+  },
+  completionNext: {
+    color: UI.muted,
+    fontSize: 12.5,
+    marginTop: 7,
+  },
+  completionNextField: {
+    color: UI.primary,
+    fontWeight: "600",
   },
   section: {
-    marginBottom: 20,
-    padding: 20,
+    marginTop: 22,
   },
   sectionHeader: {
-    flexDirection: "row",
     alignItems: "center",
-    marginBottom: 16,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 10,
+    paddingHorizontal: 4,
   },
   sectionTitle: {
-    fontSize: 18,
+    color: UI.text,
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  sectionEdit: {
+    color: UI.primary,
+    fontSize: 13,
     fontWeight: "600",
-    color: Colors.text,
-    marginLeft: 8,
   },
-  bioInput: {
-    height: 80,
-    textAlignVertical: "top",
+  card: {
+    backgroundColor: UI.card,
+    borderRadius: 18,
+    paddingHorizontal: 14,
+    ...CARD_SHADOW,
   },
-  selectorContainer: {
-    marginBottom: 16,
+  row: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 14,
+    paddingVertical: 13,
   },
-  selectorLabel: {
-    fontSize: 14,
+  rowDivider: {
+    borderBottomColor: UI.hairline,
+    borderBottomWidth: 1,
+  },
+  rowPressed: {
+    opacity: 0.7,
+  },
+  rowCopy: {
+    flex: 1,
+  },
+  rowLabel: {
+    color: UI.muted,
+    fontSize: 12,
+  },
+  rowChanged: {
+    color: UI.primary,
+    fontWeight: "600",
+  },
+  rowValue: {
+    color: UI.text,
+    fontSize: 15,
     fontWeight: "500",
-    color: Colors.text,
-    marginBottom: 12,
+    marginTop: 2,
   },
-  optionsGrid: {
+  rowPlaceholder: {
+    color: UI.primary,
+    fontWeight: "600",
+  },
+  danger: {
+    color: UI.danger,
+  },
+  input: {
+    backgroundColor: UI.background,
+    borderColor: UI.border,
+    borderRadius: 14,
+    borderWidth: 1,
+    color: UI.text,
+    fontSize: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+  },
+  inputError: {
+    borderColor: UI.danger,
+  },
+  errorText: {
+    color: UI.danger,
+    fontSize: 12.5,
+    marginTop: 8,
+  },
+  helper: {
+    color: UI.textSecondary,
+    fontSize: 14,
+  },
+  fieldLabel: {
+    color: UI.textSecondary,
+    fontSize: 13,
+    fontWeight: "600",
+    marginBottom: 10,
+    marginTop: 18,
+  },
+  chips: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 8,
   },
-  optionButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: Colors.surface,
+  chip: {
+    backgroundColor: UI.background,
+    borderColor: UI.border,
+    borderRadius: RADIUS.pill,
     borderWidth: 1,
-    borderColor: Colors.border,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
   },
-  optionButtonActive: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
+  chipActive: {
+    backgroundColor: UI.primary,
+    borderColor: UI.primary,
   },
-  optionButtonText: {
-    fontSize: 14,
-    fontWeight: "500",
-    color: Colors.text,
+  chipText: {
+    color: UI.textSecondary,
+    fontSize: 13.5,
+    fontWeight: "600",
   },
-  optionButtonTextActive: {
-    color: Colors.white,
+  chipTextActive: {
+    color: "#FFFFFF",
   },
-  saveButton: {
-    marginTop: 20,
-  },
-  errorText: {
-    fontSize: 16,
-    color: Colors.text,
-    textAlign: "center",
-    marginTop: 20,
-  },
-  loadingContainer: {
-    padding: 24,
+  scoreChip: {
     alignItems: "center",
+    flexDirection: "row",
+    gap: 8,
   },
-  loadingText: {
+  inlineAdd: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 10,
+    marginBottom: 12,
     marginTop: 12,
-    fontSize: 14,
-    color: Colors.lightText,
+  },
+  inlineInput: {
+    flex: 1,
+  },
+  inlineButton: {
+    alignItems: "center",
+    backgroundColor: UI.primary,
+    borderRadius: 14,
+    height: 50,
+    justifyContent: "center",
+    width: 50,
+  },
+  searchBox: {
+    alignItems: "center",
+    backgroundColor: UI.background,
+    borderColor: UI.border,
+    borderRadius: 14,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: 8,
+    height: 46,
+    paddingHorizontal: 12,
+  },
+  searchInput: {
+    color: UI.text,
+    flex: 1,
+    fontSize: 15,
+  },
+  optionList: {
+    marginTop: 8,
+    maxHeight: 340,
+  },
+  optionRow: {
+    alignItems: "center",
+    borderBottomColor: UI.hairline,
+    borderBottomWidth: 1,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingVertical: 13,
+  },
+  optionText: {
+    color: UI.text,
+    fontSize: 15.5,
+  },
+  optionTextActive: {
+    color: UI.primary,
+    fontWeight: "700",
+  },
+  optionStack: {
+    gap: 10,
+  },
+  optionCard: {
+    alignItems: "center",
+    backgroundColor: UI.background,
+    borderColor: UI.border,
+    borderRadius: 14,
+    borderWidth: 1,
+    flexDirection: "row",
+    padding: 14,
+  },
+  optionCardActive: {
+    backgroundColor: UI.primarySoft,
+    borderColor: UI.primary,
+  },
+  optionCardCopy: {
+    flex: 1,
+  },
+  optionCardTitle: {
+    color: UI.text,
+    fontSize: 15,
+    fontWeight: "600",
+  },
+  optionCardHint: {
+    color: UI.muted,
+    fontSize: 12.5,
+    marginTop: 2,
+  },
+  radio: {
+    alignItems: "center",
+    borderColor: "#C9C9D4",
+    borderRadius: 11,
+    borderWidth: 1.5,
+    height: 22,
+    justifyContent: "center",
+    width: 22,
+  },
+  radioActive: {
+    backgroundColor: UI.primary,
+    borderColor: UI.primary,
+  },
+  doneButton: {
+    alignItems: "center",
+    backgroundColor: UI.primary,
+    borderRadius: 28,
+    height: 54,
+    justifyContent: "center",
+  },
+  doneText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "700",
   },
 });

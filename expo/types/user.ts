@@ -17,6 +17,8 @@ export interface Task {
   completed: boolean;
   completedDate?: string;
   notes?: string;
+  /** Short guidance for the task (generated checklists store one). */
+  hint?: string;
   dueDate?: string;
   isAcceptanceTask?: boolean; // Marks tasks that unlock after acceptance
   requiresAcceptance?: boolean; // Tasks that need acceptance to be unlocked

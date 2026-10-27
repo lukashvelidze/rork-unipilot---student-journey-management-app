@@ -10,11 +10,13 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import {
+  Camera,
   Check,
   ChevronRight,
   Edit3,
   GraduationCap,
   Settings,
+  Sparkles,
 } from "lucide-react-native";
 import Svg, { Circle } from "react-native-svg";
 import Avatar from "@/components/Avatar";
@@ -305,6 +307,42 @@ export default function ProfileScreen() {
           </View>
           <ChevronRight color={palette.text} size={17} strokeWidth={1.7} />
         </TouchableOpacity>
+
+        <TouchableOpacity
+          accessibilityRole="button"
+          activeOpacity={0.75}
+          onPress={() => router.push("/toolkit" as any)}
+          style={[styles.destinationsCard, styles.stackedCard, { backgroundColor: palette.card }]}
+        >
+          <Sparkles color={CORAL} size={22} strokeWidth={1.8} />
+          <View style={styles.destinationsCopy}>
+            <Text style={[styles.actionTitle, { color: palette.text }]}>
+              Your toolkit
+            </Text>
+            <Text style={[styles.actionSubtitle, { color: palette.muted }]}>
+              Interview simulator, document vault and more
+            </Text>
+          </View>
+          <ChevronRight color={palette.text} size={17} strokeWidth={1.7} />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          accessibilityRole="button"
+          activeOpacity={0.75}
+          onPress={() => router.push("/memories" as any)}
+          style={[styles.destinationsCard, styles.stackedCard, { backgroundColor: palette.card }]}
+        >
+          <Camera color={MINT} size={22} strokeWidth={1.8} />
+          <View style={styles.destinationsCopy}>
+            <Text style={[styles.actionTitle, { color: palette.text }]}>
+              Memories
+            </Text>
+            <Text style={[styles.actionSubtitle, { color: palette.muted }]}>
+              Moments from your journey
+            </Text>
+          </View>
+          <ChevronRight color={palette.text} size={17} strokeWidth={1.7} />
+        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );
@@ -507,6 +545,9 @@ const styles = StyleSheet.create({
     gap: 14,
     marginTop: 16,
     padding: 16,
+  },
+  stackedCard: {
+    marginTop: 12,
   },
   destinationsCopy: {
     flex: 1,

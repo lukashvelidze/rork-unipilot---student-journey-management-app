@@ -258,12 +258,13 @@ function RootLayoutNav() {
             options={ONBOARDING_TRANSITION}
           />
           <Stack.Screen name="(tabs)" options={APP_REVEAL_TRANSITION} />
-          <Stack.Screen name="journey/[id]" options={{ title: "Stage Details" }} />
+          <Stack.Screen name="journey/[id]" options={{ headerShown: false }} />
           <Stack.Screen name="documents/new" options={{ title: "Add Document" }} />
           <Stack.Screen name="documents/[id]" options={{ title: "Document Details" }} />
+          <Stack.Screen name="memories/index" options={{ headerShown: false }} />
           <Stack.Screen name="memories/new" options={{ title: "New Memory" }} />
           <Stack.Screen name="memories/[id]" options={{ title: "Memory Details" }} />
-          <Stack.Screen name="profile/edit" options={{ title: "Edit Profile" }} />
+          <Stack.Screen name="profile/edit" options={{ headerShown: false }} />
           <Stack.Screen name="profile/destinations" options={{ title: "My Destinations" }} />
           <Stack.Screen name="profile/personal" options={{ title: "Personal Information" }} />
           <Stack.Screen name="profile/education" options={{ title: "Education" }} />
@@ -273,7 +274,9 @@ function RootLayoutNav() {
           <Stack.Screen name="profile/goals" options={{ title: "Career Goals" }} />
           <Stack.Screen name="settings/index" options={{ title: "Settings" }} />
           <Stack.Screen name="premium/index" options={{ title: "UniPilot Premium", headerShown: true }} />
-          <Stack.Screen name="premium/interview-simulator" options={{ title: "Interview Simulator", headerShown: true }} />
+          <Stack.Screen name="premium/interview-simulator" options={{ headerShown: false }} />
+          <Stack.Screen name="toolkit/index" options={{ headerShown: false }} />
+          <Stack.Screen name="resources/library" options={{ headerShown: false }} />
           <Stack.Screen name="payment-success" options={{ title: "Payment Success", headerShown: true }} />
           <Stack.Screen name="unipilot-ai/index" options={{ title: "AI Assistant" }} />
         </Stack>

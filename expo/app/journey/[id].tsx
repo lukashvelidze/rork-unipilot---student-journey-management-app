@@ -1,748 +1,951 @@
-import React, { useState, useEffect } from "react";
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert } from "react-native";
+import React, { useEffect, useRef, useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  Animated,
+  LayoutAnimation,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  UIManager,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter, useLocalSearchParams, Stack } from "expo-router";
-import { LinearGradient } from "expo-linear-gradient";
-import { CheckSquare, Square, Award, Clock, Calendar, Star, Trophy, Sparkles, Target, BookOpen, Plane, GraduationCap, Briefcase, Crown } from "lucide-react-native";
-import { useColors } from "@/hooks/useColors";
-import Card from "@/components/Card";
-import ProgressBar from "@/components/ProgressBar";
-import Button from "@/components/Button";
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import { Image } from "expo-image";
+import * as Haptics from "expo-haptics";
+import {
+  ArrowLeft,
+  BookOpen,
+  Briefcase,
+  Check,
+  ChevronDown,
+  FileText,
+  GraduationCap,
+  Home as HomeIcon,
+  Lightbulb,
+  Lock,
+  Plane,
+  Sparkles,
+  Target,
+  Trophy,
+} from "lucide-react-native";
+import ProgressRing from "@/components/ui/ProgressRing";
+import { CARD_SHADOW, GUTTER, RADIUS, UI } from "@/constants/design";
+import { useAppBack } from "@/hooks/useAppBack";
+import { canAccessJourneyTier, formatJourneyTierLabel } from "@/lib/journeyProgress";
+import {
+  formatDeadline,
+  getUniversityLevelDetails,
+  upcomingDeadline,
+} from "@/lib/journeyRoutes";
+import { openManageSubscription } from "@/lib/subscriptionManager";
+import { formatDue, setChecklistTaskCompleted, STAGE_LABELS } from "@/lib/tasks";
 import { useJourneyStore } from "@/store/journeyStore";
 import { useUserStore } from "@/store/userStore";
 import { JourneyStage, Task } from "@/types/user";
-import { supabase } from "@/lib/supabase";
-import { openManageSubscription } from "@/lib/subscriptionManager";
 
-const stageInfo = {
-  research: {
-    title: "Research Phase",
-    description: "Discover your perfect university and program",
-    icon: BookOpen,
-    color: "#FF6B6B",
-    gradient: ["#FF6B6B", "#FF8E8E"] as const,
-  },
-  application: {
-    title: "Application Phase", 
-    description: "Submit compelling applications to your chosen universities",
-    icon: Target,
-    color: "#4ECDC4",
-    gradient: ["#4ECDC4", "#6ED5D0"] as const,
-  },
-  visa: {
-    title: "Visa Process",
-    description: "Secure your student visa for studying abroad",
-    icon: Plane,
-    color: "#45B7D1",
-    gradient: ["#45B7D1", "#6BC5D8"] as const,
-  },
-  pre_departure: {
-    title: "Pre-Departure",
-    description: "Prepare for your journey to a new country",
-    icon: Calendar,
-    color: "#96CEB4",
-    gradient: ["#96CEB4", "#A8D5C1"] as const,
-  },
-  arrival: {
-    title: "Arrival",
-    description: "Settle into your new home and university",
-    icon: Star,
-    color: "#FFEAA7",
-    gradient: ["#FFEAA7", "#FFECB3"] as const,
-  },
-  academic: {
-    title: "Academic Journey",
-    description: "Excel in your studies and university life",
-    icon: GraduationCap,
-    color: "#DDA0DD",
-    gradient: ["#DDA0DD", "#E6B3E6"] as const,
-  },
-  career: {
-    title: "Career Development",
-    description: "Build your professional future",
-    icon: Briefcase,
-    color: "#98D8C8",
-    gradient: ["#98D8C8", "#A8DDD1"] as const,
-  },
+if (Platform.OS === "android") {
+  UIManager.setLayoutAnimationEnabledExperimental?.(true);
+}
+
+const ACCEPTANCE_TASK = "🎉 Receive acceptance letter";
+const POST_ACCEPTANCE_TASKS = [
+  "Compare offers",
+  "Accept offer",
+  "Decline other offers",
+  "Request official enrollment",
+  "Register for orientation",
+  "Apply for on-campus housing",
+  "Submit final transcripts",
+];
+const DEADLINE_STAGES = new Set<JourneyStage>(["research", "application"]);
+
+const stageIcons: Record<JourneyStage, typeof BookOpen> = {
+  research: BookOpen,
+  application: Target,
+  visa: Plane,
+  pre_departure: FileText,
+  arrival: HomeIcon,
+  academic: GraduationCap,
+  career: Briefcase,
+};
+
+const STAGE_TIPS: Record<JourneyStage, string> = {
+  research:
+    "Shortlist 6–10 programmes across reach, match and safe options. Look beyond rankings: location, cost, teaching style and graduate outcomes matter just as much.",
+  application:
+    "Start 3–4 months before the deadline. Draft your personal statement early, give referees at least a month's notice, and submit a few days before the cut-off.",
+  visa:
+    "Start as soon as you have your offer. Gather financial evidence early, book your appointment ahead of peak season and practise explaining your study plans.",
+  pre_departure:
+    "Keep originals and digital copies of every document. Arrange insurance, accommodation and money access before you fly.",
+  arrival:
+    "Go to every orientation session, register locally on time, and join a club in your first two weeks; it's the easiest moment to meet people.",
+  academic:
+    "Learn the grading system early and use office hours. Universities expect independent study, so plan your weekly schedule from the start.",
+  career:
+    "Visit the careers service in your first term. Check your visa's work rules, and build experience through part-time roles, societies and internships.",
+};
+
+/** Generic advice for tasks that don't carry a generated hint. */
+const fallbackAdvice = (title: string) => {
+  const t = title.toLowerCase();
+  if (t.includes("personal statement") || t.includes("essay"))
+    return "Tell your own story: what drew you to this field, what you've done about it, and why this programme is the next step. Be specific and authentic.";
+  if (t.includes("recommendation") || t.includes("reference"))
+    return "Ask people who know your work well, give them 4–6 weeks' notice, and share your CV and a short summary of what you're applying for.";
+  if (t.includes("ielts") || t.includes("toefl") || t.includes("test"))
+    return "Book your test 2–3 months ahead, practise with official materials, and leave time for a retake before the deadline.";
+  if (t.includes("transcript"))
+    return "Official transcripts can take 2–4 weeks. Request them early and check whether a certified translation is needed.";
+  if (t.includes("visa"))
+    return "Read the official requirements carefully, prepare every document in the requested format, and book your appointment early.";
+  if (t.includes("accommodation") || t.includes("housing"))
+    return "University housing fills quickly, so apply as soon as it opens. Compare total cost, commute time and contract length.";
+  if (t.includes("flight"))
+    return "Book 2–3 months ahead and aim to arrive a few days before orientation so you can settle in.";
+  return "Check the official requirements carefully, and contact the university's admissions team if anything is unclear.";
 };
 
 export default function StageDetailScreen() {
   const router = useRouter();
-  const { id } = useLocalSearchParams();
-  const Colors = useColors();
-  const { 
-    journeyProgress, 
-    updateTaskCompletion, 
-    markAcceptance,
-    addRecentMilestone 
-  } = useJourneyStore();
+  const handleBack = useAppBack("/(tabs)");
+  const { id } = useLocalSearchParams<{ id: string }>();
   const { user } = useUserStore();
+  const {
+    journeyProgress,
+    journeys,
+    activeJourneyKey,
+    updateTaskCompletion,
+    markAcceptance,
+    addRecentMilestone,
+  } = useJourneyStore();
 
-  const checklistId = id as string;
-  const stage =
-    journeyProgress.find(s => s.id === checklistId) ||
-    journeyProgress.find(s => s.stage === checklistId);
-  const stageCategory: JourneyStage = stage?.stage || "pre_departure";
-  const stageMeta = stageInfo[stageCategory] || stageInfo.pre_departure;
-  const info = {
-    ...stageMeta,
-    title: stage?.title || stageMeta.title,
-    description: stage?.description || stageMeta.description,
-  };
+  const [expanded, setExpanded] = useState<string | null>(null);
+  const [pending, setPending] = useState<Set<string>>(new Set());
+  const [logoFailed, setLogoFailed] = useState(false);
 
-  const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
-  const [acceptanceLetterChecked, setAcceptanceLetterChecked] = useState<boolean>(false);
+  const stageIndex = journeyProgress.findIndex((s) => s.id === id || s.stage === id);
+  const stage = stageIndex >= 0 ? journeyProgress[stageIndex] : null;
+  const activeJourney = journeys.find((j) => j.key === activeJourneyKey) || journeys[0] || null;
+  const university = activeJourney?.journey?.university ?? null;
 
-  const allowedTiers: Record<string, string[]> = {
-    free: ["free"],
-    basic: ["free", "basic"],
-    standard: ["free", "basic", "standard"],
-    premium: ["free", "basic", "standard", "premium"],
-    pro: ["free", "basic", "standard", "premium"],
-  };
+  const userTier = user?.subscriptionTier || "free";
+  const locked = !!stage && !canAccessJourneyTier(userTier, stage.subscriptionTier);
 
-  const resolvedUserTier = (user?.subscriptionTier === "pro" ? "premium" : (user?.subscriptionTier || "free"));
-  const canAccessStage = (tier?: string) => {
-    if (!tier) return true;
-    const normalizedTier = tier === "pro" ? "premium" : tier;
-    return (allowedTiers[resolvedUserTier] || allowedTiers.free).includes(normalizedTier);
-  };
+  const completedCount = stage?.tasks.filter((t) => t.completed).length ?? 0;
+  const total = stage?.tasks.length ?? 0;
+  const percent = total ? Math.round((completedCount / total) * 100) : 0;
+  const stageDone = total > 0 && completedCount === total;
 
-  const isLocked = stage?.subscriptionTier ? !canAccessStage(stage.subscriptionTier) : false;
+  // Celebrate the moment the last task gets ticked (not when opening a finished stage).
+  const wasDoneRef = useRef(stageDone);
+  const celebrate = useRef(new Animated.Value(stageDone ? 1 : 0)).current;
+  useEffect(() => {
+    if (stageDone && !wasDoneRef.current) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => null);
+      celebrate.setValue(0);
+      Animated.spring(celebrate, { toValue: 1, friction: 6, tension: 80, useNativeDriver: true }).start();
+      if (stage) addRecentMilestone({ type: "stage_complete", stage: stage.stage, timestamp: Date.now() });
+    } else if (!stageDone) {
+      celebrate.setValue(0);
+    }
+    wasDoneRef.current = stageDone;
+  }, [addRecentMilestone, celebrate, stage, stageDone]);
 
   if (!stage) {
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: Colors.background }]} edges={['top']}>
-        <Text style={[styles.errorText, { color: Colors.text }]}>Stage not found</Text>
-      </SafeAreaView>
-    );
-  }
-
-  if (isLocked) {
-    return (
-      <SafeAreaView style={[styles.container, { backgroundColor: Colors.background }]} edges={['top']}>
-        <View style={styles.lockedContainer}>
-          <Text style={[styles.lockedTitle, { color: Colors.text }]}>Upgrade Required</Text>
-          <Text style={[styles.lockedDescription, { color: Colors.lightText }]}>
-            This checklist is available on a higher plan. Upgrade to unlock these tasks.
-          </Text>
-          <Button
-            title="Manage Subscription"
-            onPress={() => {
-              openManageSubscription()
-                .catch((error) => {
-                  console.error("Open subscription manager failed", error);
-                  router.push("/settings");
-                });
-            }}
-            fullWidth
-          />
+      <SafeAreaView style={styles.container}>
+        <Stack.Screen options={{ headerShown: false }} />
+        <Header onBack={handleBack} title="Stage" />
+        <View style={styles.missing}>
+          <Text style={styles.missingTitle}>We couldn't find this stage</Text>
+          <Text style={styles.missingText}>It may belong to another university. Go back and pick it again.</Text>
         </View>
       </SafeAreaView>
     );
   }
 
-  const handleTaskToggle = async (taskId: string, currentCompleted: boolean) => {
-    const task = stage.tasks.find(t => t.id === taskId);
-    if (!task) return;
+  const Icon = stageIcons[stage.stage] || FileText;
+  const stageLabel = STAGE_LABELS[stage.stage] ?? "Stage";
 
-    const newCompleted = !currentCompleted;
+  const hasAcceptance =
+    stage.hasAcceptance || stage.tasks.some((t) => t.title.includes(ACCEPTANCE_TASK) && t.completed);
+  const visibleTasks = stage.tasks.filter((task) => {
+    if (stage.stage !== "application") return true;
+    const postAcceptance = POST_ACCEPTANCE_TASKS.some((title) => task.title.includes(title));
+    return !postAcceptance || hasAcceptance;
+  });
+  const nextTask = visibleTasks.find((t) => !t.completed) ?? null;
 
-    // Update in Supabase
+  const deadline = DEADLINE_STAGES.has(stage.stage) && university
+    ? upcomingDeadline(
+        getUniversityLevelDetails(university, activeJourney?.journey?.education_level)?.applicationDeadline,
+      )
+    : null;
+
+  // ---------------------------------------------------------------------
+
+  const persistToggle = async (task: Task, next: boolean) => {
+    setPending((keys) => new Set(keys).add(task.id));
+    updateTaskCompletion(stage.id, task.id, next);
     try {
-      const { data: { user: authUser } } = await supabase.auth.getUser();
-      if (!authUser) return;
-
-      // Check if progress exists
-      const { data: existingProgress } = await supabase
-        .from("user_progress")
-        .select("*")
-        .eq("user_id", authUser.id)
-        .eq("checklist_item_id", taskId)
-        .single();
-
-      if (existingProgress) {
-        // Update existing progress
-        const { error } = await supabase
-          .from("user_progress")
-          .update({
-            is_completed: newCompleted,
-            value: newCompleted ? {} : null,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("user_id", authUser.id)
-          .eq("checklist_item_id", taskId);
-
-        if (error) {
-          console.error("Error updating progress:", error);
-          Alert.alert("Error", "Failed to update task. Please try again.");
-          return;
-        }
-      } else {
-        // Insert new progress
-        const { error } = await supabase
-          .from("user_progress")
-          .insert([{
-            user_id: authUser.id,
-            checklist_item_id: taskId,
-            is_completed: newCompleted,
-            value: newCompleted ? {} : null,
-          }]);
-
-        if (error) {
-          console.error("Error creating progress:", error);
-          Alert.alert("Error", "Failed to update task. Please try again.");
-          return;
-        }
-      }
-
-      // Check if this is an acceptance task
-      if (task.title.includes("🎉 Receive acceptance letter")) {
-        Alert.alert(
-          "🎉 Congratulations!",
-          "You've been accepted! This will unlock additional tasks in your journey.",
-          [
-            { text: "Cancel", style: "cancel" },
-            { 
-              text: "Mark as Complete", 
-              onPress: () => {
-                updateTaskCompletion(stage.id, taskId, newCompleted);
-                markAcceptance(stage.id);
-                setAcceptanceLetterChecked(true);
-                
-                // Add celebration milestone
-                addRecentMilestone({
-                  type: "stage_complete",
-                  stage: stageCategory,
-                  timestamp: Date.now()
-                });
-              }
-            }
-          ]
-        );
-        return;
-      }
-
-      // Update local store
-      updateTaskCompletion(stage.id, taskId, newCompleted);
+      await setChecklistTaskCompleted(task.id, next);
     } catch (error) {
-      console.error("Error toggling task:", error);
-      Alert.alert("Error", "Something went wrong. Please try again.");
+      console.error("Could not update task:", error);
+      updateTaskCompletion(stage.id, task.id, !next);
+      Alert.alert("Couldn't update task", "Please check your connection and try again.");
+    } finally {
+      setPending((keys) => {
+        const copy = new Set(keys);
+        copy.delete(task.id);
+        return copy;
+      });
     }
   };
 
-  const toggleTaskExpansion = (taskId: string) => {
-    const newExpanded = new Set(expandedTasks);
-    if (newExpanded.has(taskId)) {
-      newExpanded.delete(taskId);
-    } else {
-      newExpanded.add(taskId);
+  const toggle = (task: Task) => {
+    if (pending.has(task.id)) return;
+    const next = !task.completed;
+    if (next) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => null);
+    else Haptics.selectionAsync().catch(() => null);
+
+    if (next && task.title.includes(ACCEPTANCE_TASK)) {
+      Alert.alert("🎉 Congratulations!", "You've been accepted! This unlocks your enrolment tasks.", [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Mark as complete",
+          onPress: async () => {
+            await persistToggle(task, true);
+            markAcceptance(stage.id);
+          },
+        },
+      ]);
+      return;
     }
-    setExpandedTasks(newExpanded);
+    persistToggle(task, next);
   };
 
-  const getTaskAdvice = (task: Task): string => {
-    const title = task.title.toLowerCase();
-    
-    if (title.includes("research universities")) {
-      return "Use university ranking websites, read student reviews, and check program curricula. Consider factors like location, cost, and career outcomes.";
-    }
-    if (title.includes("personal statement")) {
-      return "Tell your unique story. Explain your motivations, experiences, and goals. Be authentic and specific about why you chose this program.";
-    }
-    if (title.includes("recommendation letters")) {
-      return "Ask professors, employers, or mentors who know you well. Give them at least 4-6 weeks notice and provide your resume and draft personal statement.";
-    }
-    if (title.includes("standardized tests")) {
-      return "Book your test 2-3 months in advance. Use official prep materials and consider taking practice tests. You can retake if needed.";
-    }
-    if (title.includes("transcripts")) {
-      return "Request official transcripts from all institutions you've attended. This can take 2-4 weeks, so plan ahead.";
-    }
-    if (title.includes("visa")) {
-      return "Start the visa process immediately after receiving your acceptance letter. Gather all required documents and book your appointment early.";
-    }
-    if (title.includes("accommodation")) {
-      return "Apply for university housing early as it fills up quickly. Consider location, cost, and amenities. Off-campus options may be cheaper.";
-    }
-    if (title.includes("flight")) {
-      return "Book flights 2-3 months in advance for better prices. Consider arriving a few days before orientation to settle in.";
-    }
-    
-    return "Complete this task to move forward in your journey. Check the requirements carefully and don't hesitate to contact the university if you have questions.";
+  const toggleExpanded = (taskId: string) => {
+    LayoutAnimation.configureNext(LayoutAnimation.create(200, "easeInEaseOut", "opacity"));
+    setExpanded((current) => (current === taskId ? null : taskId));
   };
 
-  const completedTasks = stage.tasks.filter(task => task.completed).length;
-  const totalTasks = stage.tasks.length;
-  const hasAcceptance = stage.hasAcceptance || stage.tasks.some(t => t.title.includes("🎉 Receive acceptance letter") && t.completed);
-
-  const shouldDisplayTask = (task: Task) => {
-    if (stageCategory === "application") {
-      const isPostAcceptanceTask =
-        task.title.includes("Compare offers") ||
-        task.title.includes("Accept offer") ||
-        task.title.includes("Decline other offers") ||
-        task.title.includes("Request official enrollment") ||
-        task.title.includes("Register for orientation") ||
-        task.title.includes("Apply for on-campus housing") ||
-        task.title.includes("Submit final transcripts");
-
-      if (isPostAcceptanceTask) {
-        return hasAcceptance || task.title.includes("🎉 Receive acceptance letter");
-      }
-    }
-
-    return true;
-  };
-
-  const checklistSections = (stage.checklists && stage.checklists.length > 0
-      ? stage.checklists
-      : [{ id: stage.id || stage.stage, title: stage.title || info.title, items: stage.tasks }]
-    )
-    .map((section) => ({
-      ...section,
-      items: section.items.filter(shouldDisplayTask),
-    }))
-    .filter((section) => section.items.length > 0);
-
-  const hasVisibleTasks = checklistSections.length > 0;
+  // ---------------------------------------------------------------------
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: Colors.background }]} edges={['bottom']}>
-      <Stack.Screen 
-        options={{ 
-          title: info.title,
-          headerTransparent: false,
-          headerShadowVisible: false,
-          headerTintColor: Colors.text,
-          headerTitleStyle: { fontWeight: '600', color: Colors.text },
-        }} 
-      />
-      
-      {/* Header */}
-      <View style={styles.header}>
-        <LinearGradient
-          colors={info.gradient}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.headerGradient}
-        >
-          <View style={styles.headerContent}>
-            <View style={styles.headerIcon}>
-              <info.icon size={24} color="#FFFFFF" />
+    <SafeAreaView edges={["top"]} style={styles.container}>
+      <Stack.Screen options={{ headerShown: false }} />
+      <Header onBack={handleBack} title={`Step ${stageIndex + 1} of ${journeyProgress.length}`} />
+
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        {/* Hero */}
+        <View style={styles.hero}>
+          <View style={styles.heroTop}>
+            <View style={[styles.stageIcon, stageDone && styles.stageIconDone]}>
+              {stageDone ? (
+                <Check color={UI.success} size={22} strokeWidth={2.6} />
+              ) : (
+                <Icon color="#FFFFFF" size={22} strokeWidth={2} />
+              )}
             </View>
-            <Text style={styles.headerTitle}>{info.title}</Text>
-            <Text style={styles.headerDescription}>{info.description}</Text>
-            
-            <View style={styles.progressSection}>
-              <ProgressBar progress={stage.progress} height={8} animated={true} />
-              <View style={styles.progressStats}>
-                <Text style={styles.progressText}>
-                  {completedTasks} of {totalTasks} tasks completed
-                </Text>
-                <Text style={styles.progressPercentage}>{stage.progress}%</Text>
+            <View style={styles.heroBadges}>
+              <View style={styles.stagePill}>
+                <Text style={styles.stagePillText}>{stageLabel.toUpperCase()}</Text>
               </View>
+              {stage.subscriptionTier && stage.subscriptionTier !== "free" ? (
+                <View style={[styles.stagePill, styles.tierPill]}>
+                  <Sparkles color="#B7791F" size={10} strokeWidth={2.6} />
+                  <Text style={[styles.stagePillText, styles.tierPillText]}>
+                    {formatJourneyTierLabel(stage.subscriptionTier).toUpperCase()}
+                  </Text>
+                </View>
+              ) : null}
             </View>
-            
-            {stage.completed && (
-              <View style={styles.completedBadge}>
-                <Trophy size={16} color="#FFFFFF" />
-                <Text style={styles.completedText}>Stage Complete!</Text>
-              </View>
-            )}
+            {university?.logo_url && !logoFailed ? (
+              <Image
+                contentFit="contain"
+                onError={() => setLogoFailed(true)}
+                source={{ uri: university.logo_url }}
+                style={styles.heroLogo}
+              />
+            ) : null}
           </View>
-        </LinearGradient>
-      </View>
 
-      {/* Tasks List */}
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {hasAcceptance && stageCategory === "application" && (
-          <Card style={[styles.acceptanceCard, { backgroundColor: Colors.lightBackground, borderColor: Colors.success }]}>
-            <View style={styles.acceptanceContent}>
-              <Sparkles size={24} color={Colors.success} />
-              <View style={styles.acceptanceText}>
-                <Text style={[styles.acceptanceTitle, { color: Colors.success }]}>
-                  🎉 Congratulations on your acceptance!
-                </Text>
-                <Text style={[styles.acceptanceDescription, { color: Colors.text }]}>
-                  New tasks have been unlocked to help you prepare for enrollment.
-                </Text>
-              </View>
+          <Text accessibilityRole="header" style={styles.heroTitle}>
+            {stage.title}
+          </Text>
+          {stage.description ? <Text style={styles.heroDescription}>{stage.description}</Text> : null}
+
+          <View style={styles.heroDivider} />
+
+          <View style={styles.heroStats}>
+            <ProgressRing
+              color={stageDone ? UI.success : UI.primary}
+              fillColor={stageDone ? UI.successSoft : UI.primaryRing}
+              labelSize={14}
+              progress={percent}
+              size={56}
+              trackColor={stageDone ? "#BFEDE7" : "#FFD9D9"}
+            />
+            <View style={styles.heroStatCopy}>
+              <Text style={styles.heroStatTitle}>
+                {stageDone ? "Stage complete" : `${completedCount} of ${total} tasks done`}
+              </Text>
+              <Text numberOfLines={1} style={styles.heroStatText}>
+                {deadline
+                  ? `Application deadline ${formatDeadline(deadline)}`
+                  : university
+                    ? university.name
+                    : stageDone
+                      ? "Great work, on to the next step"
+                      : `${total - completedCount} left in this stage`}
+              </Text>
             </View>
-          </Card>
-        )}
-
-        <View style={styles.tasksContainer}>
-          {!hasVisibleTasks ? (
-            <Card style={[styles.emptyStateCard, { backgroundColor: Colors.card }]}>
-              <View style={styles.emptyStateContent}>
-                <Text style={[styles.emptyStateTitle, { color: Colors.text }]}>No tasks available</Text>
-                <Text style={[styles.emptyStateDescription, { color: Colors.lightText }]}>
-                  Tasks will appear here as you progress through your journey.
-                </Text>
-              </View>
-            </Card>
-          ) : (
-            checklistSections.map((section) => (
-              <View key={section.id} style={styles.checklistSection}>
-                <Text style={[styles.checklistTitle, { color: Colors.text }]}>{section.title}</Text>
-                {section.items.map((task) => (
-                  <Card key={task.id} style={[styles.taskCard, { backgroundColor: Colors.card }]}>
-                    <TouchableOpacity
-                      style={styles.taskHeader}
-                      onPress={() => handleTaskToggle(task.id, task.completed)}
-                      activeOpacity={0.7}
-                    >
-                      <View style={styles.taskLeft}>
-                        <View style={[styles.taskCheckbox, { borderColor: task.completed ? Colors.success : Colors.border }]}>
-                          {task.completed ? (
-                            <CheckSquare size={20} color={Colors.success} />
-                          ) : (
-                            <Square size={20} color={Colors.lightText} />
-                          )}
-                        </View>
-                        <View style={styles.taskContent}>
-                          <Text style={[
-                            styles.taskTitle, 
-                            { color: task.completed ? Colors.lightText : Colors.text },
-                            task.completed && styles.taskTitleCompleted
-                          ]}>
-                            {task.title}
-                          </Text>
-                          {task.completed && task.completedDate && (
-                            <Text style={[styles.taskCompletedDate, { color: Colors.success }]}>
-                              Completed on {new Date(task.completedDate).toLocaleDateString()}
-                            </Text>
-                          )}
-                        </View>
-                      </View>
-                      <TouchableOpacity
-                        onPress={() => toggleTaskExpansion(task.id)}
-                        style={styles.expandButton}
-                      >
-                        <Text style={[styles.expandButtonText, { color: Colors.primary }]}>
-                          {expandedTasks.has(task.id) ? "Less" : "Help"}
-                        </Text>
-                      </TouchableOpacity>
-                    </TouchableOpacity>
-                    
-                    {expandedTasks.has(task.id) && (
-                      <View style={[styles.taskAdvice, { backgroundColor: Colors.lightBackground }]}>
-                        <Text style={[styles.taskAdviceText, { color: Colors.text }]}>
-                          💡 {getTaskAdvice(task)}
-                        </Text>
-                      </View>
-                    )}
-                  </Card>
-                ))}
-              </View>
-            ))
-          )}
+          </View>
         </View>
 
-        {/* Stage Tips */}
-        <Card style={[styles.tipsCard, { backgroundColor: Colors.card }]}>
-          <Text style={[styles.tipsTitle, { color: Colors.text }]}>💡 Stage Tips</Text>
-          <Text style={[styles.tipsText, { color: Colors.lightText }]}>
-            {getStageSpecificTips(stageCategory)}
-          </Text>
-        </Card>
+        {locked ? (
+          <LockedCard tier={stage.subscriptionTier} onUpgrade={() => openManageSubscription().catch(() => router.push("/premium" as any))} />
+        ) : (
+          <>
+            {stageDone ? (
+              <Animated.View
+                style={[
+                  styles.doneCard,
+                  {
+                    opacity: celebrate,
+                    transform: [{ scale: celebrate.interpolate({ inputRange: [0, 1], outputRange: [0.92, 1] }) }],
+                  },
+                ]}
+              >
+                <View style={styles.doneIcon}>
+                  <Trophy color="#FFFFFF" size={20} strokeWidth={2.2} />
+                </View>
+                <View style={styles.doneCopy}>
+                  <Text style={styles.doneTitle}>{stageLabel} stage complete!</Text>
+                  <Text style={styles.doneText}>Every task here is done. Your roadmap has moved on.</Text>
+                </View>
+              </Animated.View>
+            ) : null}
 
-        <View style={styles.bottomPadding} />
+            {hasAcceptance && stage.stage === "application" ? (
+              <View style={styles.acceptanceCard}>
+                <Sparkles color={UI.success} size={18} strokeWidth={2.2} />
+                <Text style={styles.acceptanceText}>
+                  Congratulations on your offer! Your enrolment tasks are now unlocked.
+                </Text>
+              </View>
+            ) : null}
+
+            <View style={styles.sectionHeader}>
+              <Text accessibilityRole="header" style={styles.sectionTitle}>
+                Tasks
+              </Text>
+              <Text style={styles.sectionMeta}>
+                {completedCount}/{total}
+              </Text>
+            </View>
+
+            {visibleTasks.length === 0 ? (
+              <View style={styles.emptyCard}>
+                <Text style={styles.emptyText}>Tasks will appear here as you progress through your journey.</Text>
+              </View>
+            ) : (
+              <View style={styles.listCard}>
+                {visibleTasks.map((task, index) => (
+                  <TaskItem
+                    key={task.id}
+                    due={deadline && !task.completed ? formatDue(deadline) : null}
+                    expanded={expanded === task.id}
+                    isLast={index === visibleTasks.length - 1}
+                    isNext={task.id === nextTask?.id}
+                    onExpand={() => toggleExpanded(task.id)}
+                    onToggle={() => toggle(task)}
+                    pending={pending.has(task.id)}
+                    step={index + 1}
+                    task={task}
+                  />
+                ))}
+              </View>
+            )}
+
+            <View style={styles.tipCard}>
+              <View style={styles.tipIcon}>
+                <Lightbulb color="#B7791F" size={18} strokeWidth={2} />
+              </View>
+              <View style={styles.tipCopy}>
+                <Text style={styles.tipTitle}>Tip for this stage</Text>
+                <Text style={styles.tipText}>{STAGE_TIPS[stage.stage] ?? STAGE_TIPS.pre_departure}</Text>
+              </View>
+            </View>
+          </>
+        )}
       </ScrollView>
+
+      {!locked && nextTask ? (
+        <View style={styles.footer}>
+          <TouchableOpacity
+            accessibilityHint="Marks the next task in this stage as done"
+            accessibilityRole="button"
+            activeOpacity={0.85}
+            disabled={pending.has(nextTask.id)}
+            onPress={() => toggle(nextTask)}
+            style={styles.footerButton}
+          >
+            {pending.has(nextTask.id) ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <>
+                <Check color="#FFFFFF" size={18} strokeWidth={2.6} />
+                <Text numberOfLines={1} style={styles.footerButtonText}>
+                  Mark next task done
+                </Text>
+              </>
+            )}
+          </TouchableOpacity>
+        </View>
+      ) : null}
     </SafeAreaView>
   );
 }
 
-function getStageSpecificTips(stage: JourneyStage): string {
-  switch (stage) {
-    case "research":
-      return "Start early and cast a wide net. Research at least 8-12 universities to have good options. Consider factors beyond rankings like location, culture, and career services.";
-    case "application":
-      return "Quality over quantity - focus on creating strong applications for universities that truly fit your goals. Start applications 3-4 months before deadlines.";
-    case "visa":
-      return "Begin visa process immediately after acceptance. Gather all documents in advance and practice for your interview. Show strong ties to your home country.";
-    case "pre_departure":
-      return "Create a comprehensive checklist and start preparations 2-3 months early. Research your destination's culture, weather, and local customs.";
-    case "arrival":
-      return "Attend all orientation sessions and be open to making new friends. Join clubs and activities early to build your social network.";
-    case "academic":
-      return "Develop good study habits early and don't hesitate to use university resources like tutoring centers and office hours with professors.";
-    case "career":
-      return "Start career planning early in your studies. Build relationships with professors, join professional organizations, and gain relevant experience through internships.";
-    default:
-      return "Stay organized and don't hesitate to ask for help when needed. Every step brings you closer to your goals!";
-  }
+// ---------------------------------------------------------------------------
+
+function Header({ title, onBack }: { title: string; onBack: () => void }) {
+  return (
+    <View style={styles.header}>
+      <TouchableOpacity accessibilityLabel="Go back" hitSlop={8} onPress={onBack} style={styles.backButton}>
+        <ArrowLeft color={UI.text} size={20} strokeWidth={2.2} />
+      </TouchableOpacity>
+      <Text style={styles.headerTitle}>{title}</Text>
+      <View style={styles.backButtonSpacer} />
+    </View>
+  );
 }
+
+function TaskItem({
+  task,
+  step,
+  isNext,
+  isLast,
+  expanded,
+  pending,
+  due,
+  onToggle,
+  onExpand,
+}: {
+  task: Task;
+  step: number;
+  isNext: boolean;
+  isLast: boolean;
+  expanded: boolean;
+  pending: boolean;
+  due: string | null;
+  onToggle: () => void;
+  onExpand: () => void;
+}) {
+  const advice = task.hint || fallbackAdvice(task.title);
+  return (
+    <View style={[styles.task, !isLast && styles.taskDivider, isNext && styles.taskNext]}>
+      <View style={styles.taskRow}>
+        <Pressable
+          accessibilityLabel={task.completed ? `Mark ${task.title} as not done` : `Mark ${task.title} as done`}
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: task.completed, busy: pending }}
+          hitSlop={10}
+          onPress={onToggle}
+          style={[styles.checkbox, task.completed && styles.checkboxDone, isNext && !task.completed && styles.checkboxNext]}
+        >
+          {pending ? (
+            <ActivityIndicator color={task.completed ? "#FFFFFF" : UI.primary} size="small" style={styles.checkboxSpinner} />
+          ) : task.completed ? (
+            <Check color="#FFFFFF" size={14} strokeWidth={3} />
+          ) : (
+            <Text style={[styles.stepNumber, isNext && styles.stepNumberNext]}>{step}</Text>
+          )}
+        </Pressable>
+
+        <Pressable accessibilityHint="Shows guidance" accessibilityRole="button" onPress={onExpand} style={styles.taskBody}>
+          {isNext && !task.completed ? <Text style={styles.nextLabel}>UP NEXT</Text> : null}
+          <Text style={[styles.taskTitle, task.completed && styles.taskTitleDone]}>{task.title}</Text>
+          {task.completed && task.completedDate ? (
+            <Text style={styles.taskMetaDone}>
+              Done {new Date(task.completedDate).toLocaleDateString(undefined, { day: "numeric", month: "short" })}
+            </Text>
+          ) : due ? (
+            <Text style={styles.taskMeta}>{due}</Text>
+          ) : null}
+        </Pressable>
+
+        <TouchableOpacity
+          accessibilityLabel={expanded ? "Hide guidance" : "Show guidance"}
+          hitSlop={10}
+          onPress={onExpand}
+          style={[styles.expandButton, expanded && styles.expandButtonOpen]}
+        >
+          <ChevronDown color={expanded ? UI.primary : UI.muted} size={16} strokeWidth={2.4} />
+        </TouchableOpacity>
+      </View>
+
+      {expanded ? (
+        <View style={styles.advice}>
+          <Lightbulb color="#B7791F" size={15} strokeWidth={2} style={styles.adviceIcon} />
+          <Text style={styles.adviceText}>{advice}</Text>
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+function LockedCard({ tier, onUpgrade }: { tier?: string; onUpgrade: () => void }) {
+  return (
+    <View style={styles.lockedCard}>
+      <View style={styles.lockedIcon}>
+        <Lock color={UI.primary} size={22} strokeWidth={2} />
+      </View>
+      <Text style={styles.lockedTitle}>Part of the {formatJourneyTierLabel(tier)} plan</Text>
+      <Text style={styles.lockedText}>
+        Upgrade to unlock the step-by-step tasks and guidance for this stage.
+      </Text>
+      <TouchableOpacity activeOpacity={0.85} onPress={onUpgrade} style={styles.lockedButton}>
+        <Text style={styles.footerButtonText}>View plans</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+// ---------------------------------------------------------------------------
 
 const styles = StyleSheet.create({
   container: {
+    backgroundColor: UI.background,
     flex: 1,
-  },
-  errorText: {
-    fontSize: 16,
-    textAlign: "center",
-    marginTop: 50,
-  },
-  lockedContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: 24,
-  },
-  lockedTitle: {
-    fontSize: 20,
-    fontWeight: "700",
-    marginBottom: 8,
-    textAlign: "center",
-  },
-  lockedDescription: {
-    fontSize: 14,
-    textAlign: "center",
-    marginBottom: 16,
   },
   header: {
-    marginBottom: 8,
-  },
-  headerGradient: {
-    padding: 16,
-    paddingTop: 16,
-    paddingBottom: 16,
-    position: "relative",
-  },
-  headerContent: {
     alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingBottom: 10,
+    paddingHorizontal: GUTTER - 4,
+    paddingTop: 6,
   },
-  headerIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
+  backButton: {
+    alignItems: "center",
+    backgroundColor: UI.card,
+    borderRadius: 20,
+    height: 40,
     justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 8,
+    width: 40,
+    ...CARD_SHADOW,
+  },
+  backButtonSpacer: {
+    width: 40,
   },
   headerTitle: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: "#FFFFFF",
-    marginBottom: 4,
-    textAlign: "center",
-  },
-  headerDescription: {
-    fontSize: 14,
-    color: "rgba(255, 255, 255, 0.9)",
-    textAlign: "center",
-    marginBottom: 12,
-  },
-  progressSection: {
-    width: "100%",
-    marginBottom: 8,
-  },
-  progressStats: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginTop: 8,
-  },
-  progressText: {
-    fontSize: 14,
-    color: "rgba(255, 255, 255, 0.9)",
-  },
-  progressPercentage: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#FFFFFF",
-  },
-  completedBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-  },
-  completedText: {
+    color: UI.textSecondary,
     fontSize: 14,
     fontWeight: "600",
-    color: "#FFFFFF",
-    marginLeft: 8,
   },
   content: {
+    paddingBottom: 130,
+    paddingHorizontal: GUTTER,
+  },
+  missing: {
+    alignItems: "center",
+    padding: GUTTER,
+    paddingTop: 60,
+  },
+  missingTitle: {
+    color: UI.text,
+    fontSize: 17,
+    fontWeight: "700",
+  },
+  missingText: {
+    color: UI.textSecondary,
+    fontSize: 14,
+    lineHeight: 20,
+    marginTop: 6,
+    textAlign: "center",
+  },
+  hero: {
+    backgroundColor: UI.card,
+    borderRadius: 22,
+    marginTop: 6,
+    padding: 18,
+    ...CARD_SHADOW,
+  },
+  heroTop: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 10,
+  },
+  stageIcon: {
+    alignItems: "center",
+    backgroundColor: UI.primary,
+    borderRadius: 16,
+    height: 44,
+    justifyContent: "center",
+    width: 44,
+  },
+  stageIconDone: {
+    backgroundColor: UI.successSoft,
+  },
+  heroBadges: {
     flex: 1,
-    paddingHorizontal: 16,
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+  },
+  stagePill: {
+    alignItems: "center",
+    alignSelf: "flex-start",
+    backgroundColor: UI.primarySoft,
+    borderRadius: RADIUS.pill,
+    flexDirection: "row",
+    gap: 4,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+  },
+  stagePillText: {
+    color: UI.primary,
+    fontSize: 10.5,
+    fontWeight: "800",
+    letterSpacing: 0.4,
+  },
+  tierPill: {
+    backgroundColor: UI.warningSoft,
+  },
+  tierPillText: {
+    color: "#B7791F",
+  },
+  heroLogo: {
+    height: 30,
+    width: 84,
+  },
+  heroTitle: {
+    color: UI.text,
+    fontSize: 23,
+    fontWeight: "800",
+    letterSpacing: -0.4,
+    lineHeight: 29,
+    marginTop: 16,
+  },
+  heroDescription: {
+    color: UI.textSecondary,
+    fontSize: 14,
+    lineHeight: 20,
+    marginTop: 6,
+  },
+  heroDivider: {
+    backgroundColor: UI.hairline,
+    height: 1,
+    marginVertical: 16,
+  },
+  heroStats: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 14,
+  },
+  heroStatCopy: {
+    flex: 1,
+  },
+  heroStatTitle: {
+    color: UI.text,
+    fontSize: 15.5,
+    fontWeight: "700",
+  },
+  heroStatText: {
+    color: UI.muted,
+    fontSize: 12.5,
+    marginTop: 3,
+  },
+  doneCard: {
+    alignItems: "center",
+    backgroundColor: UI.successSoft,
+    borderRadius: RADIUS.tile,
+    flexDirection: "row",
+    gap: 12,
+    marginTop: 14,
+    padding: 14,
+  },
+  doneIcon: {
+    alignItems: "center",
+    backgroundColor: UI.success,
+    borderRadius: 20,
+    height: 40,
+    justifyContent: "center",
+    width: 40,
+  },
+  doneCopy: {
+    flex: 1,
+  },
+  doneTitle: {
+    color: "#14776E",
+    fontSize: 15,
+    fontWeight: "800",
+  },
+  doneText: {
+    color: "#2B7C74",
+    fontSize: 12.5,
+    marginTop: 2,
   },
   acceptanceCard: {
-    marginBottom: 16,
-    borderWidth: 2,
-    borderLeftWidth: 6,
-  },
-  acceptanceContent: {
-    flexDirection: "row",
     alignItems: "center",
+    backgroundColor: UI.successSoft,
+    borderRadius: RADIUS.tile,
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 14,
+    padding: 14,
   },
   acceptanceText: {
+    color: "#14776E",
     flex: 1,
-    marginLeft: 12,
-  },
-  acceptanceTitle: {
-    fontSize: 16,
+    fontSize: 13.5,
     fontWeight: "600",
-    marginBottom: 4,
+    lineHeight: 19,
   },
-  acceptanceDescription: {
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  tasksContainer: {
-    marginBottom: 24,
-  },
-  checklistSection: {
-    marginBottom: 20,
-  },
-  checklistTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    marginBottom: 8,
-  },
-  taskCard: {
-    marginBottom: 12,
-    borderRadius: 12,
-  },
-  taskHeader: {
-    flexDirection: "row",
+  sectionHeader: {
     alignItems: "center",
+    flexDirection: "row",
     justifyContent: "space-between",
-    padding: 16,
+    marginBottom: 12,
+    marginTop: 24,
   },
-  taskLeft: {
-    flexDirection: "row",
+  sectionTitle: {
+    color: UI.text,
+    fontSize: 18,
+    fontWeight: "700",
+  },
+  sectionMeta: {
+    color: UI.muted,
+    fontSize: 13.5,
+    fontWeight: "600",
+  },
+  listCard: {
+    backgroundColor: UI.card,
+    borderRadius: RADIUS.tile,
+    overflow: "hidden",
+    ...CARD_SHADOW,
+  },
+  task: {
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  taskDivider: {
+    borderBottomColor: UI.hairline,
+    borderBottomWidth: 1,
+  },
+  taskNext: {
+    backgroundColor: "#FFF8F8",
+  },
+  taskRow: {
     alignItems: "center",
+    flexDirection: "row",
+    gap: 12,
+  },
+  checkbox: {
+    alignItems: "center",
+    borderColor: "#D5D5DE",
+    borderRadius: 14,
+    borderWidth: 1.5,
+    height: 28,
+    justifyContent: "center",
+    width: 28,
+  },
+  checkboxNext: {
+    borderColor: UI.primary,
+  },
+  checkboxDone: {
+    backgroundColor: UI.success,
+    borderColor: UI.success,
+  },
+  checkboxSpinner: {
+    transform: [{ scale: 0.7 }],
+  },
+  stepNumber: {
+    color: UI.muted,
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  stepNumberNext: {
+    color: UI.primary,
+  },
+  taskBody: {
     flex: 1,
   },
-  taskCheckbox: {
-    marginRight: 12,
-    borderWidth: 2,
-    borderRadius: 4,
-  },
-  taskContent: {
-    flex: 1,
+  nextLabel: {
+    color: UI.primary,
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 0.6,
+    marginBottom: 2,
   },
   taskTitle: {
-    fontSize: 16,
+    color: UI.text,
+    fontSize: 15,
     fontWeight: "500",
-    lineHeight: 22,
+    lineHeight: 21,
   },
-  taskTitleCompleted: {
+  taskTitleDone: {
+    color: UI.muted,
     textDecorationLine: "line-through",
   },
-  taskCompletedDate: {
+  taskMeta: {
+    color: UI.muted,
     fontSize: 12,
-    marginTop: 4,
-    fontWeight: "500",
+    marginTop: 3,
+  },
+  taskMetaDone: {
+    color: UI.success,
+    fontSize: 12,
+    fontWeight: "600",
+    marginTop: 3,
   },
   expandButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    alignItems: "center",
+    backgroundColor: "#F3F3F7",
+    borderRadius: 14,
+    height: 28,
+    justifyContent: "center",
+    width: 28,
+  },
+  expandButtonOpen: {
+    backgroundColor: UI.primarySoft,
+    transform: [{ rotate: "180deg" }],
+  },
+  advice: {
+    backgroundColor: "#FFFAEF",
     borderRadius: 12,
-    backgroundColor: "rgba(255, 107, 107, 0.1)",
-  },
-  expandButtonText: {
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  taskAdvice: {
-    marginHorizontal: 16,
-    marginBottom: 16,
-    padding: 16,
-    borderRadius: 8,
-  },
-  taskAdviceText: {
-    fontSize: 14,
-    lineHeight: 20,
-    marginBottom: 12,
-  },
-  premiumButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 16,
-    alignSelf: "flex-start",
-  },
-  premiumButtonText: {
-    color: "#FFFFFF",
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  tipsCard: {
-    marginBottom: 24,
-  },
-  tipsTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    marginBottom: 12,
-  },
-  tipsText: {
-    fontSize: 14,
-    lineHeight: 20,
-    marginBottom: 16,
-  },
-  premiumCTA: {
-    marginTop: 8,
-  },
-  bottomPadding: {
-    height: 32,
-  },
-  premiumNoticeCard: {
-    marginBottom: 16,
-    borderWidth: 2,
-    borderLeftWidth: 6,
-  },
-  premiumNoticeContent: {
     flexDirection: "row",
-    alignItems: "flex-start",
+    gap: 8,
+    marginLeft: 40,
+    marginTop: 12,
+    padding: 12,
   },
-  premiumNoticeText: {
+  adviceIcon: {
+    marginTop: 1,
+  },
+  adviceText: {
+    color: "#5C4A1E",
     flex: 1,
-    marginLeft: 12,
+    fontSize: 13.5,
+    lineHeight: 19,
   },
-  premiumNoticeTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    marginBottom: 4,
+  emptyCard: {
+    backgroundColor: UI.card,
+    borderRadius: RADIUS.tile,
+    padding: 20,
+    ...CARD_SHADOW,
   },
-  premiumNoticeDescription: {
+  emptyText: {
+    color: UI.textSecondary,
     fontSize: 14,
     lineHeight: 20,
+    textAlign: "center",
+  },
+  tipCard: {
+    backgroundColor: UI.card,
+    borderColor: UI.border,
+    borderRadius: RADIUS.tile,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: 12,
+    marginTop: 18,
+    padding: 16,
+  },
+  tipIcon: {
+    alignItems: "center",
+    backgroundColor: UI.warningSoft,
+    borderRadius: 12,
+    height: 36,
+    justifyContent: "center",
+    width: 36,
+  },
+  tipCopy: {
+    flex: 1,
+  },
+  tipTitle: {
+    color: UI.text,
+    fontSize: 14.5,
+    fontWeight: "700",
+  },
+  tipText: {
+    color: UI.textSecondary,
+    fontSize: 13.5,
+    lineHeight: 19,
+    marginTop: 4,
+  },
+  lockedCard: {
+    alignItems: "center",
+    backgroundColor: UI.card,
+    borderRadius: RADIUS.card,
+    marginTop: 18,
+    padding: 24,
+    ...CARD_SHADOW,
+  },
+  lockedIcon: {
+    alignItems: "center",
+    backgroundColor: UI.primarySoft,
+    borderRadius: 24,
+    height: 48,
+    justifyContent: "center",
     marginBottom: 12,
+    width: 48,
   },
-  upgradeButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 16,
-    alignSelf: "flex-start",
-  },
-  upgradeButtonText: {
-    color: "#FFFFFF",
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  emptyStateCard: {
-    padding: 32,
-    alignItems: "center",
-  },
-  emptyStateContent: {
-    alignItems: "center",
-  },
-  emptyStateTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    marginTop: 16,
-    marginBottom: 8,
+  lockedTitle: {
+    color: UI.text,
+    fontSize: 17,
+    fontWeight: "700",
     textAlign: "center",
   },
-  emptyStateDescription: {
+  lockedText: {
+    color: UI.textSecondary,
     fontSize: 14,
-    textAlign: "center",
     lineHeight: 20,
+    marginTop: 6,
+    textAlign: "center",
+  },
+  lockedButton: {
+    alignItems: "center",
+    alignSelf: "stretch",
+    backgroundColor: UI.primary,
+    borderRadius: 26,
+    height: 52,
+    justifyContent: "center",
+    marginTop: 18,
+  },
+  footer: {
+    backgroundColor: UI.background,
+    bottom: 0,
+    left: 0,
+    paddingBottom: 30,
+    paddingHorizontal: GUTTER,
+    paddingTop: 10,
+    position: "absolute",
+    right: 0,
+  },
+  footerButton: {
+    alignItems: "center",
+    backgroundColor: UI.primary,
+    borderRadius: 28,
+    flexDirection: "row",
+    gap: 8,
+    height: 56,
+    justifyContent: "center",
+    shadowColor: UI.primary,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+  },
+  footerButtonText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "700",
   },
 });

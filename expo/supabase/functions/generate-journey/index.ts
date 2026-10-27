@@ -480,8 +480,13 @@ const toUpcomingDeadline = (value: unknown): string | null => {
   return `${year}${monthDay}`;
 };
 
+// Grounded answers can embed search citation markers such as "[3, 7]".
+const stripCitations = (text: string) => text.replace(/\s*\[\d+(?:,\s*\d+)*\]/g, "");
+
 const trimmedOrNull = (value: unknown, maxLength = 500): string | null =>
-  typeof value === "string" && value.trim() ? value.trim().slice(0, maxLength) : null;
+  typeof value === "string" && stripCitations(value).trim()
+    ? stripCitations(value).trim().slice(0, maxLength)
+    : null;
 
 async function generateUniversityJourney(input: {
   destinationName: string;

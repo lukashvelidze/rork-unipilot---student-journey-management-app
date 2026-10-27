@@ -23,6 +23,7 @@ import Card from "@/components/Card";
 import { useUserStore } from "@/store/userStore";
 import { supabase } from "@/lib/supabase";
 import { useSignOut } from "@/hooks/useSignOut";
+import { useDeleteAccount } from "@/hooks/useDeleteAccount";
 import { openAppleSubscriptionManager } from "@/lib/iap";
 import { getPaddleCustomerId } from "@/lib/paddle-customer";
 import { buildPaddleCustomerPortalUrl } from "@/lib/paddle";
@@ -47,7 +48,7 @@ export default function SettingsScreen() {
   const { user, isPremium } = useUserStore();
   const signOut = useSignOut();
   const { isDarkMode, toggleDarkMode } = useThemeStore();
-  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+  const { confirmDeleteAccount: handleDeleteAccount, isDeletingAccount } = useDeleteAccount();
   const [notifications, setNotifications] = useState(true);
   const [autoDownload, setAutoDownload] = useState(false);
   const isIosDevice = Platform.OS === "ios";
@@ -63,82 +64,6 @@ export default function SettingsScreen() {
           style: "destructive",
           onPress: async () => {
             await signOut();
-          },
-        },
-      ]
-    );
-  };
-  
-  const handleDeleteAccount = () => {
-    if (isDeletingAccount) return;
-
-    Alert.alert(
-      "Delete Account",
-      "This action cannot be undone. All your data will be permanently deleted.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: async () => {
-            if (isDeletingAccount) return;
-            setIsDeletingAccount(true);
-            try {
-              const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
-              if (authError || !authUser) {
-                throw new Error(authError?.message || "Not authenticated");
-              }
-
-              const userId = authUser.id;
-
-              // Delete user-owned rows first
-              const deletions = [
-                supabase.from("memories").delete().eq("user_id", userId),
-                supabase.from("documents").delete().eq("user_id", userId),
-                supabase.from("user_progress").delete().eq("user_id", userId),
-                supabase.from("user_subscriptions").delete().eq("user_id", userId),
-                supabase.from("user_subscription_status").delete().eq("user_id", userId),
-              ];
-              const deletionResults = await Promise.allSettled(deletions);
-              deletionResults.forEach((result) => {
-                if (result.status === "rejected") {
-                  console.warn("Failed to delete user data:", result.reason);
-                }
-              });
-
-              // Remove profile entry last
-              await supabase.from("profiles").delete().eq("id", userId);
-
-              const { data: { session } } = await supabase.auth.getSession();
-
-              if (!session) {
-                throw new Error("Missing auth session");
-              }
-
-              if (session.expires_at && session.expires_at * 1000 < Date.now() + 60000) {
-                const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
-                if (refreshError || !refreshed?.session) {
-                  throw refreshError || new Error("Failed to refresh auth session");
-                }
-              }
-
-              const { error: deleteError } = await supabase.functions.invoke("delete-user");
-              if (deleteError) {
-                throw deleteError;
-              }
-
-              // Sign out and clear local state
-              await signOut();
-
-              Alert.alert("Account Deleted", "Your account has been deleted.", [
-                { text: "OK" },
-              ]);
-            } catch (error: any) {
-              console.error("Delete account error:", error);
-              Alert.alert("Error", error?.message || "Failed to delete account. Please try again.");
-            } finally {
-              setIsDeletingAccount(false);
-            }
           },
         },
       ]
