@@ -1,7 +1,8 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -9,72 +10,38 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Check, GraduationCap, MapPin, Plus, Star, Trash2 } from "lucide-react-native";
+import { Stack, useFocusEffect, useRouter } from "expo-router";
+import { Image } from "expo-image";
+import { ArrowLeft, ChevronRight, GraduationCap, Plus, Star, Trash2 } from "lucide-react-native";
+import { CARD_SHADOW, GUTTER, RADIUS, UI } from "@/constants/design";
 import { useAppBack } from "@/hooks/useAppBack";
-import { useColors } from "@/hooks/useColors";
-import Button from "@/components/Button";
-import Card from "@/components/Card";
-import CountrySelector from "@/components/CountrySelector";
 import { getCountries, supabase } from "@/lib/supabase";
-import { useUserStore } from "@/store/userStore";
 import { Country } from "@/types/user";
 import {
+  countryFlag,
   deleteUserJourney,
-  fetchUniversitiesForCountry,
   fetchUserJourneys,
-  offersStudyLevel,
-  requestMissingJourneyRoutes,
   setPrimaryJourney,
-  targetStudyLevel,
-  UniversityRecord,
   UserJourneyWithUniversity,
-  upsertUserJourneys,
 } from "@/lib/journeyRoutes";
 
+/** Every university the student follows, grouped by country. */
 export default function DestinationsScreen() {
+  const router = useRouter();
   const handleBack = useAppBack("/(tabs)/profile");
-  const Colors = useColors();
-  const { user } = useUserStore();
 
   const [journeys, setJourneys] = useState<UserJourneyWithUniversity[]>([]);
   const [destinationCountries, setDestinationCountries] = useState<Country[]>([]);
-  const [profileFields, setProfileFields] = useState<{
-    origin: string | null;
-    level: string | null;
-    visaType: string | null;
-  }>({ origin: null, level: null, visaType: null });
-
-  const [addCountry, setAddCountry] = useState<Country | null>(null);
-  const [addUniversities, setAddUniversities] = useState<UniversityRecord[]>([]);
-  const [addSelectedIds, setAddSelectedIds] = useState<Set<string>>(new Set());
-  const [loadingUniversities, setLoadingUniversities] = useState(false);
-
   const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
 
   const load = useCallback(async () => {
     try {
-      setIsLoading(true);
       const {
         data: { user: authUser },
       } = await supabase.auth.getUser();
       if (!authUser) return;
 
-      const [{ data: profile }, journeyRows, countries] = await Promise.all([
-        supabase
-          .from("profiles")
-          .select("country_origin, level_of_study, visa_type")
-          .eq("id", authUser.id)
-          .single(),
-        fetchUserJourneys(authUser.id),
-        getCountries(),
-      ]);
-
-      setProfileFields({
-        origin: profile?.country_origin || user?.homeCountry?.code || null,
-        level: profile?.level_of_study || user?.educationBackground?.level || null,
-        visaType: profile?.visa_type || null,
-      });
+      const [journeyRows, countries] = await Promise.all([fetchUserJourneys(authUser.id), getCountries()]);
       setJourneys(journeyRows);
       setDestinationCountries(countries.destination || []);
     } catch (error) {
@@ -82,39 +49,14 @@ export default function DestinationsScreen() {
     } finally {
       setIsLoading(false);
     }
-  }, [user?.homeCountry?.code, user?.educationBackground?.level]);
+  }, []);
 
-  useEffect(() => {
-    load();
-  }, [load]);
-
-  useEffect(() => {
-    if (!addCountry) {
-      setAddUniversities([]);
-      setAddSelectedIds(new Set());
-      return;
-    }
-    let cancelled = false;
-    setLoadingUniversities(true);
-    fetchUniversitiesForCountry(addCountry.code)
-      .then((list) => {
-        if (cancelled) return;
-        const existing = new Set(
-          journeys
-            .filter((j) => j.destination_country_code.toUpperCase() === addCountry.code.toUpperCase())
-            .map((j) => j.university_id),
-        );
-        const level = profileFields.level ? targetStudyLevel(profileFields.level) : null;
-        setAddUniversities(
-          list.filter((u) => !existing.has(u.id) && offersStudyLevel(u, level)),
-        );
-        setAddSelectedIds(new Set());
-      })
-      .finally(() => !cancelled && setLoadingUniversities(false));
-    return () => {
-      cancelled = true;
-    };
-  }, [addCountry, journeys, profileFields.level]);
+  // Universities can be added from the picker; refresh on return.
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load]),
+  );
 
   const grouped = useMemo(() => {
     const map = new Map<string, UserJourneyWithUniversity[]>();
@@ -147,14 +89,14 @@ export default function DestinationsScreen() {
         await supabase.from("profiles").update(update).eq("id", authUser.id);
       }
       await load();
-    } catch (error) {
+    } catch {
       Alert.alert("Could not update", "Please try again.");
     }
   };
 
   const handleRemove = (journey: UserJourneyWithUniversity) => {
     Alert.alert(
-      "Remove destination",
+      "Remove university",
       `Remove ${journey.university?.name || "this university"} from your journeys? Your task progress for it stays saved.`,
       [
         { text: "Cancel", style: "cancel" },
@@ -169,7 +111,7 @@ export default function DestinationsScreen() {
               if (!authUser) return;
               await deleteUserJourney(authUser.id, journey.id);
               await load();
-            } catch (error) {
+            } catch {
               Alert.alert("Could not remove", "Please try again.");
             }
           },
@@ -178,218 +120,307 @@ export default function DestinationsScreen() {
     );
   };
 
-  const toggleAdd = (id: string) => {
-    setAddSelectedIds((current) => {
-      const next = new Set(current);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
-
-  const handleAdd = async () => {
-    if (!addCountry || addSelectedIds.size === 0 || isSaving) return;
-    if (!profileFields.origin || !profileFields.level) {
-      Alert.alert("Finish your profile first", "Set your home country and education level in Edit Profile.");
-      return;
-    }
-    setIsSaving(true);
-    try {
-      const {
-        data: { user: authUser },
-      } = await supabase.auth.getUser();
-      if (!authUser) return;
-
-      await upsertUserJourneys({
-        userId: authUser.id,
-        destinationCountryCode: addCountry.code,
-        originCountryCode: profileFields.origin,
-        educationLevel: targetStudyLevel(profileFields.level),
-        countryVisaType: profileFields.visaType,
-        universities: addUniversities.filter((u) => addSelectedIds.has(u.id)),
-        makeFirstPrimary: journeys.length === 0,
-      });
-      void requestMissingJourneyRoutes();
-
-      setAddCountry(null);
-      await load();
-    } catch (error) {
-      Alert.alert("Could not add", "Please try again.");
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  if (isLoading) {
-    return (
-      <SafeAreaView edges={["bottom"]} style={[styles.container, { backgroundColor: Colors.background }]}>
-        <View style={styles.loading}>
-          <ActivityIndicator color={Colors.primary} size="large" />
-        </View>
-      </SafeAreaView>
-    );
-  }
+  const addUniversities = () => router.push("/onboarding/step-universities?mode=manage" as any);
 
   return (
-    <SafeAreaView edges={["bottom"]} style={[styles.container, { backgroundColor: Colors.background }]}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <Text style={[styles.title, { color: Colors.text }]}>My destinations</Text>
-        <Text style={[styles.subtitle, { color: Colors.lightText }]}>
-          Each university has its own journey. Your primary destination shows first.
+    <SafeAreaView edges={["top"]} style={styles.container}>
+      <Stack.Screen options={{ headerShown: false }} />
+      <View style={styles.header}>
+        <TouchableOpacity accessibilityLabel="Go back" onPress={handleBack} style={styles.roundButton}>
+          <ArrowLeft color={UI.text} size={20} strokeWidth={2.2} />
+        </TouchableOpacity>
+        <Text accessibilityRole="header" style={styles.headerTitle}>
+          My destinations
         </Text>
+        <View style={styles.headerSpacer} />
+      </View>
 
-        {grouped.length === 0 ? (
-          <Card style={[styles.emptyCard, { backgroundColor: Colors.card }]}>
-            <Text style={[styles.emptyText, { color: Colors.lightText }]}>
-              No universities added yet. Add one below.
-            </Text>
-          </Card>
-        ) : (
-          grouped.map(([code, list]) => (
-            <View key={code} style={styles.group}>
-              <View style={styles.groupHeader}>
-                <MapPin color={Colors.lightText} size={14} />
-                <Text style={[styles.groupTitle, { color: Colors.text }]}>{countryName(code)}</Text>
-              </View>
-              {list.map((journey) => (
-                <Card key={journey.id} style={[styles.journeyCard, { backgroundColor: Colors.card }]}>
-                  <View style={styles.journeyRow}>
-                    <GraduationCap color={Colors.primary} size={18} />
-                    <View style={styles.journeyInfo}>
-                      <Text style={[styles.journeyName, { color: Colors.text }]}>
-                        {journey.university?.name || "University"}
-                      </Text>
-                      {journey.is_primary ? (
-                        <Text style={[styles.primaryBadge, { color: Colors.primary }]}>Primary</Text>
-                      ) : null}
-                    </View>
-                  </View>
-                  <View style={styles.journeyActions}>
-                    {!journey.is_primary ? (
-                      <TouchableOpacity
-                        onPress={() => handleMakePrimary(journey.id)}
-                        style={styles.actionBtn}
-                      >
-                        <Star color={Colors.lightText} size={16} />
-                        <Text style={[styles.actionText, { color: Colors.lightText }]}>Make primary</Text>
-                      </TouchableOpacity>
-                    ) : (
-                      <View style={styles.actionBtn} />
-                    )}
-                    <TouchableOpacity onPress={() => handleRemove(journey)} style={styles.actionBtn}>
-                      <Trash2 color="#DC2626" size={16} />
-                      <Text style={[styles.actionText, { color: "#DC2626" }]}>Remove</Text>
-                    </TouchableOpacity>
-                  </View>
-                </Card>
-              ))}
-            </View>
-          ))
-        )}
-
-        <View style={styles.addSection}>
-          <Text style={[styles.addTitle, { color: Colors.text }]}>Add a destination</Text>
-          <CountrySelector
-            label="Destination country"
-            value={addCountry}
-            onChange={setAddCountry}
-            countries={destinationCountries}
-            placeholder="Select a country..."
-          />
-
-          {addCountry ? (
-            loadingUniversities ? (
-              <ActivityIndicator color={Colors.primary} style={{ marginTop: 16 }} />
-            ) : addUniversities.length === 0 ? (
-              <Text style={[styles.emptyText, { color: Colors.lightText, marginTop: 12 }]}>
-                No new universities available for {addCountry.name} yet.
-              </Text>
-            ) : (
-              <View style={styles.addList}>
-                {addUniversities.map((university) => {
-                  const selected = addSelectedIds.has(university.id);
-                  return (
-                    <TouchableOpacity
-                      key={university.id}
-                      onPress={() => toggleAdd(university.id)}
-                      style={[
-                        styles.addRow,
-                        {
-                          backgroundColor: Colors.card,
-                          borderColor: selected ? Colors.primary : Colors.border,
-                        },
-                      ]}
-                    >
-                      <View style={styles.addRowInfo}>
-                        <Text style={[styles.addRowName, { color: Colors.text }]}>{university.name}</Text>
-                        {university.city ? (
-                          <Text style={[styles.addRowMeta, { color: Colors.lightText }]}>
-                            {university.city}
-                          </Text>
-                        ) : null}
-                      </View>
-                      {selected ? <Check color={Colors.primary} size={18} /> : null}
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            )
-          ) : null}
-
-          <Button
-            fullWidth
-            disabled={!addCountry || addSelectedIds.size === 0}
-            loading={isSaving}
-            onPress={handleAdd}
-            style={styles.addButton}
-            title={
-              addSelectedIds.size > 0
-                ? `Add ${addSelectedIds.size} ${addSelectedIds.size === 1 ? "university" : "universities"}`
-                : "Add universities"
-            }
-          />
+      {isLoading ? (
+        <View style={styles.loading}>
+          <ActivityIndicator color={UI.primary} />
         </View>
-      </ScrollView>
+      ) : (
+        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+          <Text style={styles.subtitle}>
+            Each university has its own roadmap. Your primary one opens first on the Journey tab.
+          </Text>
+
+          {grouped.length === 0 ? (
+            <View style={styles.emptyCard}>
+              <View style={styles.emptyIcon}>
+                <GraduationCap color={UI.primary} size={26} strokeWidth={1.8} />
+              </View>
+              <Text style={styles.emptyTitle}>No universities yet</Text>
+              <Text style={styles.emptyText}>Add the universities you're applying to and we'll build a roadmap for each.</Text>
+            </View>
+          ) : (
+            grouped.map(([code, list]) => (
+              <View key={code} style={styles.group}>
+                <Text style={styles.groupTitle}>
+                  {countryFlag(code)} {countryName(code)}
+                </Text>
+                <View style={styles.groupCard}>
+                  {list.map((journey, index) => (
+                    <JourneyRow
+                      key={journey.id}
+                      first={index === 0}
+                      journey={journey}
+                      onMakePrimary={() => handleMakePrimary(journey.id)}
+                      onOpen={() =>
+                        journey.university && router.push(`/university/${journey.university.id}` as any)
+                      }
+                      onRemove={() => handleRemove(journey)}
+                    />
+                  ))}
+                </View>
+              </View>
+            ))
+          )}
+
+          <TouchableOpacity
+            accessibilityRole="button"
+            activeOpacity={0.88}
+            onPress={addUniversities}
+            style={styles.addButton}
+          >
+            <Plus color="#FFFFFF" size={18} strokeWidth={2.6} />
+            <Text style={styles.addButtonText}>Add universities</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      )}
     </SafeAreaView>
   );
 }
 
+function JourneyRow({
+  journey,
+  first,
+  onOpen,
+  onMakePrimary,
+  onRemove,
+}: {
+  journey: UserJourneyWithUniversity;
+  first: boolean;
+  onOpen: () => void;
+  onMakePrimary: () => void;
+  onRemove: () => void;
+}) {
+  const [logoFailed, setLogoFailed] = useState(false);
+  const university = journey.university;
+  return (
+    <View style={[styles.row, !first && styles.rowDivider]}>
+      <Pressable accessibilityRole="button" onPress={onOpen} style={styles.rowMain}>
+        <View style={styles.logo}>
+          {university?.logo_url && !logoFailed ? (
+            <Image
+              contentFit="contain"
+              onError={() => setLogoFailed(true)}
+              source={{ uri: university.logo_url }}
+              style={styles.logoImage}
+            />
+          ) : (
+            <GraduationCap color={UI.primary} size={20} strokeWidth={1.8} />
+          )}
+        </View>
+        <View style={styles.rowCopy}>
+          <Text numberOfLines={2} style={styles.rowTitle}>
+            {university?.name || "University"}
+          </Text>
+          {journey.is_primary ? (
+            <View style={styles.primaryPill}>
+              <Star color={UI.primary} fill={UI.primary} size={10} />
+              <Text style={styles.primaryText}>Primary</Text>
+            </View>
+          ) : (
+            <TouchableOpacity hitSlop={8} onPress={onMakePrimary}>
+              <Text style={styles.makePrimary}>Make primary</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+        <ChevronRight color={UI.muted} size={18} strokeWidth={2} />
+      </Pressable>
+      <TouchableOpacity
+        accessibilityLabel={`Remove ${university?.name || "university"}`}
+        hitSlop={8}
+        onPress={onRemove}
+        style={styles.removeButton}
+      >
+        <Trash2 color={UI.danger} size={17} strokeWidth={2} />
+      </TouchableOpacity>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  loading: { alignItems: "center", flex: 1, justifyContent: "center" },
-  content: { padding: 20, paddingBottom: 48 },
-  title: { fontSize: 24, fontWeight: "700", letterSpacing: -0.3 },
-  subtitle: { fontSize: 14, lineHeight: 20, marginTop: 6 },
-  emptyCard: { marginTop: 20, padding: 20 },
-  emptyText: { fontSize: 14, lineHeight: 20, textAlign: "center" },
-  group: { marginTop: 22 },
-  groupHeader: { alignItems: "center", flexDirection: "row", gap: 6, marginBottom: 10 },
-  groupTitle: { fontSize: 15, fontWeight: "700" },
-  journeyCard: { marginBottom: 10, padding: 14 },
-  journeyRow: { alignItems: "center", flexDirection: "row", gap: 10 },
-  journeyInfo: { flex: 1 },
-  journeyName: { fontSize: 15, fontWeight: "600" },
-  primaryBadge: { fontSize: 11, fontWeight: "700", marginTop: 2, textTransform: "uppercase" },
-  journeyActions: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 12,
+  container: {
+    backgroundColor: UI.background,
+    flex: 1,
   },
-  actionBtn: { alignItems: "center", flexDirection: "row", gap: 5, minWidth: 90 },
-  actionText: { fontSize: 13, fontWeight: "500" },
-  addSection: { marginTop: 34 },
-  addTitle: { fontSize: 17, fontWeight: "700", marginBottom: 12 },
-  addList: { gap: 8, marginTop: 12 },
-  addRow: {
+  header: {
     alignItems: "center",
-    borderRadius: 14,
-    borderWidth: 1.5,
     flexDirection: "row",
     justifyContent: "space-between",
-    padding: 14,
+    paddingBottom: 10,
+    paddingHorizontal: GUTTER - 4,
+    paddingTop: 6,
   },
-  addRowInfo: { flex: 1 },
-  addRowName: { fontSize: 14, fontWeight: "600" },
-  addRowMeta: { fontSize: 12, marginTop: 2 },
-  addButton: { borderRadius: 24, height: 54, marginTop: 18 },
+  roundButton: {
+    alignItems: "center",
+    backgroundColor: UI.card,
+    borderRadius: 20,
+    height: 40,
+    justifyContent: "center",
+    width: 40,
+    ...CARD_SHADOW,
+  },
+  headerTitle: {
+    color: UI.text,
+    fontSize: 17,
+    fontWeight: "700",
+  },
+  headerSpacer: {
+    width: 40,
+  },
+  loading: {
+    alignItems: "center",
+    flex: 1,
+    justifyContent: "center",
+  },
+  content: {
+    paddingBottom: 48,
+    paddingHorizontal: GUTTER,
+  },
+  subtitle: {
+    color: UI.textSecondary,
+    fontSize: 14,
+    lineHeight: 20,
+    marginTop: 4,
+  },
+  emptyCard: {
+    alignItems: "center",
+    backgroundColor: UI.card,
+    borderRadius: RADIUS.card,
+    marginTop: 20,
+    padding: 24,
+    ...CARD_SHADOW,
+  },
+  emptyIcon: {
+    alignItems: "center",
+    backgroundColor: UI.primarySoft,
+    borderRadius: 28,
+    height: 56,
+    justifyContent: "center",
+    marginBottom: 12,
+    width: 56,
+  },
+  emptyTitle: {
+    color: UI.text,
+    fontSize: 17,
+    fontWeight: "700",
+  },
+  emptyText: {
+    color: UI.muted,
+    fontSize: 14,
+    lineHeight: 20,
+    marginTop: 6,
+    textAlign: "center",
+  },
+  group: {
+    marginTop: 22,
+  },
+  groupTitle: {
+    color: UI.text,
+    fontSize: 16,
+    fontWeight: "700",
+    marginBottom: 10,
+  },
+  groupCard: {
+    backgroundColor: UI.card,
+    borderRadius: RADIUS.card,
+    paddingHorizontal: 14,
+    ...CARD_SHADOW,
+  },
+  row: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 6,
+    paddingVertical: 12,
+  },
+  rowDivider: {
+    borderTopColor: UI.hairline,
+    borderTopWidth: 1,
+  },
+  rowMain: {
+    alignItems: "center",
+    flex: 1,
+    flexDirection: "row",
+    gap: 12,
+  },
+  logo: {
+    alignItems: "center",
+    backgroundColor: UI.hairline,
+    borderRadius: 12,
+    height: 44,
+    justifyContent: "center",
+    overflow: "hidden",
+    width: 44,
+  },
+  logoImage: {
+    height: 34,
+    width: 34,
+  },
+  rowCopy: {
+    flex: 1,
+    gap: 4,
+  },
+  rowTitle: {
+    color: UI.text,
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  primaryPill: {
+    alignItems: "center",
+    alignSelf: "flex-start",
+    backgroundColor: UI.primarySoft,
+    borderRadius: RADIUS.pill,
+    flexDirection: "row",
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  primaryText: {
+    color: UI.primary,
+    fontSize: 11.5,
+    fontWeight: "800",
+  },
+  makePrimary: {
+    color: UI.textSecondary,
+    fontSize: 12.5,
+    fontWeight: "600",
+  },
+  removeButton: {
+    alignItems: "center",
+    height: 36,
+    justifyContent: "center",
+    width: 36,
+  },
+  addButton: {
+    alignItems: "center",
+    backgroundColor: UI.primary,
+    borderRadius: 28,
+    flexDirection: "row",
+    gap: 8,
+    height: 54,
+    justifyContent: "center",
+    marginTop: 28,
+    shadowColor: UI.primary,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+  },
+  addButtonText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "700",
+  },
 });

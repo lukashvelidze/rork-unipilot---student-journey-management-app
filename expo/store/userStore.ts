@@ -32,8 +32,9 @@ interface UserState {
 const normalizeTier = (tier?: string | null): SubscriptionTier => {
   if (!tier) return "free";
   const lower = tier.toLowerCase();
+  // Legacy paid tiers all mean Pro now.
   if (lower === "premium" || lower === "pro" || lower === "standard" || lower === "basic") {
-    return lower as SubscriptionTier;
+    return "pro";
   }
   return "free";
 };
@@ -54,7 +55,7 @@ export const useUserStore = create<UserState>()(
       isPremium: false,
       
       setUser: (user) => {
-        const tier = user.subscriptionTier ? normalizeTier(user.subscriptionTier) : (user.isPremium ? "premium" : "free");
+        const tier = user.subscriptionTier ? normalizeTier(user.subscriptionTier) : (user.isPremium ? "pro" : "free");
         set({ 
           user: { ...user, subscriptionTier: tier },
           isPremium: user.isPremium || isPremiumTier(tier) 
@@ -67,7 +68,7 @@ export const useUserStore = create<UserState>()(
           const tier = updatedUser
             ? (updatedUser.subscriptionTier
                 ? normalizeTier(updatedUser.subscriptionTier)
-                : (updatedUser.isPremium ? "premium" : (state.user?.subscriptionTier || "free")))
+                : (updatedUser.isPremium ? "pro" : (state.user?.subscriptionTier || "free")))
             : "free";
           return {
             user: updatedUser ? { ...updatedUser, subscriptionTier: tier } : null,
@@ -149,7 +150,7 @@ export const useUserStore = create<UserState>()(
                 ...state.user,
                 isPremium,
                 premiumSince: isPremium ? new Date().toISOString() : null,
-                subscriptionTier: isPremium ? "premium" : state.user.subscriptionTier || "free",
+                subscriptionTier: isPremium ? "pro" : state.user.subscriptionTier || "free",
               }
             : null,
           isPremium,

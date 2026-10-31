@@ -24,7 +24,7 @@ import OnboardingChoiceCard from "@/components/onboarding/OnboardingChoiceCard";
 import OnboardingProgressHeader from "@/components/onboarding/OnboardingProgressHeader";
 import { useAppBack } from "@/hooks/useAppBack";
 import { supabase } from "@/lib/supabase";
-import { syncJourneyRoutes } from "@/lib/journeyRoutes";
+import { buildCountryRouteCode, syncJourneyRoutes, targetStudyLevel } from "@/lib/journeyRoutes";
 import { posthog } from "@/src/config/posthog";
 import { useUserStore } from "@/store/userStore";
 import { Country } from "@/types/user";
@@ -159,9 +159,10 @@ export default function Step5Visa() {
         .select("*")
         .or(`country_code.eq.${sanitizedCode},country_code.is.null`)
         .eq("is_active", true)
-        // Per-university routes from generate-journey live in visa_types too;
-        // they're reached through user_journeys, not picked here.
+        // Generated journey routes (per university and per origin country)
+        // live in visa_types too; they're internal, never a visa to pick.
         .is("university_id", null)
+        .not("code", "like", "ROUTE_STUDY_%")
         .order("country_code", { ascending: false })
         .order("title", { ascending: true });
 
@@ -171,7 +172,23 @@ export default function Step5Visa() {
         return;
       }
 
-      setVisaTypes(data || []);
+      const realVisas = (data || []) as VisaType[];
+      if (realVisas.length === 0) {
+        // No visa catalogue for this country yet: offer one generic student
+        // visa. Its code is the country-level route for the student's origin
+        // and level, so the journey still finds that route's checklists.
+        const origin = (pendingHomeCountry?.code || user?.homeCountry?.code || "").toUpperCase();
+        const level = targetStudyLevel(user?.educationBackground?.level || "high_school");
+        realVisas.push({
+          code: origin ? buildCountryRouteCode(sanitizedCode, origin, level) : `STUDENT_VISA_${sanitizedCode}`,
+          country_code: sanitizedCode,
+          description: null,
+          id: `generic-${sanitizedCode}`,
+          is_active: true,
+          title: `Student visa for ${effectiveCountry?.name || sanitizedCode}`,
+        });
+      }
+      setVisaTypes(realVisas);
       setSelectedVisaType(null);
     } catch (loadError) {
       console.error("Error loading visa types:", loadError);
@@ -179,7 +196,7 @@ export default function Step5Visa() {
     } finally {
       setIsLoading(false);
     }
-  }, [effectiveCountry?.code]);
+  }, [effectiveCountry?.code, effectiveCountry?.name, pendingHomeCountry?.code, user?.homeCountry?.code, user?.educationBackground?.level]);
 
   useEffect(() => {
     loadVisaTypes();
@@ -408,7 +425,6 @@ export default function Step5Visa() {
 
               return (
                 <OnboardingChoiceCard
-                  description={visaType.description}
                   disabled={isProcessing}
                   icon={
                     <VisaIcon

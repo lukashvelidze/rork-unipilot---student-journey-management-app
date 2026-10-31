@@ -25,13 +25,11 @@ export const normalizeSubscriptionTier = (tier?: string | null): SubscriptionTie
   return "free";
 };
 
+/** Free guides are open to everyone; any paid guide needs Pro (any paid tier). */
 export const canAccessArticle = (
   accessTier: ArticleAccessTier,
   userTier?: SubscriptionTier | null
-) => {
-  const normalized = normalizeSubscriptionTier(userTier);
-  return tierRank[normalized] >= tierRank[accessTier];
-};
+) => tierRank[accessTier] === 0 || tierRank[normalizeSubscriptionTier(userTier)] > 0;
 
 export const resolveArticleImageUrl = (coverImageUrl?: string | null) => {
   if (coverImageUrl && coverImageUrl.startsWith("http")) {

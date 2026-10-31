@@ -26,7 +26,6 @@ import {
   startInterviewSession,
   TranscriptTurn,
 } from "@/lib/interview";
-import { openManageSubscription } from "@/lib/subscriptionManager";
 import { posthog } from "@/src/config/posthog";
 
 const AGENT_ID = "agent_7401k7a0wx3mfy2tmm361gsbh61a";
@@ -222,12 +221,12 @@ function InterviewSimulator({ state }: { state: SimulatorState }) {
             <TouchableOpacity
               accessibilityRole="button"
               activeOpacity={0.85}
-              onPress={() => openManageSubscription().catch(() => router.push("/premium" as any))}
+              onPress={() => router.push("/premium" as any)}
               style={styles.primary}
             >
               <Text style={styles.primaryText}>Upgrade for unlimited practice</Text>
             </TouchableOpacity>
-            <Text style={styles.hint}>Premium includes unlimited interview sessions</Text>
+            <Text style={styles.hint}>Pro includes unlimited interview sessions</Text>
           </>
         ) : (
           <>

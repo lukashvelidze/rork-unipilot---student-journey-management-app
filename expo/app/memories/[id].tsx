@@ -6,6 +6,7 @@ import * as ImagePicker from "expo-image-picker";
 import { ArrowLeft, Trash2, Check, X, ChevronDown, Camera, Image as ImageIcon } from "lucide-react-native";
 import { useColors } from "@/hooks/useColors";
 import { useAppBack } from "@/hooks/useAppBack";
+import { CARD_SHADOW, GUTTER, UI } from "@/constants/design";
 import Card from "@/components/Card";
 import Button from "@/components/Button";
 import { JourneyStage, MemoryMood } from "@/types/user";
@@ -184,7 +185,7 @@ export default function MemoryDetailScreen() {
 
   if (isLoading || !id) {
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: Colors.background }]} edges={["top"]}>
+      <SafeAreaView style={[styles.container, { backgroundColor: UI.background }]} edges={["top"]}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={Colors.primary} />
           <Text style={[styles.loadingText, { color: Colors.lightText }]}>Loading memory...</Text>
@@ -200,7 +201,7 @@ export default function MemoryDetailScreen() {
 
   if (!memoryToDisplay) {
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: Colors.background }]} edges={["top"]}>
+      <SafeAreaView style={[styles.container, { backgroundColor: UI.background }]} edges={["top"]}>
         <View style={styles.loadingContainer}>
           <Text style={[styles.loadingText, { color: Colors.text }]}>Memory not found</Text>
           <Button title="Go back" onPress={handleBack} />
@@ -210,8 +211,8 @@ export default function MemoryDetailScreen() {
   }
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: Colors.background }]} edges={["top"]}>
-      <View style={[styles.header, { borderBottomColor: Colors.border }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: UI.background }]} edges={["top"]}>
+      <View style={styles.header}>
         <TouchableOpacity onPress={handleBack} style={styles.headerButton}>
           <ArrowLeft size={22} color={Colors.text} />
         </TouchableOpacity>
@@ -437,14 +438,17 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    flexDirection: "row",
     alignItems: "center",
+    flexDirection: "row",
     justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
+    paddingBottom: 10,
+    paddingHorizontal: GUTTER - 4,
+    paddingTop: 6,
   },
   headerButton: {
+    backgroundColor: UI.card,
+    borderRadius: 20,
+    ...CARD_SHADOW,
     width: 40,
     height: 40,
     justifyContent: "center",

@@ -32,7 +32,58 @@ export interface UniversityRecord {
   image_url?: string | null;
   tagline?: string | null;
   level_details?: Record<string, UniversityLevelDetails> | null;
-  metadata?: { applicationSystem?: string | null; notes?: string | null } | null;
+  metadata?: {
+    applicationSystem?: string | null;
+    notes?: string | null;
+    /** "directory" rows come from the open world list and start without a profile. */
+    source?: string | null;
+    profile?: UniversityProfile | null;
+  } | null;
+}
+
+export type RequirementKey =
+  | "passport"
+  | "transcript"
+  | "diploma"
+  | "english_test"
+  | "motivation_letter"
+  | "recommendation"
+  | "cv"
+  | "portfolio"
+  | "entrance_exam"
+  | "standardized_test"
+  | "financial_proof"
+  | "interview"
+  | "other";
+
+export interface UniversityRequirement {
+  key: RequirementKey;
+  label: string;
+  detail: string | null;
+}
+
+/** Per-level admissions facts researched for the University details page. */
+export interface UniversityLevelProfile {
+  intakes?: string[];
+  programs?: string[];
+  minIelts?: number | null;
+  minToefl?: number | null;
+  minGpaPercent?: number | null;
+  requirements?: UniversityRequirement[];
+}
+
+/** Researched once per university by the `profile` edge action, then cached. */
+export interface UniversityProfile {
+  overview?: string | null;
+  acceptanceRate?: number | null;
+  languages?: string[];
+  studentCount?: number | null;
+  internationalPercent?: number | null;
+  monthlyLivingCostUsd?: number | null;
+  applicationPortal?: string | null;
+  scholarships?: string[];
+  levels?: Record<string, UniversityLevelProfile>;
+  updatedAt?: string;
 }
 
 export interface UserJourneyRecord {
@@ -92,27 +143,159 @@ export const buildCountryRouteCode = (
 ): string =>
   `ROUTE_STUDY_${destinationCode.trim().toUpperCase()}_${originCode.trim().toUpperCase()}_${educationLevel.trim()}`;
 
-/** Featured/active universities for a destination country (onboarding picker). */
+// PostgREST caps a response at 1000 rows; large countries list more.
+const PAGE_SIZE = 1000;
+
+/**
+ * Every active university of a destination country: featured (ranked, with
+ * fees) first, then the full directory A–Z.
+ */
 export const fetchUniversitiesForCountry = async (
   destinationCountryCode: string,
+  options: { featuredOnly?: boolean } = {},
 ): Promise<UniversityRecord[]> => {
   const code = destinationCountryCode.trim().toUpperCase();
+  const rows: UniversityRecord[] = [];
+  for (let from = 0; ; from += PAGE_SIZE) {
+    let query = supabase
+      .from("universities")
+      // "*" rather than a column list so the picker keeps working before the
+      // university profile migration has been applied.
+      .select("*")
+      .eq("country_code", code)
+      .eq("is_active", true);
+    if (options.featuredOnly) query = query.eq("is_featured", true);
+    const { data, error } = await query
+      .order("is_featured", { ascending: false })
+      .order("ranking_global", { ascending: true, nullsFirst: false })
+      .order("name", { ascending: true })
+      .range(from, from + PAGE_SIZE - 1);
+
+    if (error) {
+      console.error("Error loading universities:", error);
+      break;
+    }
+    rows.push(...((data || []) as UniversityRecord[]));
+    if (!data || data.length < PAGE_SIZE) break;
+  }
+  return rows;
+};
+
+/** Universities whose name matches, featured ones first. */
+export const searchUniversities = async (term: string, limit = 12): Promise<UniversityRecord[]> => {
+  const safe = term.replace(/[%_,()]/g, " ").trim();
+  if (!safe) return [];
   const { data, error } = await supabase
     .from("universities")
-    // "*" rather than a column list so the picker keeps working before the
-    // university profile migration has been applied.
     .select("*")
-    .eq("country_code", code)
     .eq("is_active", true)
+    .ilike("name", `%${safe}%`)
     .order("is_featured", { ascending: false })
     .order("ranking_global", { ascending: true, nullsFirst: false })
-    .order("name", { ascending: true });
-
+    .limit(limit);
   if (error) {
-    console.error("Error loading universities:", error);
+    console.error("University search failed:", error);
     return [];
   }
   return (data || []) as UniversityRecord[];
+};
+
+export const fetchUniversity = async (id: string): Promise<UniversityRecord | null> => {
+  const { data, error } = await supabase.from("universities").select("*").eq("id", id).maybeSingle();
+  if (error) {
+    console.error("Error loading university:", error);
+    return null;
+  }
+  return (data as UniversityRecord) || null;
+};
+
+/** Whether the details page still needs its researched profile. */
+export const needsUniversityProfile = (university: UniversityRecord) => !university.metadata?.profile;
+
+/**
+ * Ask the backend to research a university's details page (cached after the
+ * first student opens it). Resolves to the refreshed row, or null.
+ */
+export const requestUniversityProfile = async (id: string): Promise<UniversityRecord | null> => {
+  try {
+    const { data, error } = await supabase.functions.invoke("generate-journey", {
+      body: { action: "profile", universityId: id },
+    });
+    if (error) throw error;
+    return (data?.university as UniversityRecord) || null;
+  } catch (error) {
+    console.warn("University profile request failed:", error);
+    return null;
+  }
+};
+
+/** Per-level slice of a university's researched profile. */
+export const getUniversityLevelProfile = (
+  university: UniversityRecord,
+  educationLevel: string | null | undefined,
+): UniversityLevelProfile | null => {
+  const levels = university.metadata?.profile?.levels || {};
+  if (educationLevel && levels[educationLevel]) return levels[educationLevel];
+  const nearest = educationLevel ? NEAREST_LEVEL[educationLevel] : undefined;
+  if (nearest && levels[nearest]) return levels[nearest];
+  return Object.values(levels)[0] || null;
+};
+
+/** Free students can follow this many universities in total; Pro is unlimited. */
+export const FREE_UNIVERSITY_LIMIT = 3;
+
+const isPaidTier = (tier?: string | null) => !!tier && tier.toLowerCase() !== "free";
+
+/** How many universities this plan may follow (Infinity on Pro). */
+export const universityLimitFor = (tier?: string | null) =>
+  isPaidTier(tier) ? Number.POSITIVE_INFINITY : FREE_UNIVERSITY_LIMIT;
+
+export class UniversityLimitError extends Error {
+  constructor() {
+    super(
+      `Free plans can follow up to ${FREE_UNIVERSITY_LIMIT} universities. Upgrade to Pro to add as many as you like, or remove one first.`,
+    );
+  }
+}
+
+/**
+ * Follow a university: create its journey for the student's next study level
+ * and queue its roadmap. Returns the user_journeys row id.
+ */
+export const addUniversityJourney = async (university: UniversityRecord): Promise<string> => {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not signed in");
+
+  const { data: profile, error } = await supabase
+    .from("profiles")
+    .select("country_origin, level_of_study, visa_type, subscription_tier")
+    .eq("id", user.id)
+    .single();
+  if (error) throw error;
+  if (!profile?.country_origin || !profile?.level_of_study) {
+    throw new Error("Add your home country and education level to your profile first.");
+  }
+
+  const existing = await fetchUserJourneys(user.id);
+  const already = existing.find((j) => j.university_id === university.id);
+  if (already) return already.id;
+  if (existing.length >= universityLimitFor(profile.subscription_tier)) throw new UniversityLimitError();
+
+  const rows = await upsertUserJourneys({
+    userId: user.id,
+    destinationCountryCode: university.country_code,
+    originCountryCode: profile.country_origin,
+    educationLevel: targetStudyLevel(profile.level_of_study),
+    countryVisaType: profile.visa_type ?? null,
+    universities: [university],
+    makeFirstPrimary: existing.length === 0,
+  });
+  void requestMissingJourneyRoutes();
+  const row = rows.find((r) => r.university_id === university.id);
+  if (!row) throw new Error("Could not add this university.");
+  return row.id;
 };
 
 /** All of a user's study journeys, newest primary first, with the university joined. */
@@ -300,12 +483,16 @@ export const getUniversityLevelDetails = (
   return Object.values(details)[0] || null;
 };
 
-/** "Top 30 Global" style badge from a world ranking. */
+/** "admissions.aua.am/apply" from a portal URL; names pass through unchanged. */
+export const formatPortal = (portal: string | null | undefined): string | null =>
+  portal ? portal.trim().replace(/^https?:\/\/(www\.)?/i, "").replace(/\/$/, "") : null;
+
+/** "Top 30 Global" style badge from a world ranking; none past the top 1000. */
 export const formatRankingBadge = (rankingGlobal: number | null | undefined): string | null => {
   if (!rankingGlobal || rankingGlobal <= 0) return null;
-  const buckets = [10, 20, 30, 50, 100, 200, 500];
+  const buckets = [10, 20, 30, 50, 100, 200, 500, 1000];
   const bucket = buckets.find((limit) => rankingGlobal <= limit);
-  return bucket ? `Top ${bucket} Global` : `#${rankingGlobal} Global`;
+  return bucket ? `Top ${bucket} Global` : null;
 };
 
 const formatThousands = (usd: number) =>
@@ -317,7 +504,7 @@ export const formatTuitionRange = (details: UniversityLevelDetails | null): stri
   const max = details?.tuitionMaxUsd ?? null;
   if (min === null && max === null) return null;
   if ((min ?? 0) === 0 && (max ?? 0) === 0) return "Free";
-  if (min !== null && max !== null && min !== max) {
+  if (min !== null && max !== null && formatThousands(min) !== formatThousands(max)) {
     return `${formatThousands(min)}–${formatThousands(max)} / yr`;
   }
   return `${formatThousands((max ?? min) as number)} / yr`;
@@ -349,10 +536,16 @@ export const formatDeadline = (isoDate: string | null | undefined): string | nul
   return months[month - 1] ? `${day} ${months[month - 1]} ${year}` : null;
 };
 
-/** Emoji flag for an ISO country code. */
+// destination_countries uses a few non-ISO codes.
+const ISO_COUNTRY: Record<string, string> = { NE: "NL", UAE: "AE", UK: "GB" };
+
+/** ISO 3166 alpha-2 code for a destination code. */
+export const isoCountryCode = (code: string | null | undefined): string =>
+  code ? ISO_COUNTRY[code.toUpperCase()] ?? code.toUpperCase() : "";
+
+/** Emoji flag for a country code. */
 export const countryFlag = (code: string | null | undefined): string => {
-  if (!code || code.length !== 2) return "";
-  return String.fromCodePoint(
-    ...code.toUpperCase().split("").map((char) => 127397 + char.charCodeAt(0)),
-  );
+  const iso = isoCountryCode(code);
+  if (iso.length !== 2) return "";
+  return String.fromCodePoint(...iso.split("").map((char) => 127397 + char.charCodeAt(0)));
 };

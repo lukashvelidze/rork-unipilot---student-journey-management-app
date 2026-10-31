@@ -11,7 +11,9 @@ import {
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
-import { ArrowLeft, BookmarkPlus, Clock3, Globe2 } from "lucide-react-native";
+import * as Haptics from "expo-haptics";
+import { ArrowLeft, Bookmark, BookmarkCheck, Clock3, Globe2 } from "lucide-react-native";
+import { fetchBookmarkIds, setBookmarked } from "@/lib/bookmarks";
 import { useColors } from "@/hooks/useColors";
 import { useAppBack } from "@/hooks/useAppBack";
 import {
@@ -21,7 +23,6 @@ import {
   resolveArticleImageUrl,
 } from "@/lib/articles";
 import { supabase } from "@/lib/supabase";
-import { openManageSubscription } from "@/lib/subscriptionManager";
 import { Article } from "@/types/articles";
 import { SubscriptionTier } from "@/types/user";
 import Button from "@/components/Button";
@@ -49,13 +50,31 @@ export default function ArticleDetailScreen() {
   const Colors = useColors();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const handleBack = useAppBack("/premium/articles");
+  const handleBack = useAppBack("/(tabs)/premium");
   const { slug } = useLocalSearchParams<{ slug?: string }>();
 
   const [article, setArticle] = useState<Article | null>(null);
   const [userTier, setUserTier] = useState<SubscriptionTier>("free");
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    if (!article) return;
+    fetchBookmarkIds().then((ids) => setSaved(ids.has(article.id)));
+  }, [article]);
+
+  const toggleSaved = async () => {
+    if (!article) return;
+    const next = !saved;
+    setSaved(next);
+    Haptics.selectionAsync().catch(() => null);
+    try {
+      await setBookmarked(article.id, next);
+    } catch {
+      setSaved(!next);
+    }
+  };
 
   useEffect(() => {
     const loadArticle = async () => {
@@ -127,7 +146,7 @@ export default function ArticleDetailScreen() {
   }
 
   const heroImage = resolveArticleImageUrl(article.cover_image_url);
-  const categoryLabel = article.categories?.[0]?.title || "Premium Article";
+  const categoryLabel = article.categories?.[0]?.title || "Guide";
 
   return (
     <View style={[styles.container, { backgroundColor: Colors.background }]}>
@@ -155,9 +174,19 @@ export default function ArticleDetailScreen() {
                 >
                   <ArrowLeft size={22} color={Colors.white} />
                 </TouchableOpacity>
-                <View style={[styles.iconButton, { borderColor: Colors.white + "30" }]}>
-                  <BookmarkPlus size={22} color={Colors.white} />
-                </View>
+                <TouchableOpacity
+                  accessibilityLabel={saved ? "Remove from saved" : "Save article"}
+                  accessibilityState={{ selected: saved }}
+                  hitSlop={{ top: 8, left: 8, right: 8, bottom: 8 }}
+                  onPress={toggleSaved}
+                  style={[styles.iconButton, { borderColor: Colors.white + "30" }]}
+                >
+                  {saved ? (
+                    <BookmarkCheck size={22} color={Colors.white} fill={Colors.white + "40"} />
+                  ) : (
+                    <Bookmark size={22} color={Colors.white} />
+                  )}
+                </TouchableOpacity>
               </View>
 
               <View style={styles.heroBottomContent}>
@@ -197,19 +226,13 @@ export default function ArticleDetailScreen() {
 
           {isLocked ? (
             <View style={[styles.lockedCard, { borderColor: Colors.border, backgroundColor: Colors.card }]}>
-              <Text style={[styles.lockedTitle, { color: Colors.text }]}>Premium content</Text>
+              <Text style={[styles.lockedTitle, { color: Colors.text }]}>Pro guide</Text>
               <Text style={[styles.lockedText, { color: Colors.lightText }]}>
-                Upgrade your plan to read the full article and unlock more premium resources.
+                Upgrade to UniPilot Pro to read the full guide.
               </Text>
               <Button
-                title="Manage Subscription"
-                onPress={() => {
-                  openManageSubscription()
-                    .catch((error) => {
-                      console.error("Open subscription manager failed", error);
-                      router.push("/settings");
-                    });
-                }}
+                title="See plans"
+                onPress={() => router.push("/premium")}
                 fullWidth
               />
             </View>

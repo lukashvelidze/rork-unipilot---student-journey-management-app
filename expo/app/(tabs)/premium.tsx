@@ -1,8 +1,7 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  Linking,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -20,7 +19,7 @@ import {
   ArrowRight,
   ArrowUpRight,
   Check,
-  ExternalLink,
+  ChevronRight,
   GraduationCap,
   Search,
   SlidersHorizontal,
@@ -38,13 +37,15 @@ import { canAccessArticle, fetchArticleCategories, fetchArticles, normalizeSubsc
 import { articleRelevance, fetchBookmarkIds, setBookmarked } from "@/lib/bookmarks";
 import {
   countryFlag,
+  fetchUniversitiesForCountry,
   formatDeadline,
+  formatPortal,
   formatRankingBadge,
   formatTuitionRange,
   getUniversityLevelDetails,
+  searchUniversities,
   UniversityRecord,
 } from "@/lib/journeyRoutes";
-import { openManageSubscription } from "@/lib/subscriptionManager";
 import { useJourneyStore } from "@/store/journeyStore";
 import { useUserStore } from "@/store/userStore";
 import { Article, ArticleCategory } from "@/types/articles";
@@ -119,6 +120,39 @@ export default function ResourcesScreen() {
     [journeys],
   );
 
+  // Featured universities of the destination the student isn't following yet.
+  const [featuredUniversities, setFeaturedUniversities] = useState<UniversityRecord[]>([]);
+  useEffect(() => {
+    if (mode !== "uni" || !destination) return;
+    let active = true;
+    fetchUniversitiesForCountry(destination, { featuredOnly: true }).then((list) => {
+      if (!active) return;
+      const mine = new Set(universities.map((u) => u.id));
+      setFeaturedUniversities(list.filter((u) => u.is_featured && !mine.has(u.id)).slice(0, 6));
+    });
+    return () => {
+      active = false;
+    };
+  }, [destination, mode, universities]);
+
+  // Any university in the catalogue matching the search, not just followed ones.
+  const [matchingUniversities, setMatchingUniversities] = useState<UniversityRecord[]>([]);
+  useEffect(() => {
+    const needle = query.trim();
+    if (needle.length < 3) {
+      setMatchingUniversities([]);
+      return;
+    }
+    let active = true;
+    const timer = setTimeout(() => {
+      searchUniversities(needle).then((found) => active && setMatchingUniversities(found));
+    }, 300);
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [query]);
+
   const searchResults = useMemo(() => {
     const needle = query.trim().toLowerCase();
     if (!needle && !categoryFilter) return null;
@@ -129,24 +163,27 @@ export default function ResourcesScreen() {
       `${article.title} ${article.summary ?? ""} ${article.categories.map((c) => c.title).join(" ")}`
         .toLowerCase()
         .includes(needle);
+    const mine = needle
+      ? universities.filter((u) => `${u.name} ${u.city ?? ""}`.toLowerCase().includes(needle))
+      : [];
+    const mineIds = new Set(mine.map((u) => u.id));
     return {
       articles: ranked.filter((a) => inCategory(a) && matches(a)),
-      universities: needle
-        ? universities.filter((u) => `${u.name} ${u.city ?? ""}`.toLowerCase().includes(needle))
-        : [],
+      universities: mine,
+      otherUniversities: needle ? matchingUniversities.filter((u) => !mineIds.has(u.id)) : [],
     };
-  }, [categoryFilter, query, ranked, universities]);
+  }, [categoryFilter, matchingUniversities, query, ranked, universities]);
 
   // ---------------------------------------------------------------------
 
   const openArticle = (article: Article) => {
     if (!canAccessArticle(article.access_tier, tier)) {
       Alert.alert(
-        "Premium guide",
-        "This guide is part of a paid plan. Upgrade to read it.",
+        "Pro guide",
+        "This guide is part of UniPilot Pro. Upgrade to read it.",
         [
           { text: "Not now", style: "cancel" },
-          { text: "View plans", onPress: () => openManageSubscription().catch(() => router.push("/premium" as any)) },
+          { text: "View plans", onPress: () => router.push("/premium" as any) },
         ],
       );
       return;
@@ -297,24 +334,40 @@ export default function ResourcesScreen() {
             />
           )
         ) : mode === "uni" ? (
-          universities.length ? (
-            <View style={styles.stack}>
-              {universities.map((university) => (
-                <UniversityGuide
-                  key={university.id}
-                  level={journeys.find((j) => j.journey?.university?.id === university.id)?.journey?.education_level ?? null}
-                  university={university}
+          <>
+            {universities.length ? (
+              <View style={styles.stack}>
+                {universities.map((university) => (
+                  <UniversityGuide
+                    key={university.id}
+                    level={journeys.find((j) => j.journey?.university?.id === university.id)?.journey?.education_level ?? null}
+                    university={university}
+                  />
+                ))}
+              </View>
+            ) : (
+              <EmptyNote
+                actionLabel="Choose universities"
+                onAction={() => router.push("/onboarding/step-universities?mode=manage" as any)}
+                text="Pick the universities you're applying to and their key facts will appear here."
+                title="No universities yet"
+              />
+            )}
+            {featuredUniversities.length ? (
+              <>
+                <SectionHeader
+                  action="Browse all"
+                  onAction={() => router.push("/onboarding/step-universities?mode=manage" as any)}
+                  title={`Featured universities ${countryFlag(destination)}`}
                 />
-              ))}
-            </View>
-          ) : (
-            <EmptyNote
-              actionLabel="Choose universities"
-              onAction={() => router.push("/onboarding/step-universities?mode=manage" as any)}
-              text="Pick the universities you're applying to and their key facts will appear here."
-              title="No universities yet"
-            />
-          )
+                <View style={[styles.featuredUniList, styles.stackInSection]}>
+                  {featuredUniversities.map((university, index) => (
+                    <FeaturedUniversityRow key={university.id} first={index === 0} university={university} />
+                  ))}
+                </View>
+              </>
+            ) : null}
+          </>
         ) : (
           <>
             {featured.length ? (
@@ -464,12 +517,12 @@ function SearchResults({
   categoryTitle,
   onClearCategory,
 }: {
-  results: { articles: Article[]; universities: UniversityRecord[] };
+  results: { articles: Article[]; universities: UniversityRecord[]; otherUniversities: UniversityRecord[] };
   cardProps: (article: Article) => React.ComponentProps<typeof CompactArticleCard>;
   categoryTitle: string | null;
   onClearCategory: () => void;
 }) {
-  const total = results.articles.length + results.universities.length;
+  const total = results.articles.length + results.universities.length + results.otherUniversities.length;
   return (
     <View>
       <View style={styles.resultsHeader}>
@@ -490,6 +543,13 @@ function SearchResults({
           {results.universities.map((university) => (
             <UniversityGuide key={university.id} level={null} university={university} />
           ))}
+          {results.otherUniversities.length ? (
+            <View style={styles.featuredUniList}>
+              {results.otherUniversities.map((university, index) => (
+                <FeaturedUniversityRow key={university.id} first={index === 0} university={university} />
+              ))}
+            </View>
+          ) : null}
           {results.articles.map((article) => (
             <CompactArticleCard key={article.id} {...cardProps(article)} />
           ))}
@@ -499,11 +559,54 @@ function SearchResults({
   );
 }
 
+function UniversityLogo({ university, size }: { university: UniversityRecord; size: number }) {
+  const [failed, setFailed] = useState(false);
+  return university.logo_url && !failed ? (
+    <Image
+      contentFit="contain"
+      onError={() => setFailed(true)}
+      source={{ uri: university.logo_url }}
+      style={{ height: size, width: size }}
+    />
+  ) : (
+    <GraduationCap color={UI.primary} size={Math.round(size * 0.75)} strokeWidth={1.8} />
+  );
+}
+
+function FeaturedUniversityRow({ university, first }: { university: UniversityRecord; first: boolean }) {
+  const router = useRouter();
+  const badge = formatRankingBadge(university.ranking_global);
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={() => router.push(`/university/${university.id}` as any)}
+      style={({ pressed }) => [styles.featuredUniRow, !first && styles.featuredUniDivider, pressed && styles.pressed]}
+    >
+      <View style={styles.uniLogo}>
+        <UniversityLogo size={30} university={university} />
+      </View>
+      <View style={styles.uniTitleBlock}>
+        <Text numberOfLines={1} style={styles.featuredUniName}>
+          {university.name}
+        </Text>
+        <Text numberOfLines={1} style={styles.uniMeta}>
+          {[[university.city, countryFlag(university.country_code)].filter(Boolean).join(" "), badge]
+            .filter(Boolean)
+            .join(" · ") ||
+            university.tagline ||
+            "View details"}
+        </Text>
+      </View>
+      <ChevronRight color={UI.muted} size={18} strokeWidth={2} />
+    </Pressable>
+  );
+}
+
 function UniversityGuide({ university, level }: { university: UniversityRecord; level: string | null }) {
-  const [logoFailed, setLogoFailed] = useState(false);
+  const router = useRouter();
   const details = getUniversityLevelDetails(university, level);
   const facts = [
-    { label: "Apply via", value: university.metadata?.applicationSystem },
+    { label: "Apply via", value: formatPortal(university.metadata?.applicationSystem) },
     { label: "Deadline", value: formatDeadline(details?.applicationDeadline) },
     { label: "Tuition", value: formatTuitionRange(details) },
   ].filter((fact): fact is { label: string; value: string } => !!fact.value);
@@ -512,19 +615,14 @@ function UniversityGuide({ university, level }: { university: UniversityRecord; 
   const notes = university.metadata?.notes?.replace(/\s*\[\d+(?:,\s*\d+)*\]/g, "").trim();
 
   return (
-    <View style={styles.uniCard}>
+    <Pressable
+      accessibilityRole="button"
+      onPress={() => router.push(`/university/${university.id}` as any)}
+      style={({ pressed }) => [styles.uniCard, pressed && styles.pressed]}
+    >
       <View style={styles.uniHeader}>
         <View style={styles.uniLogo}>
-          {university.logo_url && !logoFailed ? (
-            <Image
-              contentFit="contain"
-              onError={() => setLogoFailed(true)}
-              source={{ uri: university.logo_url }}
-              style={styles.uniLogoImage}
-            />
-          ) : (
-            <GraduationCap color={UI.primary} size={22} strokeWidth={1.8} />
-          )}
+          <UniversityLogo size={30} university={university} />
         </View>
         <View style={styles.uniTitleBlock}>
           <Text numberOfLines={2} style={styles.uniName}>
@@ -555,17 +653,11 @@ function UniversityGuide({ university, level }: { university: UniversityRecord; 
           ))}
         </View>
       ) : null}
-      {university.website ? (
-        <TouchableOpacity
-          accessibilityRole="link"
-          onPress={() => Linking.openURL(university.website as string).catch(() => null)}
-          style={styles.uniLink}
-        >
-          <Text style={styles.uniLinkText}>Visit website</Text>
-          <ExternalLink color={UI.primary} size={14} strokeWidth={2.2} />
-        </TouchableOpacity>
-      ) : null}
-    </View>
+      <View style={styles.uniLink}>
+        <Text style={styles.uniLinkText}>View details</Text>
+        <ArrowRight color={UI.primary} size={14} strokeWidth={2.2} />
+      </View>
+    </Pressable>
   );
 }
 
@@ -816,6 +908,30 @@ const styles = StyleSheet.create({
     color: UI.text,
     fontWeight: "700",
   },
+  pressed: {
+    opacity: 0.86,
+  },
+  featuredUniList: {
+    backgroundColor: UI.card,
+    borderRadius: RADIUS.card,
+    paddingHorizontal: 14,
+    ...CARD_SHADOW,
+  },
+  featuredUniRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 12,
+    paddingVertical: 12,
+  },
+  featuredUniDivider: {
+    borderTopColor: UI.hairline,
+    borderTopWidth: 1,
+  },
+  featuredUniName: {
+    color: UI.text,
+    fontSize: 15,
+    fontWeight: "700",
+  },
   uniCard: {
     backgroundColor: UI.card,
     borderRadius: RADIUS.tile,
@@ -835,10 +951,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     padding: 6,
     width: 52,
-  },
-  uniLogoImage: {
-    height: "100%",
-    width: "100%",
   },
   uniTitleBlock: {
     flex: 1,

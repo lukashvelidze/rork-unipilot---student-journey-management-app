@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback, useState } from "react";
 import {
   Platform,
   ScrollView,
@@ -8,7 +8,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import {
   Camera,
   Check,
@@ -23,7 +23,7 @@ import Avatar from "@/components/Avatar";
 import Button from "@/components/Button";
 import { useColors } from "@/hooks/useColors";
 import { useSignOut } from "@/hooks/useSignOut";
-import { useDocumentStore } from "@/store/documentStore";
+import { loadUserDocuments } from "@/lib/supabase";
 import { useJourneyStore } from "@/store/journeyStore";
 import { useThemeStore } from "@/store/themeStore";
 import { useUserStore } from "@/store/userStore";
@@ -76,8 +76,26 @@ export default function ProfileScreen() {
   const { isDarkMode } = useThemeStore();
   const { user } = useUserStore();
   const signOut = useSignOut();
-  const { journeyProgress } = useJourneyStore();
-  const { documents } = useDocumentStore();
+  const { journeyProgress, journeys, activeJourneyKey } = useJourneyStore();
+  const [documentCount, setDocumentCount] = useState<number | null>(null);
+
+  // The vault lives in Supabase; refresh its count whenever the tab is shown.
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      loadUserDocuments()
+        .then((documents) => active && setDocumentCount(documents.length))
+        .catch(() => null);
+      return () => {
+        active = false;
+      };
+    }, []),
+  );
+
+  const activeJourney = journeys.find((j) => j.key === activeJourneyKey) || journeys[0] || null;
+  const journeyUniversity = activeJourney?.journey?.university?.name ?? null;
+  const journeyTitle =
+    journeyUniversity ?? `Study in ${user?.destinationCountry?.name || "your destination"}`;
 
   const palette = {
     background: isDarkMode ? Colors.background : "#F7F7FA",
@@ -122,7 +140,7 @@ export default function ProfileScreen() {
   const tier = (
     user.subscriptionTier || (user.isPremium ? "premium" : "free")
   ).toLowerCase();
-  const membershipLabel = `${tier.charAt(0).toUpperCase()}${tier.slice(1)} member`;
+  const membershipLabel = tier === "free" ? "Free plan" : "Pro member";
 
   return (
     <SafeAreaView
@@ -193,7 +211,7 @@ export default function ProfileScreen() {
               style={[styles.miniStatCard, { backgroundColor: palette.card }]}
             >
               <Text style={[styles.miniStatValue, { color: GOLD }]}>
-                {documents.length}
+                {documentCount ?? "–"}
               </Text>
               <Text
                 style={[
@@ -209,7 +227,7 @@ export default function ProfileScreen() {
         </View>
 
         <TouchableOpacity
-          accessibilityLabel={`Current journey. Study in ${user.destinationCountry?.name || "your destination"}. ${nextTask ? `Next step: ${nextTask.title}` : "All tasks completed"}`}
+          accessibilityLabel={`Current journey. ${journeyTitle}. ${nextTask ? `Next step: ${nextTask.title}` : "All tasks completed"}`}
           accessibilityRole="button"
           activeOpacity={0.82}
           onPress={() => router.push("/(tabs)/journey")}
@@ -222,7 +240,7 @@ export default function ProfileScreen() {
             numberOfLines={1}
             style={[styles.journeyTitle, { color: palette.text }]}
           >
-            Study in {user.destinationCountry?.name || "your destination"}
+            {journeyTitle}
           </Text>
 
           <View style={styles.progressTrack}>

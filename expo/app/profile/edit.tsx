@@ -19,10 +19,11 @@ import * as ImagePicker from "expo-image-picker";
 import * as Haptics from "expo-haptics";
 import {
   ArrowLeft,
-  ArrowRight,
   Award,
   Bell,
   BookOpen,
+  KeyRound,
+  Link2,
   Calendar,
   CalendarCheck,
   CalendarClock,
@@ -50,7 +51,8 @@ import ProgressRing from "@/components/ui/ProgressRing";
 import { CARD_SHADOW, GUTTER, RADIUS, UI } from "@/constants/design";
 import { useAppBack } from "@/hooks/useAppBack";
 import { useDeleteAccount } from "@/hooks/useDeleteAccount";
-import { syncJourneyRoutes } from "@/lib/journeyRoutes";
+import { countryFlag, syncJourneyRoutes } from "@/lib/journeyRoutes";
+import { getRemindersEnabled } from "@/lib/reminders";
 import {
   BUDGET_OPTIONS,
   budgetLabel,
@@ -154,6 +156,19 @@ export default function EditProfileScreen() {
   const [origins, setOrigins] = useState<Country[]>([]);
   const [destinations, setDestinations] = useState<Country[]>([]);
   const [editing, setEditing] = useState<FieldKey | null>(null);
+  // Sign-in methods and reminder state for the Account & Privacy card.
+  const [account, setAccount] = useState({ hasPassword: true, providers: "", reminders: true });
+  useEffect(() => {
+    const names: Record<string, string> = { email: "Email", google: "Google", apple: "Apple" };
+    Promise.all([supabase.auth.getUser(), getRemindersEnabled()]).then(([{ data }, reminders]) => {
+      const providers = Array.from(new Set((data.user?.identities ?? []).map((identity) => identity.provider)));
+      setAccount({
+        hasPassword: providers.length === 0 || providers.includes("email"),
+        providers: providers.map((provider) => names[provider] ?? provider).join(", "),
+        reminders,
+      });
+    });
+  }, []);
   const [saving, setSaving] = useState(false);
   const [avatarBusy, setAvatarBusy] = useState(false);
   const [loadError, setLoadError] = useState("");
@@ -257,6 +272,24 @@ export default function EditProfileScreen() {
       default:
         return (draft[key] as string | null) || null;
     }
+  };
+
+  /** Multi-value fields render as chips with a trailing "+ Add" (Figma). */
+  const chipsFor = (key: FieldKey): { chips: string[]; add: string } | null => {
+    if (key === "test_scores") {
+      const taken = new Set(draft.test_scores.map((t) => t.type.toUpperCase()));
+      const missing = ["IELTS", "TOEFL", "SAT"].find((type) => !taken.has(type));
+      return { chips: draft.test_scores.map((t) => `${t.type} ${t.score}`), add: missing ? `Add ${missing}` : "Add" };
+    }
+    if (key === "intended_majors") return { chips: draft.intended_majors, add: "Add" };
+    if (key === "target_countries") {
+      return {
+        // countryName already carries the flag.
+        chips: draft.target_countries.map((code) => countryName(code) ?? `${countryFlag(code)} ${code}`.trim()),
+        add: "Add",
+      };
+    }
+    return null;
   };
 
   const apply = (patch: Partial<ProfileDetails>) => {
@@ -495,18 +528,11 @@ export default function EditProfileScreen() {
               <Text accessibilityRole="header" style={styles.sectionTitle}>
                 {section.title}
               </Text>
-              <TouchableOpacity
-                hitSlop={10}
-                onPress={() =>
-                  setEditing(section.rows.find((row) => !valueFor(row.key))?.key ?? section.rows[0].key)
-                }
-              >
-                <Text style={styles.sectionEdit}>Edit</Text>
-              </TouchableOpacity>
             </View>
             <View style={styles.card}>
               {section.rows.map((row, index) => {
                 const value = valueFor(row.key);
+                const chips = chipsFor(row.key);
                 const changed = !isEqual(fieldValue(draft, row.key), fieldValue(original, row.key));
                 return (
                   <Pressable
@@ -521,17 +547,31 @@ export default function EditProfileScreen() {
                       pressed && styles.rowPressed,
                     ]}
                   >
-                    <row.Icon color="#7A7A8C" size={20} strokeWidth={1.7} />
+                    <row.Icon color={UI.primary} size={20} strokeWidth={1.8} />
                     <View style={styles.rowCopy}>
                       <Text style={styles.rowLabel}>
                         {row.label}
                         {changed ? <Text style={styles.rowChanged}>  · edited</Text> : null}
                       </Text>
-                      <Text numberOfLines={2} style={[styles.rowValue, !value && styles.rowPlaceholder]}>
-                        {value ?? "Add"}
-                      </Text>
+                      {chips ? (
+                        <View style={styles.rowChips}>
+                          {chips.chips.map((chip) => (
+                            <View key={chip} style={styles.rowChip}>
+                              <Text numberOfLines={1} style={styles.rowChipText}>
+                                {chip}
+                              </Text>
+                            </View>
+                          ))}
+                          <View style={styles.rowChipAdd}>
+                            <Text style={styles.rowChipAddText}>+ {chips.add}</Text>
+                          </View>
+                        </View>
+                      ) : (
+                        <Text numberOfLines={2} style={[styles.rowValue, !value && styles.rowPlaceholder]}>
+                          {value ?? "Add"}
+                        </Text>
+                      )}
                     </View>
-                    <ArrowRight color="#7A7A8C" size={18} strokeWidth={1.8} />
                   </Pressable>
                 );
               })}
@@ -546,24 +586,53 @@ export default function EditProfileScreen() {
             </Text>
           </View>
           <View style={styles.card}>
-            <Pressable onPress={() => router.push("/settings")} style={[styles.row, styles.rowDivider]}>
-              <Bell color="#7A7A8C" size={20} strokeWidth={1.7} />
+            {account.hasPassword ? (
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => router.push("/reset-password" as any)}
+                style={({ pressed }) => [styles.row, styles.rowDivider, pressed && styles.rowPressed]}
+              >
+                <KeyRound color={UI.primary} size={20} strokeWidth={1.8} />
+                <View style={styles.rowCopy}>
+                  <Text style={styles.rowLabel}>Password</Text>
+                  <Text style={[styles.rowValue, styles.passwordDots]}>••••••••</Text>
+                </View>
+              </Pressable>
+            ) : null}
+            <View style={[styles.row, styles.rowDivider]}>
+              <Link2 color={UI.primary} size={20} strokeWidth={1.8} />
               <View style={styles.rowCopy}>
-                <Text style={styles.rowValue}>Notifications & privacy</Text>
-                <Text style={styles.rowLabel}>Password, notifications and app settings</Text>
+                <Text style={styles.rowLabel}>Linked accounts</Text>
+                <Text style={styles.rowValue}>{account.providers || "Email"}</Text>
               </View>
-              <ArrowRight color="#7A7A8C" size={18} strokeWidth={1.8} />
-            </Pressable>
-            <Pressable disabled={isDeletingAccount} onPress={confirmDeleteAccount} style={styles.row}>
-              <Trash2 color={UI.danger} size={20} strokeWidth={1.7} />
+            </View>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => router.push("/settings")}
+              style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
+            >
+              <Bell color={UI.primary} size={20} strokeWidth={1.8} />
               <View style={styles.rowCopy}>
-                <Text style={[styles.rowValue, styles.danger]}>Delete account</Text>
-                <Text style={styles.rowLabel}>Permanently remove your account and data</Text>
+                <Text style={styles.rowLabel}>Notification settings</Text>
+                <Text style={styles.rowValue}>Deadline reminders {account.reminders ? "on" : "off"}</Text>
               </View>
-              {isDeletingAccount ? <ActivityIndicator color={UI.danger} /> : null}
             </Pressable>
           </View>
         </View>
+
+        <Pressable
+          accessibilityRole="button"
+          disabled={isDeletingAccount}
+          onPress={confirmDeleteAccount}
+          style={({ pressed }) => [styles.deleteCard, pressed && styles.rowPressed]}
+        >
+          <Trash2 color={UI.danger} size={20} strokeWidth={1.8} />
+          <View style={styles.rowCopy}>
+            <Text style={[styles.rowValue, styles.danger]}>Delete account</Text>
+            <Text style={styles.rowLabel}>Permanently remove your account</Text>
+          </View>
+          {isDeletingAccount ? <ActivityIndicator color={UI.danger} /> : null}
+        </Pressable>
       </ScrollView>
 
       <FieldEditor
@@ -1282,6 +1351,51 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "500",
     marginTop: 2,
+  },
+  rowChips: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+    marginTop: 6,
+  },
+  rowChip: {
+    borderColor: UI.primary,
+    borderRadius: RADIUS.pill,
+    borderWidth: 1,
+    maxWidth: 200,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+  },
+  rowChipText: {
+    color: UI.primary,
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  rowChipAdd: {
+    borderColor: UI.border,
+    borderRadius: RADIUS.pill,
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+  },
+  rowChipAddText: {
+    color: UI.textSecondary,
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  passwordDots: {
+    letterSpacing: 2,
+  },
+  deleteCard: {
+    alignItems: "center",
+    backgroundColor: UI.card,
+    borderRadius: 18,
+    flexDirection: "row",
+    gap: 14,
+    marginTop: 18,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    ...CARD_SHADOW,
   },
   rowPlaceholder: {
     color: UI.primary,

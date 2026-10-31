@@ -1,6 +1,7 @@
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { useFonts } from "expo-font";
-import { Stack, usePathname, useGlobalSearchParams } from "expo-router";
+import { router, Stack, usePathname, useGlobalSearchParams } from "expo-router";
+import * as Notifications from "expo-notifications";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect, useRef } from "react";
 import { StatusBar } from "expo-status-bar";
@@ -153,6 +154,17 @@ function RootLayoutNav() {
     }
   }, [pathname, params]);
 
+  // Deadline reminders open the screen they point at.
+  useEffect(() => {
+    const open = (response: Notifications.NotificationResponse | null) => {
+      const url = response?.notification.request.content.data?.url;
+      if (typeof url === "string") router.push(url as any);
+    };
+    Notifications.getLastNotificationResponseAsync().then(open).catch(() => null);
+    const subscription = Notifications.addNotificationResponseReceivedListener(open);
+    return () => subscription.remove();
+  }, []);
+
   useEffect(() => {
     // Initialize user when app starts
     if (initializeUser) {
@@ -185,6 +197,10 @@ function RootLayoutNav() {
     const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
       if (!session && !isSignOutTransitionInProgress()) {
         clearAuthenticatedSessionState();
+      }
+      if (!session) {
+        // Reminders belong to the signed-out student.
+        Notifications.cancelAllScheduledNotificationsAsync().catch(() => null);
       }
 
       syncForUser(session?.user ?? null).catch((error) => {
@@ -221,6 +237,10 @@ function RootLayoutNav() {
           }}
         >
           <Stack.Screen name="index" options={ONBOARDING_ENTRY_TRANSITION} />
+          <Stack.Screen name="verify-email" options={{ headerShown: false }} />
+          <Stack.Screen name="forgot-password" options={{ headerShown: false }} />
+          <Stack.Screen name="reset-password" options={{ headerShown: false, gestureEnabled: false }} />
+          <Stack.Screen name="auth/callback" options={{ headerShown: false, gestureEnabled: false }} />
           <Stack.Screen
             name="sign-in"
             options={{ ...ONBOARDING_TRANSITION, title: "Sign In" }}
@@ -259,24 +279,28 @@ function RootLayoutNav() {
           />
           <Stack.Screen name="(tabs)" options={APP_REVEAL_TRANSITION} />
           <Stack.Screen name="journey/[id]" options={{ headerShown: false }} />
-          <Stack.Screen name="documents/new" options={{ title: "Add Document" }} />
+          <Stack.Screen name="documents/index" options={{ headerShown: false }} />
+          <Stack.Screen name="documents/new" options={{ headerShown: false }} />
           <Stack.Screen name="documents/[id]" options={{ title: "Document Details" }} />
           <Stack.Screen name="memories/index" options={{ headerShown: false }} />
-          <Stack.Screen name="memories/new" options={{ title: "New Memory" }} />
-          <Stack.Screen name="memories/[id]" options={{ title: "Memory Details" }} />
+          <Stack.Screen name="memories/new" options={{ headerShown: false }} />
+          <Stack.Screen name="memories/[id]" options={{ headerShown: false }} />
           <Stack.Screen name="profile/edit" options={{ headerShown: false }} />
-          <Stack.Screen name="profile/destinations" options={{ title: "My Destinations" }} />
+          <Stack.Screen name="profile/destinations" options={{ headerShown: false }} />
           <Stack.Screen name="profile/personal" options={{ title: "Personal Information" }} />
           <Stack.Screen name="profile/education" options={{ title: "Education" }} />
           <Stack.Screen name="profile/countries" options={{ title: "Countries" }} />
           <Stack.Screen name="profile/budget" options={{ title: "Budget" }} />
           <Stack.Screen name="profile/timeline" options={{ title: "Timeline" }} />
           <Stack.Screen name="profile/goals" options={{ title: "Career Goals" }} />
-          <Stack.Screen name="settings/index" options={{ title: "Settings" }} />
-          <Stack.Screen name="premium/index" options={{ title: "UniPilot Premium", headerShown: true }} />
+          <Stack.Screen name="settings/index" options={{ headerShown: false }} />
+          <Stack.Screen name="premium/index" options={{ headerShown: false, presentation: "modal" }} />
           <Stack.Screen name="premium/interview-simulator" options={{ headerShown: false }} />
           <Stack.Screen name="toolkit/index" options={{ headerShown: false }} />
+          <Stack.Screen name="toolkit/resume" options={{ headerShown: false }} />
+          <Stack.Screen name="toolkit/career" options={{ headerShown: false }} />
           <Stack.Screen name="resources/library" options={{ headerShown: false }} />
+          <Stack.Screen name="university/[id]" options={{ headerShown: false }} />
           <Stack.Screen name="payment-success" options={{ title: "Payment Success", headerShown: true }} />
           <Stack.Screen name="unipilot-ai/index" options={{ title: "AI Assistant" }} />
         </Stack>

@@ -18,9 +18,11 @@
       "newArchEnabled": true,
       "supportsTablet": false,
       "bundleIdentifier": "dev.lukashvelidze.unipilot",
+      "usesAppleSignIn": true,
       "buildNumber": "2",
       "entitlements": {
         "aps-environment": "production",
+        "com.apple.developer.applesignin": ["Default"],
         "com.apple.developer.associated-domains": [],
         "keychain-access-groups": []
       },

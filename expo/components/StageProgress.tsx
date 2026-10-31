@@ -155,7 +155,7 @@ const StageProgress: React.FC<StageProgressProps> = ({ stage, onPress, isLocked 
               <View style={[styles.completedBadge, { backgroundColor: Colors.lightBackground }]}>
                 <Lock size={14} color={Colors.lightText} />
                 <Text style={[styles.completedText, { color: Colors.lightText }]}>
-                  {lockedLabel || "Premium"}
+                  {lockedLabel || "Pro"}
                 </Text>
               </View>
             ) : stage.completed && (
@@ -177,7 +177,7 @@ const StageProgress: React.FC<StageProgressProps> = ({ stage, onPress, isLocked 
           />
           <View style={styles.progressTextRow}>
             <Text style={[styles.progressText, { color: Colors.lightText }]}>
-              {isLocked ? `${lockedLabel || "Premium"} required` : `${completedTasks}/${totalTasks} tasks`}
+              {isLocked ? `${lockedLabel || "Pro"} required` : `${completedTasks}/${totalTasks} tasks`}
             </Text>
             <Text style={[styles.progressPercent, { color: isLocked ? Colors.lightText : stageColor }]}>
               {isLocked ? "🔒" : `${stage.progress}%`}

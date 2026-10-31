@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Animated,
+  Easing,
   Alert,
   Image,
   Platform,
@@ -12,6 +14,7 @@ import {
   useWindowDimensions,
 } from "react-native";
 import { BlurView } from "expo-blur";
+import { SymbolView } from "expo-symbols";
 import { useFocusEffect, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Svg, { Path } from "react-native-svg";
@@ -37,12 +40,21 @@ import {
   canAccessJourneyTier,
   ensureUniversityRoutes,
   fetchJourneysWithProgress,
-  formatJourneyTierLabel,
 } from "@/lib/journeyProgress";
 import UniversityStrip from "@/components/journey/UniversityStrip";
-import { openManageSubscription } from "@/lib/subscriptionManager";
 
-const worldMapImage = require("@/assets/images/journey/world-map-figma.png");
+const worldMapImage = require("@/assets/images/journey/world-map.png");
+// The map art is a 1.6:1 world map; x ≈ MAP_X_AT_GREENWICH + longitude * MAP_X_PER_DEGREE
+// (fractions of its width).
+const MAP_ASPECT = 1.6;
+const MAP_X_AT_GREENWICH = 0.4785;
+const MAP_X_PER_DEGREE = 0.002725;
+// Rough longitude of each destination, to centre the map on it.
+const DESTINATION_LONGITUDE: Record<string, number> = {
+  AL: 20, AM: 45, AT: 14, AU: 134, BR: -52, CA: -100, DE: 10, EG: 30, FI: 26, FR: 2,
+  GB: -2, GE: 43, GH: -1, GR: 22, HK: 114, HU: 19, ID: 118, NE: 5, NG: 8, PH: 122,
+  TR: 35, UAE: 54, US: -98,
+};
 
 const PRIMARY = "#FF6B6B";
 const SUCCESS = "#2EC4B6";
@@ -65,7 +77,8 @@ type NodeSlot = {
   width: number;
 };
 
-type NodeState = "done" | "active" | "locked";
+// "pro": the student's next stage is a Pro stage; it invites them to unlock it.
+type NodeState = "done" | "active" | "pro" | "locked";
 
 const stageIcons: Record<JourneyStage, React.ComponentType<{ size?: number; color?: string; strokeWidth?: number }>> = {
   research: BookOpen,
@@ -142,6 +155,10 @@ export default function HomeScreen() {
 
   const stages = journeyProgress;
   const contentWidth = Math.min(width, 430);
+  // Fill the screen height at the map's true proportions (wider than the
+  // screen), centred on the destination being viewed.
+  const mapHeight = Math.max(height, width / MAP_ASPECT);
+  const mapWidth = mapHeight * MAP_ASPECT;
   const horizontalOffset = Math.max((width - contentWidth) / 2, 0);
   const scale = contentWidth / BASE_CANVAS_WIDTH;
   const extraStageCount = Math.max(0, stages.length - BASE_NODE_SLOTS.length);
@@ -162,6 +179,21 @@ export default function HomeScreen() {
 
   const firstName = user?.name?.trim().split(" ")[0] || "there";
   const activeJourney = journeys.find((journey) => journey.key === activeJourneyKey) || null;
+  const mapCountry = (activeJourney?.destinationCountryCode || user?.destinationCountry?.code || "").toUpperCase();
+  const mapLongitude = DESTINATION_LONGITUDE[mapCountry] ?? 20;
+  const mapLeft = Math.min(
+    0,
+    Math.max(width - mapWidth, width / 2 - (MAP_X_AT_GREENWICH + mapLongitude * MAP_X_PER_DEGREE) * mapWidth),
+  );
+  const mapOffset = useRef(new Animated.Value(mapLeft)).current;
+  useEffect(() => {
+    Animated.spring(mapOffset, {
+      toValue: mapLeft,
+      damping: 22,
+      stiffness: 90,
+      useNativeDriver: true,
+    }).start();
+  }, [mapLeft, mapOffset]);
   const activeUniversityName = activeJourney?.journey?.university?.name || null;
   const isActiveJourneyPreparing =
     !!activeUniversityName && activeJourney?.source !== "university" && stages.length > 0;
@@ -193,24 +225,9 @@ export default function HomeScreen() {
     };
   }, [extraStageCount, horizontalOffset, scale]);
 
-  const promptUpgrade = useCallback((tier?: string) => {
-    const label = formatJourneyTierLabel(tier);
-    Alert.alert(
-      "Upgrade Required",
-      `${label} tasks are available on a higher plan. Manage your plan to unlock them.`,
-      [
-        { text: "Not now", style: "cancel" },
-        {
-          text: "Manage Subscription",
-          onPress: () => {
-            openManageSubscription().catch((error) => {
-              console.error("Open subscription manager failed", error);
-              router.push("/settings");
-            });
-          },
-        },
-      ]
-    );
+  // Pro stages open the paywall directly: it explains exactly what unlocking adds.
+  const promptUpgrade = useCallback((_tier?: string) => {
+    router.push("/premium" as any);
   }, [router]);
 
   const openStage = useCallback((stage: JourneyProgress) => {
@@ -233,18 +250,14 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
-      <View pointerEvents="none" style={StyleSheet.absoluteFill}>
-        <Image
+      <View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.mapClip]}>
+        <Animated.Image
           accessibilityIgnoresInvertColors
-          resizeMode="cover"
+          resizeMode="stretch"
           source={worldMapImage}
           style={[
             styles.fixedMapImage,
-            {
-              left: horizontalOffset - contentWidth * 0.74,
-              width: contentWidth * 2.78,
-              height: Math.max(height * 1.42, 930),
-            },
+            { height: mapHeight, width: mapWidth, transform: [{ translateX: mapOffset }] },
           ]}
         />
       </View>
@@ -264,7 +277,15 @@ export default function HomeScreen() {
           activeKey={activeJourneyKey}
           journeys={journeys}
           onAdd={() => router.push("/onboarding/step-universities?mode=manage" as any)}
-          onSelect={setActiveJourneyKey}
+          onSelect={(key) => {
+            // Tapping the university already shown opens its details page.
+            const universityId = journeys.find((j) => j.key === key)?.journey?.university?.id;
+            if (key === activeJourneyKey && universityId) {
+              router.push(`/university/${universityId}` as any);
+              return;
+            }
+            setActiveJourneyKey(key);
+          }}
           style={styles.universityStrip}
         />
 
@@ -323,7 +344,9 @@ export default function HomeScreen() {
               const tierLocked = !canAccessJourneyTier(userTier, stage.subscriptionTier);
               const state: NodeState = stage.completed
                 ? "done"
-                : (index === currentStageIndex && !tierLocked ? "active" : "locked");
+                : index === currentStageIndex
+                  ? (tierLocked ? "pro" : "active")
+                  : "locked";
 
               return (
                 <JourneyNode
@@ -358,15 +381,72 @@ function JourneyPathLayer({
   height: number;
 }) {
   const points = stages.map((_, index) => getDotPoint(getNodeSlot(index), index));
+  const controlFor = (index: number) => {
+    const point = points[index];
+    const nextPoint = points[index + 1];
+    return {
+      x: index % 2 === 0
+        ? Math.max(point.x, nextPoint.x) + 98
+        : Math.min(point.x, nextPoint.x) - 76,
+      y: (point.y + nextPoint.y) / 2,
+    };
+  };
+
+  // The plane flies the leg into the active stage; before any progress it
+  // sits just after the first stage.
+  const planeSegment = activeIndex > 0 ? activeIndex - 1 : 0;
+  let plane: { x: number; y: number; angle: number } | null = null;
+  if (points.length > 1) {
+    const p0 = points[planeSegment];
+    const p1 = points[planeSegment + 1];
+    const c = controlFor(planeSegment);
+    const at = (t: number) => {
+      const u = 1 - t;
+      return {
+        x: u * u * p0.x + 2 * u * t * c.x + t * t * p1.x,
+        y: u * u * p0.y + 2 * u * t * c.y + t * t * p1.y,
+        angle:
+          (Math.atan2(
+            2 * u * (c.y - p0.y) + 2 * t * (p1.y - c.y),
+            2 * u * (c.x - p0.x) + 2 * t * (p1.x - c.x),
+          ) * 180) / Math.PI,
+      };
+    };
+    // Cards sit on top of the route, so fly the plane through the stretch of
+    // this leg that is furthest from every card (and from the screen edges),
+    // leaning towards the middle of the leg.
+    const cards = stages.map((_, index) => getNodeSlot(index));
+    // Distance from the plane badge's edge (not its centre) to the nearest obstacle.
+    const radius = PLANE_SIZE / 2;
+    const clearance = (x: number, y: number) =>
+      Math.min(
+        x - radius - PLANE_MARGIN,
+        width - PLANE_MARGIN - radius - x,
+        ...cards.map((slot) => {
+          const dx = Math.max(slot.left - x, 0, x - (slot.left + slot.width));
+          const dy = Math.max(slot.top - y, 0, y - (slot.top + NODE_CARD_HEIGHT));
+          return Math.hypot(dx, dy) - radius;
+        }),
+      );
+    let best = at(0.5);
+    let bestScore = -Infinity;
+    for (let t = 0.15; t <= 0.85; t += 0.05) {
+      const candidate = at(t);
+      const score = Math.min(clearance(candidate.x, candidate.y), 40) - Math.abs(t - 0.5) * 20;
+      if (score > bestScore) {
+        bestScore = score;
+        best = candidate;
+      }
+    }
+    plane = best;
+  }
 
   return (
+    <>
     <Svg width={width} height={height} style={StyleSheet.absoluteFill} pointerEvents="none">
       {points.slice(0, -1).map((point, index) => {
         const nextPoint = points[index + 1];
-        const controlX = index % 2 === 0
-          ? Math.max(point.x, nextPoint.x) + 98
-          : Math.min(point.x, nextPoint.x) - 76;
-        const controlY = (point.y + nextPoint.y) / 2;
+        const { x: controlX, y: controlY } = controlFor(index);
 
         return (
           <Path
@@ -381,6 +461,83 @@ function JourneyPathLayer({
         );
       })}
     </Svg>
+    {plane ? <PathPlane angle={plane.angle} x={plane.x} y={plane.y} /> : null}
+    </>
+  );
+}
+
+const PLANE_SIZE = 30;
+// Minimal airliner pointing right (0°), for platforms without SF Symbols.
+const PLANE_PATH =
+  "M21.5 12c0-.8-.7-1.4-1.5-1.4h-5.1L10.2 3H8l2.4 7.6H5.6L3.9 8H2.3l1.2 4-1.2 4h1.6l1.7-2.6h4.8L8 21h2.2l4.7-7.6H20c.8 0 1.5-.6 1.5-1.4z";
+const PLANE_MARGIN = 9;
+// Approximate rendered height of a stage card on the map.
+const NODE_CARD_HEIGHT = 160;
+
+/** A minimal coral airliner flying the route, with a fine dashed contrail. */
+function PathPlane({ x, y, angle }: { x: number; y: number; angle: number }) {
+  const drift = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(drift, { toValue: 1, duration: 1600, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(drift, { toValue: 0, duration: 1600, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [drift]);
+
+  const radians = (angle * Math.PI) / 180;
+  const travel = drift.interpolate({ inputRange: [0, 1], outputRange: [-3, 3] });
+  // Dashes trailing behind the tail, fading out.
+  const contrail = [
+    { distance: 19, opacity: 0.55 },
+    { distance: 28, opacity: 0.35 },
+    { distance: 37, opacity: 0.18 },
+  ];
+
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={{
+        height: PLANE_SIZE,
+        left: x - PLANE_SIZE / 2,
+        position: "absolute",
+        top: y - PLANE_SIZE / 2,
+        width: PLANE_SIZE,
+        transform: [
+          // Nudge back and forth along the direction of travel.
+          { translateX: Animated.multiply(travel, Math.cos(radians)) },
+          { translateY: Animated.multiply(travel, Math.sin(radians)) },
+        ],
+      }}
+    >
+      {contrail.map((dash) => (
+        <View
+          key={dash.distance}
+          style={[
+            styles.contrailDash,
+            {
+              left: PLANE_SIZE / 2 - Math.cos(radians) * dash.distance - 3.5,
+              opacity: dash.opacity,
+              top: PLANE_SIZE / 2 - Math.sin(radians) * dash.distance - 1,
+              transform: [{ rotate: `${angle}deg` }],
+            },
+          ]}
+        />
+      ))}
+      <View style={[styles.pathPlane, { transform: [{ rotate: `${angle}deg` }] }]}>
+        {Platform.OS === "ios" ? (
+          <SymbolView name="airplane" size={24} tintColor={PRIMARY} type="monochrome" weight="semibold" />
+        ) : (
+          <Svg height={24} viewBox="0 0 24 24" width={24}>
+            <Path d={PLANE_PATH} fill={PRIMARY} />
+          </Svg>
+        )}
+      </View>
+    </Animated.View>
   );
 }
 
@@ -414,16 +571,18 @@ function JourneyNode({
 }) {
   const Icon = state === "done"
     ? Check
-    : (state === "locked" ? Lock : (stageIcons[stage.stage] || FileText));
+    : (state === "locked" || state === "pro" ? Lock : (stageIcons[stage.stage] || FileText));
   const completedTasks = stage.tasks.filter((task) => task.completed).length;
   const totalTasks = stage.tasks.length;
   const remainingTasks = Math.max(totalTasks - completedTasks, 0);
-  const tag = state === "done" ? "DONE" : (state === "active" ? "ACTIVE" : "LOCKED");
-  const tagColor = state === "done" ? SUCCESS : (state === "active" ? PRIMARY : SOFT_MUTED);
+  const tag = state === "done" ? "DONE" : state === "active" ? "ACTIVE" : state === "pro" ? "PRO" : "LOCKED";
+  const tagColor = state === "done" ? SUCCESS : (state === "active" || state === "pro" ? PRIMARY : SOFT_MUTED);
   const titleColor = state === "locked" ? "#5E5E6E" : TEXT;
-  const iconBackground = state === "done" ? "#E6F9F7" : (state === "active" ? PRIMARY : "#EEEEF4");
-  const iconColor = state === "done" ? SUCCESS : (state === "active" ? "#FFFFFF" : SOFT_MUTED);
-  const borderColor = state === "done" ? SUCCESS : (state === "active" ? PRIMARY : BORDER);
+  const iconBackground =
+    state === "done" ? "#E6F9F7" : state === "active" ? PRIMARY : state === "pro" ? "#FFECEC" : "#EEEEF4";
+  const iconColor =
+    state === "done" ? SUCCESS : state === "active" ? "#FFFFFF" : state === "pro" ? PRIMARY : SOFT_MUTED;
+  const borderColor = state === "done" ? SUCCESS : (state === "active" || state === "pro" ? PRIMARY : BORDER);
   const subtitle = stage.description
     || (stage.completed ? "Milestone complete" : `${remainingTasks} task${remainingTasks === 1 ? "" : "s"} remaining`);
 
@@ -437,7 +596,7 @@ function JourneyNode({
           width: slot.width,
           borderColor,
         },
-        state === "active" && styles.activeNodeCard,
+        (state === "active" || state === "pro") && styles.activeNodeCard,
         state === "done" && styles.completedNodeCard,
         state === "locked" && styles.futureNodeCard,
       ]}
@@ -472,14 +631,19 @@ function JourneyNode({
             <ArrowRight size={13} color="#FFFFFF" strokeWidth={3} />
           </View>
         )}
+        {state === "pro" && (
+          <View style={styles.continueButton}>
+            <Text style={styles.continueText}>Unlock with Pro</Text>
+          </View>
+        )}
       </View>
 
       <View style={[
         styles.stepDot,
         {
-          backgroundColor: state === "done" ? SUCCESS : (state === "active" ? PRIMARY : "#E0E0EA"),
-          right: state === "active" ? -11 : -7,
-          top: state === "active" ? 39 : 46,
+          backgroundColor: state === "done" ? SUCCESS : (state === "active" || state === "pro" ? PRIMARY : "#E0E0EA"),
+          right: state === "active" || state === "pro" ? -11 : -7,
+          top: state === "active" || state === "pro" ? 39 : 46,
         },
       ]}>
         <Text style={[styles.stepDotText, state === "locked" && styles.lockedStepDotText]}>{index + 1}</Text>
@@ -493,10 +657,14 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#FFFFFF",
   },
+  mapClip: {
+    overflow: "hidden",
+  },
   fixedMapImage: {
+    left: 0,
     opacity: 0.38,
     position: "absolute",
-    top: -118,
+    top: 0,
   },
   scroll: {
     flex: 1,
@@ -569,6 +737,24 @@ const styles = StyleSheet.create({
     fontSize: 11.5,
     fontWeight: "600",
     lineHeight: 15,
+  },
+  contrailDash: {
+    backgroundColor: PRIMARY,
+    borderRadius: 1,
+    height: 2,
+    position: "absolute",
+    width: 7,
+  },
+  pathPlane: {
+    alignItems: "center",
+    height: PLANE_SIZE,
+    justifyContent: "center",
+    // A soft coral glow lifts the plane off the map without a backing shape.
+    shadowColor: PRIMARY,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.35,
+    shadowRadius: 6,
+    width: PLANE_SIZE,
   },
   mapCanvas: {
     marginTop: 0,

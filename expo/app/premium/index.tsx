@@ -1,958 +1,688 @@
-import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert, Linking, ActivityIndicator, Platform, useWindowDimensions } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useRouter, Stack, useFocusEffect } from "expo-router";
-import { Crown, Check, Star, Mic, MessageSquare, BookOpen, Lock } from "lucide-react-native";
-import { useColors } from "@/hooks/useColors";
-import Button from "@/components/Button";
-import Card from "@/components/Card";
-import BackButton from "@/components/BackButton";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  Linking,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import { Stack, useFocusEffect, useRouter } from "expo-router";
+import * as Haptics from "expo-haptics";
+import * as WebBrowser from "expo-web-browser";
+import { ArrowRight, Check, Minus, Sparkles, X } from "lucide-react-native";
+import { CARD_SHADOW, GUTTER, RADIUS, UI } from "@/constants/design";
+import { useAppBack } from "@/hooks/useAppBack";
+import { FREE_UNIVERSITY_LIMIT } from "@/lib/journeyRoutes";
 import { supabase } from "@/lib/supabase";
 import {
   DEFAULT_OFFERING_ID,
   PURCHASES_ERROR_CODE,
   addCustomerInfoUpdateListener,
   configureRevenueCat,
+  getActiveSubscriptionTier,
   getCustomerInfo,
   getOfferings,
-  getActiveSubscriptionTier,
+  openAppleSubscriptionManager,
   purchasePackage,
+  restorePurchases,
   type CustomerInfo,
   type PurchasesOfferings,
   type PurchasesPackage,
-  type SubscriptionTier,
 } from "@/lib/iap";
+import { useUserStore } from "@/store/userStore";
 
-interface PlanTier {
-  id: Exclude<SubscriptionTier, "free">;
-  name: string;
-  price: string;
-  period: string;
-  features: string[];
-  icon: any;
-  popular?: boolean;
-  rcPackage?: PurchasesPackage | null;
-}
-
-interface PremiumResource {
-  id: string;
-  title: string;
-  description: string;
-  icon: any;
-  comingSoon: boolean;
-  route?: string;
-  proOnly?: boolean;
-}
-
-const PRIVACY_POLICY_URL = "https://unipilot.app/privacy/";
+const PRIVACY_POLICY_URL = "https://unipilot.app/privacy";
 const TERMS_OF_USE_URL = "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/";
-const BASIC_FEATURES = [
-  "Access to basic journey modules",
-  "Document management",
-  "Basic checklist items",
-  "Email support",
+
+/** Free vs Pro, row by row. `true` = included, string = included with a limit. */
+const COMPARISON: { label: string; free: boolean | string; pro: boolean | string }[] = [
+  { label: "Universities you can follow", free: `${FREE_UNIVERSITY_LIMIT}`, pro: "Unlimited" },
+  { label: "Research & application roadmap", free: true, pro: true },
+  { label: "Tasks & deadline reminders", free: true, pro: true },
+  { label: "Every study-abroad guide", free: true, pro: true },
+  { label: "Document Vault", free: "Core docs", pro: "All types" },
+  { label: "Visa, travel & pre-departure stages", free: false, pro: true },
+  { label: "Arrival, academic & career stages", free: false, pro: true },
+  { label: "AI interview practice", free: "3 sessions", pro: "Unlimited" },
 ];
 
-const STANDARD_FEATURES = [
-  "Everything in Basic",
-  "All journey roadmap modules",
-  "Advanced checklist items",
-  "Priority email support",
-  "Resource library access",
-];
+/** Paid profile tiers from the old plans all mean Pro. */
+const isPro = (tier?: string | null) => !!tier && tier.toLowerCase() !== "free";
 
-const PREMIUM_FEATURES = [
-  "Everything in Standard",
-  "Unlimited AI assistance",
-  "1-on-1 consultation sessions",
-  "Premium document templates",
-  "Priority support",
-  "Early access to new features",
-];
+type PlanOption = { key: string; label: string; pkg: PurchasesPackage; note?: string };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: 24,
-    paddingBottom: 40,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 24,
-  },
-  loadingText: {
-    marginTop: 16,
-    fontSize: 16,
-  },
-  header: {
-    alignItems: "center",
-    marginBottom: 32,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: "700",
-    marginTop: 16,
-    marginBottom: 8,
-    textAlign: "center",
-  },
-  subtitle: {
-    fontSize: 16,
-    textAlign: "center",
-    lineHeight: 24,
-    marginBottom: 16,
-  },
-  iapStatusRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginTop: 4,
-  },
-  iapStatusText: {
-    fontSize: 14,
-  },
-  iapErrorText: {
-    fontSize: 14,
-    textAlign: "center",
-  },
-  currentTierBadge: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    marginTop: 8,
-  },
-  currentTierText: {
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  tiersContainer: {
-    flexDirection: "row",
-    marginBottom: 24,
-  },
-  tierCard: {
-    padding: 24,
-    position: "relative",
-    overflow: "visible",
-  },
-  popularTier: {
-    marginTop: 8,
-    marginBottom: 8,
-  },
-  popularBadge: {
-    position: "absolute",
-    top: -12,
-    left: "50%",
-    transform: [{ translateX: -60 }],
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    borderRadius: 16,
-    zIndex: 1,
-  },
-  popularBadgeText: {
-    color: "#FFFFFF",
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  currentBadge: {
-    position: "absolute",
-    top: -12,
-    right: 24,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    zIndex: 1,
-  },
-  currentBadgeText: {
-    color: "#FFFFFF",
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  tierHeader: {
-    alignItems: "center",
-    marginBottom: 24,
-  },
-  tierName: {
-    fontSize: 24,
-    fontWeight: "700",
-    marginTop: 12,
-    marginBottom: 8,
-  },
-  priceContainer: {
-    flexDirection: "row",
-    alignItems: "baseline",
-    marginTop: 8,
-  },
-  price: {
-    fontSize: 32,
-    fontWeight: "700",
-  },
-  pricePeriod: {
-    fontSize: 16,
-    marginLeft: 4,
-  },
-  featuresList: {
-    marginBottom: 24,
-    gap: 12,
-  },
-  featureItem: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 12,
-  },
-  featureText: {
-    fontSize: 15,
-    lineHeight: 22,
-    flex: 1,
-  },
-  subscribeButton: {
-    marginTop: 8,
-  },
-  footer: {
-    alignItems: "center",
-    marginTop: 16,
-    gap: 8,
-  },
-  footerText: {
-    fontSize: 14,
-    textAlign: "center",
-    lineHeight: 20,
-  },
-  disclosureSection: {
-    width: "100%",
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    gap: 10,
-  },
-  disclosureTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    textAlign: "center",
-  },
-  disclosurePlan: {
-    alignItems: "center",
-    gap: 4,
-  },
-  disclosurePlanTitle: {
-    fontSize: 15,
-    fontWeight: "600",
-    textAlign: "center",
-  },
-  disclosurePlanPrice: {
-    fontSize: 14,
-    textAlign: "center",
-  },
-  disclosureText: {
-    fontSize: 13,
-    lineHeight: 18,
-    textAlign: "center",
-  },
-  legalLinks: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    flexWrap: "wrap",
-    gap: 8,
-  },
-  legalLink: {
-    fontSize: 13,
-    fontWeight: "600",
-  },
-  legalSeparator: {
-    fontSize: 13,
-    marginHorizontal: 4,
-  },
-  resourcesContainer: {
-    gap: 16,
-    marginBottom: 24,
-  },
-  resourceCard: {
-    padding: 20,
-  },
-  resourceContent: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 16,
-  },
-  resourceIconContainer: {
-    width: 64,
-    height: 64,
-    borderRadius: 16,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  resourceTextContainer: {
-    flex: 1,
-  },
-  resourceTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    marginBottom: 4,
-  },
-  resourceDescription: {
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  comingSoonBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-  },
-  comingSoonText: {
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  availableBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-  },
-  availableText: {
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  proOnlyBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-    gap: 4,
-  },
-  proOnlyText: {
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  infoSection: {
-    marginTop: 8,
-    padding: 20,
-    borderRadius: 12,
-    backgroundColor: "transparent",
-  },
-  infoTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    marginBottom: 8,
-  },
-  infoText: {
-    fontSize: 14,
-    lineHeight: 20,
-  },
-});
-
-const normalizeProfileTier = (tier?: string | null): SubscriptionTier => {
-  if (!tier) return "free";
-  const normalized = tier.toLowerCase();
-  if (normalized === "basic") return "basic";
-  if (normalized === "standard") return "standard";
-  if (normalized === "premium") return "premium";
-  if (normalized === "pro") return "premium";
-  return "free";
-};
-
+/** UniPilot Pro: one plan, honest Free vs Pro comparison, purchase, restore and manage. */
 export default function PremiumScreen() {
-  const Colors = useColors();
-  const insets = useSafeAreaInsets();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const handleBack = useAppBack("/(tabs)");
+  const updateUser = useUserStore((state) => state.updateUser);
   const isWeb = Platform.OS === "web";
-  const lastSyncedTier = useRef<SubscriptionTier | null>(null);
-  const { width: windowWidth } = useWindowDimensions();
-  const planCardWidth = Math.min(windowWidth - 64, 360);
-  const planCardSpacing = 16;
-  
-  const [currentTier, setCurrentTier] = useState<SubscriptionTier>("free");
+  const syncedPro = useRef(false);
+
+  const [pro, setPro] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [isProcessing, setIsProcessing] = useState<Exclude<SubscriptionTier, "free"> | null>(null);
-  const [rcError, setRcError] = useState<string | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [isRestoring, setIsRestoring] = useState(false);
+  const [storeUnavailable, setStoreUnavailable] = useState(false);
   const [offerings, setOfferings] = useState<PurchasesOfferings | null>(null);
-  const currentOffering =
-    (offerings?.all && offerings.all[DEFAULT_OFFERING_ID]) || offerings?.current || null;
-  const availablePackages = currentOffering?.availablePackages ?? [];
-  const hasOfferingsPackages = availablePackages.length > 0;
+  const [selectedKey, setSelectedKey] = useState<string | null>(null);
 
-  const getPackageForTier = useCallback(
-    (tierId: Exclude<SubscriptionTier, "free">): PurchasesPackage | null => {
-      const byPackageId = availablePackages.find((pkg) => pkg.identifier === tierId);
-      if (byPackageId) {
-        return byPackageId;
-      }
-      const byProductId = availablePackages.find((pkg) =>
-        pkg.product.identifier.toLowerCase().includes(tierId)
-      );
-      return byProductId ?? null;
-    },
-    [availablePackages]
-  );
+  const currentOffering = (offerings?.all && offerings.all[DEFAULT_OFFERING_ID]) || offerings?.current || null;
 
-  const subscriptionTiers: PlanTier[] = useMemo(() => {
-    const basicPackage = getPackageForTier("basic");
-    const standardPackage = getPackageForTier("standard");
-    const premiumPackage = getPackageForTier("premium");
-    const monthlyLabel = "/ monthly";
-
-    return [
-      {
-        id: "basic",
-        name: "Basic",
-        price: basicPackage?.product.priceString || "--",
-        period: monthlyLabel,
-        features: BASIC_FEATURES,
-        icon: Star,
-        rcPackage: basicPackage,
-      },
-      {
-        id: "standard",
-        name: "Standard",
-        price: standardPackage?.product.priceString || "--",
-        period: monthlyLabel,
-        features: STANDARD_FEATURES,
-        icon: Star,
-        popular: true,
-        rcPackage: standardPackage,
-      },
-      {
-        id: "premium",
-        name: "Premium",
-        price: premiumPackage?.product.priceString || "--",
-        period: monthlyLabel,
-        features: PREMIUM_FEATURES,
-        icon: Crown,
-        rcPackage: premiumPackage,
-      },
-    ];
-  }, [getPackageForTier]);
-
-  const disclosurePlans = subscriptionTiers.map((tier) => ({
-    id: tier.id,
-    title: `UniPilot ${tier.name}`,
-    price: `${tier.price} ${tier.period} (auto-renewable)`,
-  }));
-
-  const handleOpenLink = useCallback(async (url: string) => {
-    try {
-      const supported = await Linking.canOpenURL(url);
-      if (!supported) {
-        Alert.alert("Unable to Open", "We couldn't open this link.");
-        return;
-      }
-      await Linking.openURL(url);
-    } catch (error) {
-      console.error("Open link failed:", error);
-      Alert.alert("Unable to Open", "We couldn't open this link.");
+  // Pro packages: yearly and monthly when configured. Until the "pro" products
+  // exist, the old Premium package (whose entitlement now grants Pro) stands in.
+  const options = useMemo<PlanOption[]>(() => {
+    const packages = currentOffering?.availablePackages ?? [];
+    // e.g. unipilot_pro_monthly / unipilot_pro_annual; never the old basic/standard plans.
+    const isPro = (pkg: PurchasesPackage) => /(^|[_.\-])pro([_.\-]|$)/i.test(pkg.product.identifier);
+    const isPremium = (pkg: PurchasesPackage) => /premium/i.test(pkg.product.identifier);
+    const proPackages = packages.filter(isPro);
+    const candidates = proPackages.length ? proPackages : packages.filter(isPremium);
+    const annual = candidates.find((pkg) => pkg.packageType === "ANNUAL" || /annual|year/i.test(pkg.identifier));
+    const monthly = candidates.find((pkg) => pkg !== annual);
+    const list: PlanOption[] = [];
+    if (annual) {
+      const monthlyPrice = monthly?.product.price;
+      const saving =
+        monthlyPrice && annual.product.price ? Math.round((1 - annual.product.price / (monthlyPrice * 12)) * 100) : 0;
+      list.push({ key: "annual", label: "Yearly", pkg: annual, note: saving > 0 ? `Save ${saving}%` : undefined });
     }
-  }, []);
+    if (monthly) list.push({ key: "monthly", label: "Monthly", pkg: monthly });
+    return list;
+  }, [currentOffering]);
 
-  const syncProfileTier = useCallback(async (info: CustomerInfo | null) => {
-    const { data: { user: authUser } } = await supabase.auth.getUser();
-    if (!authUser) {
-      return;
-    }
+  useEffect(() => {
+    if (!selectedKey && options.length) setSelectedKey(options[0].key);
+  }, [options, selectedKey]);
 
-    const nextTier = getActiveSubscriptionTier(info);
-    if (lastSyncedTier.current === nextTier) {
-      return;
-    }
+  const selected = options.find((option) => option.key === selectedKey) ?? options[0] ?? null;
+  const periodLabel = (option: PlanOption) => (option.key === "annual" ? "year" : "month");
 
-    lastSyncedTier.current = nextTier;
-    const { error } = await supabase
-      .from("profiles")
-      .update({ subscription_tier: nextTier, updated_at: new Date().toISOString() })
-      .eq("id", authUser.id);
-
-    if (error) {
-      console.warn("Failed to sync subscription tier:", error);
-    }
-  }, []);
-
-  const refreshProfileTier = useCallback(async () => {
-    try {
-      const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
-      if (authError || !authUser) {
-        setCurrentTier("free");
-        return;
-      }
-
-      const { data, error } = await supabase
+  const syncProfileTier = useCallback(
+    async (info: CustomerInfo | null) => {
+      // Only ever raise the tier from the device: Pro can also come from the web,
+      // promos or support, and expiries are handled server-side by store webhooks.
+      if (getActiveSubscriptionTier(info) !== "pro" || syncedPro.current) return;
+      const {
+        data: { user: authUser },
+      } = await supabase.auth.getUser();
+      if (!authUser) return;
+      syncedPro.current = true;
+      const { data: profile } = await supabase
         .from("profiles")
         .select("subscription_tier")
         .eq("id", authUser.id)
         .single();
+      if (isPro(profile?.subscription_tier)) return;
+      // Stored as "premium": the column's check constraint predates the Pro plan,
+      // and every paid value means Pro in the app.
+      const { error } = await supabase
+        .from("profiles")
+        .update({ subscription_tier: "premium", updated_at: new Date().toISOString() })
+        .eq("id", authUser.id);
+      if (error) console.warn("Failed to sync subscription tier:", error);
+      updateUser({ subscriptionTier: "pro", isPremium: true });
+    },
+    [updateUser],
+  );
 
-      if (error) {
-        console.warn("Failed to load profile tier:", error);
-        setCurrentTier("free");
-        return;
-      }
-
-      setCurrentTier(normalizeProfileTier(data?.subscription_tier));
-    } catch (error) {
-      console.error("Error loading profile tier:", error);
-      setCurrentTier("free");
-    }
+  const refreshProfileTier = useCallback(async () => {
+    const {
+      data: { user: authUser },
+    } = await supabase.auth.getUser();
+    if (!authUser) return setPro(false);
+    const { data } = await supabase.from("profiles").select("subscription_tier").eq("id", authUser.id).single();
+    setPro(isPro(data?.subscription_tier));
   }, []);
 
-  const refreshRevenueCatState = useCallback(async () => {
-    if (isWeb) {
-      return;
-    }
-    setRcError(null);
+  const refreshStore = useCallback(async () => {
+    if (isWeb) return;
     try {
-      const { data: { user: authUser } } = await supabase.auth.getUser();
+      const {
+        data: { user: authUser },
+      } = await supabase.auth.getUser();
       await configureRevenueCat(authUser?.id);
-
-      const [freshOfferings, info] = await Promise.all([
-        getOfferings(),
-        getCustomerInfo(),
-      ]);
-
+      const [freshOfferings, info] = await Promise.all([getOfferings(), getCustomerInfo()]);
       setOfferings(freshOfferings);
-      const nextOffering =
-        (freshOfferings.all && freshOfferings.all[DEFAULT_OFFERING_ID]) ||
-        freshOfferings.current ||
-        null;
-      if (!nextOffering || nextOffering.availablePackages.length === 0) {
-        setRcError(
-          "No subscription packages found. Please finish configuring your RevenueCat offerings."
-        );
-      }
+      const offering = freshOfferings.all?.[DEFAULT_OFFERING_ID] || freshOfferings.current;
+      setStoreUnavailable(!offering || offering.availablePackages.length === 0);
       await syncProfileTier(info);
-    } catch (error: any) {
+    } catch (error) {
       console.error("RevenueCat init failed:", error);
-      setRcError(error?.message || "Unable to connect to RevenueCat.");
+      setStoreUnavailable(true);
     }
   }, [isWeb, syncProfileTier]);
 
-  const refreshSubscriptionState = useCallback(async () => {
-    setIsLoading(true);
+  const refresh = useCallback(async () => {
     try {
       await refreshProfileTier();
       setIsLoading(false);
-      await refreshRevenueCatState();
+      await refreshStore();
       await refreshProfileTier();
     } finally {
       setIsLoading(false);
     }
-  }, [refreshProfileTier, refreshRevenueCatState]);
+  }, [refreshProfileTier, refreshStore]);
 
-  // Check subscription status on mount
-  useEffect(() => {
-    refreshSubscriptionState();
-  }, [refreshSubscriptionState]);
-
-  // Refresh subscription status when screen comes into focus
-  // This ensures the page updates when user returns from payment
   useFocusEffect(
     useCallback(() => {
-      refreshSubscriptionState();
-    }, [refreshSubscriptionState])
+      refresh();
+    }, [refresh]),
   );
+
   useEffect(() => {
-    if (isWeb) {
-      return;
-    }
-    const removeListener = addCustomerInfoUpdateListener(async (info) => {
+    if (isWeb) return;
+    const remove = addCustomerInfoUpdateListener(async (info) => {
       await syncProfileTier(info);
       await refreshProfileTier();
     });
-
     return () => {
-      removeListener();
+      remove();
     };
   }, [isWeb, refreshProfileTier, syncProfileTier]);
 
-  const handleSubscribe = useCallback(async (tier: PlanTier) => {
+  const subscribe = async () => {
     if (isWeb) {
-      Alert.alert("Not Supported", "Subscriptions are available on iOS and Android.");
+      Alert.alert("Not supported", "Subscriptions are available in the iOS and Android apps.");
       return;
     }
-
-    if (!tier.rcPackage) {
-      Alert.alert(
-        "Unavailable",
-        "This subscription is not available right now. Please try again later."
-      );
+    if (!selected) {
+      Alert.alert("Pro unavailable", "We couldn't reach the App Store. Please try again in a moment.");
       return;
     }
-
-    setIsProcessing(tier.id);
+    setIsProcessing(true);
     try {
-      const { data: { user: authUser } } = await supabase.auth.getUser();
+      const {
+        data: { user: authUser },
+      } = await supabase.auth.getUser();
       await configureRevenueCat(authUser?.id);
-
-      const info = await purchasePackage(tier.rcPackage);
-      if (!info) {
-        return;
-      }
+      const info = await purchasePackage(selected.pkg);
+      if (!info) return;
       await syncProfileTier(info);
       await refreshProfileTier();
-      Alert.alert("Success", "Your UniPilot Pro subscription is active.");
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => null);
+      Alert.alert("Welcome to Pro!", "Every stage is unlocked and you can follow as many universities as you like.", [
+        { text: "Let's go", onPress: () => router.replace("/(tabs)") },
+      ]);
     } catch (error: any) {
-      if (error?.userCancelled || error?.code === PURCHASES_ERROR_CODE.PURCHASE_CANCELLED_ERROR) {
-        return;
-      }
+      if (error?.userCancelled || error?.code === PURCHASES_ERROR_CODE.PURCHASE_CANCELLED_ERROR) return;
       console.error("Purchase failed:", error);
-      Alert.alert("Error", error?.message || "Unable to complete purchase.");
+      Alert.alert("Purchase didn't go through", error?.message || "Please try again.");
     } finally {
-      setIsProcessing(null);
-    }
-  }, [configureRevenueCat, isWeb, purchasePackage, refreshProfileTier, syncProfileTier]);
-
-  const hasActiveSubscription = currentTier !== "free";
-  const hasPremiumAccess = currentTier === "premium";
-  const currentTierLabel =
-    currentTier === "basic"
-      ? "Basic"
-      : currentTier === "standard"
-        ? "Standard"
-        : currentTier === "premium"
-          ? "Premium"
-          : "Free";
-
-
-  // Premium resources that will be linked to checklist items later
-  const premiumResources: PremiumResource[] = [
-    {
-      id: "interview-simulator",
-      title: "Interview Simulator",
-      description: "Practice visa and university interviews with AI-powered simulations",
-      icon: Mic,
-      comingSoon: false,
-      route: "/premium/interview-simulator",
-      proOnly: true,
-    },
-    {
-      id: "ai-chats",
-      title: "AI Chats",
-      description: "Get personalized guidance and answers from our AI assistant",
-      icon: MessageSquare,
-      comingSoon: true,
-      proOnly: false,
-    },
-    {
-      id: "articles",
-      title: "Articles",
-      description: "Curated guides, webinars, and articles for your journey",
-      icon: BookOpen,
-      comingSoon: false,
-      route: "/premium/articles",
-      proOnly: false,
-    },
-  ];
-
-  const handleResourcePress = (resourceId: string) => {
-    const resource = premiumResources.find(r => r.id === resourceId);
-    if (!resource) return;
-
-    if (resource.comingSoon) {
-      Alert.alert(
-        "Coming Soon",
-        `${resource.title} will be available soon. This feature will be linked to help icons in your checklist items.`
-      );
-    } else if (resource.route) {
-      router.push(resource.route as any);
+      setIsProcessing(false);
     }
   };
 
-  if (isLoading) {
-    return (
-      <View style={[styles.container, { backgroundColor: Colors.background }]}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={Colors.primary} />
-          <Text style={[styles.loadingText, { color: Colors.lightText }]}>Loading subscription status...</Text>
-        </View>
-      </View>
+  const restore = async () => {
+    if (isWeb || isRestoring) return;
+    setIsRestoring(true);
+    try {
+      const info = await restorePurchases();
+      await syncProfileTier(info);
+      await refreshProfileTier();
+      const restored = getActiveSubscriptionTier(info) === "pro";
+      Alert.alert(
+        restored ? "Purchases restored" : "Nothing to restore",
+        restored ? "UniPilot Pro is active again." : "We couldn't find an active subscription for this Apple ID.",
+      );
+    } catch (error: any) {
+      Alert.alert("Restore failed", error?.message || "Please try again.");
+    } finally {
+      setIsRestoring(false);
+    }
+  };
+
+  const manage = () =>
+    openAppleSubscriptionManager().catch(() =>
+      Linking.openURL("https://apps.apple.com/account/subscriptions").catch(() => null),
     );
-  }
 
-  // Show premium resources home page if user has active subscription
-  if (hasActiveSubscription) {
-    return (
-      <ScrollView 
-        style={[styles.container, { backgroundColor: Colors.background, paddingBottom: insets.bottom }]} 
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        <Stack.Screen
-          options={{
-            title: "Premium Resources",
-            headerLeft: () => <BackButton onPress={() => router.replace("/(tabs)")} />,
-          }}
-        />
-        {/* Header */}
-        <View style={styles.header}>
-          <Crown size={48} color={Colors.primary} />
-          <Text style={[styles.title, { color: Colors.text }]}>
-            Premium Resources
-          </Text>
-          <Text style={[styles.subtitle, { color: Colors.lightText }]}>
-            Access exclusive resources to enhance your journey
-          </Text>
-          {hasActiveSubscription && (
-            <View style={[styles.currentTierBadge, { backgroundColor: Colors.success + "20" }]}>
-              <Text style={[styles.currentTierText, { color: Colors.success }]}>
-                {currentTierLabel} Plan
-              </Text>
-            </View>
-          )}
-        </View>
-
-        {/* Premium Resources */}
-        <View style={styles.resourcesContainer}>
-          {premiumResources.map((resource) => {
-            const IconComponent = resource.icon;
-            return (
-              <Card
-                key={resource.id}
-                style={[
-                  styles.resourceCard,
-                  { backgroundColor: Colors.card },
-                ]}
-                variant="elevated"
-              >
-                <TouchableOpacity
-                  onPress={() => handleResourcePress(resource.id)}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.resourceContent}>
-                    <View style={[styles.resourceIconContainer, { backgroundColor: Colors.primary + "20" }]}>
-                      <IconComponent size={32} color={Colors.primary} />
-                    </View>
-                    <View style={styles.resourceTextContainer}>
-                      <Text style={[styles.resourceTitle, { color: Colors.text }]}>
-                        {resource.title}
-                      </Text>
-                      <Text style={[styles.resourceDescription, { color: Colors.lightText }]}>
-                        {resource.description}
-                      </Text>
-                    </View>
-                    {resource.comingSoon && (
-                      <View style={[styles.comingSoonBadge, { backgroundColor: Colors.primary + "20" }]}>
-                        <Text style={[styles.comingSoonText, { color: Colors.primary }]}>
-                          Soon
-                        </Text>
-                      </View>
-                    )}
-                    {!resource.comingSoon && resource.proOnly && !hasPremiumAccess && (
-                      <View style={[styles.proOnlyBadge, { backgroundColor: Colors.warning + "20" }]}>
-                        <Lock size={12} color={Colors.warning} />
-                        <Text style={[styles.proOnlyText, { color: Colors.warning }]}>
-                          Pro
-                        </Text>
-                      </View>
-                    )}
-                    {!resource.comingSoon && (!resource.proOnly || hasPremiumAccess) && (
-                      <View style={[styles.availableBadge, { backgroundColor: Colors.success + "20" }]}>
-                        <Text style={[styles.availableText, { color: Colors.success }]}>
-                          Available
-                        </Text>
-                      </View>
-                    )}
-                  </View>
-                </TouchableOpacity>
-              </Card>
-            );
-          })}
-        </View>
-
-        {/* Info Section */}
-        <View style={styles.infoSection}>
-          <Text style={[styles.infoTitle, { color: Colors.text }]}>
-            How It Works
-          </Text>
-          <Text style={[styles.infoText, { color: Colors.lightText }]}>
-            These resources will be linked to help icons within your checklist items. Click on help icons to access detailed guides, webinars, and interactive tools for each task.
-          </Text>
-        </View>
-      </ScrollView>
-    );
-  }
-
-  // Show pricing tiers for free users
   return (
-    <ScrollView 
-      style={[styles.container, { backgroundColor: Colors.background, paddingBottom: insets.bottom }]} 
-      contentContainerStyle={styles.scrollContent}
-      showsVerticalScrollIndicator={false}
-    >
-      <Stack.Screen
-        options={{
-          title: "UniPilot Premium",
-          headerLeft: () => <BackButton onPress={() => router.replace("/(tabs)")} />,
-        }}
-      />
-      {/* Header */}
+    <SafeAreaView edges={["top"]} style={styles.container}>
+      <Stack.Screen options={{ headerShown: false }} />
       <View style={styles.header}>
-        <Crown size={48} color={Colors.primary} />
-        <Text style={[styles.title, { color: Colors.text }]}>
-          Choose Your Plan
-        </Text>
-        <Text style={[styles.subtitle, { color: Colors.lightText }]}>
-          Unlock premium features and accelerate your journey
-        </Text>
-        {!isWeb && !hasOfferingsPackages && !rcError && (
-          <View style={styles.iapStatusRow}>
-            <ActivityIndicator size="small" color={Colors.primary} />
-            <Text style={[styles.iapStatusText, { color: Colors.lightText }]}>
-              Loading subscription options...
-            </Text>
-          </View>
-        )}
-        {rcError && (
-          <View style={styles.iapStatusRow}>
-            <Text style={[styles.iapErrorText, { color: Colors.error }]}>
-              {rcError}
-            </Text>
-          </View>
-        )}
-        {isWeb && (
-          <View style={styles.iapStatusRow}>
-            <Text style={[styles.iapStatusText, { color: Colors.lightText }]}>
-              Subscriptions are available on iOS and Android.
-            </Text>
-          </View>
-        )}
+        <TouchableOpacity accessibilityLabel="Close" onPress={handleBack} style={styles.roundButton}>
+          <X color={UI.text} size={20} strokeWidth={2.2} />
+        </TouchableOpacity>
+        <TouchableOpacity accessibilityRole="button" disabled={isRestoring} onPress={restore} style={styles.restore}>
+          {isRestoring ? (
+            <ActivityIndicator color={UI.primary} size="small" />
+          ) : (
+            <Text style={styles.restoreText}>Restore</Text>
+          )}
+        </TouchableOpacity>
       </View>
 
-      {/* Subscription Tiers */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.tiersContainer}
-        snapToInterval={planCardWidth + planCardSpacing}
-        decelerationRate="fast"
-        snapToAlignment="start"
-      >
-        {subscriptionTiers.map((tier, index) => {
-          const IconComponent = tier.icon;
-          const isCurrentTier = false;
-          const isProcessingTier = isProcessing === tier.id;
-          const hasPackage = Boolean(tier.rcPackage);
-          const priceLabel = hasPackage ? tier.price : "Loading...";
-          const pricePeriod = tier.period;
-          const isButtonDisabled =
-            isCurrentTier || isProcessingTier || isWeb || Boolean(rcError) || !hasPackage;
-          const isLastTier = index === subscriptionTiers.length - 1;
-
-          return (
-            <Card
-              key={tier.id}
-              style={[
-                styles.tierCard,
-                {
-                  backgroundColor: Colors.card,
-                  width: planCardWidth,
-                  marginRight: isLastTier ? 0 : planCardSpacing,
-                },
-                tier.popular && styles.popularTier,
-                tier.popular && { borderColor: Colors.primary, borderWidth: 2 },
-                isCurrentTier && { borderColor: Colors.success, borderWidth: 2 },
-              ]}
-              variant={tier.popular ? "elevated" : "default"}
-            >
-              {tier.popular && (
-                <View style={[styles.popularBadge, { backgroundColor: Colors.primary }]}>
-                  <Text style={styles.popularBadgeText}>Most Popular</Text>
-                </View>
-              )}
-              
-              {isCurrentTier && (
-                <View style={[styles.currentBadge, { backgroundColor: Colors.success }]}>
-                  <Text style={styles.currentBadgeText}>Current Plan</Text>
-                </View>
-              )}
-
-              <View style={styles.tierHeader}>
-                <IconComponent size={32} color={tier.popular ? Colors.primary : Colors.text} />
-                <Text style={[styles.tierName, { color: Colors.text }]}>
-                  {tier.name}
-                </Text>
-                <View style={styles.priceContainer}>
-                  <Text style={[styles.price, { color: Colors.text }]}>
-                    {priceLabel}
-                  </Text>
-                  <Text style={[styles.pricePeriod, { color: Colors.lightText }]}>
-                    {pricePeriod}
-                  </Text>
-                </View>
+      {isLoading ? (
+        <View style={styles.loading}>
+          <ActivityIndicator color={UI.primary} />
+        </View>
+      ) : (
+        <>
+          <ScrollView
+            contentContainerStyle={[styles.content, { paddingBottom: (pro ? 48 : 190) + insets.bottom }]}
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={styles.hero}>
+              <View style={styles.heroIcon}>
+                <Sparkles color="#FFFFFF" size={26} strokeWidth={2} />
               </View>
-
-              <View style={styles.featuresList}>
-                {tier.features.map((feature, index) => (
-                  <View key={index} style={styles.featureItem}>
-                    <Check size={18} color={Colors.success} />
-                    <Text style={[styles.featureText, { color: Colors.text }]}>
-                      {feature}
-                    </Text>
-                  </View>
-                ))}
+              <View style={styles.proBadge}>
+                <Text style={styles.proBadgeText}>UniPilot Pro</Text>
               </View>
-
-              <Button
-                title={isCurrentTier ? "Current Plan" : `Subscribe to ${tier.name}`}
-                onPress={() => handleSubscribe(tier)}
-                disabled={isButtonDisabled}
-                loading={isProcessingTier}
-                fullWidth
-                variant={tier.popular ? "default" : "outline"}
-                style={styles.subscribeButton}
-              />
-            </Card>
-          );
-        })}
-      </ScrollView>
-
-      {/* Footer Info */}
-      <View style={styles.footer}>
-        <View style={[styles.disclosureSection, { borderColor: Colors.border }]}>
-          <Text style={[styles.disclosureTitle, { color: Colors.text }]}>
-            Subscription Terms
-          </Text>
-          {disclosurePlans.map((plan) => (
-            <View key={plan.id} style={styles.disclosurePlan}>
-              <Text style={[styles.disclosurePlanTitle, { color: Colors.text }]}>
-                {plan.title}
-              </Text>
-              <Text style={[styles.disclosurePlanPrice, { color: Colors.text }]}>
-                {plan.price}
+              <Text style={styles.heroTitle}>{pro ? "You're on Pro" : "Your whole move abroad, mapped"}</Text>
+              <Text style={styles.heroText}>
+                {pro
+                  ? "Every stage, every tool and unlimited universities. Thanks for supporting UniPilot!"
+                  : "Compare as many universities as you like and unlock every stage after your application: visa, travel, arrival and career."}
               </Text>
             </View>
-          ))}
-          <Text style={[styles.disclosureText, { color: Colors.lightText }]}>
-            Payment will be charged to your store account at confirmation of purchase.
-          </Text>
-          <Text style={[styles.disclosureText, { color: Colors.lightText }]}>
-            Subscription automatically renews unless canceled at least 24 hours before the end of the current period.
-          </Text>
-          <View style={styles.legalLinks}>
-            <Text
-              style={[styles.legalLink, { color: Colors.primary }]}
-              accessibilityRole="link"
-              onPress={() => handleOpenLink(PRIVACY_POLICY_URL)}
-            >
-              Privacy Policy
+
+            <View style={styles.table}>
+              <View style={styles.tableHead}>
+                <View style={styles.tableLabelCol} />
+                <Text style={[styles.tableHeadText, styles.tableCol]}>Free</Text>
+                <Text style={[styles.tableHeadText, styles.tableCol, styles.tableHeadPro]}>Pro</Text>
+              </View>
+              {COMPARISON.map((row, index) => (
+                <View key={row.label} style={[styles.tableRow, index > 0 && styles.tableDivider]}>
+                  <Text style={[styles.tableLabel, styles.tableLabelCol]}>{row.label}</Text>
+                  <Cell value={row.free} />
+                  <Cell pro value={row.pro} />
+                </View>
+              ))}
+            </View>
+
+            {!pro && options.length > 1 ? (
+              <>
+                <Text style={styles.sectionTitle}>Choose how to pay</Text>
+                <View style={styles.options}>
+                  {options.map((option) => {
+                    const active = option.key === selected?.key;
+                    return (
+                      <Pressable
+                        key={option.key}
+                        accessibilityRole="radio"
+                        accessibilityState={{ checked: active }}
+                        onPress={() => {
+                          Haptics.selectionAsync().catch(() => null);
+                          setSelectedKey(option.key);
+                        }}
+                        style={[styles.option, active && styles.optionActive]}
+                      >
+                        <View style={[styles.radio, active && styles.radioActive]}>
+                          {active ? <View style={styles.radioDot} /> : null}
+                        </View>
+                        <View style={styles.optionCopy}>
+                          <Text style={styles.optionLabel}>{option.label}</Text>
+                          {option.note ? <Text style={styles.optionNote}>{option.note}</Text> : null}
+                        </View>
+                        <Text style={styles.optionPrice}>
+                          {option.pkg.product.priceString}
+                          <Text style={styles.optionPeriod}> / {periodLabel(option)}</Text>
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </>
+            ) : null}
+
+            {pro ? (
+              <TouchableOpacity accessibilityRole="button" onPress={manage} style={styles.manage}>
+                <Text style={styles.manageText}>Manage or cancel subscription</Text>
+              </TouchableOpacity>
+            ) : null}
+
+            <Text style={styles.legal}>
+              Pro renews automatically at the price shown until cancelled. Payment is charged to your Apple ID at
+              confirmation. Cancel any time in your App Store settings at least 24 hours before renewal.
             </Text>
-            <Text style={[styles.legalSeparator, { color: Colors.lightText }]}>
-              |
-            </Text>
-            <Text
-              style={[styles.legalLink, { color: Colors.primary }]}
-              accessibilityRole="link"
-              onPress={() => handleOpenLink(TERMS_OF_USE_URL)}
-            >
-              Terms of Use (Apple Standard EULA)
-            </Text>
-          </View>
-        </View>
-        <Text style={[styles.footerText, { color: Colors.lightText }]}>
-          Pricing is provided directly by the App Store or Play Store.
-        </Text>
-        <Text style={[styles.footerText, { color: Colors.lightText }]}>
-          Manage or cancel anytime from your store subscriptions.
-        </Text>
-      </View>
-    </ScrollView>
+            <View style={styles.legalLinks}>
+              <Text onPress={() => WebBrowser.openBrowserAsync(TERMS_OF_USE_URL)} style={styles.legalLink}>
+                Terms of Use (EULA)
+              </Text>
+              <Text style={styles.legalDot}>·</Text>
+              <Text onPress={() => WebBrowser.openBrowserAsync(PRIVACY_POLICY_URL)} style={styles.legalLink}>
+                Privacy Policy
+              </Text>
+            </View>
+          </ScrollView>
+
+          {!pro ? (
+            <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 16) }]}>
+              {storeUnavailable ? (
+                <Text style={styles.storeNote}>Pro is temporarily unavailable. Please try again shortly.</Text>
+              ) : null}
+              <TouchableOpacity
+                accessibilityRole="button"
+                activeOpacity={0.88}
+                disabled={isProcessing || !selected}
+                onPress={subscribe}
+                style={[styles.cta, (isProcessing || !selected) && styles.ctaDisabled]}
+              >
+                {isProcessing ? (
+                  <ActivityIndicator color="#FFFFFF" />
+                ) : (
+                  <>
+                    <Text style={styles.ctaText}>Get UniPilot Pro</Text>
+                    <ArrowRight color="#FFFFFF" size={18} strokeWidth={2.4} />
+                  </>
+                )}
+              </TouchableOpacity>
+              <Text style={styles.ctaNote}>
+                {selected ? `${selected.pkg.product.priceString} / ${periodLabel(selected)} · ` : ""}Cancel anytime
+              </Text>
+            </View>
+          ) : null}
+        </>
+      )}
+    </SafeAreaView>
   );
 }
+
+function Cell({ value, pro }: { value: boolean | string; pro?: boolean }) {
+  return (
+    <View style={styles.tableCol}>
+      {value === true ? (
+        <Check color={pro ? UI.primary : UI.success} size={17} strokeWidth={3} />
+      ) : value === false ? (
+        <Minus color={UI.track} size={17} strokeWidth={3} />
+      ) : (
+        <Text style={[styles.cellText, pro && styles.cellTextPro]}>{value}</Text>
+      )}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    backgroundColor: UI.background,
+    flex: 1,
+  },
+  header: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingBottom: 6,
+    paddingHorizontal: GUTTER - 4,
+    paddingTop: 6,
+  },
+  roundButton: {
+    alignItems: "center",
+    backgroundColor: UI.card,
+    borderRadius: 20,
+    height: 40,
+    justifyContent: "center",
+    width: 40,
+    ...CARD_SHADOW,
+  },
+  restore: {
+    minWidth: 64,
+    paddingHorizontal: 8,
+    paddingVertical: 8,
+  },
+  restoreText: {
+    color: UI.primary,
+    fontSize: 15,
+    fontWeight: "700",
+    textAlign: "right",
+  },
+  loading: {
+    alignItems: "center",
+    flex: 1,
+    justifyContent: "center",
+  },
+  content: {
+    paddingHorizontal: GUTTER,
+  },
+  hero: {
+    alignItems: "center",
+    marginTop: 4,
+  },
+  heroIcon: {
+    alignItems: "center",
+    backgroundColor: UI.primary,
+    borderRadius: 22,
+    height: 64,
+    justifyContent: "center",
+    shadowColor: UI.primary,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    width: 64,
+  },
+  proBadge: {
+    backgroundColor: UI.primarySoft,
+    borderRadius: RADIUS.pill,
+    marginTop: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+  },
+  proBadgeText: {
+    color: UI.primary,
+    fontSize: 12.5,
+    fontWeight: "800",
+    letterSpacing: 0.3,
+  },
+  heroTitle: {
+    color: UI.text,
+    fontSize: 26,
+    fontWeight: "800",
+    letterSpacing: -0.5,
+    marginTop: 10,
+    textAlign: "center",
+  },
+  heroText: {
+    color: UI.textSecondary,
+    fontSize: 15,
+    lineHeight: 22,
+    marginTop: 8,
+    textAlign: "center",
+  },
+  table: {
+    backgroundColor: UI.card,
+    borderRadius: RADIUS.card,
+    marginTop: 24,
+    paddingBottom: 4,
+    paddingHorizontal: 14,
+    ...CARD_SHADOW,
+  },
+  tableHead: {
+    flexDirection: "row",
+    paddingBottom: 8,
+    paddingTop: 14,
+  },
+  tableHeadText: {
+    color: UI.muted,
+    fontSize: 13,
+    fontWeight: "800",
+    textAlign: "center",
+  },
+  tableHeadPro: {
+    color: UI.primary,
+  },
+  tableRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    paddingVertical: 12,
+  },
+  tableDivider: {
+    borderTopColor: UI.hairline,
+    borderTopWidth: 1,
+  },
+  tableLabelCol: {
+    flex: 1,
+  },
+  tableCol: {
+    alignItems: "center",
+    width: 74,
+  },
+  tableLabel: {
+    color: UI.text,
+    fontSize: 14,
+    fontWeight: "600",
+    paddingRight: 8,
+  },
+  cellText: {
+    color: UI.textSecondary,
+    fontSize: 12.5,
+    fontWeight: "700",
+    textAlign: "center",
+  },
+  cellTextPro: {
+    color: UI.primary,
+  },
+  sectionTitle: {
+    color: UI.text,
+    fontSize: 17,
+    fontWeight: "700",
+    marginBottom: 12,
+    marginTop: 26,
+  },
+  options: {
+    gap: 10,
+  },
+  option: {
+    alignItems: "center",
+    backgroundColor: UI.card,
+    borderColor: UI.border,
+    borderRadius: RADIUS.card,
+    borderWidth: 1.5,
+    flexDirection: "row",
+    gap: 12,
+    padding: 16,
+  },
+  optionActive: {
+    borderColor: UI.primary,
+  },
+  radio: {
+    alignItems: "center",
+    borderColor: UI.track,
+    borderRadius: 11,
+    borderWidth: 2,
+    height: 22,
+    justifyContent: "center",
+    width: 22,
+  },
+  radioActive: {
+    borderColor: UI.primary,
+  },
+  radioDot: {
+    backgroundColor: UI.primary,
+    borderRadius: 5,
+    height: 10,
+    width: 10,
+  },
+  optionCopy: {
+    flex: 1,
+  },
+  optionLabel: {
+    color: UI.text,
+    fontSize: 16,
+    fontWeight: "800",
+  },
+  optionNote: {
+    color: UI.success,
+    fontSize: 12.5,
+    fontWeight: "800",
+    marginTop: 2,
+  },
+  optionPrice: {
+    color: UI.text,
+    fontSize: 16,
+    fontWeight: "800",
+  },
+  optionPeriod: {
+    color: UI.muted,
+    fontSize: 12.5,
+    fontWeight: "600",
+  },
+  manage: {
+    alignItems: "center",
+    borderColor: UI.border,
+    borderRadius: 28,
+    borderWidth: 1.5,
+    marginTop: 22,
+    paddingVertical: 15,
+  },
+  manageText: {
+    color: UI.text,
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  legal: {
+    color: UI.muted,
+    fontSize: 11.5,
+    lineHeight: 17,
+    marginTop: 24,
+    textAlign: "center",
+  },
+  legalLinks: {
+    flexDirection: "row",
+    gap: 8,
+    justifyContent: "center",
+    marginTop: 8,
+  },
+  legalLink: {
+    color: UI.textSecondary,
+    fontSize: 12,
+    fontWeight: "600",
+    textDecorationLine: "underline",
+  },
+  legalDot: {
+    color: UI.muted,
+    fontSize: 12,
+  },
+  footer: {
+    backgroundColor: UI.background,
+    borderTopColor: UI.hairline,
+    borderTopWidth: 1,
+    bottom: 0,
+    left: 0,
+    paddingHorizontal: GUTTER,
+    paddingTop: 12,
+    position: "absolute",
+    right: 0,
+  },
+  storeNote: {
+    color: UI.muted,
+    fontSize: 12.5,
+    marginBottom: 8,
+    textAlign: "center",
+  },
+  cta: {
+    alignItems: "center",
+    backgroundColor: UI.primary,
+    borderRadius: 28,
+    flexDirection: "row",
+    gap: 8,
+    height: 56,
+    justifyContent: "center",
+    shadowColor: UI.primary,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.28,
+    shadowRadius: 12,
+  },
+  ctaDisabled: {
+    opacity: 0.6,
+  },
+  ctaText: {
+    color: "#FFFFFF",
+    fontSize: 17,
+    fontWeight: "800",
+  },
+  ctaNote: {
+    color: UI.muted,
+    fontSize: 12.5,
+    marginTop: 8,
+    textAlign: "center",
+  },
+});

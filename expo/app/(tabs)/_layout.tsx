@@ -4,6 +4,7 @@ import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { BlurView } from "expo-blur";
 import * as Haptics from "expo-haptics";
 import { Tabs } from "expo-router";
+import { Icon, Label, NativeTabs } from "expo-router/unstable-native-tabs";
 import { SymbolView, type SFSymbol } from "expo-symbols";
 import { Platform, Pressable, StyleSheet, View } from "react-native";
 import Animated, {
@@ -20,6 +21,10 @@ const ACTIVE_COLOR = "#E07A5F";
 const INACTIVE_COLOR = "#7D8492";
 const DOCK_HEIGHT = 84;
 const DOCK_PADDING = 8;
+// iOS uses the system UITabBarController, so iOS 26+ gets the real Liquid
+// Glass bar (lensing, morphing selection, scroll-edge behaviour). Android and
+// web keep the custom frosted dock below.
+const NATIVE_TABS = Platform.OS === "ios";
 
 type IoniconName = React.ComponentProps<typeof Ionicons>["name"];
 
@@ -217,7 +222,7 @@ function GlassTabBar({
         <View style={styles.dockMaterial}>
           <BlurView
             experimentalBlurMethod="dimezisBlurView"
-            intensity={Platform.OS === "ios" ? 68 : 48}
+            intensity={48}
             style={StyleSheet.absoluteFill}
             tint="systemChromeMaterialLight"
           />
@@ -281,8 +286,36 @@ function GlassTabBar({
   );
 }
 
+const TAB_ORDER = ["index", "journey", "premium", "profile"] as const;
+
+function NativeTabLayout() {
+  return (
+    // `UITabBarAppearance` defaults to a frosted backing that sits inside the
+    // Liquid Glass platter and makes it look milky. Clearing it leaves only the
+    // clear system glass, like Telegram.
+    <NativeTabs
+      backgroundColor="transparent"
+      blurEffect="none"
+      shadowColor="transparent"
+      tintColor={ACTIVE_COLOR}
+    >
+      {TAB_ORDER.map((name) => {
+        const details = TAB_DETAILS[name];
+        return (
+          <NativeTabs.Trigger key={name} name={name}>
+            <Icon sf={{ default: details.defaultSymbol, selected: details.selectedSymbol }} />
+            <Label>{details.label}</Label>
+          </NativeTabs.Trigger>
+        );
+      })}
+    </NativeTabs>
+  );
+}
+
 export default function TabLayout() {
   const Colors = useColors();
+
+  if (NATIVE_TABS) return <NativeTabLayout />;
 
   return (
     <Tabs
@@ -326,14 +359,6 @@ export default function TabLayout() {
         options={{
           headerShown: false,
           title: "Resources",
-        }}
-      />
-      <Tabs.Screen
-        name="documents"
-        options={{
-          headerShown: false,
-          href: null,
-          title: "Documents",
         }}
       />
       <Tabs.Screen

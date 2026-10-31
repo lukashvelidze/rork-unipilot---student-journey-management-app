@@ -65,21 +65,21 @@ export default function ToolkitScreen() {
       title: "AI Resume Feedback",
       description: "Line-by-line suggestions for your CV",
       Icon: FileText,
-      comingSoon: true,
+      onPress: () => router.push("/toolkit/resume" as any),
     },
     {
       key: "vault",
       title: "Document Vault",
       description: "Passports, transcripts and offers in one place",
       Icon: FolderOpen,
-      onPress: () => router.push("/(tabs)/documents" as any),
+      onPress: () => router.push("/documents" as any),
     },
     {
       key: "career",
       title: "Career readiness monitor",
       description: "Track skills employers look for",
       Icon: TrendingUp,
-      comingSoon: true,
+      onPress: () => router.push("/toolkit/career" as any),
     },
   ];
 
@@ -87,9 +87,9 @@ export default function ToolkitScreen() {
     {
       key: "upload",
       title: "Upload resume",
-      description: "Add your CV to the document vault",
+      description: "Get AI feedback on your CV",
       Icon: CloudUpload,
-      onPress: () => router.push("/documents/new" as any),
+      onPress: () => router.push("/toolkit/resume" as any),
     },
     {
       key: "readiness",
@@ -103,7 +103,7 @@ export default function ToolkitScreen() {
       title: "My Uploads",
       description: "Everything you've stored",
       Icon: Files,
-      onPress: () => router.push("/(tabs)/documents" as any),
+      onPress: () => router.push("/documents" as any),
     },
   ];
 

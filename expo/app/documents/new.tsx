@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from "react";
 import { StyleSheet, View, Text, ScrollView, Alert, ActivityIndicator, TouchableOpacity } from "react-native";
-import { useRouter } from "expo-router";
-import { Crown } from "lucide-react-native";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { ArrowLeft, Crown } from "lucide-react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { CARD_SHADOW, GUTTER, UI } from "@/constants/design";
 import { useColors } from "@/hooks/useColors";
 import { useAppBack } from "@/hooks/useAppBack";
 import Input from "@/components/Input";
 import Button from "@/components/Button";
 import { loadDocumentCategories, createDocumentEntry } from "@/lib/supabase";
 import { supabase } from "@/lib/supabase";
-import { openManageSubscription } from "@/lib/subscriptionManager";
 
 interface DocumentCategory {
   id: string;
@@ -32,7 +33,9 @@ interface DocumentCategory {
 export default function NewDocumentScreen() {
   const router = useRouter();
   const Colors = useColors();
-  const handleBack = useAppBack("/(tabs)/documents");
+  const handleBack = useAppBack("/documents");
+  // Opened from a Vault essential: preselect that category.
+  const { category: initialCategory } = useLocalSearchParams<{ category?: string }>();
   
   const [categories, setCategories] = useState<DocumentCategory[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<DocumentCategory | null>(null);
@@ -51,6 +54,8 @@ export default function NewDocumentScreen() {
       setIsLoading(true);
       const cats = await loadDocumentCategories();
       setCategories(cats as DocumentCategory[]);
+      const preset = (cats as DocumentCategory[]).find((c) => c.code === initialCategory);
+      if (preset) setSelectedCategory(preset);
     } catch (error) {
       console.error("Error loading categories:", error);
       Alert.alert("Error", "Failed to load document categories. Please try again.");
@@ -71,18 +76,14 @@ export default function NewDocumentScreen() {
         .eq("id", authUser.id)
         .single();
 
-      if (profile?.subscription_tier === "free") {
+      if (!profile?.subscription_tier || profile.subscription_tier === "free") {
         Alert.alert(
-          "Premium Feature",
-          "This document category is available for premium users only. Upgrade to unlock premium features.",
+          "Pro feature",
+          "This document category is part of UniPilot Pro.",
             [
               { text: "Cancel", style: "cancel" },
-              { text: "Manage Subscription", onPress: () => {
-                openManageSubscription()
-                  .catch((error) => {
-                    console.error("Open subscription manager failed", error);
-                    router.push("/settings");
-                  });
+              { text: "See plans", onPress: () => {
+                router.push("/premium" as any);
               }},
             ]
         );
@@ -173,16 +174,12 @@ export default function NewDocumentScreen() {
       
       if (error.message === "Premium feature") {
         Alert.alert(
-          "Premium Feature",
-          "This document category is available for premium users only.",
+          "Pro feature",
+          "This document category is part of UniPilot Pro.",
             [
               { text: "Cancel", style: "cancel" },
-              { text: "Manage Subscription", onPress: () => {
-                openManageSubscription()
-                  .catch((error) => {
-                    console.error("Open subscription manager failed", error);
-                    router.push("/settings");
-                  });
+              { text: "See plans", onPress: () => {
+                router.push("/premium" as any);
               }},
             ]
           );
@@ -206,12 +203,21 @@ export default function NewDocumentScreen() {
   }
 
   return (
+    <SafeAreaView edges={["top"]} style={[styles.container, { backgroundColor: UI.background }]}>
+      <View style={styles.header}>
+        <TouchableOpacity accessibilityLabel="Go back" onPress={handleBack} style={styles.roundButton}>
+          <ArrowLeft color={UI.text} size={20} strokeWidth={2.2} />
+        </TouchableOpacity>
+        <Text accessibilityRole="header" style={styles.headerTitle}>
+          Add document
+        </Text>
+        <View style={styles.headerSpacer} />
+      </View>
     <ScrollView
-      style={[styles.container, { backgroundColor: Colors.background }]}
+      style={styles.container}
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
     >
-      <Text style={[styles.title, { color: Colors.text }]}>Add Document</Text>
 
       {/* Category Selection */}
       <View style={styles.section}>
@@ -231,7 +237,7 @@ export default function NewDocumentScreen() {
               {category.is_premium && (
                 <View style={styles.premiumBadge}>
                   <Crown size={14} color="#FFD700" />
-                  <Text style={styles.premiumText}>Premium</Text>
+                  <Text style={styles.premiumText}>Pro</Text>
                 </View>
               )}
             </View>
@@ -281,6 +287,7 @@ export default function NewDocumentScreen() {
         disabled={isUploading || !selectedCategory}
       />
     </ScrollView>
+    </SafeAreaView>
   );
 }
 
@@ -289,7 +296,34 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    padding: 16,
+    paddingBottom: 48,
+    paddingHorizontal: GUTTER,
+    paddingTop: 8,
+  },
+  header: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingBottom: 10,
+    paddingHorizontal: GUTTER - 4,
+    paddingTop: 6,
+  },
+  roundButton: {
+    alignItems: "center",
+    backgroundColor: UI.card,
+    borderRadius: 20,
+    height: 40,
+    justifyContent: "center",
+    width: 40,
+    ...CARD_SHADOW,
+  },
+  headerTitle: {
+    color: UI.text,
+    fontSize: 17,
+    fontWeight: "700",
+  },
+  headerSpacer: {
+    width: 40,
   },
   title: {
     fontSize: 24,

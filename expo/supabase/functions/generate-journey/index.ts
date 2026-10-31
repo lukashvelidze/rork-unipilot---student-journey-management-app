@@ -13,6 +13,11 @@
 //   action: "catalog"  (admin JWT)      -> fills a country's university picker
 //                                          (profiles, fees, logos) without journeys.
 //   action: "enrich"   (admin JWT)      -> backfills university logos/photos.
+//   action: "directory" (admin JWT)     -> imports every accredited university
+//                                          of the destination countries from the
+//                                          open world universities list.
+//   action: "profile"  (any user JWT)   -> researches and caches one university's
+//                                          details page (fees, requirements, ...).
 //
 // Each university becomes its own visa_types route:
 //   ROUTE_STUDY_<DEST>_<ORIGIN>_<LEVEL>_<UNIVERSITY_SLUG>
@@ -1669,6 +1674,350 @@ async function handleCatalog(
 }
 
 // --------------------------------------------------------------------------
+// action: directory  (admin: import every university of the destinations)
+// --------------------------------------------------------------------------
+
+// Open list of ~10k accredited universities (name, country, websites).
+const WORLD_UNIVERSITIES_URL =
+  "https://raw.githubusercontent.com/Hipo/university-domains-list/master/world_universities_and_domains.json";
+
+// destination_countries uses a few non-ISO codes.
+const DESTINATION_ISO: Record<string, string> = { NE: "NL", UAE: "AE", UK: "GB" };
+
+const normalizedName = (name: string) =>
+  name
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .replace(/\bthe\b|\bof\b|\band\b|&/g, " ")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+
+const hostOf = (url: string | null | undefined) => {
+  if (!url) return null;
+  try {
+    return new URL(url.startsWith("http") ? url : `https://${url}`).hostname.replace(/^www\./, "");
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * Add every university the open directory lists for the destination
+ * countries, so students can find any institution, not only the featured
+ * ones. Featured rows (ranked, with fees) are matched by website or name and
+ * left untouched; directory rows get their profile on demand ("profile").
+ */
+async function handleDirectory(
+  admin: SupabaseClient,
+  body: Record<string, unknown>,
+): Promise<Response> {
+  const only = String(body.destinationCountryCode ?? "").trim().toUpperCase();
+  let countryQuery = admin.from("destination_countries").select("code").eq("is_active", true);
+  if (only) countryQuery = countryQuery.eq("code", only);
+  const { data: countries, error: countriesError } = await countryQuery;
+  if (countriesError) return json({ error: countriesError.message }, 500);
+
+  const response = await fetch(WORLD_UNIVERSITIES_URL);
+  if (!response.ok) return json({ error: `Directory download failed (${response.status})` }, 502);
+  const world = (await response.json()) as Array<{
+    name?: string;
+    alpha_two_code?: string;
+    web_pages?: string[];
+    domains?: string[];
+    "state-province"?: string | null;
+  }>;
+
+  const summary: Record<string, { listed: number; added: number }> = {};
+  for (const { code } of countries ?? []) {
+    const iso = DESTINATION_ISO[code] ?? code;
+    const listed = world.filter((u) => u.alpha_two_code === iso && u.name?.trim());
+
+    const { data: existing } = await admin
+      .from("universities")
+      .select("slug, name, website")
+      .eq("country_code", code);
+    const knownNames = new Set((existing ?? []).map((u) => normalizedName(u.name)));
+    const knownHosts = new Set((existing ?? []).map((u) => hostOf(u.website)).filter(Boolean));
+    const knownSlugs = new Set((existing ?? []).map((u) => u.slug));
+
+    const rows: Record<string, unknown>[] = [];
+    for (const u of listed) {
+      const name = u.name!.trim();
+      const website = u.web_pages?.[0] ?? (u.domains?.[0] ? `https://${u.domains[0]}` : null);
+      const hosts = [hostOf(website), ...(u.domains ?? []).map((d) => d.replace(/^www\./, ""))];
+      if (knownNames.has(normalizedName(name)) || hosts.some((h) => h && knownHosts.has(h))) continue;
+      const slug = slugify(`${name}-${code}`);
+      if (!slug || knownSlugs.has(slug)) continue;
+      knownSlugs.add(slug);
+      knownNames.add(normalizedName(name));
+      rows.push({
+        slug,
+        name,
+        country_code: code,
+        website,
+        is_featured: false,
+        is_active: true,
+        metadata: {
+          source: "directory",
+          domains: u.domains ?? [],
+          region: u["state-province"] ?? null,
+        },
+      });
+    }
+
+    for (let i = 0; i < rows.length; i += 500) {
+      const { error } = await admin
+        .from("universities")
+        .upsert(rows.slice(i, i + 500), { onConflict: "slug", ignoreDuplicates: true });
+      if (error) console.error(`directory: ${code} batch ${i} failed`, error);
+    }
+    summary[code] = { listed: listed.length, added: rows.length };
+  }
+
+  return json({ summary });
+}
+
+// --------------------------------------------------------------------------
+// action: profile  (student opens a university: research it once, cache it)
+// --------------------------------------------------------------------------
+
+const PROFILE_MAX_AGE_MS = 120 * 24 * 60 * 60 * 1000;
+const PROFILE_RETRY_AFTER_MS = 6 * 60 * 60 * 1000;
+
+const stringList = (value: unknown, max: number, maxLength = 120): string[] =>
+  Array.isArray(value)
+    ? value
+        .map((v) => trimmedOrNull(v, maxLength))
+        .filter((v): v is string => !!v)
+        .slice(0, max)
+    : [];
+
+const REQUIREMENT_KEYS = new Set([
+  "passport",
+  "transcript",
+  "diploma",
+  "english_test",
+  "motivation_letter",
+  "recommendation",
+  "cv",
+  "portfolio",
+  "entrance_exam",
+  "standardized_test",
+  "financial_proof",
+  "interview",
+  "other",
+]);
+
+async function researchUniversityProfile(u: {
+  name: string;
+  countryName: string;
+  city: string | null;
+  website: string | null;
+}) {
+  const prompt = `Research "${u.name}"${u.city ? ` (${u.city})` : ""} in ${u.countryName}${u.website ? `, official site ${u.website}` : ""} for an international applicant, as of ${todayIso()}. Use web search and prefer the university's official pages.
+
+Return ONLY a JSON object (no prose, no code fence):
+{
+  "city": main campus city or null,
+  "rankingGlobal": latest QS World University Ranking position (lower bound of a band) or null,
+  "tagline": max 60 characters on what it is known for, or null,
+  "overview": 2-3 plain sentences describing the university for a prospective student,
+  "acceptanceRate": overall acceptance rate as a whole-number percent, or null if not published,
+  "languages": languages of instruction, e.g. ["English", "Danish"],
+  "studentCount": total students as a number or null,
+  "internationalPercent": share of international students as a whole-number percent or null,
+  "monthlyLivingCostUsd": typical monthly living cost for a student in that city, in US dollars, or null,
+  "applicationPortal": URL or name of the system international students apply through, or null,
+  "scholarships": up to 5 named scholarships or fee waivers open to international students,
+  "levels": {
+    "bachelors": LEVEL,
+    "masters": LEVEL
+  }
+}
+where LEVEL is null if the university does not admit international students at that level, otherwise:
+{
+  "tuitionMinUsd": yearly tuition lower bound for non-EU international students in USD (0 if free) or null,
+  "tuitionMaxUsd": yearly tuition upper bound or null,
+  "scholarshipAvailable": true/false/null,
+  "applicationDeadline": main deadline for the next intake after today as "YYYY-MM-DD" or null,
+  "intakes": e.g. ["September"],
+  "programs": up to 8 popular programmes taught in English at this level,
+  "minIelts": minimum IELTS overall as a number or null,
+  "minToefl": minimum TOEFL iBT as a number or null,
+  "minGpaPercent": minimum previous-study grade as a percent of the maximum (e.g. 75) or null,
+  "requirements": up to 9 items { "key": one of passport | transcript | diploma | english_test | motivation_letter | recommendation | cv | portfolio | entrance_exam | standardized_test | financial_proof | interview | other, "label": short name, "detail": one short sentence or null }
+}`;
+
+  let parsed: Record<string, unknown>;
+  try {
+    parsed = extractJson<Record<string, unknown>>(await askModel(prompt, { maxTokens: 6000 }));
+  } catch {
+    parsed = extractJson<Record<string, unknown>>(
+      await askModel(prompt, { maxTokens: 6000, grounding: false }),
+    );
+  }
+
+  const percent = (value: unknown) => {
+    const n = toWholeNumber(value);
+    return n !== null && n >= 0 && n <= 100 ? n : null;
+  };
+  const decimal = (value: unknown, max: number) => {
+    const n = typeof value === "number" ? value : Number.parseFloat(String(value ?? ""));
+    return Number.isFinite(n) && n > 0 && n <= max ? Math.round(n * 10) / 10 : null;
+  };
+
+  const levels: Record<string, Record<string, unknown>> = {};
+  const rawLevels = (parsed.levels ?? {}) as Record<string, Record<string, unknown> | null>;
+  for (const level of CATALOG_LEVELS) {
+    const l = rawLevels[level];
+    if (!l || typeof l !== "object") continue;
+    let min = toWholeNumber(l.tuitionMinUsd);
+    let max = toWholeNumber(l.tuitionMaxUsd);
+    if (min !== null && max !== null && min > max) [min, max] = [max, min];
+    levels[level] = {
+      tuitionMinUsd: min,
+      tuitionMaxUsd: max,
+      scholarshipAvailable: typeof l.scholarshipAvailable === "boolean" ? l.scholarshipAvailable : null,
+      applicationDeadline: toUpcomingDeadline(l.applicationDeadline),
+      intakes: stringList(l.intakes, 4, 30),
+      programs: stringList(l.programs, 8, 80),
+      minIelts: decimal(l.minIelts, 9),
+      minToefl: toWholeNumber(l.minToefl),
+      minGpaPercent: percent(l.minGpaPercent),
+      requirements: (Array.isArray(l.requirements) ? l.requirements : [])
+        .map((r: Record<string, unknown>) => ({
+          key: REQUIREMENT_KEYS.has(String(r?.key)) ? String(r.key) : "other",
+          label: trimmedOrNull(r?.label, 60),
+          detail: trimmedOrNull(r?.detail, 160),
+        }))
+        .filter((r: { label: string | null }) => !!r.label)
+        .slice(0, 9),
+    };
+  }
+
+  return {
+    city: trimmedOrNull(parsed.city, 120),
+    rankingGlobal: toWholeNumber(parsed.rankingGlobal) || null,
+    tagline: trimmedOrNull(parsed.tagline, 80),
+    profile: {
+      overview: trimmedOrNull(parsed.overview, 700),
+      acceptanceRate: percent(parsed.acceptanceRate),
+      languages: stringList(parsed.languages, 4, 30),
+      studentCount: toWholeNumber(parsed.studentCount),
+      internationalPercent: percent(parsed.internationalPercent),
+      monthlyLivingCostUsd: toWholeNumber(parsed.monthlyLivingCostUsd),
+      applicationPortal: trimmedOrNull(parsed.applicationPortal, 200),
+      scholarships: stringList(parsed.scholarships, 5, 100),
+      levels,
+      updatedAt: new Date().toISOString(),
+    },
+  };
+}
+
+/**
+ * Fill one university's details page the first time a student opens it, then
+ * serve the cached copy. Facts written by journey generation are kept.
+ */
+async function handleProfile(
+  admin: SupabaseClient,
+  body: Record<string, unknown>,
+): Promise<Response> {
+  const universityId = String(body.universityId ?? "").trim();
+  if (!universityId) return json({ error: "Missing universityId" }, 400);
+
+  const { data: u, error } = await admin
+    .from("universities")
+    .select("*")
+    .eq("id", universityId)
+    .maybeSingle();
+  if (error || !u) return json({ error: "University not found" }, 404);
+
+  const metadata = (u.metadata ?? {}) as Record<string, unknown>;
+  const existing = metadata.profile as { updatedAt?: string } | undefined;
+  const age = existing?.updatedAt ? Date.now() - Date.parse(existing.updatedAt) : Infinity;
+  const lastAttempt = metadata.profileRequestedAt ? Date.now() - Date.parse(String(metadata.profileRequestedAt)) : Infinity;
+  if (age < PROFILE_MAX_AGE_MS || lastAttempt < PROFILE_RETRY_AFTER_MS) {
+    return json({ university: u, cached: true });
+  }
+
+  // Claim the refresh first so concurrent opens don't each pay for research.
+  await admin
+    .from("universities")
+    .update({ metadata: { ...metadata, profileRequestedAt: new Date().toISOString() } })
+    .eq("id", universityId);
+
+  const { data: country } = await admin
+    .from("destination_countries")
+    .select("name")
+    .eq("code", u.country_code)
+    .maybeSingle();
+
+  let research: Awaited<ReturnType<typeof researchUniversityProfile>>;
+  try {
+    research = await researchUniversityProfile({
+      name: u.name,
+      countryName: country?.name ?? u.country_code,
+      city: u.city,
+      website: u.website,
+    });
+  } catch (e) {
+    return json({ university: u, cached: true, error: (e as Error).message });
+  }
+
+  const existingLevels = (u.level_details ?? {}) as Record<string, Record<string, unknown>>;
+  const levelDetails: Record<string, unknown> = { ...existingLevels };
+  for (const [level, facts] of Object.entries(research.profile.levels)) {
+    const current = existingLevels[level] ?? {};
+    const generated = current.source !== "catalog" && Object.keys(current).length > 0;
+    const merged: Record<string, unknown> = { ...current };
+    for (const key of ["tuitionMinUsd", "tuitionMaxUsd", "scholarshipAvailable", "applicationDeadline"]) {
+      const researched = (facts as Record<string, unknown>)[key] ?? null;
+      // Journey generation's route-specific facts win; it only fills gaps.
+      // Over the rough catalog guesses, the focused research wins.
+      merged[key] = generated ? (current[key] ?? researched) : (researched ?? current[key] ?? null);
+    }
+    if (!generated) merged.source = "profile";
+    levelDetails[level] = merged;
+  }
+
+  const update: Record<string, unknown> = {
+    city: u.city ?? research.city,
+    ranking_global: u.ranking_global ?? research.rankingGlobal,
+    tagline: u.tagline ?? research.tagline,
+    level_details: levelDetails,
+    education_levels: Array.from(
+      new Set([...((u.education_levels as string[] | null) ?? []), ...Object.keys(research.profile.levels)]),
+    ),
+    metadata: { ...metadata, profile: research.profile, profileRequestedAt: new Date().toISOString() },
+  };
+
+  if (!u.logo_url || !u.image_url) {
+    try {
+      const media = await resolveUniversityMedia({
+        name: u.name,
+        wikipediaTitle: (metadata.wikipediaTitle as string | null) ?? null,
+        website: u.website,
+      });
+      if (!u.logo_url && media.logoUrl) update.logo_url = media.logoUrl;
+      if (!u.image_url && media.imageUrl) update.image_url = media.imageUrl;
+      if (!u.website && media.website) update.website = media.website;
+    } catch (e) {
+      console.warn(`profile: media lookup failed for ${u.slug}`, e);
+    }
+  }
+
+  const { data: saved, error: saveError } = await admin
+    .from("universities")
+    .update(update)
+    .eq("id", universityId)
+    .select("*")
+    .single();
+  if (saveError) return json({ error: saveError.message }, 500);
+  return json({ university: saved, cached: false });
+}
+
+// --------------------------------------------------------------------------
 // entrypoint
 // --------------------------------------------------------------------------
 
@@ -1742,6 +2091,16 @@ Deno.serve(async (req) => {
       const gate = await verifyAdmin(req);
       if (gate instanceof Response) return gate;
       return await handleCatalog(admin, body);
+    }
+    if (action === "directory") {
+      const gate = await verifyAdmin(req);
+      if (gate instanceof Response) return gate;
+      return await handleDirectory(admin, body);
+    }
+    if (action === "profile") {
+      const gate = await verifyUser(req);
+      if (gate instanceof Response) return gate;
+      return await handleProfile(admin, body);
     }
     if (action === "enrich") {
       const gate = await verifyAdmin(req);

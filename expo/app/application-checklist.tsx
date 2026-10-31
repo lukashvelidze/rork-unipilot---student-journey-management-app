@@ -11,7 +11,6 @@ import { useUserStore } from "@/store/userStore";
 import { useJourneyStore } from "@/store/journeyStore";
 import { buildCountryRouteCode } from "@/lib/journeyRoutes";
 import { supabase } from "@/lib/supabase";
-import { openManageSubscription } from "@/lib/subscriptionManager";
 import { posthog } from "@/src/config/posthog";
 
 interface Checklist {
@@ -82,12 +81,8 @@ export default function ApplicationChecklistScreen() {
       `${label}checklists are available on a higher plan. Manage your plan to upgrade.`,
       [
         { text: "Not now", style: "cancel" },
-        { text: "Manage Subscription", onPress: () => {
-          openManageSubscription()
-            .catch((error) => {
-              console.error("Open subscription manager failed", error);
-              router.push("/settings");
-            });
+        { text: "See plans", onPress: () => {
+          router.push("/premium" as any);
         }},
       ]
     );

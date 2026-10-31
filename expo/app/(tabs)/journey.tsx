@@ -40,7 +40,6 @@ import {
   fetchJourneysWithProgress,
   formatJourneyTierLabel,
 } from "@/lib/journeyProgress";
-import { openManageSubscription } from "@/lib/subscriptionManager";
 import {
   buildTaskEntries,
   byPriority,
@@ -55,6 +54,7 @@ import {
   TaskEntry,
   UserTaskRecord,
 } from "@/lib/tasks";
+import { syncDeadlineReminders } from "@/lib/reminders";
 import { useJourneyStore } from "@/store/journeyStore";
 import { useUserStore } from "@/store/userStore";
 import { JourneyStage } from "@/types/user";
@@ -101,6 +101,7 @@ export default function TasksScreen() {
       setJourneys(loaded);
       setCustomTasks(own);
       ensureUniversityRoutes(loaded);
+      void syncDeadlineReminders(loaded, own);
     } catch (error) {
       console.error("Error loading tasks:", error);
     } finally {
@@ -162,7 +163,7 @@ export default function TasksScreen() {
         { text: "Not now", style: "cancel" },
         {
           text: "View plans",
-          onPress: () => openManageSubscription().catch(() => router.push("/premium" as any)),
+          onPress: () => router.push("/premium" as any),
         },
       ],
     );

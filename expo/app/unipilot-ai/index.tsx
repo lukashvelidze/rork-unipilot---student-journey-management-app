@@ -16,7 +16,6 @@ import { Send, Crown, Lock } from "lucide-react-native";
 import { useColors } from "@/hooks/useColors";
 import { useAppBack } from "@/hooks/useAppBack";
 import { supabase } from "@/lib/supabase";
-import { openManageSubscription } from "@/lib/subscriptionManager";
 import Button from "@/components/Button";
 import Card from "@/components/Card";
 import { posthog } from "@/src/config/posthog";
@@ -93,7 +92,7 @@ export default function UniPilotAIScreen() {
               <Lock size={48} color={Colors.primary} />
             </View>
             <Text style={[styles.premiumTitle, { color: Colors.text }]}>
-              Premium Feature
+              Pro feature
             </Text>
             <Text style={[styles.premiumDescription, { color: Colors.lightText }]}>
               AI Assistant is available with a premium subscription. Get personalized guidance and answers from our AI assistant.
@@ -119,13 +118,9 @@ export default function UniPilotAIScreen() {
               </View>
             </View>
             <Button
-              title="Manage Subscription"
+              title="See plans"
               onPress={() => {
-                openManageSubscription()
-                  .catch((error) => {
-                    console.error("Open subscription manager failed", error);
-                    router.push("/settings");
-                  });
+                router.push("/premium" as any);
               }}
               icon={<Crown size={20} color="#FFFFFF" />}
               fullWidth

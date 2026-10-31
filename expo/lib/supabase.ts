@@ -103,7 +103,11 @@ export async function updateProfile(updates: {
  * Helper function to get flag emoji from country code
  * Uses Unicode regional indicator symbols
  */
-function getCountryFlag(code: string): string {
+// destination_countries uses a few non-ISO codes (NE = Netherlands, not Niger).
+const ISO_COUNTRY_CODES: Record<string, string> = { NE: "NL", UAE: "AE", UK: "GB" };
+
+function getCountryFlag(rawCode: string): string {
+  const code = rawCode ? ISO_COUNTRY_CODES[rawCode.toUpperCase()] ?? rawCode : rawCode;
   if (!code || code.length !== 2) return "🌍";
   
   // Convert country code to flag emoji
@@ -224,7 +228,7 @@ export async function uploadDocument(userId: string, categoryId: string, fileUri
         .eq("id", userId)
         .single();
 
-      if (profile?.subscription_tier === "free") {
+      if (!profile?.subscription_tier || profile.subscription_tier === "free") {
         throw new Error("Premium feature");
       }
     }
@@ -294,7 +298,7 @@ export async function createDocumentEntry(
         .eq("id", userId)
         .single();
 
-      if (profile?.subscription_tier === "free") {
+      if (!profile?.subscription_tier || profile.subscription_tier === "free") {
         throw new Error("Premium feature");
       }
     }

@@ -6,6 +6,8 @@
 //   action: "start"  -> opens a session (enforces the free-tier limit).
 //   action: "finish" -> stores the transcript and scores it out of 10 with
 //                       key strengths and improvements (Gemini).
+//   action: "resume" -> reviews an uploaded CV (PDF or image) and returns a
+//                       score, strengths and line-by-line suggestions.
 //
 // Every action requires the caller's Supabase JWT.
 // --------------------------------------------------------------------------
@@ -26,9 +28,9 @@ const MODEL_CHAIN = Array.from(
   ]),
 );
 
-// Free, Basic and Standard plans get this many simulator sessions; Premium is unlimited.
+// Free students get this many simulator sessions; Pro (and every legacy paid tier) is unlimited.
 const FREE_SESSION_LIMIT = 3;
-const UNLIMITED_TIERS = new Set(["premium", "pro"]);
+const UNLIMITED_TIERS = new Set(["pro", "premium", "standard", "basic"]);
 // Sessions that never got going don't use up an allowance.
 const MIN_COUNTED_SECONDS = 20;
 const MIN_STUDENT_TURNS = 2;
@@ -78,13 +80,15 @@ async function usageFor(admin: SupabaseClient, userId: string) {
 // scoring
 // --------------------------------------------------------------------------
 
-async function gemini(prompt: string): Promise<string> {
+type GeminiPart = { text: string } | { inline_data: { mime_type: string; data: string } };
+
+async function gemini(prompt: string, extraParts: GeminiPart[] = [], maxOutputTokens = 1200): Promise<string> {
   let lastError = "no model available";
   for (const model of MODEL_CHAIN) {
     for (let attempt = 0; attempt < 2; attempt++) {
       const generationConfig: Record<string, unknown> = {
         temperature: 0.3,
-        maxOutputTokens: 1200,
+        maxOutputTokens,
         responseMimeType: "application/json",
       };
       if (model.startsWith("gemini-2.5")) generationConfig.thinkingConfig = { thinkingBudget: 0 };
@@ -95,7 +99,7 @@ async function gemini(prompt: string): Promise<string> {
           method: "POST",
           headers: { "content-type": "application/json", "x-goog-api-key": GEMINI_API_KEY },
           body: JSON.stringify({
-            contents: [{ role: "user", parts: [{ text: prompt }] }],
+            contents: [{ role: "user", parts: [...extraParts, { text: prompt }] }],
             generationConfig,
           }),
         },
@@ -230,6 +234,76 @@ async function handleFinish(admin: SupabaseClient, userId: string, body: Record<
 }
 
 // --------------------------------------------------------------------------
+// resume review
+// --------------------------------------------------------------------------
+
+const RESUME_MIME_TYPES = new Set(["application/pdf", "image/jpeg", "image/png", "image/heic", "image/webp"]);
+// base64 of ~7 MB; Gemini accepts inline files up to 20 MB.
+const MAX_RESUME_BASE64 = 9_500_000;
+
+async function handleResume(admin: SupabaseClient, userId: string, body: Record<string, unknown>) {
+  const mimeType = String(body.mimeType ?? "").toLowerCase();
+  const data = String(body.data ?? "");
+  const fileName = String(body.fileName ?? "CV").slice(0, 200);
+  if (!RESUME_MIME_TYPES.has(mimeType)) return json({ error: "Upload a PDF or an image of your CV." }, 400);
+  if (!data) return json({ error: "The file is empty." }, 400);
+  if (data.length > MAX_RESUME_BASE64) return json({ error: "That file is too large. Keep it under 7 MB." }, 413);
+
+  const { data: profile } = await admin
+    .from("profiles")
+    .select("level_of_study, destination_country, intended_majors")
+    .eq("id", userId)
+    .maybeSingle();
+  const context = [
+    profile?.level_of_study ? `current level: ${profile.level_of_study}` : null,
+    profile?.destination_country ? `applying to study in: ${profile.destination_country}` : null,
+    profile?.intended_majors?.length ? `intended majors: ${profile.intended_majors.join(", ")}` : null,
+  ].filter(Boolean).join("; ");
+
+  const prompt = `You are an admissions and careers adviser reviewing a student's CV/resume for university applications abroad${context ? ` (${context})` : ""}.
+
+If the file is not a CV or resume, return {"notResume": true}.
+
+Otherwise return ONLY JSON:
+{ "score": integer 0-10 for how ready this CV is for international university applications,
+  "summary": "one or two sentences on the overall impression",
+  "strengths": "2-3 short sentences on what works well",
+  "suggestions": [ { "section": "e.g. Education, Experience, Skills, Formatting", "issue": "what is weak or missing, quoting the line when relevant", "suggestion": "a concrete rewrite or fix" } ] }
+Give 4-8 suggestions, most important first.`;
+
+  let parsed: Record<string, unknown>;
+  try {
+    const raw = await gemini(prompt, [{ inline_data: { mime_type: mimeType, data } }], 3000);
+    parsed = JSON.parse(raw.replace(/^```(?:json)?|```$/g, "").trim());
+  } catch (e) {
+    console.error("resume review failed", e);
+    return json({ error: "We couldn't review this file right now. Please try again." }, 502);
+  }
+  if (parsed.notResume) return json({ error: "This doesn't look like a CV. Try another file." }, 422);
+
+  const score = Math.min(Math.max(Math.round(Number(parsed.score)) || 0, 0), 10);
+  const suggestions = (Array.isArray(parsed.suggestions) ? parsed.suggestions : [])
+    .filter((item: unknown) => item && typeof (item as { suggestion?: unknown }).suggestion === "string")
+    .slice(0, 8)
+    .map((item: Record<string, unknown>) => ({
+      section: String(item.section ?? "General").slice(0, 60),
+      issue: String(item.issue ?? "").slice(0, 400),
+      suggestion: String(item.suggestion ?? "").slice(0, 600),
+    }));
+  const review = {
+    user_id: userId,
+    file_name: fileName,
+    score,
+    summary: String(parsed.summary ?? "").slice(0, 600),
+    strengths: String(parsed.strengths ?? "").slice(0, 800),
+    suggestions,
+  };
+  const { data: saved, error } = await admin.from("resume_reviews").insert(review).select("*").single();
+  if (error) console.error("could not save resume review", error);
+  return json({ review: saved ?? review });
+}
+
+// --------------------------------------------------------------------------
 // entrypoint
 // --------------------------------------------------------------------------
 
@@ -259,6 +333,9 @@ Deno.serve(async (req) => {
         return json({ usage: await usageFor(admin, userId) });
       case "start":
         return await handleStart(admin, userId);
+      case "resume":
+        if (!GEMINI_API_KEY) return json({ error: "Missing GEMINI_API_KEY secret" }, 500);
+        return await handleResume(admin, userId, body);
       case "finish":
         if (!GEMINI_API_KEY) return json({ error: "Missing GEMINI_API_KEY secret" }, 500);
         return await handleFinish(admin, userId, body);

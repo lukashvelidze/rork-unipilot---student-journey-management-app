@@ -7,17 +7,13 @@ import {
   UserJourneyWithUniversity,
 } from "@/lib/journeyRoutes";
 
-const allowedTiers: Record<string, string[]> = {
-  free: ["free"],
-  basic: ["free", "basic"],
-  standard: ["free", "basic", "standard"],
-  premium: ["free", "basic", "standard", "premium"],
-  pro: ["free", "basic", "standard", "premium"],
-};
-
-const normalizeTier = (tier?: string | null) => {
+/**
+ * Two plans: Free and Pro. Profiles and checklists may still carry the legacy
+ * paid tiers (basic/standard/premium); every paid value means Pro.
+ */
+export const isProTier = (tier?: string | null) => {
   const normalized = (tier || "free").toLowerCase();
-  return normalized === "pro" ? "premium" : normalized;
+  return normalized !== "free" && normalized !== "";
 };
 
 const determineStage = (title: string): JourneyStage => {
@@ -46,23 +42,14 @@ const displayChecklistTitle = (title: string) => {
   return stripped ? stripped.charAt(0).toUpperCase() + stripped.slice(1) : title;
 };
 
-export const canAccessJourneyTier = (userTier?: string | null, requiredTier?: string) => {
-  if (!requiredTier) return true;
-  const normalizedUserTier = normalizeTier(userTier);
-  const normalizedRequiredTier = normalizeTier(requiredTier);
-  return (allowedTiers[normalizedUserTier] || allowedTiers.free).includes(normalizedRequiredTier);
-};
+/** Free stages are open to everyone; any other stage needs Pro. */
+export const canAccessJourneyTier = (userTier?: string | null, requiredTier?: string) =>
+  !isProTier(requiredTier) || isProTier(userTier);
 
-export const formatJourneyTierLabel = (tier?: string) => {
-  if (!tier) return "Premium";
-  const normalized = normalizeTier(tier);
-  return normalized.charAt(0).toUpperCase() + normalized.slice(1);
-};
+export const formatJourneyTierLabel = (_tier?: string) => "Pro";
 
-const tiersToShowFor = (userTier: string) =>
-  userTier === "free"
-    ? ["free", "basic", "standard", "premium"]
-    : allowedTiers[userTier] || allowedTiers.free;
+// Everyone sees every stage; Pro-only ones render locked for free students.
+const tiersToShowFor = (_userTier: string) => ["free", "basic", "standard", "premium", "pro"];
 
 /**
  * Turn a set of checklists (matched by visa_type + country) into JourneyProgress
@@ -182,7 +169,7 @@ export const fetchJourneyProgressForRoute = async (input: {
   userTier: string;
 }): Promise<{ progress: JourneyProgress[]; source: JourneySource }> => {
   const countryCode = input.destinationCountryCode.trim().toUpperCase();
-  const tiers = tiersToShowFor(normalizeTier(input.userTier));
+  const tiers = tiersToShowFor(input.userTier);
 
   const attempts: Array<[string | null | undefined, JourneySource]> = [
     [input.routeVisaCode, "university"],
@@ -232,7 +219,7 @@ export const fetchJourneysWithProgress = async (): Promise<{
     .eq("id", user.id)
     .single();
 
-  const userTier = normalizeTier(profile?.subscription_tier);
+  const userTier = isProTier(profile?.subscription_tier) ? "pro" : "free";
   const journeyRows = await fetchUserJourneys(user.id);
 
   if (journeyRows.length > 0) {

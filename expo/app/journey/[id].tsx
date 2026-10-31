@@ -42,7 +42,6 @@ import {
   getUniversityLevelDetails,
   upcomingDeadline,
 } from "@/lib/journeyRoutes";
-import { openManageSubscription } from "@/lib/subscriptionManager";
 import { formatDue, setChecklistTaskCompleted, STAGE_LABELS } from "@/lib/tasks";
 import { useJourneyStore } from "@/store/journeyStore";
 import { useUserStore } from "@/store/userStore";
@@ -310,7 +309,7 @@ export default function StageDetailScreen() {
         </View>
 
         {locked ? (
-          <LockedCard tier={stage.subscriptionTier} onUpgrade={() => openManageSubscription().catch(() => router.push("/premium" as any))} />
+          <LockedCard tier={stage.subscriptionTier} onUpgrade={() => router.push("/premium" as any)} />
         ) : (
           <>
             {stageDone ? (

@@ -10,12 +10,13 @@ import Purchases, {
 } from "react-native-purchases";
 import RevenueCatUI, { PAYWALL_RESULT } from "react-native-purchases-ui";
 
-export type SubscriptionTier = "free" | "basic" | "standard" | "premium";
-export type SubscriptionEntitlement = "none" | Exclude<SubscriptionTier, "free">;
+/** Two plans: Free and Pro. */
+export type SubscriptionTier = "free" | "pro";
+export type SubscriptionEntitlement = "none" | "pro";
 export const ENTITLEMENT_IDS = {
-  basic: "basic",
-  standard: "standard",
-  premium: "premium",
+  pro: "pro",
+  // Entitlements from the old three-tier plans; any of them still grants Pro.
+  legacy: ["premium", "standard", "basic"],
 } as const;
 export const DEFAULT_OFFERING_ID = "unipilot_default";
 
@@ -102,29 +103,15 @@ export function getActiveSubscriptionTier(info?: CustomerInfo | null): Subscript
     return "free";
   }
 
-  if (info.entitlements.active?.[ENTITLEMENT_IDS.premium]) {
-    return "premium";
-  }
-  if (info.entitlements.active?.[ENTITLEMENT_IDS.standard]) {
-    return "standard";
-  }
-  if (info.entitlements.active?.[ENTITLEMENT_IDS.basic]) {
-    return "basic";
+  const active = info.entitlements.active ?? {};
+  if (active[ENTITLEMENT_IDS.pro] || ENTITLEMENT_IDS.legacy.some((id) => active[id])) {
+    return "pro";
   }
   return "free";
 }
 
-export function hasTierAccess(
-  info: CustomerInfo | null | undefined,
-  requiredTier: Exclude<SubscriptionTier, "free">
-): boolean {
-  const rank: Record<SubscriptionTier, number> = {
-    free: 0,
-    basic: 1,
-    standard: 2,
-    premium: 3,
-  };
-  return rank[getActiveSubscriptionTier(info)] >= rank[requiredTier];
+export function hasTierAccess(info: CustomerInfo | null | undefined): boolean {
+  return getActiveSubscriptionTier(info) === "pro";
 }
 
 export async function purchasePackage(pkg: PurchasesPackage): Promise<CustomerInfo | null> {
@@ -159,7 +146,7 @@ export async function presentPaywallIfNeeded(params?: {
   await ensureConfigured();
   return RevenueCatUI.presentPaywallIfNeeded({
     requiredEntitlementIdentifier:
-      params?.requiredEntitlementIdentifier || ENTITLEMENT_IDS.premium,
+      params?.requiredEntitlementIdentifier || ENTITLEMENT_IDS.pro,
     offering: params?.offering,
     displayCloseButton: params?.displayCloseButton,
     fontFamily: params?.fontFamily,

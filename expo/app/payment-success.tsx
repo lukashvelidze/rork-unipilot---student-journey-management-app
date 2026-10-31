@@ -146,7 +146,7 @@ export default function PaymentSuccessScreen() {
           <Text style={[styles.errorTitle, { color: Colors.error }]}>Error</Text>
           <Text style={[styles.errorText, { color: Colors.text }]}>{error}</Text>
           <Button
-            title="Go to Premium"
+            title="See what's in Pro"
             onPress={() => router.push('/premium')}
             fullWidth
             style={styles.errorButton}
@@ -170,8 +170,8 @@ export default function PaymentSuccessScreen() {
         <Crown size={64} color={Colors.white} />
         <Text style={styles.title}>🎉 Payment Successful!</Text>
         <Text style={styles.subtitle}>
-          Welcome to UniPilot {tier ? TIER_NAMES[tier] : "Premium"} Plan ({tier ? TIER_PRICES[tier] : "$4.99"}/month). 
-          You've unlocked all premium features and journey roadmap modules.
+          Welcome to UniPilot Pro. Every roadmap stage is unlocked and you can follow as many universities as
+          you like.
         </Text>
       </LinearGradient>
 
@@ -181,7 +181,7 @@ export default function PaymentSuccessScreen() {
           <Text style={[styles.successTitle, { color: Colors.text }]}>Payment Confirmed</Text>
         </View>
         <Text style={[styles.successDescription, { color: Colors.lightText }]}>
-          Your subscription is now active. You have access to all premium features and journey roadmap modules.
+          Your subscription is now active. You have access to everything in UniPilot Pro.
         </Text>
         
         <View style={[styles.subscriptionDetails, { backgroundColor: Colors.lightBackground }]}>
@@ -189,13 +189,7 @@ export default function PaymentSuccessScreen() {
           <View style={styles.detailRow}>
             <Text style={[styles.detailLabel, { color: Colors.lightText }]}>Plan:</Text>
             <Text style={[styles.detailValue, { color: Colors.text }]}>
-              UniPilot {tier ? TIER_NAMES[tier] : "Premium"} Plan
-            </Text>
-          </View>
-          <View style={styles.detailRow}>
-            <Text style={[styles.detailLabel, { color: Colors.lightText }]}>Price:</Text>
-            <Text style={[styles.detailValue, { color: Colors.text }]}>
-              {tier ? TIER_PRICES[tier] : "$4.99"}/month
+              UniPilot Pro
             </Text>
           </View>
           <View style={styles.detailRow}>
@@ -220,7 +214,7 @@ export default function PaymentSuccessScreen() {
             style={styles.actionButton}
           />
           <Button
-            title="Explore Premium Resources"
+            title="Open UniPilot"
             onPress={() => router.push('/premium')}
             variant="outline"
             fullWidth

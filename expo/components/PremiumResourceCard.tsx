@@ -128,7 +128,7 @@ const PremiumResourceCard: React.FC<PremiumResourceCardProps> = ({
             {!isPremium && (
               <View style={styles.previewOverlay}>
                 <Lock size={16} color={Colors.primary} />
-                <Text style={styles.unlockText}>Unlock with Premium</Text>
+                <Text style={styles.unlockText}>Unlock with Pro</Text>
               </View>
             )}
           </View>
@@ -165,7 +165,7 @@ const PremiumResourceCard: React.FC<PremiumResourceCardProps> = ({
                 styles.actionButtonText,
                 isPremium ? styles.actionButtonTextEnabled : styles.actionButtonTextDisabled
               ]}>
-                {isPremium ? "Start Learning" : "Premium Required"}
+                {isPremium ? "Start Learning" : "Pro required"}
               </Text>
               {!isPremium && <Lock size={16} color={Colors.mutedText} />}
             </View>

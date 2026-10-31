@@ -6,6 +6,7 @@ import { Camera, Image as ImageIcon, X, Check, ChevronDown } from "lucide-react-
 import * as ImagePicker from "expo-image-picker";
 import { useColors } from "@/hooks/useColors";
 import { useAppBack } from "@/hooks/useAppBack";
+import { CARD_SHADOW, GUTTER, UI } from "@/constants/design";
 import Card from "@/components/Card";
 import Button from "@/components/Button";
 import { useJourneyStore } from "@/store/journeyStore";
@@ -150,9 +151,9 @@ export default function NewMemoryScreen() {
   const selectedMoodOption = moodOptions.find(option => option.value === selectedMood);
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: Colors.background }]} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: UI.background }]} edges={['top']}>
       {/* Header */}
-      <View style={[styles.header, { backgroundColor: Colors.card, borderBottomColor: Colors.border }]}>
+      <View style={styles.header}>
         <TouchableOpacity onPress={handleBack} style={styles.headerButton}>
           <X size={24} color={Colors.text} />
         </TouchableOpacity>
@@ -370,14 +371,17 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    flexDirection: "row",
     alignItems: "center",
+    flexDirection: "row",
     justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
+    paddingBottom: 10,
+    paddingHorizontal: GUTTER - 4,
+    paddingTop: 6,
   },
   headerButton: {
+    backgroundColor: UI.card,
+    borderRadius: 20,
+    ...CARD_SHADOW,
     width: 40,
     height: 40,
     justifyContent: "center",

@@ -22,7 +22,9 @@ export const useThemeStore = create<ThemeState>()(
     {
       name: "theme-storage",
       storage: flattedStorage,
-      version: 3, // Bump to clear old incorrectly serialized data
+      // v4: the redesign is light-only, so drop any saved dark-mode choice.
+      version: 4,
+      migrate: () => ({ isDarkMode: false }) as ThemeState,
       onRehydrateStorage: () => (state, error) => {
         if (error) {
           console.error('❌ Theme store rehydration error, using defaults:', error);

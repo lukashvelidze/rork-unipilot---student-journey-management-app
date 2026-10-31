@@ -16,9 +16,14 @@ import Button from "@/components/Button";
 import Input from "@/components/Input";
 import OnboardingProgressHeader from "@/components/onboarding/OnboardingProgressHeader";
 import { useAppBack } from "@/hooks/useAppBack";
-import { useUserStore } from "@/store/userStore";
-import { supabase } from "@/lib/supabase";
-import { SubscriptionTier } from "@/types/user";
+import SocialAuthButtons from "@/components/auth/SocialAuthButtons";
+import {
+  AuthFlowError,
+  friendlyAuthError,
+  signInWithApple,
+  signInWithEmail,
+  signInWithGoogle,
+} from "@/lib/auth";
 import { posthog } from "@/src/config/posthog";
 
 const worldMap = require("@/assets/images/onboarding/world-map-login.png");
@@ -26,11 +31,11 @@ const worldMap = require("@/assets/images/onboarding/world-map-login.png");
 export default function SignInScreen() {
   const router = useRouter();
   const handleBack = useAppBack("/onboarding/step0-welcome");
-  const { user, setUser } = useUserStore();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
+  const [socialBusy, setSocialBusy] = useState<"apple" | "google" | null>(null);
   const [errors, setErrors] = useState({ email: "", password: "" });
 
   const isValidEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
@@ -42,94 +47,55 @@ export default function SignInScreen() {
         : !isValidEmail(email.trim())
           ? "Please enter a valid email address"
           : "",
-      password: !password.trim()
-        ? "Password is required"
-        : password.length < 6
-          ? "Password must be at least 6 characters"
-          : "",
+      password: !password ? "Password is required" : "",
     };
 
     setErrors(newErrors);
     return !newErrors.email && !newErrors.password;
   };
 
+  // `/onboarding` loads the profile and resumes onboarding or opens the app.
+  const finish = (userId: string, method: string) => {
+    posthog.identify(userId);
+    posthog.capture("user_signed_in", { method });
+    router.replace("/onboarding");
+  };
+
   const handleSignIn = async () => {
     if (!validateForm() || isProcessing) return;
-
     setIsProcessing(true);
-
+    const normalizedEmail = email.trim().toLowerCase();
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
-        password,
-      });
-
-      if (error) {
-        Alert.alert("Log in error", error.message);
+      const session = await signInWithEmail(normalizedEmail, password);
+      if (session) finish(session.user.id, "email");
+    } catch (error) {
+      if (error instanceof AuthFlowError && error.code === "unconfirmed") {
+        router.push({ pathname: "/verify-email", params: { email: normalizedEmail, resend: "1" } } as any);
         return;
       }
-
-      if (!data.user) return;
-
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", data.user.id)
-        .single();
-
-      const subscriptionTier = (
-        profile?.subscription_tier || "free"
-      ).toLowerCase() as SubscriptionTier;
-      const premiumPlan = subscriptionTier === "premium" || subscriptionTier === "pro";
-      const onboardingCompleted = Boolean(profile?.visa_type);
-
-      setUser({
-        ...user!,
-        id: data.user.id,
-        name: profile?.full_name || data.user.email || "",
-        email: profile?.email || data.user.email || "",
-        onboardingCompleted,
-        subscriptionTier,
-        isPremium: premiumPlan,
-      });
-
-      posthog.identify(data.user.id, {
-        $set: { subscription_tier: subscriptionTier },
-      });
-      posthog.capture("user_signed_in", {
-        subscription_tier: subscriptionTier,
-        onboarding_completed: onboardingCompleted,
-      });
-
-      router.replace(onboardingCompleted ? "/(tabs)" : "/onboarding");
-    } catch (error: any) {
-      console.error("Sign in error:", error);
-      Alert.alert("Error", error.message || "Something went wrong. Please try again.");
+      setErrors((current) => ({ ...current, password: friendlyAuthError(error) }));
     } finally {
       setIsProcessing(false);
     }
   };
 
-  const handleForgotPassword = async () => {
-    const normalizedEmail = email.trim();
-    if (!isValidEmail(normalizedEmail)) {
-      setErrors((current) => ({
-        ...current,
-        email: "Enter your email above to reset your password",
-      }));
-      return;
-    }
-
+  const handleSocial = async (provider: "apple" | "google") => {
+    if (socialBusy || isProcessing) return;
+    setSocialBusy(provider);
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(normalizedEmail);
-      if (error) {
-        Alert.alert("Reset password", error.message);
-        return;
+      const session = provider === "apple" ? await signInWithApple() : await signInWithGoogle();
+      finish(session.user.id, provider);
+    } catch (error) {
+      if (!(error instanceof AuthFlowError && error.code === "cancelled")) {
+        Alert.alert("Couldn't sign in", friendlyAuthError(error));
       }
-      Alert.alert("Check your email", "We sent you a password reset link.");
-    } catch (error: any) {
-      Alert.alert("Reset password", error.message || "Please try again.");
+    } finally {
+      setSocialBusy(null);
     }
+  };
+
+  const handleForgotPassword = () => {
+    router.push({ pathname: "/forgot-password", params: { email: email.trim() } } as any);
   };
 
   return (
@@ -140,7 +106,7 @@ export default function SignInScreen() {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.keyboardView}
       >
-        <OnboardingProgressHeader onBack={handleBack} progress={0.25} />
+        <OnboardingProgressHeader hideProgress onBack={handleBack} progress={0} />
 
         <ScrollView
           contentContainerStyle={styles.scrollContent}
@@ -153,6 +119,8 @@ export default function SignInScreen() {
           </View>
 
           <View style={styles.form}>
+            <SocialAuthButtons busy={socialBusy} disabled={isProcessing} mode="signin" onPress={handleSocial} />
+
             <Input
               autoCapitalize="none"
               autoComplete="email"
@@ -161,7 +129,7 @@ export default function SignInScreen() {
               inputContainerStyle={styles.inputContainer}
               inputStyle={styles.input}
               keyboardType="email-address"
-              label="Email or Username"
+              label="Email"
               labelStyle={styles.label}
               onChangeText={(value) => {
                 setEmail(value);
@@ -185,7 +153,9 @@ export default function SignInScreen() {
                 setPassword(value);
                 if (errors.password) setErrors((current) => ({ ...current, password: "" }));
               }}
+              onSubmitEditing={handleSignIn}
               placeholder="••••••••"
+              returnKeyType="go"
               secureTextEntry
               showPasswordToggle
               testID="login-password"
@@ -243,7 +213,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     paddingBottom: 28,
     paddingHorizontal: 24,
-    paddingTop: 62,
+    paddingTop: 40,
   },
   header: {
     alignItems: "center",

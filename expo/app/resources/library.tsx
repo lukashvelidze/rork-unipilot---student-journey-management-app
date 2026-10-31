@@ -17,7 +17,6 @@ import { GUTTER, RADIUS, UI } from "@/constants/design";
 import { useAppBack } from "@/hooks/useAppBack";
 import { canAccessArticle, fetchArticleCategories, fetchArticles, normalizeSubscriptionTier } from "@/lib/articles";
 import { articleRelevance, fetchBookmarkIds, setBookmarked } from "@/lib/bookmarks";
-import { openManageSubscription } from "@/lib/subscriptionManager";
 import { useJourneyStore } from "@/store/journeyStore";
 import { useUserStore } from "@/store/userStore";
 import { Article, ArticleCategory } from "@/types/articles";
@@ -96,9 +95,9 @@ export default function LibraryScreen() {
 
   const openArticle = (article: Article) => {
     if (!canAccessArticle(article.access_tier, tier)) {
-      Alert.alert("Premium guide", "This guide is part of a paid plan. Upgrade to read it.", [
+      Alert.alert("Pro guide", "This guide is part of UniPilot Pro. Upgrade to read it.", [
         { text: "Not now", style: "cancel" },
-        { text: "View plans", onPress: () => openManageSubscription().catch(() => router.push("/premium" as any)) },
+        { text: "View plans", onPress: () => router.push("/premium" as any) },
       ]);
       return;
     }

@@ -404,6 +404,13 @@ verify_jwt = false
 import_map = "./functions/generate-journey/deno.json"
 entrypoint = "./functions/generate-journey/index.ts"
 
+[functions.revenuecat-webhook]
+enabled = true
+# RevenueCat calls this without a Supabase JWT; the function checks the shared
+# REVENUECAT_WEBHOOK_SECRET from the Authorization header itself.
+verify_jwt = false
+entrypoint = "./functions/revenuecat-webhook/index.ts"
+
 [functions.interview-feedback]
 enabled = true
 # Requires the caller's Supabase JWT (checked by the gateway and again inside).

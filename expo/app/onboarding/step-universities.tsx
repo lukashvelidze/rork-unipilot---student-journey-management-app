@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Linking,
+  Alert,
   Modal,
   Pressable,
   ScrollView,
@@ -18,11 +18,15 @@ import { Check, GraduationCap, ListFilter, Search, X } from "lucide-react-native
 import Button from "@/components/Button";
 import OnboardingProgressHeader from "@/components/onboarding/OnboardingProgressHeader";
 import { useAppBack } from "@/hooks/useAppBack";
-import { supabase } from "@/lib/supabase";
+import { getCountries, supabase } from "@/lib/supabase";
+import { Country } from "@/types/user";
 import { useUserStore } from "@/store/userStore";
+import { useJourneyStore } from "@/store/journeyStore";
 import {
   countryFlag,
   deleteUserJourney,
+  FREE_UNIVERSITY_LIMIT,
+  universityLimitFor,
   fetchUniversitiesForCountry,
   fetchUserJourneys,
   formatDeadline,
@@ -42,7 +46,8 @@ const CORAL = "#FF6B6B";
 const TEXT = "#111827";
 const MUTED = "#6B7280";
 const BORDER = "#E5E7EB";
-const MAX_SELECTION = 3;
+// Countries can list thousands of universities; render them a page at a time.
+const PAGE = 40;
 
 type SortKey = "recommended" | "ranking" | "tuition" | "deadline";
 
@@ -70,7 +75,10 @@ export default function StepUniversities() {
     selectedRef.current = next;
     setSelectedIdsState(next);
   }, []);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [visibleCount, setVisibleCount] = useState(PAGE);
+  // Free plans follow FREE_UNIVERSITY_LIMIT universities in total, across
+  // countries; this is how many more fit in the destination being browsed.
+  const [maxSelection, setMaxSelection] = useState<number>(FREE_UNIVERSITY_LIMIT);
   const [query, setQuery] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("recommended");
   const [scholarshipOnly, setScholarshipOnly] = useState(false);
@@ -78,6 +86,11 @@ export default function StepUniversities() {
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState("");
+  // Destination being browsed. In manage mode students can switch to (and add
+  // universities in) another country; null until the profile has loaded.
+  const [country, setCountry] = useState<string | null>(null);
+  const [countries, setCountries] = useState<Country[]>([]);
+  const [journeyCountries, setJourneyCountries] = useState<Record<string, number>>({});
   const [profileFields, setProfileFields] = useState<{
     destination: string | null;
     origin: string | null;
@@ -86,7 +99,11 @@ export default function StepUniversities() {
   }>({ destination: null, origin: null, level: null, visaType: null });
 
   const destinationCode =
-    profileFields.destination || user?.destinationCountry?.code || "";
+    country || profileFields.destination || user?.destinationCountry?.code || "";
+  const destinationName =
+    countries.find((c) => c.code.toUpperCase() === destinationCode.toUpperCase())?.name ||
+    (destinationCode === user?.destinationCountry?.code ? user?.destinationCountry?.name : null) ||
+    destinationCode;
   // Students pick universities for the level they are applying for next.
   const targetLevel = profileFields.level ? targetStudyLevel(profileFields.level) : null;
 
@@ -105,11 +122,18 @@ export default function StepUniversities() {
 
       const { data: profile } = await supabase
         .from("profiles")
-        .select("destination_country, country_origin, level_of_study, visa_type")
+        .select("destination_country, country_origin, level_of_study, visa_type, subscription_tier")
         .eq("id", authUser.id)
         .single();
 
-      const destination = profile?.destination_country || user?.destinationCountry?.code || null;
+      // From the journey screens, open on the country of the university the
+      // student is currently viewing.
+      const { journeys: storeJourneys, activeJourneyKey } = useJourneyStore.getState();
+      const viewingCountry = isManaging
+        ? (storeJourneys.find((j) => j.key === activeJourneyKey) || storeJourneys[0])?.destinationCountryCode
+        : null;
+      const destination =
+        country || viewingCountry || profile?.destination_country || user?.destinationCountry?.code || null;
       setProfileFields({
         destination,
         origin: profile?.country_origin || user?.homeCountry?.code || null,
@@ -126,10 +150,18 @@ export default function StepUniversities() {
         return;
       }
 
+      if (!country) setCountry(destination.toUpperCase());
+
       const [list, existing] = await Promise.all([
         fetchUniversitiesForCountry(destination),
         fetchUserJourneys(authUser.id),
       ]);
+      const perCountry: Record<string, number> = {};
+      existing.forEach((j) => {
+        const code = j.destination_country_code.toUpperCase();
+        perCountry[code] = (perCountry[code] || 0) + 1;
+      });
+      setJourneyCountries(perCountry);
 
       const forDestination = existing.filter(
         (j) => j.destination_country_code.toUpperCase() === destination.toUpperCase(),
@@ -141,11 +173,14 @@ export default function StepUniversities() {
       const chosenIds = new Set(forDestination.map((j) => j.university_id));
       setUniversities(list.filter((u) => chosenIds.has(u.id) || offersStudyLevel(u, level)));
       setExistingJourneys(forDestination);
+      const elsewhere = existing.length - forDestination.length;
+      const limit = Math.max(0, universityLimitFor(profile?.subscription_tier) - elsewhere);
+      setMaxSelection(limit);
       setSelectedIds(
         forDestination
           .map((j) => j.university_id)
           .filter((id): id is string => !!id && list.some((u) => u.id === id))
-          .slice(0, MAX_SELECTION),
+          .slice(0, Math.max(limit, forDestination.length)),
       );
     } catch (loadError) {
       console.error("Error loading universities:", loadError);
@@ -153,11 +188,38 @@ export default function StepUniversities() {
     } finally {
       setIsLoading(false);
     }
-  }, [isManaging, router, setSelectedIds, user?.destinationCountry?.code, user?.homeCountry?.code, user?.educationBackground?.level]);
+  }, [country, isManaging, router, setSelectedIds, user?.destinationCountry?.code, user?.homeCountry?.code, user?.educationBackground?.level]);
 
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    if (!isManaging) return;
+    getCountries()
+      .then(({ destination }) => setCountries(destination))
+      .catch((countriesError) => console.error("Error loading countries:", countriesError));
+  }, [isManaging]);
+
+  // Countries the student already applies to come first, then the rest A–Z.
+  const countryOptions = useMemo(
+    () =>
+      [...countries].sort((a, b) => {
+        const aCount = journeyCountries[a.code.toUpperCase()] || 0;
+        const bCount = journeyCountries[b.code.toUpperCase()] || 0;
+        if (!!aCount !== !!bCount) return aCount ? -1 : 1;
+        return a.name.localeCompare(b.name);
+      }),
+    [countries, journeyCountries],
+  );
+
+  const switchCountry = (code: string) => {
+    if (code.toUpperCase() === destinationCode.toUpperCase()) return;
+    setQuery("");
+    setError("");
+    setSelectedIds([]);
+    setCountry(code.toUpperCase());
+  };
 
   const toggle = (id: string) => {
     const current = selectedRef.current;
@@ -166,8 +228,15 @@ export default function StepUniversities() {
       setSelectedIds(current.filter((selectedId) => selectedId !== id));
       return;
     }
-    if (current.length >= MAX_SELECTION) {
-      setError(`You can pick up to ${MAX_SELECTION} universities. Deselect one to swap.`);
+    if (current.length >= maxSelection) {
+      Alert.alert(
+        "Want more universities?",
+        `Free plans follow up to ${FREE_UNIVERSITY_LIMIT} universities in total. Upgrade to Pro to compare as many as you like, or deselect one to swap.`,
+        [
+          { text: "Not now", style: "cancel" },
+          { text: "See Pro", onPress: () => router.push("/premium" as any) },
+        ],
+      );
       return;
     }
     setError("");
@@ -208,6 +277,16 @@ export default function StepUniversities() {
     });
   }, [targetLevel, query, scholarshipOnly, sortKey, universities]);
 
+  useEffect(() => {
+    setVisibleCount(PAGE);
+  }, [destinationCode, query, scholarshipOnly, sortKey]);
+
+  const shownUniversities = visibleUniversities.slice(0, visibleCount);
+  const firstDirectoryIndex =
+    sortKey === "recommended" && !query.trim()
+      ? shownUniversities.findIndex((u, index) => !u.is_featured && index > 0)
+      : -1;
+
   const goToNextStep = () => {
     if (isManaging) handleBack();
     else router.push("/onboarding/step5-visa");
@@ -216,7 +295,7 @@ export default function StepUniversities() {
   const handleContinue = async () => {
     if (isProcessing) return;
 
-    if (universities.length > 0 && selectedIds.length === 0) {
+    if (!isManaging && universities.length > 0 && selectedIds.length === 0) {
       setError("Pick at least one university to continue.");
       return;
     }
@@ -297,6 +376,44 @@ export default function StepUniversities() {
         <Text style={styles.title}>Choose your universities</Text>
 
         <View style={styles.stickyControls}>
+          {isManaging && countryOptions.length > 0 ? (
+            <ScrollView
+              horizontal
+              contentContainerStyle={styles.countryChips}
+              keyboardShouldPersistTaps="handled"
+              showsHorizontalScrollIndicator={false}
+              style={styles.countryChipsScroll}
+            >
+              {countryOptions.map((option) => {
+                const active = option.code.toUpperCase() === destinationCode.toUpperCase();
+                const count = journeyCountries[option.code.toUpperCase()] || 0;
+                return (
+                  <TouchableOpacity
+                    key={option.code}
+                    accessibilityLabel={`${option.name}${count ? `, ${count} chosen` : ""}`}
+                    accessibilityRole="tab"
+                    accessibilityState={{ selected: active }}
+                    activeOpacity={0.8}
+                    disabled={isProcessing}
+                    onPress={() => switchCountry(option.code)}
+                    style={[styles.countryChip, active && styles.countryChipActive]}
+                  >
+                    <Text style={styles.countryChipFlag}>{option.flag}</Text>
+                    <Text style={[styles.countryChipText, active && styles.countryChipTextActive]}>
+                      {option.name}
+                    </Text>
+                    {count ? (
+                      <View style={[styles.countryChipCount, active && styles.countryChipCountActive]}>
+                        <Text style={[styles.countryChipCountText, active && styles.countryChipCountTextActive]}>
+                          {count}
+                        </Text>
+                      </View>
+                    ) : null}
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          ) : null}
           {universities.length > 0 ? (
             <>
               <View style={styles.searchRow}>
@@ -329,7 +446,9 @@ export default function StepUniversities() {
 
               <View style={styles.selectionPill}>
                 <Text style={styles.selectionPillText}>
-                  Selected: {selectedIds.length} of {MAX_SELECTION}
+                  {Number.isFinite(maxSelection)
+                    ? `Selected: ${selectedIds.length} of ${maxSelection}`
+                    : `Selected: ${selectedIds.length}`}
                 </Text>
               </View>
             </>
@@ -350,7 +469,7 @@ export default function StepUniversities() {
             <Text style={styles.emptyTitle}>No universities yet</Text>
             <Text style={styles.emptyText}>
               We&apos;re still adding universities for{" "}
-              {user?.destinationCountry?.name || "this country"}. You can continue and add them
+              {destinationName || "this country"}. You can continue and add them
               from your profile once they&apos;re ready.
             </Text>
           </View>
@@ -360,32 +479,39 @@ export default function StepUniversities() {
             <Text style={styles.emptyText}>
               Try another name or city, or clear your filters.
             </Text>
-            <TouchableOpacity
-              activeOpacity={0.7}
-              disabled={isProcessing}
-              onPress={goToNextStep}
-              style={styles.skipButton}
-            >
-              <Text style={styles.skipText}>Continue without choosing</Text>
-            </TouchableOpacity>
           </View>
         ) : (
           <View style={styles.list}>
-            {visibleUniversities.map((university) => (
-              <UniversityCard
-                key={university.id}
-                countryName={user?.destinationCountry?.name || null}
-                disabled={isProcessing}
-                educationLevel={targetLevel}
-                expanded={expandedId === university.id}
-                onPress={() => toggle(university.id)}
-                onToggleDetails={() =>
-                  setExpandedId((current) => (current === university.id ? null : university.id))
-                }
-                selected={selectedIds.includes(university.id)}
-                university={university}
-              />
+            {shownUniversities.map((university, index) => (
+              <React.Fragment key={university.id}>
+                {index === firstDirectoryIndex ? (
+                  <Text style={styles.listSectionLabel}>
+                    All universities in {destinationName || "this country"} · {visibleUniversities.length}
+                  </Text>
+                ) : null}
+                <UniversityCard
+                  countryName={destinationName || null}
+                  disabled={isProcessing}
+                  educationLevel={targetLevel}
+                  onOpenDetails={() => router.push(`/university/${university.id}?from=picker` as any)}
+                  onPress={() => toggle(university.id)}
+                  selected={selectedIds.includes(university.id)}
+                  university={university}
+                />
+              </React.Fragment>
             ))}
+            {visibleUniversities.length > shownUniversities.length ? (
+              <TouchableOpacity
+                accessibilityRole="button"
+                activeOpacity={0.7}
+                onPress={() => setVisibleCount((count) => count + PAGE * 2)}
+                style={styles.showMore}
+              >
+                <Text style={styles.showMoreText}>
+                  Show more · {visibleUniversities.length - shownUniversities.length} left
+                </Text>
+              </TouchableOpacity>
+            ) : null}
           </View>
         )}
       </ScrollView>
@@ -422,19 +548,17 @@ function UniversityCard({
   countryName,
   educationLevel,
   selected,
-  expanded,
   disabled,
   onPress,
-  onToggleDetails,
+  onOpenDetails,
 }: {
   university: UniversityRecord;
   countryName: string | null;
   educationLevel: string | null;
   selected: boolean;
-  expanded: boolean;
   disabled: boolean;
   onPress: () => void;
-  onToggleDetails: () => void;
+  onOpenDetails: () => void;
 }) {
   const details = getUniversityLevelDetails(university, educationLevel);
   // Campus photo, else the logo, else a placeholder; skip any that fail to load.
@@ -452,11 +576,8 @@ function UniversityCard({
   const location = [university.city, countryName]
     .filter(Boolean)
     .join(", ");
-  const notes = university.metadata?.notes;
-  const applicationSystem = university.metadata?.applicationSystem;
   const hasScholarship = scholarship !== undefined && scholarship !== null;
   const hasFacts = !!tuition || hasScholarship || !!deadline;
-  const hasDetails = !!notes || !!applicationSystem || !!university.website;
 
   return (
     <TouchableOpacity
@@ -513,7 +634,7 @@ function UniversityCard({
         </View>
       ) : null}
 
-      {hasFacts || hasDetails ? <View style={styles.divider} /> : null}
+      {hasFacts ? <View style={styles.divider} /> : null}
 
       {tuition ? <FactRow label="Tuition" value={tuition} /> : null}
       {hasScholarship ? (
@@ -525,37 +646,16 @@ function UniversityCard({
       ) : null}
       {deadline ? <FactRow label="Deadline" value={deadline} /> : null}
 
-      {expanded ? (
-        <View style={styles.detailsBlock}>
-          {notes ? <Text style={styles.detailsText}>{notes}</Text> : null}
-          {applicationSystem ? (
-            <Text style={styles.detailsText}>
-              <Text style={styles.detailsLabel}>Apply via </Text>
-              {applicationSystem}
-            </Text>
-          ) : null}
-          {university.website ? (
-            <Text
-              onPress={() => Linking.openURL(university.website as string).catch(() => null)}
-              style={styles.detailsLink}
-            >
-              Visit website
-            </Text>
-          ) : null}
-        </View>
-      ) : null}
-
-      {hasDetails ? (
-        <TouchableOpacity
-          accessibilityRole="button"
-          activeOpacity={0.6}
-          hitSlop={{ top: 8, bottom: 8, left: 12, right: 12 }}
-          onPress={onToggleDetails}
-          style={styles.detailsButton}
-        >
-          <Text style={styles.detailsButtonText}>{expanded ? "Less" : "Details"}</Text>
-        </TouchableOpacity>
-      ) : null}
+      <TouchableOpacity
+        accessibilityLabel={`View details for ${university.name}`}
+        accessibilityRole="button"
+        activeOpacity={0.6}
+        hitSlop={{ top: 8, bottom: 8, left: 12, right: 12 }}
+        onPress={onOpenDetails}
+        style={styles.detailsButton}
+      >
+        <Text style={styles.detailsButtonText}>View details</Text>
+      </TouchableOpacity>
     </TouchableOpacity>
   );
 }
@@ -679,6 +779,60 @@ const styles = StyleSheet.create({
     letterSpacing: -0.3,
     lineHeight: 30,
   },
+  countryChipsScroll: {
+    marginBottom: 12,
+    marginHorizontal: -24,
+  },
+  countryChips: {
+    gap: 8,
+    paddingHorizontal: 24,
+  },
+  countryChip: {
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
+    borderColor: BORDER,
+    borderRadius: 999,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  countryChipActive: {
+    backgroundColor: CORAL,
+    borderColor: CORAL,
+  },
+  countryChipFlag: {
+    fontSize: 15,
+  },
+  countryChipText: {
+    color: TEXT,
+    fontSize: 13.5,
+    fontWeight: "600",
+  },
+  countryChipTextActive: {
+    color: "#FFFFFF",
+  },
+  countryChipCount: {
+    alignItems: "center",
+    backgroundColor: "#FFE8E8",
+    borderRadius: 9,
+    height: 18,
+    justifyContent: "center",
+    minWidth: 18,
+    paddingHorizontal: 5,
+  },
+  countryChipCountActive: {
+    backgroundColor: "#FFFFFF",
+  },
+  countryChipCountText: {
+    color: CORAL,
+    fontSize: 11,
+    fontWeight: "800",
+  },
+  countryChipCountTextActive: {
+    color: CORAL,
+  },
   stickyControls: {
     backgroundColor: "#FAFBFC",
     paddingBottom: 12,
@@ -750,6 +904,25 @@ const styles = StyleSheet.create({
   },
   list: {
     gap: 10,
+  },
+  listSectionLabel: {
+    color: MUTED,
+    fontSize: 13,
+    fontWeight: "600",
+    marginTop: 12,
+  },
+  showMore: {
+    alignItems: "center",
+    borderColor: BORDER,
+    borderRadius: 999,
+    borderWidth: 1,
+    marginTop: 6,
+    paddingVertical: 12,
+  },
+  showMoreText: {
+    color: CORAL,
+    fontSize: 14,
+    fontWeight: "700",
   },
   card: {
     backgroundColor: "#FFFFFF",
@@ -853,23 +1026,6 @@ const styles = StyleSheet.create({
   },
   factValueMuted: {
     color: MUTED,
-  },
-  detailsBlock: {
-    gap: 6,
-    marginTop: 8,
-  },
-  detailsText: {
-    color: "#374151",
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  detailsLabel: {
-    color: MUTED,
-  },
-  detailsLink: {
-    color: CORAL,
-    fontSize: 13,
-    fontWeight: "600",
   },
   detailsButton: {
     alignSelf: "flex-end",
